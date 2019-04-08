@@ -18,6 +18,36 @@ get_contigs<-function(opt=NULL){
     #}
 
     #find out if contigs are ready or need to be assembled from reads
+    
+    if(!(is.null(out$assemblyaccession))){
+        flog.info(paste("Will download contigs from NCBI GenBank under accession number", out$assemblyaccession[1]))
+        assemblytargetname<-out$assemblyaccession[1]
+        contigsaccession<-get_genomes_NCBI(organisms="bacteria", outputdir=opt$workdir, assembly_accession=assemblytargetname, ntop=1, fileformat="fasta", simulate=FALSE)
+        if(nrow(contigsaccession) < 1){
+            flog.info(paste("A valid entry with accession number", assemblytargetname, "was not found in GenBank. Only bacterial accession numbers are accepted for the time being. Aborting now."))
+            opt$abort<-TRUE
+        }
+        gztn<-paste(assemblytargetname, "fasta", "gz", sep=".")
+        gbfn<-paste(assemblytargetname, "fasta", sep=".")
+        file.rename(contigsaccession$destfn, gztn)
+        system(paste("gunzip", gztn))
+ 
+        #Set opt$contigs to NULL in case the user has tried to set that as an input too
+        opt$contigs<-NULL
+        
+        opt<-prepare_contigs_for_JAMS(opt=opt, fastafile=gbfn)
+
+        #Write NHcontigs to the system
+        NHcontigsfastaout<-paste(opt$prefix, "contigs.fasta", sep="_")
+        write.fasta(sequences = opt$NHcontigs_sequence, names = names(opt$NHcontigs_sequence), nbchar = 80, file.out = file.path(opt$workdir, NHcontigsfastaout))
+
+        #Bank assembly files to project directory
+        if(opt$workdir != opt$sampledir){
+            #Write contigs from opt directly to system
+            write.fasta(sequences = opt$NHcontigs_sequence, names = names(opt$NHcontigs_sequence), nbchar = 80, file.out = file.path(opt$sampledir, NHcontigsfastaout))
+        }
+    } 
+    
     if(!(is.null(opt$contigs))){
         #copy contigs
         flog.info("Input sequence supplied are contigs.")

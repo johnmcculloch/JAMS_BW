@@ -1,16 +1,16 @@
-#' get_genomes_NCBI(organisms="bacteria", assembly_summary=NULL, outputdir=NULL, organism_name=NULL, infraspecific_name=NULL, taxid=NULL, species_taxid=NULL, asm_name=NULL, as_general_expression=FALSE, assembly_level=NULL, assembly_upto=NULL, bioproject=NULL, biosample=NULL, refseq_category_upto=NULL, ntop=NULL, nobs=TRUE, fileformat="fasta", simulate=TRUE)
+#' get_genomes_NCBI(organisms="bacteria", assembly_summary=NULL, outputdir=NULL, assembly_accession=NULL, organism_name=NULL, infraspecific_name=NULL, taxid=NULL, species_taxid=NULL, asm_name=NULL, as_general_expression=FALSE, assembly_level=NULL, assembly_upto=NULL, bioproject=NULL, biosample=NULL, refseq_category_upto=NULL, ntop=NULL, nobs=TRUE, fileformat="fasta", simulate=TRUE)
 #'
 #' Downloads Genomes from NCBI GenBank based on matching criteria
 #' @export
 
-get_genomes_NCBI<-function(organisms="bacteria", assembly_summary=NULL, outputdir=NULL, organism_name=NULL, infraspecific_name=NULL, taxid=NULL, species_taxid=NULL, asm_name=NULL, as_general_expression=FALSE, assembly_level=NULL, assembly_upto=NULL, bioproject=NULL, biosample=NULL, refseq_category_upto=NULL, ntop=NULL, nobs=TRUE, fileformat="fasta", simulate=TRUE){
+get_genomes_NCBI<-function(organisms="bacteria", assembly_summary=NULL, outputdir=NULL, assembly_accession=NULL, organism_name=NULL, infraspecific_name=NULL, taxid=NULL, species_taxid=NULL, asm_name=NULL, as_general_expression=FALSE, assembly_level=NULL, assembly_upto=NULL, bioproject=NULL, biosample=NULL, refseq_category_upto=NULL, ntop=NULL, nobs=TRUE, fileformat="fasta", simulate=TRUE){
 
     require(data.table)
     if(is.null(outputdir)){
         outputdir=getwd()
     }
 
-    if(all(c(is.null(organisms), is.null(taxid), is.null(species_taxid), is.null(bioproject), is.null(biosample), is.null(organism_name), is.null(infraspecific_name), is.null(refseq_category_upto), is.null(asm_name), is.null(assembly_level), is.null(assembly_upto)))){
+    if(all(c(is.null(organisms), is.null(taxid), is.null(species_taxid), is.null(assembly_accession), is.null(bioproject), is.null(biosample), is.null(organism_name), is.null(infraspecific_name), is.null(refseq_category_upto), is.null(asm_name), is.null(assembly_level), is.null(assembly_upto)))){
         stop("You must provide at least one criterion as input.")
     }
 
@@ -46,6 +46,13 @@ get_genomes_NCBI<-function(organisms="bacteria", assembly_summary=NULL, outputdi
 
     print(paste("There are", nrow(assembly_summary), "entries for", organisms, "genomes in NCBI GenBank."))
     wanted_assembly_summary<-assembly_summary
+
+    if(!is.null(assembly_accession)){
+        print(paste("Subsetting to entries only with assembly accession(s)", paste0(assembly_accession, collapse=", ")))
+        wanted_assembly_accession<-assembly_accession
+        wanted_assembly_summary<-subset(wanted_assembly_summary, (assembly_accession %in% wanted_assembly_accession))
+        print(paste("There are", nrow(wanted_assembly_summary), "entries matching the assembly accession criteria."))
+    }
 
     if(!is.null(bioproject)){
         print(paste("Subsetting to entries only within BioProject(s)", paste0(bioproject, collapse=", ")))

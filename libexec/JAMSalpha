@@ -102,6 +102,7 @@ defopt$assembler<-"megahit"
 defopt$analysis<-"metagenome"
 defopt$prefix<-"MySample"
 defopt$skipipro<-FALSE
+defopt$testdependencies<-FALSE
 defopt$threads<-detectBatchCPUs()
 
 option_list <- list(
@@ -120,6 +121,9 @@ option_list <- list(
     make_option(c("-c", "--contigs"), action="store", default=NULL, 
                 type="character",
                 help="Use these contigs in multifasta format as input"),
+    make_option(c("-a", "--assemblyaccession"), action="store", default=NULL, 
+                type="character",
+                help="GenBank assembly accession to get contigs from (example: GCA_000969225.1). Any reads input will be ignored."),
     make_option(c("-t", "--readstarball"), action="store", default=NULL,
                 type="character",
                 help="Tarball (.tar.gz) containing reads file(s) in fastq format."),
@@ -143,6 +147,8 @@ option_list <- list(
                 help = str_c("number of threads (default: ", defopt$threads, ")")),
     make_option(c("-n", "--skipipro"), default=defopt$skipipro, action="store_true",
                 help = str_c("skip Interproscan, even if it is available, default: ", defopt$skipipro, ")")),
+    make_option(c("-z", "--testdependencies"), default=defopt$testdependencies, action="store_true",
+                help = str_c("test dependencies only and leave, default: ", defopt$testdependencies, ")")),
     make_option(c("-v", "--version"), action="store_true",
                 help ="report version")
 )
@@ -206,7 +212,7 @@ if(is.null(opt$dbdir)) {
 }
 
 #Abort if all is not good.
-if(opt$abort == TRUE){
+while(opt$abort == TRUE){
     flog.info("Aborting now.")
     q()
 }

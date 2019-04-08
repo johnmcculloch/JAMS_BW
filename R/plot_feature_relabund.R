@@ -4,7 +4,7 @@
 #' @export
 
 plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, glomby=NULL, accession=NULL, groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, uselog=TRUE, statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel="p.format", plottitle=NULL, asPA=FALSE, subsetbytaxlevel=NULL, taxtable=NULL, list.data=NULL, cdict=NULL,max_categories = 3, ...){
-ftt
+
     require(reshape2)
     obj<-mgseqobj
 

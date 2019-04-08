@@ -73,5 +73,10 @@ check_resources<-function(opt=opt){
         }
     }
 
+    #If testing dependencies and leave is true then it is time to abort.
+    if(opt$testdependencies == TRUE){
+        opt$abort<-TRUE
+    }
+
     return(opt)
 }
