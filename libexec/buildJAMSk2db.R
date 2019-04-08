@@ -1,0 +1,718 @@
+#!/usr/bin/env Rscript
+suppressPackageStartupMessages(library(RCurl))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(futile.logger))
+suppressPackageStartupMessages(library(parallel))
+suppressPackageStartupMessages(library(benchmarkme))
+#####################################
+# Define System-specific Functions ##
+#####################################
+if((.Platform$OS.type) != "unix"){
+    stop("JAMS only works on UNIX. Install Linux and try again.")
+}
+
+#Get slurm job ID
+slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+
+#Decide which kind of system you are on.
+if(nchar(slurmjobid) < 3){
+   print("You are not on a Slurm Workload Cluster")
+   #Define appropriate functions for non-slurm system
+   detectBatchCPUs <- function() {
+        ncores <- detectCores()
+        if (is.na(ncores)) { 
+            stop("Could not determine how many CPUs you have. Aborting.")
+        } 
+        return(ncores) 
+    }
+
+    detectAvailRAM <- function(){
+        totmembytes<-as.numeric(get_ram())
+
+        return(totmembytes)
+    }
+
+} else {
+    print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
+    #Define appropriate functions for slurm system
+    detectBatchCPUs <- function() { 
+        ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")) 
+        if (is.na(ncores)) { 
+            ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE")) 
+        } 
+        if (is.na(ncores)) { 
+            stop("Could not determine how many CPUs you have. Aborting.")
+        } 
+        return(ncores) 
+    }
+
+    detectAvailRAM <- function(){
+        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU")) 
+        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE")) 
+        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")) 
+
+        if(!(is.na(mempernode))){
+            totmem <- mempernode
+        } else {
+            totmem <- mempercpu * cpuspertask
+        }
+
+        totmembytes<-totmem * 1000000
+
+        return(totmembytes)
+    }
+
+}
+
+############################
+## Define other functions ##
+############################
+filetype <- function(path){
+    f = file(path)
+    ext = summary(f)$class
+    close.connection(f)
+    ext
+}
+
+# get path of running script
+getScriptPath <- function() {
+    cmdArgs <- commandArgs(trailingOnly = FALSE)
+    needle <- "--file="
+    match <- grep(needle, cmdArgs)
+    if (length(match) > 0) {
+        return(dirname(normalizePath(sub(needle, "", cmdArgs[match]))))
+    } else {
+        return(dirname(normalizePath(sys.frames()[[1]]$ofile)))
+    }
+}
+
+JAMSauthors <- as.character(as.person(packageDescription("JAMS")$Author))
+
+#########################
+# Get options from args #
+#########################
+#Define defaults
+defopt<-list()
+defopt$verstr<-paste0("buildJAMSk2db v", packageVersion("JAMS"))
+defopt$outdir<-getwd()
+defopt$dbname<-"JAMSk2db32"
+defopt$dbqual<-"all"
+defopt$maxsizeGB<-32
+defopt$threads<-detectBatchCPUs()
+
+option_list <- list(
+    make_option(c("-o", "--outdir"), default=defopt$outdir, action="store",
+                help = str_c("output directory (default: ", defopt$outdir, ")")),
+    make_option(c("-n", "--dbname"), default=defopt$dbname, action="store",
+                help = str_c("name for database (default: ", defopt$dbname, ")")),
+    make_option(c("-q", "--dbqual"), default=defopt$dbqual, action="store",
+                help = str_c("quality of genomes to include in the database. Use ref for including only reference and representative genomes in GenBank, or all for all genomes, except those flagged as low quality by NCBI. (default: ", defopt$dbqual, ")")),                
+    make_option(c("-m", "--maxsizeGB"), default=NULL, action="store",
+                help = str_c("output Maximum size of kraken2 database to be built, in Gb (default: ", defopt$maxsizeGB, ")")),
+    make_option(c("-t", "--threads"), default=defopt$threads, action="store",
+                help = str_c("number of threads (default: ", defopt$threads, ")")),
+    make_option(c("-v", "--version"), action="store_true",
+                help ="report version")
+)
+
+# parse the options
+args <- commandArgs(trailingOnly = TRUE)
+opt <- parse_args(OptionParser(option_list=option_list), args)
+opt <- merge.list(opt, defopt)
+
+#####################
+## Set environment ##
+#####################
+
+# print version & exit if -v
+if (!is.null(opt$version)) {
+    print(opt$verstr)
+    quit()
+}
+
+#Get Script path
+opt$bindir<-getScriptPath()
+#detect resources
+opt$totmembytes<-detectAvailRAM()
+opt$maxsizebytes<-(opt$maxsizeGB)*1000000000
+
+#Fix path relativity
+fixrelpath<-function(JAMSpath=NULL){
+    require(R.utils)
+    if(!(isAbsolutePath(JAMSpath))){
+        fixedpath<-getAbsolutePath(JAMSpath)
+    } else {
+        fixedpath<-JAMSpath
+    }
+
+    return(fixedpath)
+}
+
+for(pathtofix in c("outdir")){
+    if(!is.null(opt[[pathtofix]])){
+        opt[[pathtofix]]<-fixrelpath(opt[[pathtofix]])
+    }
+}
+
+# give help if needed input option not provided
+if(is.null(opt$outdir)) {
+    print("You must supply the JAMS database directory.")
+    parse_args(OptionParser(option_list=option_list), c("-h"))
+    q()
+} else {
+    #Stop if unreasonable settings
+    if(opt$maxsizebytes > (0.9 * opt$totmembytes)){
+        flog.info(paste("The kraken2 database size you are asking for,", opt$maxsizeGB, "is more than 90% of the RAM memory available. Choose another setting or running on another machine. Aborting now."))
+        q()
+    }
+}
+
+#Check for dependencies
+deps <- c("kraken2")
+missing = FALSE
+for (dep in deps) {
+    cmd = dep
+    if (system(str_c("which ", cmd), ignore.stdout = TRUE)==1) { # not found
+        flog.info(str_c("You are missing ", dep))
+        missing = TRUE
+    }
+}
+
+if (missing) {
+    flog.info("Please install missing dependencies")
+    q()
+}
+
+###################
+## Main Function ##
+###################
+suppressPackageStartupMessages(library(JAMS))
+flog.info("Creating directory to hold kraken2 database.")
+opt$k2db<-file.path(opt$outdir, opt$dbname)
+if(!dir.exists(opt$k2db)){
+    dir.create(opt$k2db, recursive = TRUE)
+} else {
+    flog.info(paste("The specified kraken2 directory,", opt$k2db,",already exists. Please choose another path or delete."))
+    q()
+}
+setwd(opt$k2db)
+
+opt$projimage<-file.path(opt$k2db, ".RData")
+save.image(opt$projimage)
+
+##############
+## Get genomes - delete all this chunk to #Build library from options section if this does not work.
+
+#Define useful functions beforehand
+decompress_rename_and_count<-function(assembly_summary_line){
+    #Gunzip
+    gunzip(assembly_summary_line$destfn)
+    #Rename
+    newfn<-gsub(".gz$", "", assembly_summary_line$destfn)
+    newheader<-paste(assembly_summary_line$assembly_accession, "kraken:taxid", assembly_summary_line$taxid, sep="|")    
+    sedcmd<-paste("sed", "-i", "-e", paste0("\'", paste0("s/^>.*/>", newheader, "/"), "\'"), newfn, collapse=" ")
+    system(sedcmd)
+    #Count bases
+    fastaheader<-paste0("\'", ">", "\'")
+    newln<-paste0("\'", "\n", "\'")
+    countgsargs<-c(newfn, "|", "grep", "-v", fastaheader, "|" , "tr", "-d", newln, "|", "wc", "-m")
+    gensize<-system2("cat", args=countgsargs, stdout=TRUE)
+    
+    return(gensize)
+}
+
+#Create master genome directory
+opt$genomesdir<-file.path(opt$k2db, "genomes")
+dir.create(opt$genomesdir)
+setwd(opt$genomesdir)
+opt$master_assembly_summary<-NULL
+opt$wanted_host_species<-c("Homo_sapiens", "Mus_musculus")
+
+if(opt$dbqual == "ref"){
+    flog.info("Will only include representative and reference genomes in the database.")
+    refseq_category_upto_touse<-"representative"
+} else {
+    flog.info("Will only include all genomes which have not been flagged as having issues by NCBI in the database.")
+    refseq_category_upto_touse<-NULL
+}
+
+for(organisms in c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebrate_mammalian")){
+    flog.info(paste("Downloading and processing", organisms, "genomes."))
+    opt$currbugdir<-file.path(opt$genomesdir, organisms)
+    dir.create(opt$currbugdir)
+    setwd(opt$currbugdir)
+
+    #Get list of what to download
+    if(organisms == "bacteria"){
+        assembly_upto <- "Scaffold" 
+    } else {
+        assembly_upto <- "Contig"
+    }
+
+    #Limit to wanted host species
+    if(organisms == "vertebrate_mammalian"){
+        bugstodownload<-NULL
+        genomestodownload<-get_genomes_NCBI(organisms=organisms, nobs=TRUE, assembly_upto="Chromosome", refseq_category_upto=NULL, fileformat="fasta", outputdir=opt$currbugdir, simulate=TRUE)
+        genomestodownload<-subset(genomestodownload, organism_name %in% opt$wanted_host_species)
+        for(host in opt$wanted_host_species){
+            bestmatch<-subset(genomestodownload, organism_name %in% host)
+            if(length(grep("GRC", bestmatch$asm_name)) < 1){
+                bestmatch<-bestmatch[order(bestmatch$seq_rel_date, decreasing = TRUE),][1,]
+            } else {
+                bestmatch<-bestmatch[grep("GRC", bestmatch$asm_name), ][1,]
+            }
+            bugstodownload<-rbind(bugstodownload, bestmatch)
+        }
+
+    } else {
+        bugstodownload<-get_genomes_NCBI(organisms=organisms, nobs=TRUE, assembly_upto=assembly_upto, refseq_category_upto=refseq_category_upto_touse, fileformat="fasta", outputdir=opt$currbugdir, simulate=TRUE)
+    }
+
+    bugprop<-as.data.frame(table(bugstodownload$refseq_category))
+    colnames(bugprop)<-c("Quality", "Freq")
+    totalbugs<-sum(bugprop$Freq)
+    bugprop$pct<-round((bugprop$Freq/totalbugs)*100, 1)
+    flog.info(paste("There are", totalbugs, "to download."))
+    flog.info(paste("Genome deposit categories for", organisms,"are:", paste0(paste(bugprop$Quality, bugprop$pct, "%"), collapse=", ")))
+
+    #Rename output files for brevity
+    bugstodownload$destfn<-file.path(opt$currbugdir, paste(bugstodownload$assembly_accession, "fna.gz", sep="."))
+    #Download files
+    flog.info(paste("Downloading all", organisms, "genomes matching criteria. Please be patient."))
+
+    dnl<-sapply(1:nrow(bugstodownload), function (x) { tryCatch(download.file(bugstodownload$url[x], destfile=bugstodownload$destfn[x] ), error = function(e) print(paste("Unable to download", bugstodownload$url[x]))) } )
+
+    flog.info(paste("All", organisms, "genomes have been downloaded."))
+    #divide into chunks and parallel process gunzip and change headers
+    flog.info(paste("Decompressing genomes and fixing headers to contain TaxIDs. Please be patient."))
+    
+    #Only parallelize if it is worth it.
+    if(nrow(bugstodownload) > 1000){
+        chunksize=(opt$threads * 4)
+        chunk2 <- function(x,n){ split(x, cut(seq_along(x), n, labels = FALSE)) }
+        chunkcoords<-chunk2(1:nrow(bugstodownload), (nrow(bugstodownload))/chunksize)
+        numchunks<-length(chunkcoords)
+        flog.info(paste("There are", nrow(bugstodownload), "genomes to decompress and fix."))
+        flog.info(paste("The list of genome files to fix was split into", numchunks, "chunks of", chunksize,"for parallel processing."))
+        for(cnk in 1:numchunks){
+            flog.info(paste0("Processing chunk ", cnk,"/", numchunks, " using ", (opt$threads - 2), " threads ..."))
+            currchunk<-bugstodownload[chunkcoords[[cnk]], ]
+            currchunk<-currchunk[which(!(is.na(currchunk[,1]))), ]
+            #decompress and rename
+            gsizelist<-mclapply(1:nrow(currchunk), function (x) { decompress_rename_and_count(currchunk[x, ]) }, mc.cores = (opt$threads - 2))
+            currchunk$gensize<-unlist(gsizelist)
+            #Append current chunk info to master_assembly_summary
+            opt$master_assembly_summary<-rbind(currchunk, opt$master_assembly_summary)
+            save.image(opt$projimage)
+        }
+    } else {
+        flog.info(paste("There are", nrow(bugstodownload), "genomes to decompress and fix. This is less than 1000, so doing this serially."))
+        gsizelist<-lapply(1:nrow(bugstodownload), function (x) { decompress_rename_and_count(bugstodownload[x, ]) })
+        bugstodownload$gensize<-unlist(gsizelist)
+        #Append current chunk info to master_assembly_summary
+        opt$master_assembly_summary<-rbind(bugstodownload, opt$master_assembly_summary)
+        save.image(opt$projimage)
+    }
+} #End loop for downloading and counting different kinds of organisms
+
+opt$master_assembly_summary[is.na(opt$master_assembly_summary)] <- 0
+opt$master_assembly_summary[] <- lapply(opt$master_assembly_summary, as.character)
+opt$master_assembly_summary$gensize<-as.numeric(opt$master_assembly_summary$gensize)
+
+flog.info("Finished downloading all genomes.")
+save.image(opt$projimage)
+
+############################
+## Get Taxonomy from NCBI
+setwd(opt$k2db)
+flog.info("Getting taxonomy from GenBank with kraken2")
+krakenargs<-c("--download-taxonomy", "--db", opt$k2db)
+system2("kraken2-build", args=krakenargs, stdout = TRUE, stderr = TRUE)
+opt$taxonomydb=file.path(opt$k2db, "taxonomy")
+
+##########################################
+# derive a valid taxid to taxonomy table
+flog.info("Will now derive a valid taxonomy table to Tax ID mapping for use by JAMS.")
+
+validtaxlvls<-c("superkingdom", "superkingdom1", "superkingdom2", "superkingdom3", "superkingdom4", "kingdom", "kingdom1", "kingdom2", "kingdom3", "kingdom4", "phylum", "phylum1", "phylum2", "phylum3", "phylum4", "class", "class1", "class2", "class3", "class4", "order", "order1", "order2", "order3",  "order4", "family", "family1", "family2", "family3", "family4", "genus", "genus1", "genus2", "genus3", "genus4",  "species", "is1", "is2", "is3", "is4", "is5", "is6")
+validtaxtags<-c("d__", "d1__", "d2__", "d3__", "d4__", "k__", "k1__", "k2__", "k3__", "k4__", "p__", "p1__", "p2__", "p3__", "p4__", "c__", "c1__", "c2__", "c3__", "c4__", "o__", "o1__", "o2__", "o3__", "o4__", "f__", "f1__", "f2__", "f3__", "f4__", "g__", "g1__", "g2__", "g3__", "g4__", "s__", "is1__", "is2__", "is3__", "is4__", "is5__", "is6__")
+
+namesfile<-file.path(opt$taxonomydb, "names.dmp")
+nodesfile<-file.path(opt$taxonomydb, "nodes.dmp")
+divisionsfile<-file.path(opt$taxonomydb, "division.dmp")
+mergedfile<-file.path(opt$taxonomydb, "merged.dmp")
+delnodesfile<-file.path(opt$taxonomydb, "delnodes.dmp")
+
+if(!all((file.exists(list=c(namesfile, nodesfile, divisionsfile, mergedfile))))){
+    flog.info("Cannot find NCBI taxonomy names.dmp and nodes.dmp files. Aborting now.")
+    q()
+}
+
+taxdivisionsorder<-c("Bacteria", "Phages", "Viruses", "Plants and Fungi")
+taxdivisions<-read.table(file=divisionsfile, sep="|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
+taxdivisions<-taxdivisions[ , 1:3]
+colnames(taxdivisions)<-c("division_id", "division_cde", "division_name")
+#clean up this mess
+taxdivisions[] <- lapply(taxdivisions, as.character)
+taxdivisions[] <- lapply(taxdivisions, gsub, pattern='\t', replacement='')
+taxdivisions[] <- lapply(taxdivisions, trimws)
+taxdivisions <- subset(taxdivisions, division_name %in% taxdivisionsorder)
+taxdivisionsIwant <- taxdivisions[match(taxdivisionsorder, taxdivisions$division_name), "division_id"]
+
+save.image(opt$projimage)
+
+#Get list of taxids
+taxid2size<-opt$master_assembly_summary[,c("taxid", "gensize")]
+colnames(taxid2size)<-c("taxid", "Size")
+taxid2size$taxid<-as.character(taxid2size$taxid)
+taxid2size$Size<-as.numeric(taxid2size$Size)
+taxidpresent<-as.character(unique(opt$master_assembly_summary$taxid))
+
+#Get names
+taxnames<-read.table(file=namesfile, sep="|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
+taxnames<-taxnames[ , 1:4]
+colnames(taxnames)<-c("tax_id", "name_txt", "unique_name", "name_class")
+#clean up this mess
+taxnames[] <- lapply(taxnames, as.character)
+taxnames[] <- lapply(taxnames, gsub, pattern='\t', replacement='')
+taxnames[] <- lapply(taxnames, trimws)
+
+taxnames$name_txt<-gsub("[^[:alnum:] ]", "_", taxnames$name_txt)
+taxnames$name_txt<-gsub("^root", "Unclassified", taxnames$name_txt)
+taxnames$name_txt<-gsub("unclassified", "Unclassified", taxnames$name_txt)
+taxnames$name_txt<-gsub(" ", "_", taxnames$name_txt)
+taxnames$name_txt<-gsub("__", "_", taxnames$name_txt)
+taxnames$name_txt<-gsub("___", "_", taxnames$name_txt)
+taxnames$name_txt<-gsub("^_", "", taxnames$name_txt)
+taxnames$name_txt<-gsub("_sp_", "_Unclassified_", taxnames$name_txt)
+taxnames$name_txt<-gsub("_$", "", taxnames$name_txt)
+
+#Only keep Scientific names info
+taxnames<-subset(taxnames, name_class == "scientific name")
+rownames(taxnames)<-taxnames$tax_id
+
+#Get nodes
+taxnodes<-read.table(file=nodesfile, sep="|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
+taxnodes<-taxnodes[ ,1:13]
+colnames(taxnodes)<-c("tax_id", "parent_tax_id", "rank", "embl_code", "division_id", "inherited_div_flag", "genetic_code_id", "inherited_GC_flag", "mitochondrial_genetic_code_id", "inherited_MGC_flag", "GenBank_hidden_flag","hidden_subtree_root_flag", "comments")
+
+#clean up this mess
+taxnodes<-taxnodes[ , c("tax_id", "parent_tax_id", "rank", "division_id")]
+taxnodes[] <- lapply(taxnodes, as.character)
+taxnodes[] <- lapply(taxnodes, gsub, pattern='\t', replacement='')
+taxnodes[] <- lapply(taxnodes, trimws)
+rownames(taxnodes)<-taxnodes$tax_id
+
+save.image(opt$projimage)
+
+#Get merged taxids file
+mergednodes<-read.table(file=mergedfile, sep="|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
+mergednodes<-mergednodes[ , 1:2]
+colnames(mergednodes)<-c("old_tax_id", "new_tax_id")
+mergednodes[] <- lapply(mergednodes, as.character)
+mergednodes[] <- lapply(mergednodes, gsub, pattern='\t', replacement='')
+mergednodes[] <- lapply(mergednodes, trimws)
+rownames(mergednodes)<-mergednodes$old_tax_id
+
+#Join the info into a single dataframe
+taxnodeswithnames<-left_join(taxnodes, taxnames, by="tax_id")
+taxnodeswithnames$name_txt[is.na(taxnodeswithnames$name_txt)]<-"Unclassified"
+for(taxlvl in validtaxlvls){
+    taxnodeswithnames[which(taxnodeswithnames$rank == taxlvl) , "name_txt"] <- paste0(validtaxtags[which(validtaxlvls==taxlvl)], taxnodeswithnames[which(taxnodeswithnames$rank == taxlvl) , "name_txt"])
+}
+save.image(opt$projimage)
+
+tmptaxnodeswithnames<-subset(taxnodeswithnames, division_id %in% taxdivisionsIwant)
+taxidsfromdmp<-unique(subset(tmptaxnodeswithnames, !(rank %in% c("superkingdom", "kingdom", "phylum", "class", "order", "family")))[]$tax_id)
+alltaxids<-unique(c(taxidsfromdmp, taxidpresent))
+save.image(opt$projimage)
+
+######################
+## Define functions ##
+######################
+find_parent<-function(taxid){
+    parent<-taxnodes[taxid, "parent_tax_id"]
+
+    return(parent)
+}
+
+find_name<-function(taxid){
+    taxonname<-taxnames[taxid, "name_txt"]
+
+    return(taxonname)
+}
+
+find_rank<-function(taxid){
+    taxonrank<-taxnodes[taxid, "rank"]
+
+    return(taxonrank)
+}
+
+find_new_taxid<-function(taxid){
+    newtaxid<-mergednodes[taxid, "new_tax_id"]
+
+    return(newtaxid)
+}
+
+find_lineage<-function(taxidint){
+    taxidint<-as.character(taxidint)
+    #Protect against non existent tax IDs
+    if(!(taxidint %in% taxnames$tax_id)){
+        print(paste("Tax ID", taxidint, "not found within NCBI taxonomy dump. Looking up merged.dmp to see if it was merged to another Tax ID."))
+        taxidint<-find_new_taxid(taxidint)
+        #Try again. If not found this time, ignore.
+        if((is.na(taxidint)) && (!(taxidint %in% taxnames$tax_id))){
+            print("Tax ID still not found within NCBI taxonomy dump. Omitting.")
+            return(NULL)
+        }
+    }
+
+    lineagevec<-NULL
+    taxidvec<-NULL
+    linnum<-1
+    currtaxid<-taxidint
+    while(currtaxid != "1"){
+        rank <- find_rank(currtaxid)
+        taxonname <- find_name(currtaxid)
+        lineagevec[linnum] <- taxonname
+        names(lineagevec)[linnum] <- rank
+        taxidvec[linnum] <- currtaxid
+        names(taxidvec)[linnum] <- rank
+        linnum <- linnum + 1
+        currtaxid <- find_parent(currtaxid)
+    }
+    lineage<-rev(lineagevec)
+    lineagetaxids<-rev(taxidvec)
+    
+    lineagedf<-data.frame(taxid=lineagetaxids, taxon=lineage, rank=names(lineagetaxids), stringsAsFactors = FALSE)
+
+    #Prune stuff below superkingdom
+    superkingdompos<-which(lineagedf$rank == "superkingdom")
+    lineagedf<-lineagedf[superkingdompos: nrow(lineagedf), ]
+
+    #Preserve info lower than species
+    #define which taxa are infraspecies
+    speciespos<-which(lineagedf$rank == "species")
+    if(length(speciespos) == 0){
+        #If there is no species (why on Earth not, it beats me, but whatever, NCBI...), consider it being one below genus if present.
+        genuspos<-which(lineagedf$rank == "genus")
+        if(!is.na(genuspos) & (nrow(lineagedf) > genuspos)){
+            lineagedf$rank[genuspos + 1]<-"species"
+        }
+        speciespos<-which(lineagedf$rank == "species")
+    }
+
+    if(length(speciespos) > 0){
+        if(nrow(lineagedf) > speciespos){
+            numinfs<-(nrow(lineagedf) - speciespos)
+            #tag infraspecies levels as is
+            for(infs in 1:numinfs){
+                lineagedf[(speciespos + infs), "rank"]<-paste0("is", infs)
+            }
+        }
+    }
+
+    #Add exception: if it is a vertebrate, just coerce it to known taxonomy levels. There are too many intermediate taxonomy levels to deal with. Classic human exceptionalism, sigh.
+    if("7711" %in% lineagedf$taxid){
+        lineagedf<-lineagedf[which(lineagedf$rank %in% validtaxlvls == TRUE), ]
+    }
+
+    #Correct rank names which have no rank in NCBI taxonomy #frustrating
+    norankpos<-which(!(lineagedf$rank %in% validtaxlvls))
+    if(length(norankpos) > 0){
+        for(nr in norankpos){
+            #find highest position within taxlevels
+            highestknown<-which(lineagedf$rank %in% validtaxlvls)[max(which((which(lineagedf$rank %in%   validtaxlvls)) < nr))]
+             #find lowest position within taxlevels
+            lowesttknown<-which(lineagedf$rank %in% validtaxlvls)[min(which((which(lineagedf$rank %in% validtaxlvls)) > nr))]
+            if(!is.na(lowesttknown) && !is.na(highestknown)){
+                highestknowntaxlvl<-lineagedf$rank[highestknown]
+                lowestknowntaxlvl<-lineagedf$rank[lowesttknown]
+                numpositionstocorrect<-(which(lineagedf$rank == lowestknowntaxlvl) - which(lineagedf$rank == highestknowntaxlvl)) - 1
+                #get names of these positions
+                namestosub<-validtaxlvls[(1:numpositionstocorrect)+(which(validtaxlvls == highestknowntaxlvl))]
+                lineagedf$rank[nr+((1:numpositionstocorrect)-1)]<-namestosub
+            }
+        }
+    }
+
+    taxlvlspresent<-validtaxlvls[which(validtaxlvls %in% lineagedf$rank)]
+    taxlvlsabsent<-validtaxlvls[which(!(validtaxlvls %in% lineagedf$rank))]
+
+    classifiedtaxa<-subset(lineagedf, rank %in% taxlvlspresent)
+    if(length(taxlvlsabsent) > 0){
+        unclassifiedtaxa<-data.frame(taxid=rep("none", length(taxlvlsabsent)), taxon=rep("Missing", length(taxlvlsabsent)), rank=taxlvlsabsent, stringsAsFactors = FALSE)
+    } else {
+        unclassifiedtaxa<-NULL
+    }
+    lineagedf<-rbind(classifiedtaxa, unclassifiedtaxa)
+    lineagedf<-lineagedf[match(validtaxlvls[1:nrow(lineagedf)], lineagedf$rank), ]
+    lineagedf$taxon<-paste0(validtaxtags[1:nrow(lineagedf)], lineagedf$taxon)
+
+    #Get a dataframe with leaves AND nodes
+    rnklist<-list()
+    for(rnk in 1:nrow(lineagedf)){
+        rnklist[[rnk]]<-c(lineagedf$taxid[rnk], lineagedf$taxon[1:rnk])
+    }
+    fulllineage<-plyr::ldply(rnklist, rbind)
+    fulllineage[] <- lapply(fulllineage, as.character)
+    colnames(fulllineage)<-c("taxid", validtaxlvls)
+
+    for(colm in validtaxlvls){
+        fulllineage[,colm][is.na(fulllineage[,colm])] <- paste0(validtaxtags[which(validtaxlvls == colm)], "Unclassified")
+    }
+
+    fulllineage<-subset(fulllineage, taxid != "none")
+
+    return(fulllineage)
+}
+
+#Include Mus musculus and Homo sapiens to the list
+HsMm<-subset(taxnames, name_txt %in% c("Homo_sapiens", "Mus_musculus"))[]$tax_id
+taxidpresent<-unique(c(taxidpresent, HsMm))
+
+#Split taxidlist into chunks for speedier de-duplication of repeated node taxids
+chunksize=500
+chunk2 <- function(x,n){ split(x, cut(seq_along(x), n, labels = FALSE)) }
+chunkcoords<-chunk2(1:length(taxidpresent), (length(taxidpresent)/chunksize))
+numchunks<-length(chunkcoords)
+flog.info(paste("The list of non-redundant Tax IDs present was split into", numchunks, "chunks of",  chunksize, "Tax IDs each."))
+
+taxtable<-NULL
+for(cnk in 1:numchunks){
+    flog.info(paste0("Processing chunk ", cnk,"/", numchunks, " using ", (opt$threads - 2), " threads ..."))
+
+    currchunk<-taxidpresent[chunkcoords[[cnk]]]
+    currchunk<-currchunk[which(!(is.na(currchunk)))]
+    #Deconvolute
+    currtaxlist<-mclapply(1:length(currchunk), function (x) { find_lineage(currchunk[x]) }, mc.cores = (opt$threads - 2))
+    currtaxlist<-currtaxlist[sapply(currtaxlist, function(x){!(is.null(x))})]
+    currtaxtable<-plyr::ldply(currtaxlist, rbind)
+    currtaxtable<-as.data.frame(currtaxtable)
+    currtaxtable<-currtaxtable[, c("taxid", validtaxlvls)]
+    currtaxtable[] <- lapply(currtaxtable, as.character)
+    for(colm in validtaxlvls){
+        currtaxtable[,colm][is.na(currtaxtable[,colm])] <- paste0(validtaxtags[which(validtaxlvls == colm)], "Unclassified")
+    }
+    #Fix kingdoms
+    currtaxtable[which(currtaxtable$superkingdom == "d__Bacteria"), "kingdom"]<-"k__Bacteria"
+    currtaxtable[which(currtaxtable$superkingdom == "d__Archaea"), "kingdom"]<-"k__Archaea"
+    currtaxtable[which(currtaxtable$superkingdom == "d__Viroids"), "kingdom"]<-"k__Viroids"
+    currtaxtable[which(currtaxtable$superkingdom == "d__Viruses"), "kingdom"]<-"k__Viruses"
+
+    #eliminate duplicates
+    taxtable<-rbind(taxtable, currtaxtable)
+    taxtable<-taxtable[!duplicated(taxtable),]
+    flog.info(paste("Current taxtable has", length(unique(taxtable$taxid)), "unique Tax IDs"))
+    save.image(opt$projimage)
+}
+
+taxtable_backup<-taxtable
+
+#Include cellular oranisms ("131567"), root ("1") and unclassified ("0") taxids
+unclasstaxtable<-as.data.frame(matrix(nrow=3, ncol=(length(validtaxlvls)+1), data="Unclassified"), stringsAsFactors = FALSE)
+colnames(unclasstaxtable)<-c("taxid", validtaxlvls)
+unclasstaxtable$taxid<-c("0", "1", "131567")
+for(colm in validtaxlvls){
+    unclasstaxtable[,colm] <- paste0(validtaxtags[which(validtaxlvls == colm)], unclasstaxtable[,colm])
+}
+taxtable<-rbind(unclasstaxtable, taxtable)
+
+#Prune uninformative columns
+for(tl in 1:length(validtaxlvls)){
+    if(length(which(taxtable[ , validtaxlvls[tl]] %in% paste0(validtaxtags[tl], c("Missing", "Unclassified")))) == nrow(taxtable)){
+        flog.info(paste("Eliminating taxlevel", validtaxlvls[tl], "because all elements are either missing or unclassified."))
+        taxtable[ , validtaxlvls[tl]]<-NULL 
+    }
+}
+
+#Compute median genome sizes
+
+taxid2sizewithtaxa<-left_join(taxid2size, taxtable)
+taxid2sizewithtaxa<-taxid2sizewithtaxa[ , c("taxid", "superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species", "Size")]
+taxid2sizewithtaxa<-taxid2sizewithtaxa[which(!(is.na(taxid2sizewithtaxa$Size)==TRUE)), ]
+
+get_size_stats_taxlevel<-function(taxlevel=NULL, taxid2sizewithtaxa=NULL){
+    sizedata<-taxid2sizewithtaxa
+    colnames(sizedata)[which(colnames(sizedata) == taxlevel)]<-"Taxon"
+    medsizedf<-aggregate(Size ~ Taxon, FUN=median, data=sizedata)
+    colnames(medsizedf)[2]<-"Genome_Size_Median"
+    sdsizedf<-aggregate(Size ~ Taxon, FUN=sd, data=sizedata)
+    colnames(sdsizedf)[2]<-"Genome_Size_SD"
+    numsizedf<-aggregate(Size ~ Taxon, FUN=length, data=sizedata)
+    colnames(numsizedf)[2]<-"NumGenomes"
+    mediansizes<-left_join(medsizedf, sdsizedf)
+    mediansizes<-left_join(mediansizes, numsizedf)
+    mediansizes[is.na(mediansizes)] <- 0
+    mediansizes$Genome_Size_Median<-round(mediansizes$Genome_Size_Median, 0)
+    mediansizes$Genome_Size_SD<-round(mediansizes$Genome_Size_SD, 0)
+    mediansizes$Rank<-rep(taxlevel, nrow(mediansizes))
+
+    return(mediansizes)
+}
+
+mediansizeslist<-lapply( c("kingdom", "phylum", "class", "order", "family", "genus", "species"), function (x) { get_size_stats_taxlevel(taxlevel=x, taxid2sizewithtaxa=taxid2sizewithtaxa) } )
+Median_Genome_Sizes<-plyr::ldply(mediansizeslist, rbind)
+#Eliminate spurious category missing.
+Median_Genome_Sizes<-Median_Genome_Sizes[-(grep("__Missing", Median_Genome_Sizes$Taxon)),]
+#Capitalize taxlevels for consistency
+Median_Genome_Sizes$Rank<-as.character(sapply(1:nrow(Median_Genome_Sizes), function (x) {  switch(Median_Genome_Sizes$Rank[x], "superkingdom"="Domain", "kingdom"="Kingdom", "phylum"="Phylum", "class"="Class", "order"="Order", "family"="Family", "genus"="Genus", "species"="Species", "is1"="IS1") } ))
+
+#Rename columns and get info only up to a single level below species
+finaltablevalidtaxlvls<-c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species", "is1")
+finaltablevalidtaxtags<-c("d__", "k__", "p__", "c__", "o__", "f__", "g__", "s__", "is1__")
+JAMStaxtable<-taxtable[ , c("taxid", finaltablevalidtaxlvls)]
+
+#Infer Last Known Taxon for JAMStaxtable
+dunno<-c("Unclassified", "Missing")
+JAMStaxtable$LKT<-rep("LKT__Unclassified", nrow(JAMStaxtable))
+for(lvl in 1:(which(finaltablevalidtaxlvls == "species"))){
+    flog.info(paste("Finding which Last Known Taxa are at the", finaltablevalidtaxlvls[lvl], "level."))
+    JAMStaxtable$LKT[which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvl]] %in% paste0(finaltablevalidtaxtags[lvl], dunno)))]<-paste("LKT", JAMStaxtable[which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvl]] %in% paste0(finaltablevalidtaxtags[lvl], dunno))), finaltablevalidtaxlvls[lvl]], sep="__")
+}
+#use method of clipping up to two words at species to get Genus plus species, but only for bacteria. This is a temporary measure for NCBIs annoying habit of overinflating desposits at the species level.
+bacterialrows<-which(JAMStaxtable$superkingdom == "d__Bacteria")
+lvlnum<-which(finaltablevalidtaxlvls == "species")
+speciesLKTrows<-which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvlnum]] %in% paste0(finaltablevalidtaxtags[lvlnum], dunno)))
+#Find which species LKT rows are within the bacterial domain
+rowstocorrect<-speciesLKTrows[(speciesLKTrows %in% bacterialrows)]
+JAMStaxtable$LKT[rowstocorrect]<-sapply(1:length(rowstocorrect), function (n) { paste0(sapply(strsplit(JAMStaxtable$LKT[rowstocorrect[n]], split='_', fixed=TRUE), function(x) (x[1:6])), collapse="_") })
+
+colnames(JAMStaxtable)<-c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
+
+#Export to system
+write.table(JAMStaxtable, file="JAMS_taxtable.tsv", col.names=TRUE, row.names=FALSE, sep="\t", quote=FALSE)
+write.table(Median_Genome_Sizes, file="JAMS_Median_Genome_Sizes.tsv", col.names=TRUE, row.names=FALSE, sep="\t", quote=FALSE)
+
+save.image(opt$projimage)
+
+##########################
+# Add genomes to dbase
+
+setwd(opt$k2db)
+for(organisms in c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebrate_mammalian")){
+    flog.info(paste("Adding", organisms, "genomes to", opt$dbname, "kraken2 database."))
+    fna<-paste0("\'", "*.fna", "\'")
+    addcmd<-paste0("find genomes/", organisms, "/ -name ", fna, " -print0 | xargs -0 -P ", opt$threads, " -I{} -n1 kraken2-build --add-to-library {} --db ", opt$k2db, " 2>> add.dmp")
+    system(addcmd)
+
+}
+
+##############################################
+# Actually build the database using Kraken2
+setwd(opt$k2db)
+flog.info("Will now build the entire database. Please be VERY patient.")
+flog.info(paste("Maximum size of database will be", format(opt$maxsizebytes, scientific=FALSE), "bytes."))
+buildcmd<-paste("kraken2-build", "--build", "--threads", opt$threads, "--db", opt$k2db, "--max-db-size", format(opt$maxsizebytes, scientific=FALSE))
+system(buildcmd)
+
+###############
+## Add timestamp
+tmstmp<-as.character(as.numeric(as.POSIXct(strptime(Sys.time(), "%Y-%m-%d %H:%M"))))
+verstmp<-as.character(packageVersion("JAMS"))
+JAMSk2dbver<-paste(opt$dbname, verstmp, tmstmp, sep="_")
+write.table(JAMSk2dbver, file="JAMSKdb.ver", sep="", row.names=FALSE, col.names=FALSE, quote=FALSE)
+save.image(opt$projimage)
+
+flog.info("JAMS kraken2 database building is complete.")

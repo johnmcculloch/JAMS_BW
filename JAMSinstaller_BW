@@ -1,0 +1,62 @@
+#!/usr/bin/env Rscript
+jamsdir<-getwd()
+slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+#Decide which kind of system you are on.
+if(nchar(slurmjobid) < 3){
+   stop("You are not on a node on Biowulf. This installation script will only work on HPC Biowulf. Refer to documentation. Aborting now.")
+}
+homefolder <- as.character(Sys.getenv("HOME"))
+
+#Make sure we are writing to the right place
+rlibs <- as.character(Sys.getenv("R_LIBS"))
+print(paste("Global variable R_LIBS is set to", rlibs))
+
+#Install devtools and stringr if not present
+if(!(all((c("devtools", "stringr") %in% rownames(installed.packages()))))){
+    install.packages(c("devtools", "stringr"))
+}
+require("devtools")
+require("stringr")
+
+#Make symlinks for JAMS executables
+jamsbinpath<-file.path(jamsdir, "libexec")
+jamsBWbinpath<-file.path(jamsdir, "BWlibexec")
+
+binexecs<-c("JAMSalpha", "JAMSbeta")
+BWbinexecs<-c("bankit","bootstrapswarm","joinlanesIlluminaBaseSpaceProject","makeswarmJAMS")
+for(binexec in binexecs){
+    sourcepath<-file.path(jamsbinpath, binexec)
+    targetpath<-file.path(homefolder, "bin", binexec)
+    print(paste("Linking executable to $HOME/bin with", "ln", "-s", sourcepath, targetpath))
+    system(paste("ln", "-s", sourcepath, targetpath))
+}
+
+#Make symlinks for Biowulf executables
+for(BWbinexec in BWbinexecs){
+    sourcepath<-file.path(jamsBWbinpath, BWbinexec)
+    targetpath<-file.path(homefolder, "bin", BWbinexec)
+    print(paste("Linking executable to $HOME/bin with", "ln", "-s", sourcepath, targetpath))
+    system(paste("ln", "-s", sourcepath, targetpath))
+}
+
+
+#Check if linuxbrew is installed, else halt
+if((system(str_c("which brew"), ignore.stdout = TRUE)) == 1){
+    stop("You must install Linuxbrew before running this installation script. Refer to documentation. Aborting now.")
+}
+
+#Install Bioconductor packages
+bioconductordeps<-c("dada2", "metagenomeSeq", "ComplexHeatmap", "HybridMTest", "genefilter")
+if (!requireNamespace("BiocManager", quietly = TRUE)){
+    install.packages("BiocManager")
+}
+BiocManager::install(pkgs=bioconductordeps, update = FALSE, ask=FALSE)
+
+#Install the rest of JAMS
+setwd(jamsdir)
+devtools::install(upgrade=FALSE)
+
+
+#Install Linuxbrew dependencies
+system(paste("bash", file.path("BWlibexec", "install_brew_dependencies.sh")))
+

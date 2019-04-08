@@ -1,0 +1,158 @@
+#!/bin/bash
+outdir=""
+readsdir=""
+maxlines=""
+
+message_use="
+makeswarmJAMS.sh
+By John McCulloch
+Creates a BioWulf swarm file for running JAMS_alpha
+
+Use: $(basename "$0") -o <path/to/outdir> -r </path/to/rawreads> -s [human|mouse|none] -j [metagenome|metatranscriptome|isolate|isolaternaseq]
+
+-h Help;
+-v Version;
+-o Complete path to where you want the project (default= current directory);
+-r Complete path to where the reads are (default= [outdir]/rawreads);
+-c Complete path to where contigs are. If contigs are supplied, will ignore reads.
+-g Complete path to a text file with SRA accession numbers to use, will ignore reads.
+-s Name of host species (default = mouse).
+-j Project type (default = microbiome)
+-d /path/to/JAMSdb
+-l [INTEGER] split swarm files into this number of lines. If ommited, will not split swarm file.
+
+"
+
+version="1.4"
+verdate="MAR-2019"
+message_ver="makeswarmJAMS ver $version by John McCulloch $verdate"
+
+#Define defaults
+hostspecies="mouse"
+projtype="metagenome"
+dbdir="/data/MicrobiomeCore/JAMSdb/db2"
+contigsdir=""
+
+#Get options
+usage () { echo "$message_use"; }
+version () { echo "$message_ver"; }
+
+options=':r:o:c:g:s:l:j:d:hv'
+while getopts $options option
+do
+    case $option in
+        r  ) readsdir="$OPTARG" ;;
+        c  ) contigsdir="$OPTARG" ;;
+        g  ) sralist="$OPTARG" ;;
+        o  ) outdir="$OPTARG" ;;
+        s  ) hostspecies="$OPTARG" ;;
+        j  ) projtype="$OPTARG" ;;
+        d  ) dbdir="$OPTARG" ;;
+        l  ) maxlines="$OPTARG" ;;
+        v  ) version; exit;;
+        h  ) usage; exit;;
+        \? ) echo "Unknown option: -$OPTARG" >&2; exit 1;;
+        :  ) echo "Missing option argument for -$OPTARG" >&2; exit 1;;
+        *  ) echo "Unimplemented option: -$OPTARG" >&2; exit 1;;
+    esac
+done
+
+shift $(($OPTIND - 1))
+
+if [ "$outdir" == "" ]
+then
+    outdir=`pwd`
+fi
+
+#Chomp an eventual "/" off the end of the path
+outdir=`echo $outdir | sed $'s/\/$//g'`
+
+if [ "$contigsdir" != "" ]
+then
+    echo "You supplied contigs. Ignoring reads."
+    useinput="contigs"
+    #Chomp an eventual "/" off the end of the path
+    contigsdir=`echo $contigsdir | sed $'s/\/$//g'`
+    cd $contigsdir
+    list=`ls *.fasta *.fna`
+    cd -
+elif [ "$sralist" != "" ]
+then
+    echo "You supplied a list of SRA accession numbers. Ignoring reads."
+    useinput="sra"
+    list=`cat "$sralist" | tr "\n" " "`
+else
+    useinput="reads"
+    #Not contigs, so do reads.
+    if [ "$readsdir" == "" ]
+    then
+        readsdir="$outdir"/rawreads
+    fi
+    #Chomp an eventual "/" off the end of the path
+    readsdir=`echo $readsdir | sed $'s/\/$//g'`
+    cd $readsdir
+    list=`ls *.gz *.fastq | cut -f 1 -d "_" | sort | uniq`
+    cd -
+fi
+
+
+if [ "$useinput" == "reads" ]
+then
+    #Not contigs, do reads.
+    for sample in $list
+    do
+        istar=`ls "$readsdir"/"$sample"_* | grep -c "\.tar\.gz"`
+        if [ "$istar" == "1" ]
+        then
+            tarfilename=`ls "$readsdir"/"$sample"_* | rev | cut -f 1 -d "/" | rev`
+            echo "JAMSalpha -d $dbdir -o $outdir -t $readsdir/$tarfilename -p $sample -A $projtype -H $hostspecies" >> tmp.swm
+        else
+            myfastqs=`ls "$readsdir"/"$sample"_*fast* | sort`
+            #Single or paired
+            numfastqs=`echo $myfastqs | wc -w`
+            if [ "$numfastqs" == "2" ]
+            then
+                echo "Reads are paired"
+                fastqf=`echo $myfastqs | cut -f 1 -d " "`
+                fastqr=`echo $myfastqs | cut -f 2 -d " "`
+                echo "JAMSalpha -d $dbdir -o $outdir -f $fastqf -r $fastqr -p $sample -A $projtype -H $hostspecies" >> tmp.swm
+            elif [ "$numfastqs" == "1" ]
+            then
+                echo "Reads are single ended"
+                echo "JAMSalpha -d $dbdir -o $outdir -U $myfastqs -p $sample -A $projtype -H $hostspecies" >> tmp.swm
+            else
+                echo "There are more than two fastq files per sample. Join lanes first. Aborting now."
+                exit 1
+            fi
+        fi
+    done
+
+elif [ "$useinput" == "contigs" ]
+then
+    #Not reads do contigs.
+    for contig in $list
+    do
+        prefix=`echo $contig | rev | cut -f 2- -d "." | rev`
+        echo "JAMSalpha -d $dbdir -o $outdir -c $contigsdir/$contig -p $prefix -A $projtype -H none" >> tmp.swm
+    done
+
+elif [ "$useinput" == "sra" ]
+then
+    #Not reads do sra.
+    for prefix in $list
+    do
+        echo "JAMSalpha -d $dbdir -o $outdir -g $prefix -p $prefix -A $projtype -H $hostspecies" >> tmp.swm
+    done
+else
+    #something went wrong
+    echo "Input is missing. Check your options."
+    exit 1
+fi
+
+if [ "$maxlines" != "" ]
+then
+    split tmp.swm -l "$maxlines" -d JAMS.swarm
+    rm tmp.swm
+else
+    mv tmp.swm JAMS.swarm
+fi

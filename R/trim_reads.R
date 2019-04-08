@@ -1,0 +1,116 @@
+#' trim_reads
+#'
+#' JAMSalpha function
+#' @export
+
+trim_reads<-function(opt=NULL){
+
+    #Check if reads are in tmpdir
+    if(opt$workdir != opt$sampledir){
+        readsworkdir<-file.path(opt$workdir, "reads")
+    } else {
+        readsworkdir<-opt$readsdir
+    }
+    setwd(readsworkdir)
+
+    if(!(all(file.exists(file.path(readsworkdir, opt$rawreads))))){
+        flog.info("Could not find raw reads to trim. Aborting now")
+        q()
+    }
+
+    if(opt$seqtype %in% c("illuminape", "illuminamp")){
+
+        #Write copy of Illumina adapters to system
+        data(seqadapters)
+        write.fasta(sequences = seqadapters, names = names(seqadapters), nbchar = 80, file.out = file.path(readsworkdir, "adapter.fasta"))
+        adapters<-file.path(readsworkdir, "adapter.fasta")
+
+        flog.info("Sequences are Illumina reads. Clipping adapters and quality trimming fastq reads.")
+        #Trimmomatic options
+        sliding=4
+        qual=18
+        crop=0
+        minlen=36
+        trimmcommand<-"trimmomatic"
+
+        if(opt$libstructure == "pairedend"){
+            libstruct<-"PE"
+            input.read1<-opt$rawreads[1]
+            input.read2<-opt$rawreads[2]
+            output.trim1<-paste(opt$prefix, libstruct, "R1_trim.fastq", sep="_")
+            output.trim2<-paste(opt$prefix, libstruct, "R2_trim.fastq", sep="_")
+            output.trim_unpaired1<-paste(opt$prefix, libstruct, "R1_trim_unpaired.fastq", sep="_")
+            output.trim_unpaired2<-paste(opt$prefix, libstruct, "R2_trim_unpaired.fastq", sep="_")
+            #filter reads
+            commandtorun<-paste(trimmcommand, libstruct, "-threads", opt$threads, input.read1, input.read2, output.trim1, output.trim_unpaired1, output.trim2, output.trim_unpaired2, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
+            system(commandtorun)
+
+            #merge unpaired
+            output.trimSE<-paste(opt$prefix, "SE_trim.fastq", sep="_")
+            commandtorun<-paste("cat *_unpaired.fastq >>", output.trimSE)
+            system(commandtorun)
+            #delete unpaired1 and unpaired2
+            file.remove(c(output.trim_unpaired1, output.trim_unpaired2))
+        
+            #add output of what was trimmed to opt
+            opt$trimreads<-c(output.trim1, output.trim2)
+            if(file.info(output.trimSE)$size > 1){
+                #If leftover single unpaied, only add if smaller than 250 Mb. Otherwise sequencing errors may seep into the contigs and assembly becomes much more complicated.
+                SEsize<-file.size(output.trimSE)
+                if(SEsize < 250000000){
+                    opt$trimreads<-c(opt$trimreads, output.trimSE)
+                } else {
+                    flog.info(paste("There are leftover unpaired reads from trimming (when only one pair survives trimming), but as the file size is large, these will be ignored for read assembly otherwise sequencing errors may seep into contigs."))
+                }
+            }
+
+        } else if(opt$libstructure == "singleend"){
+            libstruct<-"SE"
+            input.read1<-opt$rawreads[1]
+            output.trimSE<-paste(opt$prefix, libstruct, "trim.fastq", sep="_")
+
+            #filter reads
+            commandtorun<-paste(trimmcommand, libstruct, "-threads", opt$threads, input.read1, output.trimSE, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
+            system(commandtorun)
+
+            #add info of what was acieved to opt
+            opt$trimreads<-output.trimSE
+        }
+
+    } else if (opt$seqtype == "iontorrent") {
+        if(opt$libstructure == "singleend"){
+            flog.info("Sequences are single-end Ion Torrent reads. Using IonHammer (SPAdes) for fastq read correction.")
+            libstruct<-"SE"
+            input.read1<-opt$rawreads[1]
+            output.trimSE<-paste(opt$prefix, libstruct, "trim.fastq", sep="_")
+
+            #filter reads
+            commandtorun<-paste("spades.py", "-t", opt$threads, "-s", input.read1, "-o", "corrreads", "--only-error-correction", "--disable-gzip-output", "1>", "corrreads.log", "2>", "corrreads.err")
+            system(commandtorun)
+            corrfile<-list.files(path=file.path(readsworkdir, "corrreads", "corrected"), pattern=".fastq")[1]
+            file.copy(file.path(readsworkdir, "corrreads", "corrected", corrfile), file.path(readsworkdir, output.trimSE))
+            unlink(file.path(readsworkdir, "corrreads", "corrected"))
+            #add info of what was acieved to opt
+            opt$trimreads<-output.trimSE
+         } else {
+            flog.info("Sequences are paired-end Ion Torrent reads. Defaulting the assembler to SPAdes, which will correct the reads with IonHammer")
+            opt$assembler<-"spades"
+            libstruct<-"PE"
+            input.read1<-opt$rawreads[1]
+            input.read2<-opt$rawreads[2]
+            output.trim1<-paste(opt$prefix, libstruct, "R1_trim.fastq", sep="_")
+            output.trim2<-paste(opt$prefix, libstruct, "R2_trim.fastq", sep="_")
+            file.copy(input.read1, output.trim1)
+            file.copy(input.read2, output.trim2)
+            opt$trimreads<-c(output.trim1, output.trim2)
+         }
+
+    } #End conditionals for sequencing  platform type
+
+    if(opt$workdir != opt$sampledir){
+        #Bank trimmed reads to project directory
+        file.copy(opt$trimreads, opt$readsdir)
+    }
+
+    return(opt)
+}

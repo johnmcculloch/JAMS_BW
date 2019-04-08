@@ -1,0 +1,509 @@
+#!/usr/bin/env Rscript
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(futile.logger))
+
+#####################################
+# Define System-specific Functions ##
+#####################################
+if((.Platform$OS.type) != "unix"){
+    stop("JAMS only works on UNIX. Install Linux and try again.")
+}
+
+#Get slurm job ID
+slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+
+#Decide which kind of system you are on.
+if(nchar(slurmjobid) < 3){
+   print("You are not on a Slurm Workload Cluster")
+   #Define appropriate functions for non-slurm system
+   detectBatchCPUs <- function() {
+        ncores <- detectCores()
+        if (is.na(ncores)) { 
+            stop("Could not determine how many CPUs you have. Aborting.")
+        } 
+        return(ncores) 
+    }
+
+    detectAvailRAM <- function(){
+        totmembytes<-as.numeric(get_ram())
+
+        return(totmembytes)
+    }
+
+} else {
+    print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
+    #Define appropriate functions for slurm system
+    detectBatchCPUs <- function() { 
+        ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")) 
+        if (is.na(ncores)) { 
+            ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE")) 
+        } 
+        if (is.na(ncores)) { 
+            stop("Could not determine how many CPUs you have. Aborting.")
+        } 
+        return(ncores) 
+    }
+
+    detectAvailRAM <- function(){
+        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU")) 
+        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE")) 
+        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")) 
+
+        if(!(is.na(mempernode))){
+            totmem <- mempernode
+        } else {
+            totmem <- mempercpu * cpuspertask
+        }
+
+        totmembytes<-totmem * 1000000
+
+        return(totmembytes)
+    }
+
+}
+
+############################
+## Define extra functions ##
+############################
+
+exporttabletsv<-function(dataobj=NULL, project=NULL, basename=NULL, row.names = TRUE, col.names = TRUE, path=NULL){
+    flname<-paste(paste("JAMS", project, basename, sep="_"), "tsv", sep=".")
+    if(!missing(path)){
+        flname<-paste(path, flname, sep="/")
+    }
+    write.table(dataobj, file = flname, quote = FALSE, sep = "\t", eol = "\n", na = "NA", dec = ".", row.names = row.names, col.names = col.names)
+}
+
+#################
+## Get options ##
+#################
+
+option_list <- list(
+    make_option(c("-p", "--projectname"),
+                action="store", default="Generic",
+                type="character",
+                help="Name of project to be used as prefix for output files (required)"),
+
+    make_option(c("-o", "--outdir"),
+                action="store", default=NULL,
+                type="character",
+                help ="path to where you want2 the output."),
+
+    make_option(c("-x", "--excel_metadata"),
+                action="store", default=NULL,
+                type="character",
+                help="Metadata file in Excel format, with sheet_1 for phenotable and sheet_2 for phenolabels"),
+
+    make_option(c("-t", "--phenotable"),
+                action="store", default=NULL,
+                type="character",
+                help="Metadata file in tsv format, with headers"),
+
+    make_option(c("-l", "--phenolabels"),
+                action="store", default=NULL,
+                type="character",
+                help="Phenolabels file in tsv format, describing metadata file headers"),
+
+    make_option(c("-c", "--maxnumclasses"),
+                action="store", default=10,
+                type="numeric",
+                help="Maximum number of classes for a discrete variable to be kept. Default=10"),
+
+    make_option(c("-y", "--jamsfiles_path"),
+                action="store", default=NULL,
+                type="character",
+                help ="path to where all .jams files are"),
+
+    make_option(c("-g", "--minGbNAHS"),
+                action="store", default=0, 
+                type="numeric",
+                help ="If using reads, what is the minimum amount of usable data, in Gbp, for a sample to be included in an experiment. (Default=0)"),
+
+    make_option(c("-a", "--minPctAssembly"),
+                action="store", default=0, 
+                type="numeric",
+                help ="If using reads, what is the minimum percentage assembly into contigs for a sample to be included in an experiment. (Default=0)"),
+
+    make_option(c("-w", "--load_experiments"),
+                action="store", default=NULL,
+                type="character",
+                help ="Do not make experiments, load experiments in .dat format present in this path."),
+
+    make_option(c("-e", "--export_tables"),
+                action="store_true", default=FALSE,
+                type="logical",
+                help ="Export relative abundance tables and feature data tables in tsv format."),
+
+    make_option(c("-d", "--ordination"),
+                action="store_true", default=FALSE,
+                type="logical",
+                help ="Generate ordination plots."),
+
+    make_option(c("-f", "--make_exploratory_reports"),
+                action="store_true", default=FALSE,
+                type="logical",
+                help ="Generate Relative Abundace heatmaps and spreadsheets based on variance analysis."),
+
+    make_option(c("-k", "--make_comparative_reports"),
+                action="store_true", default=FALSE,
+                type="logical",
+                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
+
+    make_option(c("-b", "--make_PA_reports"),
+                action="store_true", default=FALSE,
+                type="logical",
+                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
+
+    make_option(c("-z", "--make_alpha_reports"),
+                action="store_true", default=FALSE,
+                type="logical",
+                help ="Generate alpha diversity plots."),
+
+    make_option(c("-v", "--version"),
+                action="store_true", help ="report version")
+ )
+
+# get the cmd line options to the script
+args <- commandArgs(trailingOnly = TRUE)
+
+# parse the options
+opt <- parse_args(OptionParser(option_list=option_list), args)
+
+#Add version from package to opt
+opt$verstr<-paste0("JAMS v", packageVersion("JAMS"))
+
+# print version & exit if -v
+if (!is.null(opt$version)) {
+    print(opt$verstr)
+    quit()
+}
+
+#Fix path relativity
+fixrelpath<-function(JAMSpath=NULL){
+    require(R.utils)
+    if(!(isAbsolutePath(JAMSpath))){
+        fixedpath<-getAbsolutePath(JAMSpath)
+    } else {
+        fixedpath<-JAMSpath
+    }
+
+    return(fixedpath)
+}
+
+for(pathtofix in c("outdir", "excel_metadata", "phenotable", "phenolabels", "jamsfiles_path", "load_experiments")){
+    if(!is.null(opt[[pathtofix]])){
+        opt[[pathtofix]]<-fixrelpath(opt[[pathtofix]])
+    }
+}
+
+# Determine output directory
+if(!is.null(opt$outdir)) {
+    outpath<-as.character(opt$outdir)
+    setwd(outpath)
+} else {
+    outpath<-getwd()
+}
+flog.info(paste("Content will be output to", outpath))
+
+# give help if needed input option not provided
+if(is.null(opt$jamsfiles_path) & is.null(opt$load_experiments)) {
+    parse_args(OptionParser(option_list=option_list), c("-h"))
+    stop("You must supply either .jams files with the -y option or .dat files with the -w option.")
+} else {
+    jamspath<-opt$jamsfiles_path
+    exppath<-opt$load_experiments
+    if((!(is.null(jamspath))) & (!(is.null(exppath)))){
+        stop("You must chose if you want to BUILD experiments using .jams files with the -y option or USE .dat files with the -w option. Please choose a single one of these options.")
+    }
+}
+
+#Set defaults
+asPA=FALSE
+requirelistdata=TRUE
+maxclass<-as.numeric(opt$maxnumclasses)
+
+###################
+## Start project ##
+###################
+library(JAMS)
+flog.info("JAMSbeta start. Gathering information...")
+project=as.character(opt$projectname)
+flog.info(paste("Using", project, "for name of project"))
+opt$threads<-detectBatchCPUs()
+flog.info(paste("You have", opt$threads, "CPUs available."))
+
+##################
+## Get metadata ##
+##################
+#Get metadata from scratch if not reloading experiments.
+if(!(is.null(jamspath))){
+    if (!(is.null(opt$excel_metadata))) {
+        metadataXL<-opt$excel_metadata
+        #Get metadata from XL file
+        flog.info(paste("Using", metadataXL, "Excel format file to obtain metadata."))
+        metadata<-load_metadata_from_xl(xlsxFile=metadataXL)
+        phenotable<-metadata[[1]]
+        phenolabels<-metadata[[2]]
+    } else {
+        #Metadata not in XL, so get from tsv
+        phenotabletsv<-opt$phenotable
+        phenolabelstsv<-opt$phenolabels
+
+        if(!(is.null(phenotabletsv))){
+            phenotable<-read.table(file=phenotabletsv, header=TRUE, sep="\t")
+        }
+        if(!(is.null(phenolabelstsv))){
+            phenolabels<-read.table(file=phenolabelstsv, header=TRUE, sep="\t")
+        }
+    }
+
+    #Stop if something went wrong
+    if(!(exists("phenotable")) || (nrow(phenotable) < 1)){
+        stop("No data found in the metadata file supplied. Please check file.")
+    } else {
+        flog.info(paste("Metadata has", ncol(phenotable), "columns."))
+    }
+
+    #If phenolabels exists, make sure that phenotable contains only data described in phenolabels.
+    if(exists("phenolabels")){
+        validcols<-as.character(phenolabels$Var_label)
+        flog.info(paste("Phenolabels contains", length(validcols), "categories."))
+
+        #Stop if you are asking for more than you have.
+        if(length(validcols) > ncol(phenotable)){
+            stop("Phenolabels has more categories than the metadata in phenotable. Review and try again.")
+        }
+
+        ptsampcol<-as.character(phenolabels$Var_label[which(phenolabels$Var_type=="Sample")])
+        if(length(ptsampcol)!=1){
+             stop("You must define exactly one column as being the Sample column in your metadata. Please see documenation.")
+        } else {
+             flog.info(paste("Samples are in the", ptsampcol, "column in the metadata."))
+        }
+
+        flog.info(paste("Metadata classes specified in phenolabels are:", paste0(validcols, collapse=", ")))
+        flog.info("Adjusting metadata to contain only these columns.")
+
+        #Stop if the classes you want in phenolabels do not exist in phenotable.
+        if(all(validcols %in% colnames(phenotable))){
+            phenotable<-phenotable[ , validcols]
+        } else {
+            stop("One or more classes specified in phenolabels is missing as (a) column(s) in phenotable. Please check files.")
+        }
+
+    } else {
+        #No phenolabels, so try and find at least a Sample column in the metadata.
+        flog.info("Phenolabels not found. Will attempt to find which column is the Sample data.")
+        ptsampcol<-colnames(phenotable)[which(colnames(phenotable) == "Sample")]
+        if(length(ptsampcol)!=1){
+            stop("You must define exactly one column as being the Sample column in your metadata. Please see documenation.")
+        }
+    }
+
+    #Stop if something went wrong after subsetting phenotable to desired columns in phenolabels.
+    if(nrow(phenotable) < 1){
+        stop("No data found in the metadata file supplied. Please check file.")
+    }
+}
+
+##################################################
+## Either build experiments or load experiments ##
+##################################################
+if(!(is.null(jamspath))){
+    #Build experiments if a jamspath was supplied.
+    flog.info(paste("Will build experiments with files in", jamspath))
+
+    ###########################################
+    ## Load everything into a single object. ##
+    ###########################################
+    flog.info("Metadata seems reasonable. Will go ahead with building experiments.")
+    #Create directory for experiments objects
+    #experimentspath<-paste(outpath, "Experiments", sep = "/")
+    #if(!(dir.exists(experimentspath))){
+    #    flog.info("Creating directory to hold experiments.")
+    #    dir.create(experimentspath, showWarnings = FALSE, recursive = FALSE)
+    #}
+
+    #Exclude samples in pheno table which have not been loaded in list.data
+    Samples_want<-as.character(phenotable[ , ptsampcol])
+    flog.info(paste("Will build experiments for samples:", paste0(Samples_want, collapse=", ")))
+    flog.info(paste("Searching for .jams files in", jamspath, sep=" "))
+    flog.info("Loading all wanted .jams files into a single object. Please be patient.")
+    list.data<-load_jamsfiles_from_system(path=jamspath, onlysamples=Samples_want)
+    #fnalldfs<-paste("JAMS_", project, "_", "list_data", ".dat", sep="")
+    #flog.info(paste("Saving JAMS list.data object as", fnalldfs, sep=" "))
+    #save(list.data, file=paste(experimentspath, fnalldfs, sep="/"))
+
+    #Save session
+    flog.info("Saving R session image. Please be patient.")
+    save.image()
+
+    #These are the samples that were actually loaded into list.data
+    Samples_have<-name_samples(list.data=list.data)
+
+    #Redefine phenotable to include only samples I have in list.data
+    phenotable<-phenotable[(phenotable[, ptsampcol] %in% Samples_have), ]
+
+    #See if there are reads data in list.data, and analyze reads if there is
+    if(length(grep("_readstats", names(list.data))) > 0){
+        flog.info("Found sequencing read assembly data in jams objects. Will incorporate read and assembly information.")
+        doreads = TRUE
+
+        # Set minimum number of Gb filter to 0 if not specified
+        minGbNAHS=as.numeric(opt$minGbNAHS)
+        flog.info(paste("Will not include any sample with less than", minGbNAHS, "Gbp of usable data."))
+    
+        # Set minimum percentage assembly filter to 0 if not specified
+        minPctAssembly=as.numeric(opt$minPctAssembly)
+        flog.info(paste("Will not include any sample with less than", minPctAssembly, "percent of reads assembled into contigs."))
+
+    } else {
+        flog.info("Sequencing read assembly data was not found in jams objects.")
+        doreads = FALSE
+    }
+
+    #######################################
+    ## Create Phyloseq and MGseq objects ##
+    #######################################
+    #Create a final phenotypic table to be used for metagenomeSeq experiments
+
+    ## Evaluate reads, if required ##
+    if(doreads == TRUE){
+        flog.info("Evaluating sequencing.")
+        readdata<-make_readdata(Samples = Samples_have, list.data=list.data)
+        readplots<-plot_readdata(readdata = readdata)
+
+        #Add sequencing info
+        metadata2<-adjust_phenotable(phenotable=phenotable, phenolabels=phenolabels, readdata=readdata, list.data=list.data, addtaxlevelstoisolates=c("Genus", "LKT"))
+        pheno<-metadata2$phenotable
+        phenolabels<-metadata2$phenolabels
+
+        #Get rid of samples with not enough data
+        pheno<-subset(pheno, GbNAHS >= minGbNAHS)
+        pheno<-subset(pheno, PctAss >= minPctAssembly)
+
+    } else {
+        metadata2<-adjust_phenotable(phenotable=phenotable, phenolabels=phenolabels, list.data=list.data, addtaxlevelstoisolates=c("Genus", "LKT"))
+        pheno<-metadata2$phenotable
+        phenolabels<-metadata2$phenolabels
+    }
+
+    #Define kinds of variables
+    if(exists("phenolabels")){
+        variable_list<-define_kinds_of_variables(phenolabels=phenolabels, phenotable=pheno, maxclass=maxclass, maxsubclass=4)
+        variables_disc<-variable_list$discrete
+        variables_bin<-variable_list$binary
+        variables_cont<-variable_list$continuous
+        variables_subs<-variable_list$subsettable
+    } else {
+        variables_disc<-NULL
+        variables_cont<-NULL
+        variables_subs<-NULL
+        variables_bin<-NULL
+    }
+
+    #Now that variables have been defined, plot original assembly and read status to pdf
+    if(doreads == TRUE){
+        assvecplot<-NULL
+        if(length(variables_disc) > 0){
+            assvecplot<-vector("list",length=length(variables_disc))
+            for (p in 1:length(variables_disc)){
+                assvecplot[[p]]<-plot_readscatter(readdata=readdata, phenotable=pheno, discrete=variables_disc[p])
+            }
+        }
+
+        #Dump to pdf
+        pdffn=paste("JAMS_Reads_Stats_", project, ".pdf", sep="")
+        pdf(pdffn, paper="a4r")
+        print(readplots)
+        print(assvecplot)
+        dev.off()
+    }
+
+    #Get sample list from current pheno
+    Samples<-as.character(rownames(pheno))
+
+    #Make MetagenomeSeq-style experiments
+    flog.info("Making metagenomeSeq MRexperiment objects")
+    expvec<-make_metagenomeSeq_experiments(pheno=pheno, list.data=list.data)
+
+    flog.info("Saving R session image. Please be patient.")
+    save.image()
+
+} else {
+    #Ask for jams files.
+    flog.info("Please supply a path where .jams files are to be found.")
+}
+
+###################
+## Export tables ##
+###################
+if(opt$export_tables == TRUE){
+    flog.info("Exporting count and feature tables.")
+    tablespath<-paste(outpath, "Tables", sep = "/")
+    if(!(dir.exists(tablespath))){
+        flog.info("Creating directory to hold tables.")
+        dir.create(tablespath, showWarnings = FALSE, recursive = FALSE)
+    }
+
+    #Export current phenotable
+    exporttabletsv(dataobj=pheno, project=project, basename="Metadata", row.names=FALSE, col.names=TRUE, path=tablespath)
+
+    analysesIhave<-names(expvec)
+    for(analysis in analysesIhave){
+        mgseqobj<-NULL
+        mgseqobj<-expvec[[analysis]]
+        mrc<-NULL
+        mrc<-as.data.frame(MRcounts(mgseqobj))
+        sampvec<-colnames(mrc)
+        mrc$Feature<-rownames(mrc)
+        mrc<-mrc[, c("Feature", sampvec)]
+        exporttabletsv(dataobj=mrc, project=project, basename=paste(analysis, "NumBases", sep="_"), row.names=FALSE, col.names=TRUE, path=tablespath)
+        tt<-NULL
+        tt<-as.data.frame(fData(mgseqobj))
+        exporttabletsv(dataobj=tt, project=project, basename=paste(analysis, "FeatTable", sep="_"), row.names=FALSE, col.names=TRUE, path=tablespath)
+    }
+}
+
+########################################
+## Make a colour dictionary for plots ##
+########################################
+flog.info("Making a dictionary of colours for consistency throughout plots.")
+cdict<-make_colour_dictionary(variable_list=variable_list, pheno=pheno)
+
+usefulexp<-names(expvec)[!(names(expvec) %in% c("Coils", "Gene3D", "Phobius", "ProSitePatterns","SMART"))]
+usefulfunctionalexp<-usefulexp[!(usefulexp %in% "LKT")]
+reasonableexp<-usefulexp[!(usefulexp %in% c("FeatType", "ProDom", "SFLD"))]
+
+flog.info("Saving R session image. Please be patient.")
+save.image()
+
+#######################
+## Do optional tasks ##
+#######################
+if("isolate" %in% pheno$JAMS_Run_type){
+    applyfilters="none"
+} else {
+    applyfilters="moderate"
+}
+
+if(opt$ordination==TRUE){
+    flog.info("Will now try to generate ordination plots based on Metadata which looks meaningful.")
+    make_ordination_report(project=project, expvec=expvec, mgSeqnorm=FALSE, variable_list=variable_list, list.data=list.data, doreads=doreads, cdict=cdict)
+}
+
+if(opt$make_exploratory_reports==TRUE){
+    make_heatmap_report(report="exploratory", project=project, expvec=expvec, usefulexp=reasonableexp, applyfilters=applyfilters, variable_list=variable_list, list.data=list.data, mgSeqnorm=FALSE, cdict=cdict, makespreadsheets=TRUE, makeheatmaps=TRUE, maxnumheatmaps=3, numthreads=opt$threads, adjustpval="auto")
+}
+
+if(opt$make_comparative_reports==TRUE){
+    make_heatmap_report(report="comparative", project=project, expvec=expvec, usefulexp=reasonableexp, applyfilters=applyfilters, variable_list=variable_list, list.data=list.data, mgSeqnorm=FALSE, cdict=cdict, makespreadsheets=TRUE, makeheatmaps=TRUE, maxnumheatmaps=3, numthreads=opt$threads, adjustpval="auto")
+}
+
+if(opt$make_PA_reports==TRUE){
+    make_heatmap_report(report="PA", project=project, expvec=expvec, usefulexp=reasonableexp, applyfilters=applyfilters, variable_list=variable_list, list.data=list.data, mgSeqnorm=FALSE, cdict=cdict, makespreadsheets=TRUE, makeheatmaps=TRUE, maxnumheatmaps=3, numthreads=opt$threads, adjustpval="auto")
+}
+
+if(opt$make_alpha_reports==TRUE){
+    make_alpha_report(project=project, expvec=expvec, usefulexp=usefulexp, variable_list=variable_list, cdict=cdict)
+}

@@ -1,0 +1,391 @@
+#!/usr/bin/env Rscript
+suppressPackageStartupMessages(library(RCurl))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(futile.logger))
+suppressPackageStartupMessages(library(parallel))
+suppressPackageStartupMessages(library(benchmarkme))
+#####################################
+# Define System-specific Functions ##
+#####################################
+if((.Platform$OS.type) != "unix"){
+    stop("JAMS only works on UNIX. Install Linux and try again.")
+}
+
+#Get slurm job ID
+slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+
+#Decide which kind of system you are on.
+if(nchar(slurmjobid) < 3){
+   print("You are not on a Slurm Workload Cluster")
+   #Define appropriate functions for non-slurm system
+   detectBatchCPUs <- function() {
+        ncores <- detectCores()
+        if (is.na(ncores)) { 
+            stop("Could not determine how many CPUs you have. Aborting.")
+        } 
+        return(ncores) 
+    }
+
+    detectAvailRAM <- function(){
+        totmembytes<-as.numeric(get_ram())
+
+        return(totmembytes)
+    }
+
+} else {
+    print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
+    #Define appropriate functions for slurm system
+    detectBatchCPUs <- function() { 
+        ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")) 
+        if (is.na(ncores)) { 
+            ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE")) 
+        } 
+        if (is.na(ncores)) { 
+            stop("Could not determine how many CPUs you have. Aborting.")
+        } 
+        return(ncores) 
+    }
+
+    detectAvailRAM <- function(){
+        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU")) 
+        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE")) 
+        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")) 
+
+        if(!(is.na(mempernode))){
+            totmem <- mempernode
+        } else {
+            totmem <- mempercpu * cpuspertask
+        }
+
+        totmembytes<-totmem * 1000000
+
+        return(totmembytes)
+    }
+
+}
+
+############################
+## Define other functions ##
+############################
+filetype <- function(path){
+    f = file(path)
+    ext = summary(f)$class
+    close.connection(f)
+    ext
+}
+
+# get path of running script
+getScriptPath <- function() {
+    cmdArgs <- commandArgs(trailingOnly = FALSE)
+    needle <- "--file="
+    match <- grep(needle, cmdArgs)
+    if (length(match) > 0) {
+        return(dirname(normalizePath(sub(needle, "", cmdArgs[match]))))
+    } else {
+        return(dirname(normalizePath(sys.frames()[[1]]$ofile)))
+    }
+}
+
+JAMSauthors <- as.character(as.person(packageDescription("JAMS")$Author))
+
+#########################
+# Get options from args #
+#########################
+#Define defaults
+defopt<-list()
+defopt$verstr<-paste0("JAMS v", packageVersion("JAMS"))
+defopt$outdir<-getwd()
+defopt$host<-"mouse"
+defopt$seqtype<-"illuminape"
+defopt$assembler<-"megahit"
+defopt$analysis<-"metagenome"
+defopt$prefix<-"MySample"
+defopt$skipipro<-FALSE
+defopt$threads<-detectBatchCPUs()
+
+option_list <- list(
+    make_option(c("-f", "--R1"), action="store", default=NULL, 
+                type="character",
+                help="forward (R1) reads"),
+    make_option(c("-r", "--R2"), action="store", default=NULL, 
+                type="character",
+                help="reverse (R2) reads"),
+    make_option(c("-U", "--SE"), action="store", default=NULL, 
+                type="character",
+                help="unpaired reads"),
+    make_option(c("-g", "--sraaccession"), action="store", default=NULL, 
+                type="character",
+                help="SRA accession to get reads from"),
+    make_option(c("-c", "--contigs"), action="store", default=NULL, 
+                type="character",
+                help="Use these contigs in multifasta format as input"),
+    make_option(c("-t", "--readstarball"), action="store", default=NULL,
+                type="character",
+                help="Tarball (.tar.gz) containing reads file(s) in fastq format."),
+    make_option(c("-d", "--dbdir"), default=NULL, action="store",
+                help = str_c("path to JAMS database directory")),
+    make_option(c("-o", "--outdir"), default=defopt$outdir, action="store",
+                help = str_c("output directory (default: ", defopt$outdir, ")")),
+    make_option(c("-p", "--prefix"), default=NULL, action="store",
+                help = str_c("output prefix (default: ", defopt$prefix, ")")),
+    make_option(c("-H", "--host"), default=defopt$host, action="store",
+                help = str_c("host species (human, mouse, none default: ", defopt$host, ")")),
+    make_option(c("-e", "--explicitspecies"), default=NULL, action="store",
+                help = "custom host genome fasta file"),
+    make_option(c("-S", "--seqtype"), default=defopt$seqtype, action="store",
+                help = str_c("choose sequence type (illuminape, illuminamp, pacbio, iontorrent, default: ", defopt$seqtype, ")")),
+    make_option(c("-A", "--analysis"), default=defopt$analysis, action="store",
+                help = str_c("choose analysis type (metagenome, metatranscriptome, isolate, isolaternaseq, 16S default: ", defopt$analysis, ")")),
+    make_option(c("-w","--assembler"), default=defopt$assembler, action="store",
+                help = str_c("choose assembler (megahit, spades, default: ", defopt$assembler, ")")),
+    make_option(c("-x", "--threads"), default=defopt$threads, action="store",
+                help = str_c("number of threads (default: ", defopt$threads, ")")),
+    make_option(c("-n", "--skipipro"), default=defopt$skipipro, action="store_true",
+                help = str_c("skip Interproscan, even if it is available, default: ", defopt$skipipro, ")")),
+    make_option(c("-v", "--version"), action="store_true",
+                help ="report version")
+)
+
+# parse the options
+args <- commandArgs(trailingOnly = TRUE)
+opt <- parse_args(OptionParser(option_list=option_list), args)
+opt <- merge.list(opt, defopt)
+
+#####################
+## Set environment ##
+#####################
+
+# print version & exit if -v
+if (!is.null(opt$version)) {
+    print(opt$verstr)
+    quit()
+}
+
+#Get Script path
+opt$bindir<-getScriptPath()
+
+#Fix path relativity
+fixrelpath<-function(JAMSpath=NULL){
+    require(R.utils)
+    if(!(isAbsolutePath(JAMSpath))){
+        fixedpath<-getAbsolutePath(JAMSpath)
+    } else {
+        fixedpath<-JAMSpath
+    }
+
+    return(fixedpath)
+}
+
+for(pathtofix in c("R1", "R2", "SE", "contigs", "readstarball", "outdir", "explicitspecies", "dbdir")){
+    if(!is.null(opt[[pathtofix]])){
+        opt[[pathtofix]]<-fixrelpath(opt[[pathtofix]])
+    }
+}
+
+# give help if needed input option not provided
+if(is.null(opt$dbdir)) {
+    print("You must supply the JAMS database directory.")
+    parse_args(OptionParser(option_list=option_list), c("-h"))
+    q()
+} else {
+    #If db directory does exist, does it have the appropriate structure
+    #Stop if unreasonable settings
+    if(!(dir.exists(opt$dbdir))){
+        flog.info("JAMS db directory not found. You must supply one. Aborting now.")
+        q()
+    } else {
+        #DB path was supplied. Now validate the structure.
+        suppressPackageStartupMessages(library(JAMS))
+        #detect resources
+        opt$totmembytes<-detectAvailRAM()
+        flog.info(paste("You have", round((opt$totmembytes)/1000000000, 1), "Gigabytes of RAM memory"))
+        flog.info(paste("You have", opt$threads, "CPUs to run on"))
+        opt<-check_resources(opt=opt)
+    }
+}
+
+#Abort if all is not good.
+if(opt$abort == TRUE){
+    flog.info("Aborting now.")
+    q()
+}
+
+###################
+## Main Function ##
+###################
+flog.info("JAMS - Just A Microbiology System")
+flog.info(paste("Version", opt$verstr))
+flog.info(paste("By:", paste(JAMSauthors, collapse = "; ")))
+
+#If all is OK, then create the project directory structure
+opt$sampledir<-file.path(opt$outdir, paste0(opt$prefix, "_JAMS"))
+flog.info("Creating Sample output directory")
+dir.create(opt$sampledir, showWarnings = FALSE, recursive = TRUE)
+
+#Define a working directory.
+if(is.null(opt$tmpdir)){
+    #Try lscratch temp directory
+    slurmtmpdir <- file.path("/lscratch", slurmjobid)
+    if(dir.exists(slurmtmpdir)){
+        opt$tmpdir<-slurmtmpdir
+    }
+} else {
+    if(!(dir.exists(opt$tmpdir))){
+        flog.info(paste("The temporary directory specified does not exist."))
+        opt$tmpdir<-NULL
+    }
+}
+
+if(!(is.null(opt$tmpdir))){
+    opt$tmpsampdir<-file.path(opt$tmpdir, paste(opt$prefix, "JAMStemp", sep="_"))
+    dir.create(opt$tmpsampdir, showWarnings = FALSE, recursive = FALSE)
+    flog.info(paste("Temporary Sample directory is", opt$tmpsampdir))
+    flog.info(paste("Will work from within this directory and copy final files to", opt$sampledir))
+    opt$workdir<-opt$tmpsampdir
+} else {
+    opt$workdir<-opt$sampledir
+}
+
+if(opt$analysis=="isolate"){
+    opt$host<-"none"
+}
+
+if(!(is.null(opt$contigs))){
+    opt$host<-"none"
+}
+
+opt$projimage<-file.path(opt$sampledir, ".RData")
+
+flog.info(paste("Database directory is", opt$dbdir))
+flog.info(paste("Output directory is", opt$outdir))
+flog.info(paste("Final sample directory is", opt$sampledir))
+flog.info(paste("Working directory is", opt$workdir))
+flog.info(paste("Host is", opt$host))
+flog.info(paste("Project type is", opt$analysis))
+
+#######################
+## Run JAMS pipeline ##
+#######################
+#Start the clock
+opt$starttime<-Sys.time()
+save.image(file = opt$projimage)
+
+#Obtain contigs
+setwd(opt$workdir)
+opt<-get_contigs(opt=opt)
+save.image(file = opt$projimage)
+
+#Add some contig statistics
+seqstats<-get_sequence_stats(sequences=opt$NHcontigs_sequence)
+colnames(seqstats)[which(colnames(seqstats) == "Sequence")]<-"Contig"
+opt$contigsdata<-left_join(opt$contigsdata, seqstats)
+save.image(file = opt$projimage)
+
+#Functional annotation
+opt<-annotate_contigs(opt=opt)
+save.image(file = opt$projimage)
+
+#Launch interproscan if on a cluster
+if(nchar(slurmjobid) < 3){
+    flog.info("Skipping Interproscan. Interproscan in computationally very intensive and is best run on a computer cluster.")
+} else {
+    if(opt$skipipro == FALSE){
+        opt<-launch_interpro(opt=opt)
+    } else {
+        flog.info("Skipping Interproscan as requested in options.")
+    }
+}
+
+#Classify 16Ss
+opt<-classify_16S_from_contigs(opt=opt)
+save.image(file = opt$projimage)
+
+#Evaluate assembly
+opt<-evaluate_assembly(opt=opt)
+save.image(file = opt$projimage)
+
+#Get dose of each taxon and function
+if(opt$analysis %in% c("isolate", "isolaternaseq")){
+    classifyunassembled<-FALSE
+} else {
+    classifyunassembled<-TRUE
+}
+opt<-get_contig_coverage(opt=opt, markduplicates=FALSE, classifyunassembled=classifyunassembled)
+
+#Bank information gathered
+objectstoexport<-names(opt)[names(opt) %in% c("contigsdata", "assemblystats", "contigperbasecoverage", "LKTdose")]
+export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
+save.image(file = opt$projimage)
+
+#Do specific blast-based analyses
+opt<-blast_databases(opt=opt, blastanalyses=c("resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb"))
+objectstoexport<-names(opt)[names(opt) %in% c("resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb")]
+export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
+save.image(file = opt$projimage)
+
+#Get feature stats
+opt<-add_blast_results_to_featuredata(opt=opt, blastanalyses=c("resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb"))
+opt<-get_feature_stats(opt=opt)
+objectstoexport<-names(opt)[names(opt) %in% c("featuredata", "ucobias")]
+export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
+save.image(file = opt$projimage)
+
+#Make functional analysis
+opt<-harvest_functions(opt=opt)
+save.image(file = opt$projimage)
+
+#Compute readcounts if there are any reads
+if("readsdir" %in% names(opt)){
+    opt<-compute_readcounts(opt=opt)
+    #Save reads to outdir if applicable
+    bank_reads(opt=opt)
+}
+objectstoexport<-names(opt)[names(opt) %in% c("interproscanoutput", "featuredose", "readstats")]
+export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
+save.image(file = opt$projimage)
+
+#End the analysis and gather information on the run
+opt$endtime<-Sys.time()
+opt<-gather_run_info(opt=opt)
+opt<-consolidate_tables(opt=opt)
+objectstoexport<-names(opt)[names(opt) %in% c("projinfo", "taxa_16S_cons", "resfinder", "plasmidfinder")]
+export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
+save.image(file = opt$projimage)
+
+#Deal with Ucobias
+#Plot ucobias if proj is isolate and there seems to be contamination
+if(opt$analysis == "isolate") {
+    LKTassemblystats<-subset(opt$assemblystats, TaxLevel=="LKT")
+    totnumgenomes<-sum(LKTassemblystats$ProbNumGenomes)
+    if(totnumgenomes > 1.6){
+        print("Isolate might be contaminated. Plotting codon usage bias of different LKTs")
+        minPPM=5000
+        totcontigbases<-sum(opt$contigsdata$NumBases)
+        completegenomes<-subset(opt$assemblystats, TaxLevel == "LKT")
+        completegenomes<-as.character(subset(completegenomes, ProbNumGenomes > 0.2)[]$Taxon)
+        if(length(completegenomes) > 0){
+            opt$ucoplots<-compare_ucobias(featuredata=opt$featuredata, contigsdata=opt$contigsdata, taxlevel="LKT", taxaofinterest=completegenomes, ucobias=opt$ucobias, method="pca", frac=0.25)
+        }
+    } else {
+        flog.info(paste("Isolate genome is predicted to be", round((totnumgenomes*100), 1), "% complete"))
+    }
+}
+
+#Make a .jams file
+make_jams_file(opt=opt, outdir=opt$outdir)
+
+#Plot report
+print_jams_report(opt=opt, elements=c("readplots", "taxonomy", "SixteenSid", "resfinder", "plasmidfinder", "vfdb", "func"))
+
+#Cleanup and compress project
+setwd(opt$sampledir)
+unlink(c(opt$tmpsampdir, opt$iprodir, opt$covdir, opt$readsdir), recursive = TRUE)
+save.image(file = opt$projimage)
+setwd(opt$outdir)
+JAMStarball<-paste(paste0(opt$prefix, "_JAMS"), "tar", "gz", sep=".")
+tarcmd<-paste("tar", "cf", "-", paste0(opt$prefix, "_JAMS"), "|", "pigz", "-9", "-p", opt$threads, ">", JAMStarball, collapse=" ")
+flog.info(paste("Compressing JAMS run for sample", opt$prefix))
+system(tarcmd)
+
+flog.info(paste0("JAMS run of sample ", opt$prefix, " is complete. Thank you for using JAMS. Use JAMSbeta to compare between JAMS samples."))
