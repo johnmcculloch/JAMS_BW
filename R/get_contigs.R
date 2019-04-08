@@ -19,9 +19,9 @@ get_contigs<-function(opt=NULL){
 
     #find out if contigs are ready or need to be assembled from reads
     
-    if(!(is.null(out$assemblyaccession))){
-        flog.info(paste("Will download contigs from NCBI GenBank under accession number", out$assemblyaccession[1]))
-        assemblytargetname<-out$assemblyaccession[1]
+    if(!(is.null(opt$assemblyaccession))){
+        flog.info(paste("Will download contigs from NCBI GenBank under accession number", opt$assemblyaccession[1]))
+        assemblytargetname<-opt$assemblyaccession[1]
         contigsaccession<-get_genomes_NCBI(organisms="bacteria", outputdir=opt$workdir, assembly_accession=assemblytargetname, ntop=1, fileformat="fasta", simulate=FALSE)
         if(nrow(contigsaccession) < 1){
             flog.info(paste("A valid entry with accession number", assemblytargetname, "was not found in GenBank. Only bacterial accession numbers are accepted for the time being. Aborting now."))

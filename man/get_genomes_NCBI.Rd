@@ -2,15 +2,15 @@
 % Please edit documentation in R/get_genomes_NCBI.R
 \name{get_genomes_NCBI}
 \alias{get_genomes_NCBI}
-\title{get_genomes_NCBI(organisms="bacteria", assembly_summary=NULL, outputdir=NULL, organism_name=NULL, infraspecific_name=NULL, taxid=NULL, species_taxid=NULL, asm_name=NULL, as_general_expression=FALSE, assembly_level=NULL, assembly_upto=NULL, bioproject=NULL, biosample=NULL, refseq_category_upto=NULL, ntop=NULL, nobs=TRUE, fileformat="fasta", simulate=TRUE)}
+\title{get_genomes_NCBI(organisms="bacteria", assembly_summary=NULL, outputdir=NULL, assembly_accession=NULL, organism_name=NULL, infraspecific_name=NULL, taxid=NULL, species_taxid=NULL, asm_name=NULL, as_general_expression=FALSE, assembly_level=NULL, assembly_upto=NULL, bioproject=NULL, biosample=NULL, refseq_category_upto=NULL, ntop=NULL, nobs=TRUE, fileformat="fasta", simulate=TRUE)}
 \usage{
 get_genomes_NCBI(organisms = "bacteria", assembly_summary = NULL,
-  outputdir = NULL, organism_name = NULL, infraspecific_name = NULL,
-  taxid = NULL, species_taxid = NULL, asm_name = NULL,
-  as_general_expression = FALSE, assembly_level = NULL,
-  assembly_upto = NULL, bioproject = NULL, biosample = NULL,
-  refseq_category_upto = NULL, ntop = NULL, nobs = TRUE,
-  fileformat = "fasta", simulate = TRUE)
+  outputdir = NULL, assembly_accession = NULL, organism_name = NULL,
+  infraspecific_name = NULL, taxid = NULL, species_taxid = NULL,
+  asm_name = NULL, as_general_expression = FALSE,
+  assembly_level = NULL, assembly_upto = NULL, bioproject = NULL,
+  biosample = NULL, refseq_category_upto = NULL, ntop = NULL,
+  nobs = TRUE, fileformat = "fasta", simulate = TRUE)
 }
 \description{
 Downloads Genomes from NCBI GenBank based on matching criteria
