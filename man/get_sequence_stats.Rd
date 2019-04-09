@@ -2,7 +2,7 @@
 % Please edit documentation in R/get_sequence_stats.R
 \name{get_sequence_stats}
 \alias{get_sequence_stats}
-\title{get_contig_stats}
+\title{get_sequence_stats}
 \usage{
 get_sequence_stats(sequences = NULL)
 }

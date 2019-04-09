@@ -1,4 +1,4 @@
-#' get_contig_stats
+#' get_sequence_stats
 #'
 #' JAMSalpha function
 #' @export
