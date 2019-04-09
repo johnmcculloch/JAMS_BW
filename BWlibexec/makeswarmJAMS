@@ -37,7 +37,7 @@ contigsdir=""
 usage () { echo "$message_use"; }
 version () { echo "$message_ver"; }
 
-options=':r:o:c:g:s:l:j:d:hv'
+options=':r:o:c:g:a:s:l:j:d:hv'
 while getopts $options option
 do
     case $option in
