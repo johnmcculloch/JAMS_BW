@@ -23,8 +23,8 @@ Use: $(basename "$0") -o <path/to/outdir> -r </path/to/rawreads> -s [human|mouse
 
 "
 
-version="1.4"
-verdate="MAR-2019"
+version="1.5"
+verdate="APR-2019"
 message_ver="makeswarmJAMS ver $version by John McCulloch $verdate"
 
 #Define defaults
@@ -44,6 +44,7 @@ do
         r  ) readsdir="$OPTARG" ;;
         c  ) contigsdir="$OPTARG" ;;
         g  ) sralist="$OPTARG" ;;
+        a  ) acclist="$OPTARG" ;;
         o  ) outdir="$OPTARG" ;;
         s  ) hostspecies="$OPTARG" ;;
         j  ) projtype="$OPTARG" ;;
@@ -81,6 +82,11 @@ then
     echo "You supplied a list of SRA accession numbers. Ignoring reads."
     useinput="sra"
     list=`cat "$sralist" | tr "\n" " "`
+elif [ "$acclist" != "" ]
+then
+    echo "You supplied a list of NCBI assembly accession numbers. Ignoring reads."
+    useinput="acc"
+    list=`cat "$acclist" | tr "\n" " "`
 else
     useinput="reads"
     #Not contigs, so do reads.
@@ -142,6 +148,15 @@ then
     for prefix in $list
     do
         echo "JAMSalpha -d $dbdir -o $outdir -g $prefix -p $prefix -A $projtype -H $hostspecies" >> tmp.swm
+    done
+elif [ "$useinput" == "acc" ]
+then
+    #Not reads do acc.
+    for prefix in $list
+    do
+        #Clean prefixes up to avoid undercores and dots
+        clpref=`echo $prefix | cut -f 1 -d "." | sed s/"_"/""/g`
+        echo "JAMSalpha -d $dbdir -o $outdir -a $prefix -p $clpref -A isolate -H none" >> tmp.swm
     done
 else
     #something went wrong
