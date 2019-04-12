@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-trim_reads<-function(opt=NULL){
+trim_reads<-function(opt=NULL, discardleftoverSE=FALSE){
 
     #Check if reads are in tmpdir
     if(opt$workdir != opt$sampledir){
@@ -54,7 +54,8 @@ trim_reads<-function(opt=NULL){
         
             #add output of what was trimmed to opt
             opt$trimreads<-c(output.trim1, output.trim2)
-            if(file.info(output.trimSE)$size > 1){
+
+            if(all(c(discardleftoverSE==TRUE), (file.info(output.trimSE)$size > 1))){
                 #If leftover single unpaied, only add if smaller than 250 Mb. Otherwise sequencing errors may seep into the contigs and assembly becomes much more complicated.
                 SEsize<-file.size(output.trimSE)
                 if(SEsize < 250000000){
@@ -62,6 +63,8 @@ trim_reads<-function(opt=NULL){
                 } else {
                     flog.info(paste("There are leftover unpaired reads from trimming (when only one pair survives trimming), but as the file size is large, these will be ignored for read assembly otherwise sequencing errors may seep into contigs."))
                 }
+            } else {
+                opt$trimreads<-c(opt$trimreads, output.trimSE)
             }
 
         } else if(opt$libstructure == "singleend"){
@@ -76,6 +79,7 @@ trim_reads<-function(opt=NULL){
             #add info of what was acieved to opt
             opt$trimreads<-output.trimSE
         }
+        file.remove("adapter.fasta")
 
     } else if (opt$seqtype == "iontorrent") {
         if(opt$libstructure == "singleend"){

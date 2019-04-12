@@ -4,7 +4,7 @@
 \alias{trim_reads}
 \title{trim_reads}
 \usage{
-trim_reads(opt = NULL)
+trim_reads(opt = NULL, discardleftoverSE = FALSE)
 }
 \description{
 JAMSalpha function

@@ -12,8 +12,9 @@ adjust_phenotable<-function(phenotable=NULL, phenolabels=NULL, readdata=NULL, li
     pheno <- phenotable
     #Adjust discrete and subsettable variables as class character
     charvar <- unique(c(varlist$sample, varlist$discrete, varlist$subsettable)) 
-    pheno[,charvar]<-lapply(pheno[,charvar], as.character)
-
+    for(cv in 1: length(charvar)){
+        pheno[,charvar[cv]]<-as.character(pheno[,charvar[cv]])
+    }
     #Adjust continuous variables as class numeric
     numvar <- unique(varlist$continuous)
     if(length(numvar) > 0){

@@ -14,9 +14,10 @@ Use: $(basename "$0") -o <path/to/outdir> -r </path/to/rawreads> -s [human|mouse
 -v Version;
 -o Complete path to where you want the project (default= current directory);
 -r Complete path to where the reads are (default= [outdir]/rawreads);
--c Complete path to where contigs are. If contigs are supplied, will ignore reads.
--g Complete path to a text file with SRA accession numbers to use, will ignore reads.
--s Name of host species (default = mouse).
+-c Complete path to where contigs are. If contigs are supplied, will ignore reads;
+-g Complete path to a text file with SRA accession numbers to use, will ignore reads;
+-a Complete path to a text file with NCBI assembly accession numbers to use, will ignore reads;
+-s Name of host species (default = mouse);
 -j Project type (default = microbiome)
 -d /path/to/JAMSdb
 -l [INTEGER] split swarm files into this number of lines. If ommited, will not split swarm file.

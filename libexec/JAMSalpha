@@ -134,9 +134,7 @@ option_list <- list(
     make_option(c("-p", "--prefix"), default=NULL, action="store",
                 help = str_c("output prefix (default: ", defopt$prefix, ")")),
     make_option(c("-H", "--host"), default=defopt$host, action="store",
-                help = str_c("host species (human, mouse, none default: ", defopt$host, ")")),
-    make_option(c("-e", "--explicitspecies"), default=NULL, action="store",
-                help = "custom host genome fasta file"),
+                help = str_c("host species (human, mouse, none, taxid, species_name or /path/to/index default: ", defopt$host, ")")),
     make_option(c("-S", "--seqtype"), default=defopt$seqtype, action="store",
                 help = str_c("choose sequence type (illuminape, illuminamp, pacbio, iontorrent, default: ", defopt$seqtype, ")")),
     make_option(c("-A", "--analysis"), default=defopt$analysis, action="store",
@@ -212,7 +210,7 @@ if(is.null(opt$dbdir)) {
 }
 
 #Abort if all is not good.
-while(opt$abort == TRUE){
+if(opt$abort == TRUE){
     flog.info("Aborting now.")
     q()
 }
@@ -253,13 +251,6 @@ if(!(is.null(opt$tmpdir))){
     opt$workdir<-opt$sampledir
 }
 
-if(opt$analysis=="isolate"){
-    opt$host<-"none"
-}
-
-if(!(is.null(opt$contigs))){
-    opt$host<-"none"
-}
 
 opt$projimage<-file.path(opt$sampledir, ".RData")
 
@@ -360,7 +351,7 @@ export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledi
 save.image(file = opt$projimage)
 
 #Deal with Ucobias
-#Plot ucobias if proj is isolate and there seems to be contamination
+#Plot ucobias if proj is isolate and there seems to be contamination and split genomes
 if(opt$analysis == "isolate") {
     LKTassemblystats<-subset(opt$assemblystats, TaxLevel=="LKT")
     totnumgenomes<-sum(LKTassemblystats$ProbNumGenomes)
@@ -372,6 +363,19 @@ if(opt$analysis == "isolate") {
         completegenomes<-as.character(subset(completegenomes, ProbNumGenomes > 0.2)[]$Taxon)
         if(length(completegenomes) > 0){
             opt$ucoplots<-compare_ucobias(featuredata=opt$featuredata, contigsdata=opt$contigsdata, taxlevel="LKT", taxaofinterest=completegenomes, ucobias=opt$ucobias, method="pca", frac=0.25)
+        }
+        opt<-deconvolute_contaminated_isolates(opt)
+        if(!(is.null(opt$wantedassemblies))){
+            levelinterest<-as.character(unique(opt$wantedassemblies$TaxLevel))
+            taxainterest<-as.character(unique(opt$wantedassemblies$Taxon))
+            for(taxon in taxainterest){
+                contigsinterest<-opt$contigsdata[which(opt$contigsdata[ , levelinterest] == taxon), "Contig"]
+                wantedsequences<-opt$NHcontigs_sequence[contigsinterest]
+                targetname<-paste(opt$prefix, taxon, sep="_")
+                targetfilename<-paste(targetname, "fasta", sep=".")
+                flog.info(paste("Writing", targetfilename))
+                write.fasta(sequences = wantedsequences, names = names(wantedsequences), nbchar = 80, file.out = file.path(opt$sampledir, targetfilename))
+            }
         }
     } else {
         flog.info(paste("Isolate genome is predicted to be", round((totnumgenomes*100), 1), "% complete"))

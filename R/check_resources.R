@@ -53,6 +53,15 @@ check_resources<-function(opt=opt){
         }
     }
 
+    #Set host species to none if isolates or if using contigs.
+    if(opt$analysis=="isolate"){
+        opt$host<-"none"
+    }
+
+    if(!(is.null(opt$contigs))){
+        opt$host<-"none"
+    }
+
     #Check for host bowtie indices
     if(opt$host %in% c("mouse", "human")){
         flog.info("Checking for the presence of pre-compiled host genome bowtie2 indices.")
@@ -70,6 +79,53 @@ check_resources<-function(opt=opt){
         } else {
             flog.info(paste0("Pre-built bowtie2 indices for the ", opt$host, " genome were not found. Check your database structure. Aborting."))
             opt$abort<-TRUE
+        }
+    } else if (opt$host == "none") {
+        flog.info("No need to eliminate sequencing reads coming from a host species.")
+    } else {
+        flog.info("Host species supplied is not human, mouse or none.")
+        if(file.exists(opt$host) == TRUE){
+            flog.info("Host species bowtie index has been supplied as a path.")
+            opt$relindexfiles<-list.files(opt$host, recursive=TRUE, full.names=TRUE, include.dirs=FALSE, pattern="*.bt2$")
+            #Need 6 index files
+            if(length(opt$relindexfiles) == 6){
+                opt$indexpath<-paste0(unlist(strsplit(opt$relindexfiles[1], split="/"))[1:length(unlist(strsplit(opt$relindexfiles[1], split="/")))-1], collapse="/")
+                indexfile1<-unlist(strsplit(opt$relindexfiles[1], split="/"))[length(unlist(strsplit(opt$relindexfiles[1], split="/")))]
+                opt$host<-unlist(strsplit(indexfile1, split="\\."))[1]
+                opt$hostspecies<-opt$host
+                flog.info(paste0("Pre-built bowtie2 indices for the ", opt$host, " genome were found at ", opt$indexpath))
+            } else {
+                flog.info(paste0("Pre-built bowtie2 indices for the host genome were not found or look weird. Check the path supplied. Aborting."))
+                opt$abort<-TRUE
+            }
+        } else {
+            flog.info("Host species genome has been supplied as an NCBI species taxid or organism name. Checking Tax ID and best genome to download.")
+            flog.info("Trying as Tax ID first.")
+            host_assemblies<-get_genomes_NCBI(organisms = "vertebrate_mammalian", outputdir = NULL, species_taxid = opt$host, nobs = TRUE, fileformat = "fasta", simulate = TRUE)
+            host_assemblies<-subset(host_assemblies, genome_rep == "Full")
+            if(nrow(host_assemblies) == 0){
+                flog.info("Not Tax ID. Trying as organism_name.")
+                host_assemblies<-get_genomes_NCBI(organisms = "vertebrate_mammalian", outputdir = NULL, organism_name = opt$host, nobs = TRUE, fileformat = "fasta", simulate = TRUE)
+            }
+            #Only consider full genomes
+            host_assemblies<-subset(host_assemblies, genome_rep == "Full")
+            if(nrow(host_assemblies) > 0){
+                flog.info("Deteriming best host genome assembly to download.")
+                #Give priority to reference and then representative genomes, if available.
+                if(any(c("reference genome", "representative genome") %in% host_assemblies$refseq_category)){
+                    refseqcats<-(c("reference genome", "representative genome") %in% host_assemblies$refseq_category)
+                    host_assemblies<-subset(host_assemblies, refseq_category == c("reference genome", "representative genome")[min(which(refseqcats==TRUE))])
+                }
+                #Go with the most recent
+                host_assemblies<-host_assemblies[order(host_assemblies$seq_rel_date, decreasing=TRUE), ][1 , ]
+                opt$host_accession_number<-host_assemblies$assembly_accession
+                flog.info(paste("Will build index with", host_assemblies$organism_name, "genome under accession number", opt$host_accession_number, "of", host_assemblies$seq_rel_date))
+                opt$host<-paste(host_assemblies$organism_name, opt$host_accession_number, sep="_")
+                opt$hostspecies<-host_assemblies$organism_name
+            } else {
+                flog.info("Could not find the Tax ID or organism name to download. Aborting now.")
+                opt$abort<-TRUE
+            }
         }
     }
 

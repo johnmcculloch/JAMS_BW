@@ -19,13 +19,32 @@ filter_host<-function(opt=NULL){
             q()
         }
 
-        #If on a tmppath, copy host genome to tempreadsir for speed
-        if(opt$workdir != opt$sampledir){
-            flog.info("Copying host genome indices to temporary directory.")
-            file.copy(opt$relindexfiles, readsworkdir)
-            index<-file.path(readsworkdir, opt$hostspecies)
-        } else {
+        #Build an index if explicit species specified
+        if(!(is.null(opt$host_accession_number))){
+            dir.create("hostindex")
+            opt$indexpath<-file.path(readsworkdir, "hostindex")
+            setwd(opt$indexpath)
+            #Download host genome
+            flog.info(paste("Downloading", opt$host, "genome."))
+            opt$host_assembly<-get_genomes_NCBI(organisms = "vertebrate_mammalian", assembly_accession=opt$host_accession_number, outputdir = opt$indexpath, ntop=1, fileformat = "fasta", simulate = FALSE)
+            #Gunzip it
+            flog.info("Decompressing downloaded host genome.")
+            system(paste("pigz -d", opt$host_assembly$destfn))
+            hostfasta<-list.files(pattern="fna")
+            flog.info("Building host genome index. Please be patient.")
+            buildlog<-system2("bowtie2-build", args=c("-f", hostfasta, "--threads", opt$threads, opt$hostspecies), stderr=FALSE, stdout=TRUE)
             index<-file.path(opt$indexpath, opt$hostspecies)
+            setwd(readsworkdir)
+        } else {
+            #Index is supplied
+            #If on a tmppath, copy host genome to tempreadsir for speed
+            if(opt$workdir != opt$sampledir){
+                flog.info("Copying host genome indices to temporary directory.")
+                file.copy(opt$relindexfiles, readsworkdir)
+                index<-file.path(readsworkdir, opt$hostspecies)
+            } else {
+                index<-file.path(opt$indexpath, opt$hostspecies)
+            }
         }
 
         #Set general options
