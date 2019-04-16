@@ -21,10 +21,10 @@ if(nchar(slurmjobid) < 3){
    #Define appropriate functions for non-slurm system
    detectBatchCPUs <- function() {
         ncores <- detectCores()
-        if (is.na(ncores)) { 
+        if (is.na(ncores)) {
             stop("Could not determine how many CPUs you have. Aborting.")
-        } 
-        return(ncores) 
+        }
+        return(ncores)
     }
 
     detectAvailRAM <- function(){
@@ -36,21 +36,21 @@ if(nchar(slurmjobid) < 3){
 } else {
     print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
     #Define appropriate functions for slurm system
-    detectBatchCPUs <- function() { 
-        ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")) 
-        if (is.na(ncores)) { 
-            ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE")) 
-        } 
-        if (is.na(ncores)) { 
+    detectBatchCPUs <- function() {
+        ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+        if (is.na(ncores)) {
+            ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE"))
+        }
+        if (is.na(ncores)) {
             stop("Could not determine how many CPUs you have. Aborting.")
-        } 
-        return(ncores) 
+        }
+        return(ncores)
     }
 
     detectAvailRAM <- function(){
-        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU")) 
-        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE")) 
-        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")) 
+        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
+        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
+        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
 
         if(!(is.na(mempernode))){
             totmem <- mempernode
@@ -106,22 +106,22 @@ defopt$testdependencies<-FALSE
 defopt$threads<-detectBatchCPUs()
 
 option_list <- list(
-    make_option(c("-f", "--R1"), action="store", default=NULL, 
+    make_option(c("-f", "--R1"), action="store", default=NULL,
                 type="character",
                 help="forward (R1) reads"),
-    make_option(c("-r", "--R2"), action="store", default=NULL, 
+    make_option(c("-r", "--R2"), action="store", default=NULL,
                 type="character",
                 help="reverse (R2) reads"),
-    make_option(c("-U", "--SE"), action="store", default=NULL, 
+    make_option(c("-U", "--SE"), action="store", default=NULL,
                 type="character",
                 help="unpaired reads"),
-    make_option(c("-g", "--sraaccession"), action="store", default=NULL, 
+    make_option(c("-g", "--sraaccession"), action="store", default=NULL,
                 type="character",
                 help="SRA accession to get reads from"),
-    make_option(c("-c", "--contigs"), action="store", default=NULL, 
+    make_option(c("-c", "--contigs"), action="store", default=NULL,
                 type="character",
                 help="Use these contigs in multifasta format as input"),
-    make_option(c("-a", "--assemblyaccession"), action="store", default=NULL, 
+    make_option(c("-a", "--assemblyaccession"), action="store", default=NULL,
                 type="character",
                 help="GenBank assembly accession to get contigs from (example: GCA_000969225.1). Any reads input will be ignored."),
     make_option(c("-t", "--readstarball"), action="store", default=NULL,
@@ -167,50 +167,57 @@ if (!is.null(opt$version)) {
 }
 
 #Get Script path
-opt$bindir<-getScriptPath()
+opt$bindir <- getScriptPath()
+
+#Abort if unreasonable instructions
+if (!(opt$analysis %in% c("metagenome", "metatranscriptome", "isolate", "isolaternaseq"))){
+    print("For an analysis chooose between one of these four options: metagenome, metatranscriptome, isolate or isolaternaseq.")
+    parse_args(OptionParser(option_list=option_list), c("-h"))
+    q()
+}
 
 #Fix path relativity
-fixrelpath<-function(JAMSpath=NULL){
+fixrelpath <- function(JAMSpath=NULL){
     require(R.utils)
-    if(!(isAbsolutePath(JAMSpath))){
-        fixedpath<-getAbsolutePath(JAMSpath)
+    if (!(isAbsolutePath(JAMSpath))){
+        fixedpath <- getAbsolutePath(JAMSpath)
     } else {
-        fixedpath<-JAMSpath
+        fixedpath <- JAMSpath
     }
 
     return(fixedpath)
 }
 
-for(pathtofix in c("R1", "R2", "SE", "contigs", "readstarball", "outdir", "explicitspecies", "dbdir")){
-    if(!is.null(opt[[pathtofix]])){
-        opt[[pathtofix]]<-fixrelpath(opt[[pathtofix]])
+for (pathtofix in c("R1", "R2", "SE", "contigs", "readstarball", "outdir", "explicitspecies", "dbdir")){
+    if (!is.null(opt[[pathtofix]])){
+        opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
     }
 }
 
 # give help if needed input option not provided
-if(is.null(opt$dbdir)) {
+if (is.null(opt$dbdir)) {
     print("You must supply the JAMS database directory.")
     parse_args(OptionParser(option_list=option_list), c("-h"))
     q()
 } else {
     #If db directory does exist, does it have the appropriate structure
     #Stop if unreasonable settings
-    if(!(dir.exists(opt$dbdir))){
+    if (!(dir.exists(opt$dbdir))){
         flog.info("JAMS db directory not found. You must supply one. Aborting now.")
         q()
     } else {
         #DB path was supplied. Now validate the structure.
         suppressPackageStartupMessages(library(JAMS))
         #detect resources
-        opt$totmembytes<-detectAvailRAM()
+        opt$totmembytes <- detectAvailRAM()
         flog.info(paste("You have", round((opt$totmembytes)/1000000000, 1), "Gigabytes of RAM memory"))
         flog.info(paste("You have", opt$threads, "CPUs to run on"))
-        opt<-check_resources(opt=opt)
+        opt <- check_resources(opt=opt)
     }
 }
 
 #Abort if all is not good.
-if(opt$abort == TRUE){
+if (opt$abort == TRUE){
     flog.info("Aborting now.")
     q()
 }
