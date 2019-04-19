@@ -2,10 +2,11 @@
 % Please edit documentation in R/make_metagenomeSeq_experiments.R
 \name{make_metagenomeSeq_experiments}
 \alias{make_metagenomeSeq_experiments}
-\title{make_metagenomeSeq_experiments(pheno=NULL, list.data=NULL, onlyanalyses=NULL)}
+\title{make_metagenomeSeq_experiments(pheno=NULL, list.data=NULL, onlyanalyses=NULL, )}
 \usage{
 make_metagenomeSeq_experiments(pheno = NULL, list.data = NULL,
-  onlyanalyses = NULL)
+  onlyanalyses = NULL, minnumsampanalysis = NULL,
+  minpropsampanalysis = 0.1)
 }
 \description{
 Returns a list vector of MetagenomeSeq MRexperiments for every analysis that is possible to make.
