@@ -18,7 +18,7 @@ make_metagenomeSeq_experiments<-function(pheno=NULL, list.data=NULL, onlyanalyse
     allanalyses <- Reduce(union, anallist)
     numsampwithanalysis <- NULL
     for (pa in 1:length(allanalyses)){
-        possibleanalysis<-possibleanalyses[pa]
+        possibleanalysis<-allanalyses[pa]
         numsampwithanalysis[pa] <- length(which(sapply(1:length(anallist), function(x) { (possibleanalysis %in% anallist[[x]]) } ) == TRUE))
     }
 
@@ -117,6 +117,10 @@ make_metagenomeSeq_experiments<-function(pheno=NULL, list.data=NULL, onlyanalyse
         analysis <- possibleanalyses[a]
         print(paste("Making", analysis, "MRexperiment"))
 
+        #subset doses to contain only the analysis wanted
+        analysisdoses <- NULL
+        analysisdoses <- list()
+
         #Get names of Samples which have data for the analysis
         SamplesofInterest <- names(anallist)[which(sapply(1:length(anallist), function(x) { (analysis %in% anallist[[x]]) } ) == TRUE)]
         for (ad in SamplesofInterest){
@@ -124,10 +128,6 @@ make_metagenomeSeq_experiments<-function(pheno=NULL, list.data=NULL, onlyanalyse
         }
         #Take into account that the phenotable might contain less samples
         phenoanal <- pheno[SamplesofInterest, ]
-
-        #subset doses to contain only the analysis wanted
-        analysisdoses <- NULL
-        analysisdoses <- list()
 
         featureall <- bind_rows(analysisdoses, .id = "id")
         featureall[is.na(featureall)] <- 0

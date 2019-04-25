@@ -18,12 +18,12 @@ Use: $(basename "$0") [options] -i aminoacids.fasta
 
 "
 
-version="0.32"
+version="0.33"
 
 message_ver="
 
 dointerproBW.sh ver $version
-by John McCulloch MAR-2019
+by John McCulloch APR-2019
 
 "
 #Set defaults
@@ -59,7 +59,7 @@ shift $(($OPTIND - 1))
 
 #Find executables or die.
 echo "You are on Biowulf."
-module load java || die "Could not load java module."
+module load java/1.8.0_211 || die "Could not load java module."
 module load interproscan/5.29-68.0 || die "Could not load interproscan module."
 
 #Generate sbatch script

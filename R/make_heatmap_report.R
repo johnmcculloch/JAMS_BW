@@ -12,6 +12,10 @@ make_heatmap_report<-function(report="comparative", project=NULL, expvec=NULL, u
     }
     expvec2<-expvec[usefulexp]
 
+    if (is.null(applyfilters)){
+        applyfilters<-"none"
+    }
+
     #Set variables
     variables_disc<-variable_list$discrete
     variables_bin<-variable_list$binary
@@ -89,7 +93,7 @@ make_heatmap_report<-function(report="comparative", project=NULL, expvec=NULL, u
                     flog.info(paste("Plotting", names(expvec2)[a], "relabund heatmaps of features most different between", cmp))
                     plot.new()
                     grid.table(c(names(expvec2)[a], "Features most different", paste("between", cmp), "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
-                    
+
                     mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]], heatpalette="diverging", hmtype=report, hmasPA=FALSE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
                     compvec <- append(compvec, mycomp, after=length(compvec))
@@ -106,7 +110,7 @@ make_heatmap_report<-function(report="comparative", project=NULL, expvec=NULL, u
                 } else if (report == "PA"){
                     plot.new()
                     grid.table(c(names(expvec2)[a], "Features present or absent", paste("between", cmp), "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
- 
+
                     mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]],  heatpalette="diverging", hmtype=report, hmasPA=TRUE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
                     compvec <- append(compvec, mycomp, after=length(compvec))
@@ -142,9 +146,9 @@ make_heatmap_report<-function(report="comparative", project=NULL, expvec=NULL, u
                         } else if (report == "PA"){
                             plot.new()
                             grid.table(c(names(expvec2)[a], "Features present or absent", paste("between", cmp), paste("Subset by", vs)), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
- 
+
                             mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]], subsetby=vs, heatpalette="diverging", hmtype=report, hmasPA=TRUE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
-                                
+
                             compvec <- append(compvec, mycomp, after=length(compvec))
 
                         } #Type of report conditional
