@@ -1,3 +1,6 @@
+| ![](https://github.com/johnmcculloch/JAMS_BW/wiki/wikimedia/JAMSlogo.png) | ![](https://github.com/johnmcculloch/JAMS_BW/wiki/wikimedia/JAMSwords.png) |
+| ---- | ---- |
+
 # JAMS_BW
 Just a Microbiology System (JAMS) - a suite for analyzing microbiological sequencing data for use on NIH HPC systems (Biowulf)
 
