@@ -282,7 +282,7 @@ save.image(file = opt$projimage)
 
 #Add some contig statistics
 seqstats<-get_sequence_stats(sequences=opt$NHcontigs_sequence)
-colnames(seqstats)[which(colnames(seqstats) == "Sequence")]<-"Contig"
+colnames(seqstats)[which(colnames(seqstats) == "Sequence")] <- "Contig"
 opt$contigsdata<-left_join(opt$contigsdata, seqstats)
 save.image(file = opt$projimage)
 
@@ -323,13 +323,13 @@ export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledi
 save.image(file = opt$projimage)
 
 #Do specific blast-based analyses
-opt<-blast_databases(opt=opt, blastanalyses=c("resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb"))
-objectstoexport<-names(opt)[names(opt) %in% c("resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb")]
-export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
+opt<-blast_databases(opt=opt, blastanalyses = opt$blastanalyses)
+objectstoexport<-names(opt)[names(opt) %in% opt$blastanalyses]
+export_from_list(objlist=opt, objnames = objectstoexport, destination = opt$sampledir)
 save.image(file = opt$projimage)
 
 #Get feature stats
-opt<-add_blast_results_to_featuredata(opt=opt, blastanalyses=c("resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb"))
+opt<-add_blast_results_to_featuredata(opt=opt, blastanalyses=opt$blastanalyses)
 opt<-get_feature_stats(opt=opt)
 objectstoexport<-names(opt)[names(opt) %in% c("featuredata", "ucobias")]
 export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
@@ -353,7 +353,7 @@ save.image(file = opt$projimage)
 opt$endtime<-Sys.time()
 opt<-gather_run_info(opt=opt)
 opt<-consolidate_tables(opt=opt)
-objectstoexport<-names(opt)[names(opt) %in% c("projinfo", "taxa_16S_cons", "resfinder", "plasmidfinder")]
+objectstoexport <- names(opt)[names(opt) %in% c("projinfo", "taxa_16S_cons", opt$blastanalyses)]
 export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
 save.image(file = opt$projimage)
 
@@ -393,7 +393,7 @@ if(opt$analysis == "isolate") {
 make_jams_file(opt=opt, outdir=opt$outdir)
 
 #Plot report
-print_jams_report(opt=opt, elements=c("readplots", "taxonomy", "SixteenSid", "resfinder", "plasmidfinder", "vfdb", "func"))
+print_jams_report(opt=opt, elements=c("readplots", "taxonomy", "SixteenSid", opt$blastanalyses, "func"))
 
 #Cleanup and compress project
 setwd(opt$sampledir)
