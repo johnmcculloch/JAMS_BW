@@ -34,7 +34,7 @@ blast_databases <- function(opt=NULL, blastanalyses=NULL){
             if(file.exists(file.path(blastdbori, "lookup.tsv"))){
                 lookup <- read.table(file=file.path(blastdbori, "lookup.tsv"), sep="\t", header=TRUE, stringsAsFactors=FALSE)
             } else {
-                data(resfinderlookup)
+                lookup <- NULL
             }
 
             #Find out if db is protein or DNA
@@ -72,7 +72,7 @@ blast_databases <- function(opt=NULL, blastanalyses=NULL){
                         blastout <- left_join(blastout, lookup, by="Accession")
                         blastout[is.na(blastout[])] <- "none"
                     }
-                    nextopt <- (length(names(opt))+1)
+                    nextopt <- (length(names(opt)) + 1)
                     opt[[nextopt]] <- as.data.frame(blastout)
                     names(opt)[nextopt] <- blastanalysis
                } else {
