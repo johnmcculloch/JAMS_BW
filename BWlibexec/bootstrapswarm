@@ -4,7 +4,7 @@
 message_use="
 bootstrapswarm.sh
 By John McCulloch
-Splits a swarm file into chunks of size n and launches each batch on Biowulf with a dependency upon the completion of the preceding chunk. 
+Splits a swarm file into chunks of size n and launches each batch on Biowulf with a dependency upon the completion of the preceding chunk.
 
 Use: $(basename "$0") -s file.swarm -l lines_per_chunk -t CPUs_per_task -m Mem_per_task -g Gigabytes_for_lscratch
 -h Help
@@ -14,8 +14,8 @@ Use: $(basename "$0") -s file.swarm -l lines_per_chunk -t CPUs_per_task -m Mem_p
 -t How many CPUs per task do you want to launch? [ Default = 32 ]
 -m How many gigabytes of memory per task do you want to request? [ Default = 96 ]
 -g How many gigabytes of disk space do you want for lscratch for each chunk? [ Default = 500 ]
--j slurm job id to add as initial depdndency for first batch 
--w Modules needed for running swarm
+-j slurm job id to add as initial depdndency for first batch
+-w Modules needed for running swarm [ Default = R]
 
 "
 
@@ -29,7 +29,7 @@ threads=32
 memGB=96
 lscratch=500
 swarmfile=""
-modules=""
+modules="R"
 jobid=""
 
 #Get options
@@ -69,9 +69,9 @@ then
 fi
 
 #Build core command
-coreswarmcmd="swarm -g $memGB -t $threads --time 22:00:00 --partition=norm,ccr --gres=lscratch:$lscratch" 
+coreswarmcmd="swarm -g $memGB -t $threads --time 22:00:00 --partition=norm,ccr --gres=lscratch:$lscratch"
 
-if [ "$modules" != "" ] 
+if [ "$modules" != "" ]
 then
     coreswarmcmd=`echo $coreswarmcmd --module $modules`
 fi
@@ -96,7 +96,7 @@ do
             finalcommand="$coreswarmcmd --dependency=afterany:$jobid -f $currswarm"
         fi
     else
-        finalcommand="$coreswarmcmd --dependency=afterany:$currjob -f $currswarm"    
+        finalcommand="$coreswarmcmd --dependency=afterany:$currjob -f $currswarm"
     fi
 
     echo "Launching chunk $nsplit with command: $finalcommand"

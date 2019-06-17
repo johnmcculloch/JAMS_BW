@@ -8,7 +8,7 @@ suppressPackageStartupMessages(library(benchmarkme))
 #####################################
 # Define System-specific Functions ##
 #####################################
-if((.Platform$OS.type) != "unix"){
+if ((.Platform$OS.type) != "unix"){
     stop("JAMS only works on UNIX. Install Linux and try again.")
 }
 
@@ -21,10 +21,10 @@ if(nchar(slurmjobid) < 3){
    #Define appropriate functions for non-slurm system
    detectBatchCPUs <- function() {
         ncores <- detectCores()
-        if (is.na(ncores)) { 
+        if (is.na(ncores)) {
             stop("Could not determine how many CPUs you have. Aborting.")
-        } 
-        return(ncores) 
+        }
+        return(ncores)
     }
 
     detectAvailRAM <- function(){
@@ -36,21 +36,21 @@ if(nchar(slurmjobid) < 3){
 } else {
     print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
     #Define appropriate functions for slurm system
-    detectBatchCPUs <- function() { 
-        ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")) 
-        if (is.na(ncores)) { 
-            ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE")) 
-        } 
-        if (is.na(ncores)) { 
+    detectBatchCPUs <- function() {
+        ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+        if (is.na(ncores)) {
+            ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE"))
+        }
+        if (is.na(ncores)) {
             stop("Could not determine how many CPUs you have. Aborting.")
-        } 
-        return(ncores) 
+        }
+        return(ncores)
     }
 
     detectAvailRAM <- function(){
-        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU")) 
-        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE")) 
-        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK")) 
+        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
+        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
+        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
 
         if(!(is.na(mempernode))){
             totmem <- mempernode
@@ -62,7 +62,6 @@ if(nchar(slurmjobid) < 3){
 
         return(totmembytes)
     }
-
 }
 
 ############################
@@ -93,13 +92,13 @@ JAMSauthors <- as.character(as.person(packageDescription("JAMS")$Author))
 # Get options from args #
 #########################
 #Define defaults
-defopt<-list()
-defopt$verstr<-paste0("buildJAMSk2db v", packageVersion("JAMS"))
-defopt$outdir<-getwd()
-defopt$dbname<-"JAMSk2db32"
-defopt$dbqual<-"all"
-defopt$maxsizeGB<-32
-defopt$threads<-detectBatchCPUs()
+defopt <- list()
+defopt$verstr <- paste0("buildJAMSk2db v", packageVersion("JAMS"))
+defopt$outdir <- getwd()
+defopt$dbname <- "JAMSk2db32"
+defopt$dbqual <- "all"
+defopt$maxsizeGB <- 32
+defopt$threads <- detectBatchCPUs()
 
 option_list <- list(
     make_option(c("-o", "--outdir"), default=defopt$outdir, action="store",
@@ -107,7 +106,7 @@ option_list <- list(
     make_option(c("-n", "--dbname"), default=defopt$dbname, action="store",
                 help = str_c("name for database (default: ", defopt$dbname, ")")),
     make_option(c("-q", "--dbqual"), default=defopt$dbqual, action="store",
-                help = str_c("quality of genomes to include in the database. Use ref for including only reference and representative genomes in GenBank, or all for all genomes, except those flagged as low quality by NCBI. (default: ", defopt$dbqual, ")")),                
+                help = str_c("quality of genomes to include in the database. Use ref for including only reference and representative genomes in GenBank, or all for all genomes, except those flagged as low quality by NCBI. (default: ", defopt$dbqual, ")")),
     make_option(c("-m", "--maxsizeGB"), default=NULL, action="store",
                 help = str_c("output Maximum size of kraken2 database to be built, in Gb (default: ", defopt$maxsizeGB, ")")),
     make_option(c("-t", "--threads"), default=defopt$threads, action="store",
@@ -132,18 +131,18 @@ if (!is.null(opt$version)) {
 }
 
 #Get Script path
-opt$bindir<-getScriptPath()
+opt$bindir <- getScriptPath()
 #detect resources
-opt$totmembytes<-detectAvailRAM()
-opt$maxsizebytes<-(opt$maxsizeGB)*1000000000
+opt$totmembytes <- detectAvailRAM()
+opt$maxsizebytes <- (as.numeric((opt$maxsizeGB)) * 1000000000)
 
 #Fix path relativity
-fixrelpath<-function(JAMSpath=NULL){
+fixrelpath <- function(JAMSpath = NULL){
     require(R.utils)
-    if(!(isAbsolutePath(JAMSpath))){
-        fixedpath<-getAbsolutePath(JAMSpath)
+    if (!(isAbsolutePath(JAMSpath))){
+        fixedpath <- getAbsolutePath(JAMSpath)
     } else {
-        fixedpath<-JAMSpath
+        fixedpath <- JAMSpath
     }
 
     return(fixedpath)
@@ -151,18 +150,18 @@ fixrelpath<-function(JAMSpath=NULL){
 
 for(pathtofix in c("outdir")){
     if(!is.null(opt[[pathtofix]])){
-        opt[[pathtofix]]<-fixrelpath(opt[[pathtofix]])
+        opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
     }
 }
 
 # give help if needed input option not provided
-if(is.null(opt$outdir)) {
+if (is.null(opt$outdir)) {
     print("You must supply the JAMS database directory.")
-    parse_args(OptionParser(option_list=option_list), c("-h"))
+    parse_args(OptionParser(option_list = option_list), c("-h"))
     q()
 } else {
     #Stop if unreasonable settings
-    if(opt$maxsizebytes > (0.9 * opt$totmembytes)){
+    if (opt$maxsizebytes > (0.9 * opt$totmembytes)){
         flog.info(paste("The kraken2 database size you are asking for,", opt$maxsizeGB, "is more than 90% of the RAM memory available. Choose another setting or running on another machine. Aborting now."))
         q()
     }
@@ -173,7 +172,7 @@ deps <- c("kraken2")
 missing = FALSE
 for (dep in deps) {
     cmd = dep
-    if (system(str_c("which ", cmd), ignore.stdout = TRUE)==1) { # not found
+    if (system(str_c("which ", cmd), ignore.stdout = TRUE) == 1) { # not found
         flog.info(str_c("You are missing ", dep))
         missing = TRUE
     }
@@ -189,11 +188,11 @@ if (missing) {
 ###################
 suppressPackageStartupMessages(library(JAMS))
 flog.info("Creating directory to hold kraken2 database.")
-opt$k2db<-file.path(opt$outdir, opt$dbname)
-if(!dir.exists(opt$k2db)){
+opt$k2db <- file.path(opt$outdir, opt$dbname)
+if (!dir.exists(opt$k2db)){
     dir.create(opt$k2db, recursive = TRUE)
 } else {
-    flog.info(paste("The specified kraken2 directory,", opt$k2db,",already exists. Please choose another path or delete."))
+    flog.info(paste("The specified kraken2 directory,", opt$k2db, ",already exists. Please choose another path or delete."))
     q()
 }
 setwd(opt$k2db)
@@ -201,95 +200,120 @@ setwd(opt$k2db)
 opt$projimage<-file.path(opt$k2db, ".RData")
 save.image(opt$projimage)
 
+############################
+## Get Taxonomy from NCBI
+flog.info("Getting taxonomy from GenBank with kraken2")
+opt$taxonomydb <- file.path(opt$k2db, "taxonomy")
+dir.create(opt$taxonomydb, recursive = TRUE)
+setwd(opt$taxonomydb)
+
+opt$ncbiftp <- "ftp.ncbi.nlm.nih.gov"
+taxdumpfile <- "taxdump.tar.gz"
+taxdumpurl <- paste0("https://", opt$ncbiftp, "/pub/taxonomy/", taxdumpfile)
+
+tryCatch(download.file(taxdumpurl, destfile = taxdumpfile), error = function(e) print(paste("Unable to download", taxdumpfile)))
+system("tar -zxvf taxdump.tar.gz")
+
+#Check that all necessary files are present
+wantedtaxfiles <- paste(c("delnodes", "division", "gencode", "merged", "names", "nodes"), "dmp", sep=".")
+
+if (!(all(file.exists(wantedtaxfiles)))){
+    flog.info(paste("Could not download taxfiles", paste(wantedtaxfiles, collapse=", "), "from NCBI. Aborting."))
+    q()
+}
+flog.info("Taxonomy downloaded from NCBI.")
+
+save.image(opt$projimage)
+
 ##############
-## Get genomes - delete all this chunk to #Build library from options section if this does not work.
+## Get genomes
 
 #Define useful functions beforehand
-decompress_rename_and_count<-function(assembly_summary_line){
+decompress_rename_and_count <- function(assembly_summary_line){
     #Gunzip
     gunzip(assembly_summary_line$destfn)
     #Rename
-    newfn<-gsub(".gz$", "", assembly_summary_line$destfn)
-    newheader<-paste(assembly_summary_line$assembly_accession, "kraken:taxid", assembly_summary_line$taxid, sep="|")    
-    sedcmd<-paste("sed", "-i", "-e", paste0("\'", paste0("s/^>.*/>", newheader, "/"), "\'"), newfn, collapse=" ")
+    newfn <- gsub(".gz$", "", assembly_summary_line$destfn)
+    newheader <- paste(assembly_summary_line$assembly_accession, "kraken:taxid", assembly_summary_line$taxid, sep = "|")
+    sedcmd <- paste("sed", "-i", "-e", paste0("\'", paste0("s/^>.*/>", newheader, "/"), "\'"), newfn, collapse = " ")
     system(sedcmd)
     #Count bases
-    fastaheader<-paste0("\'", ">", "\'")
-    newln<-paste0("\'", "\n", "\'")
-    countgsargs<-c(newfn, "|", "grep", "-v", fastaheader, "|" , "tr", "-d", newln, "|", "wc", "-m")
-    gensize<-system2("cat", args=countgsargs, stdout=TRUE)
-    
+    fastaheader <- paste0("\'", ">", "\'")
+    newln <- paste0("\'", "\n", "\'")
+    countgsargs <- c(newfn, "|", "grep", "-v", fastaheader, "|" , "tr", "-d", newln, "|", "wc", "-m")
+    gensize <- system2("cat", args = countgsargs, stdout = TRUE)
+
     return(gensize)
 }
 
 #Create master genome directory
-opt$genomesdir<-file.path(opt$k2db, "genomes")
+opt$genomesdir <- file.path(opt$k2db, "genomes")
 dir.create(opt$genomesdir)
 setwd(opt$genomesdir)
-opt$master_assembly_summary<-NULL
-opt$wanted_host_species<-c("Homo_sapiens", "Mus_musculus")
+opt$master_assembly_summary <- NULL
+opt$wanted_host_species <- c("Homo_sapiens", "Mus_musculus")
 
-if(opt$dbqual == "ref"){
+if (opt$dbqual == "ref"){
     flog.info("Will only include representative and reference genomes in the database.")
-    refseq_category_upto_touse<-"representative"
+    refseq_category_upto_touse <- "representative"
 } else {
     flog.info("Will only include all genomes which have not been flagged as having issues by NCBI in the database.")
-    refseq_category_upto_touse<-NULL
+    refseq_category_upto_touse <- NULL
 }
 
-for(organisms in c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebrate_mammalian")){
+for (organisms in c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebrate_mammalian")){
     flog.info(paste("Downloading and processing", organisms, "genomes."))
-    opt$currbugdir<-file.path(opt$genomesdir, organisms)
+    opt$currbugdir <- file.path(opt$genomesdir, organisms)
     dir.create(opt$currbugdir)
     setwd(opt$currbugdir)
 
     #Get list of what to download
     if(organisms == "bacteria"){
-        assembly_upto <- "Scaffold" 
+        assembly_upto <- "Scaffold"
     } else {
         assembly_upto <- "Contig"
     }
 
     #Limit to wanted host species
-    if(organisms == "vertebrate_mammalian"){
+    if (organisms == "vertebrate_mammalian"){
         bugstodownload<-NULL
         genomestodownload<-get_genomes_NCBI(organisms=organisms, nobs=TRUE, assembly_upto="Chromosome", refseq_category_upto=NULL, fileformat="fasta", outputdir=opt$currbugdir, simulate=TRUE)
         genomestodownload<-subset(genomestodownload, organism_name %in% opt$wanted_host_species)
-        for(host in opt$wanted_host_species){
-            bestmatch<-subset(genomestodownload, organism_name %in% host)
-            if(length(grep("GRC", bestmatch$asm_name)) < 1){
+        for (host in opt$wanted_host_species){
+            bestmatch <- subset(genomestodownload, organism_name %in% host)
+            if (length(grep("GRC", bestmatch$asm_name)) < 1){
                 bestmatch<-bestmatch[order(bestmatch$seq_rel_date, decreasing = TRUE),][1,]
             } else {
-                bestmatch<-bestmatch[grep("GRC", bestmatch$asm_name), ][1,]
+                bestmatch <- bestmatch[grep("GRC", bestmatch$asm_name), ][1,]
             }
-            bugstodownload<-rbind(bugstodownload, bestmatch)
+            bugstodownload <- rbind(bugstodownload, bestmatch)
         }
 
     } else {
-        bugstodownload<-get_genomes_NCBI(organisms=organisms, nobs=TRUE, assembly_upto=assembly_upto, refseq_category_upto=refseq_category_upto_touse, fileformat="fasta", outputdir=opt$currbugdir, simulate=TRUE)
+        bugstodownload <- get_genomes_NCBI(organisms = organisms, nobs = TRUE, assembly_upto = assembly_upto, refseq_category_upto = refseq_category_upto_touse, fileformat = "fasta", outputdir = opt$currbugdir, simulate = TRUE)
     }
 
-    bugprop<-as.data.frame(table(bugstodownload$refseq_category))
-    colnames(bugprop)<-c("Quality", "Freq")
-    totalbugs<-sum(bugprop$Freq)
-    bugprop$pct<-round((bugprop$Freq/totalbugs)*100, 1)
+    bugprop <- as.data.frame(table(bugstodownload$refseq_category))
+    colnames(bugprop) <- c("Quality", "Freq")
+    totalbugs <- sum(bugprop$Freq)
+    bugprop$pct <- round((bugprop$Freq/totalbugs)*100, 1)
     flog.info(paste("There are", totalbugs, "to download."))
     flog.info(paste("Genome deposit categories for", organisms,"are:", paste0(paste(bugprop$Quality, bugprop$pct, "%"), collapse=", ")))
 
     #Rename output files for brevity
-    bugstodownload$destfn<-file.path(opt$currbugdir, paste(bugstodownload$assembly_accession, "fna.gz", sep="."))
+    bugstodownload$destfn <- file.path(opt$currbugdir, paste(bugstodownload$assembly_accession, "fna.gz", sep="."))
     #Download files
     flog.info(paste("Downloading all", organisms, "genomes matching criteria. Please be patient."))
 
-    dnl<-sapply(1:nrow(bugstodownload), function (x) { tryCatch(download.file(bugstodownload$url[x], destfile=bugstodownload$destfn[x] ), error = function(e) print(paste("Unable to download", bugstodownload$url[x]))) } )
+    dnl <- sapply(1:nrow(bugstodownload), function (x) { tryCatch(download.file(bugstodownload$url[x], destfile=bugstodownload$destfn[x] ), error = function(e) print(paste("Unable to download", bugstodownload$url[x]))) } )
 
     flog.info(paste("All", organisms, "genomes have been downloaded."))
     #divide into chunks and parallel process gunzip and change headers
     flog.info(paste("Decompressing genomes and fixing headers to contain TaxIDs. Please be patient."))
-    
-    #Only parallelize if it is worth it.
+
+    #Only parallelize if it is worth to do so.
     if(nrow(bugstodownload) > 1000){
-        chunksize=(opt$threads * 4)
+        chunksize = (opt$threads * 4)
         chunk2 <- function(x,n){ split(x, cut(seq_along(x), n, labels = FALSE)) }
         chunkcoords<-chunk2(1:nrow(bugstodownload), (nrow(bugstodownload))/chunksize)
         numchunks<-length(chunkcoords)
@@ -308,7 +332,7 @@ for(organisms in c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebr
         }
     } else {
         flog.info(paste("There are", nrow(bugstodownload), "genomes to decompress and fix. This is less than 1000, so doing this serially."))
-        gsizelist<-lapply(1:nrow(bugstodownload), function (x) { decompress_rename_and_count(bugstodownload[x, ]) })
+        gsizelist <- lapply(1:nrow(bugstodownload), function (x) { decompress_rename_and_count(bugstodownload[x, ]) })
         bugstodownload$gensize<-unlist(gsizelist)
         #Append current chunk info to master_assembly_summary
         opt$master_assembly_summary<-rbind(bugstodownload, opt$master_assembly_summary)
@@ -318,18 +342,11 @@ for(organisms in c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebr
 
 opt$master_assembly_summary[is.na(opt$master_assembly_summary)] <- 0
 opt$master_assembly_summary[] <- lapply(opt$master_assembly_summary, as.character)
-opt$master_assembly_summary$gensize<-as.numeric(opt$master_assembly_summary$gensize)
+opt$master_assembly_summary$gensize <- as.numeric(opt$master_assembly_summary$gensize)
 
 flog.info("Finished downloading all genomes.")
 save.image(opt$projimage)
 
-############################
-## Get Taxonomy from NCBI
-setwd(opt$k2db)
-flog.info("Getting taxonomy from GenBank with kraken2")
-krakenargs<-c("--download-taxonomy", "--db", opt$k2db)
-system2("kraken2-build", args=krakenargs, stdout = TRUE, stderr = TRUE)
-opt$taxonomydb=file.path(opt$k2db, "taxonomy")
 
 ##########################################
 # derive a valid taxid to taxonomy table
@@ -484,7 +501,7 @@ find_lineage<-function(taxidint){
     }
     lineage<-rev(lineagevec)
     lineagetaxids<-rev(taxidvec)
-    
+
     lineagedf<-data.frame(taxid=lineagetaxids, taxon=lineage, rank=names(lineagetaxids), stringsAsFactors = FALSE)
 
     #Prune stuff below superkingdom
@@ -499,7 +516,11 @@ find_lineage<-function(taxidint){
         genuspos<-which(lineagedf$rank == "genus")
         if(!is.na(genuspos) & (nrow(lineagedf) > genuspos)){
             lineagedf$rank[genuspos + 1]<-"species"
+        } else {
+            #Assume the last row is of species. This is unreasonable, but extremely rare in NCBI taxonomy, so probably will not affect taxonomic classification much. Lamentably, there are terminal NCBI taxonomic lineages without species or genus.
+            lineagedf$rank[length(lineagedf$rank)] <- "species"
         }
+
         speciespos<-which(lineagedf$rank == "species")
     }
 
@@ -582,11 +603,10 @@ flog.info(paste("The list of non-redundant Tax IDs present was split into", numc
 taxtable<-NULL
 for(cnk in 1:numchunks){
     flog.info(paste0("Processing chunk ", cnk,"/", numchunks, " using ", (opt$threads - 2), " threads ..."))
-
     currchunk<-taxidpresent[chunkcoords[[cnk]]]
     currchunk<-currchunk[which(!(is.na(currchunk)))]
     #Deconvolute
-    currtaxlist<-mclapply(1:length(currchunk), function (x) { find_lineage(currchunk[x]) }, mc.cores = (opt$threads - 2))
+    currtaxlist<-mclapply(1:length(currchunk), function (x) { tryCatch(find_lineage(currchunk[x]), error = function(e) print(paste("Unable to process lineage for taxid", currchunk[x]))) }, mc.cores = (opt$threads - 2))
     currtaxlist<-currtaxlist[sapply(currtaxlist, function(x){!(is.null(x))})]
     currtaxtable<-plyr::ldply(currtaxlist, rbind)
     currtaxtable<-as.data.frame(currtaxtable)
@@ -623,7 +643,7 @@ taxtable<-rbind(unclasstaxtable, taxtable)
 for(tl in 1:length(validtaxlvls)){
     if(length(which(taxtable[ , validtaxlvls[tl]] %in% paste0(validtaxtags[tl], c("Missing", "Unclassified")))) == nrow(taxtable)){
         flog.info(paste("Eliminating taxlevel", validtaxlvls[tl], "because all elements are either missing or unclassified."))
-        taxtable[ , validtaxlvls[tl]]<-NULL 
+        taxtable[ , validtaxlvls[tl]]<-NULL
     }
 }
 
@@ -696,7 +716,6 @@ for(organisms in c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebr
     fna<-paste0("\'", "*.fna", "\'")
     addcmd<-paste0("find genomes/", organisms, "/ -name ", fna, " -print0 | xargs -0 -P ", opt$threads, " -I{} -n1 kraken2-build --add-to-library {} --db ", opt$k2db, " 2>> add.dmp")
     system(addcmd)
-
 }
 
 ##############################################

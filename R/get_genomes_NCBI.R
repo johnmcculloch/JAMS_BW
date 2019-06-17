@@ -161,7 +161,7 @@ get_genomes_NCBI<-function(organisms="bacteria", assembly_summary=NULL, outputdi
         #Now download stuff wanted to the output dir
         if(simulate == FALSE){
             print("Downloading genomes")
-            dnl<-sapply(1:nrow(wanted_assembly_summary), function (x) { tryCatch(download.file(wanted_assembly_summary$url[x], destfile=wanted_assembly_summary$destfn[x] ), error = function(e) print(paste("Unable to download", wanted_assembly_summary$url[x]))) } )
+            dnl <- sapply(1:nrow(wanted_assembly_summary), function (x) { tryCatch(download.file(wanted_assembly_summary$url[x], destfile = wanted_assembly_summary$destfn[x] ), error = function(e) print(paste("Unable to download", wanted_assembly_summary$url[x]))) } )
         }
 
     } else {

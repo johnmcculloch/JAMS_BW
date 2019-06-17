@@ -9,9 +9,9 @@ make_heatmap_report(report = "comparative", project = NULL,
   featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL,
   samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL,
   absolutemaxfeats = NULL, genomecompleteness = NULL,
-  variable_list = NULL, adjustpval = TRUE, list.data = NULL,
+  variable_list = NULL, adjustpval = NULL, list.data = NULL,
   hmasPA = FALSE, mgSeqnorm = FALSE, cdict = NULL,
-  showonlypbelow = NULL, makespreadsheets = FALSE,
+  showonlypbelow = 0.05, makespreadsheets = FALSE,
   makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4,
   nperm = 99, ...)
 }

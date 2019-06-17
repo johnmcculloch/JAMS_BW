@@ -3,19 +3,21 @@
 #' JAMSalpha function
 #' @export
 
-add_blast_results_to_featuredata<-function(opt=opt, blastanalyses=c("resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb")){
+add_blast_results_to_featuredata <- function(opt = opt, blastanalyses = NULL){
 
-    #Aggregate accessions serially
-    blastanalysislist<-lapply(blastanalyses, function(x) get_feature_to_blast_result_table(opt=opt, blastanalysis=x))
-    names(blastanalysislist)<-blastanalyses
+    if (!(is.null(blastanalyses))){
+        #Aggregate accessions serially
+        blastanalysislist <- lapply(blastanalyses, function(x) get_feature_to_blast_result_table(opt = opt, blastanalysis = x))
+        names(blastanalysislist) <- blastanalyses
 
-    #Redefine blast list to contain only elements with results
-    blastanalysislist<-blastanalysislist[sapply(blastanalysislist, function(x){!(is.null(x))})]
+        #Redefine blast list to contain only elements with results
+        blastanalysislist <- blastanalysislist[sapply(blastanalysislist, function(x) { !(is.null(x)) } )]
 
-    for(blastanalysis in names(blastanalysislist)){
-        opt$featuredata<-left_join(opt$featuredata, blastanalysislist[[blastanalysis]])
-        opt$featuredata[,blastanalysis]<-as.character(opt$featuredata[,blastanalysis])
-        opt$featuredata[,blastanalysis][is.na(opt$featuredata[,blastanalysis])] <- "none" 
+        for (blastanalysis in names(blastanalysislist)){
+            opt$featuredata <- left_join(opt$featuredata, blastanalysislist[[blastanalysis]])
+            opt$featuredata[, blastanalysis] <- as.character(opt$featuredata[, blastanalysis])
+            opt$featuredata[, blastanalysis][is.na(opt$featuredata[, blastanalysis])] <- "none"
+        }
     }
 
     return(opt)

@@ -4,9 +4,7 @@
 \alias{add_blast_results_to_featuredata}
 \title{add_interpro_to_featuredata}
 \usage{
-add_blast_results_to_featuredata(opt = opt,
-  blastanalyses = c("resfinder", "plasmidfinder", "napdos",
-  "serofinderH", "serofinderO", "vfdb"))
+add_blast_results_to_featuredata(opt = opt, blastanalyses = NULL)
 }
 \description{
 JAMSalpha function

@@ -2,12 +2,13 @@
 % Please edit documentation in R/plot_Ordination.R
 \name{plot_Ordination}
 \alias{plot_Ordination}
-\title{plot_Ordination(mgseqobj=NULL, glomby=NULL, subsetby=NULL, samplesToKeep=NULL, featuresToKeep=NULL, mgSeqnorm=FALSE, featmaxatleastPPM=0, featcutoff=c(0, 0), algorithm="PCA", colourby=NULL, shapeby=NULL, log2tran=TRUE, transp=TRUE, perplx=NULL, permanova=FALSE, ellipse=c(TRUE, FALSE, "auto"), plottit=NULL, plot3D=FALSE, theta=130, phi=60, cdict=NULL, grid = TRUE, forceaspectratio=NULL, ...)}
+\title{plot_Ordination(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, ...)}
 \usage{
 plot_Ordination(mgseqobj = NULL, glomby = NULL, subsetby = NULL,
   samplesToKeep = NULL, featuresToKeep = NULL, mgSeqnorm = FALSE,
-  featmaxatleastPPM = 0, featcutoff = c(0, 0), algorithm = "PCA",
-  colourby = NULL, shapeby = NULL, sizeby = NULL, log2tran = TRUE,
+  featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,
+  algorithm = "PCA", colourby = NULL, shapeby = NULL,
+  sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,
   transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE,
   plottit = NULL, plot3D = FALSE, theta = 130, phi = 60,
   cdict = NULL, grid = TRUE, forceaspectratio = NULL, ...)

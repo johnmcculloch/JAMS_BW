@@ -62,7 +62,6 @@ if(nchar(slurmjobid) < 3){
 
         return(totmembytes)
     }
-
 }
 
 ############################
@@ -138,7 +137,7 @@ option_list <- list(
     make_option(c("-S", "--seqtype"), default=defopt$seqtype, action="store",
                 help = str_c("choose sequence type (illuminape, illuminamp, pacbio, iontorrent, default: ", defopt$seqtype, ")")),
     make_option(c("-A", "--analysis"), default=defopt$analysis, action="store",
-                help = str_c("choose analysis type (metagenome, metatranscriptome, isolate, isolaternaseq, 16S default: ", defopt$analysis, ")")),
+                help = str_c("choose analysis type (metagenome, metatranscriptome, isolate, isolaternaseq, default: ", defopt$analysis, ")")),
     make_option(c("-w","--assembler"), default=defopt$assembler, action="store",
                 help = str_c("choose assembler (megahit, spades, default: ", defopt$assembler, ")")),
     make_option(c("-x", "--threads"), default=defopt$threads, action="store",
@@ -212,7 +211,7 @@ if (is.null(opt$dbdir)) {
         opt$totmembytes <- detectAvailRAM()
         flog.info(paste("You have", round((opt$totmembytes)/1000000000, 1), "Gigabytes of RAM memory"))
         flog.info(paste("You have", opt$threads, "CPUs to run on"))
-        opt <- check_resources(opt=opt)
+        opt <- check_resources(opt = opt)
     }
 }
 
@@ -230,12 +229,12 @@ flog.info(paste("Version", opt$verstr))
 flog.info(paste("By:", paste(JAMSauthors, collapse = "; ")))
 
 #If all is OK, then create the project directory structure
-opt$sampledir<-file.path(opt$outdir, paste0(opt$prefix, "_JAMS"))
+opt$sampledir <- file.path(opt$outdir, paste0(opt$prefix, "_JAMS"))
 flog.info("Creating Sample output directory")
 dir.create(opt$sampledir, showWarnings = FALSE, recursive = TRUE)
 
 #Define a working directory.
-if(is.null(opt$tmpdir)){
+if (is.null(opt$tmpdir)){
     #Try lscratch temp directory
     slurmtmpdir <- file.path("/lscratch", slurmjobid)
     if(dir.exists(slurmtmpdir)){
@@ -248,7 +247,7 @@ if(is.null(opt$tmpdir)){
     }
 }
 
-if(!(is.null(opt$tmpdir))){
+if (!(is.null(opt$tmpdir))){
     opt$tmpsampdir<-file.path(opt$tmpdir, paste(opt$prefix, "JAMStemp", sep="_"))
     dir.create(opt$tmpsampdir, showWarnings = FALSE, recursive = FALSE)
     flog.info(paste("Temporary Sample directory is", opt$tmpsampdir))
@@ -259,7 +258,7 @@ if(!(is.null(opt$tmpdir))){
 }
 
 
-opt$projimage<-file.path(opt$sampledir, ".RData")
+opt$projimage <- file.path(opt$sampledir, ".RData")
 
 flog.info(paste("Database directory is", opt$dbdir))
 flog.info(paste("Output directory is", opt$outdir))
@@ -272,114 +271,115 @@ flog.info(paste("Project type is", opt$analysis))
 ## Run JAMS pipeline ##
 #######################
 #Start the clock
-opt$starttime<-Sys.time()
+opt$starttime <- Sys.time()
 save.image(file = opt$projimage)
 
 #Obtain contigs
 setwd(opt$workdir)
-opt<-get_contigs(opt=opt)
+opt <- get_contigs(opt=opt)
 save.image(file = opt$projimage)
 
 #Add some contig statistics
-seqstats<-get_sequence_stats(sequences=opt$NHcontigs_sequence)
+seqstats <- get_sequence_stats(sequences=opt$NHcontigs_sequence)
 colnames(seqstats)[which(colnames(seqstats) == "Sequence")] <- "Contig"
-opt$contigsdata<-left_join(opt$contigsdata, seqstats)
+opt$contigsdata <- left_join(opt$contigsdata, seqstats)
 save.image(file = opt$projimage)
 
 #Functional annotation
-opt<-annotate_contigs(opt=opt)
+opt <- annotate_contigs(opt=opt)
 save.image(file = opt$projimage)
 
 #Launch interproscan if on a cluster
-if(nchar(slurmjobid) < 3){
+if (nchar(slurmjobid) < 3){
     flog.info("Skipping Interproscan. Interproscan in computationally very intensive and is best run on a computer cluster.")
 } else {
-    if(opt$skipipro == FALSE){
-        opt<-launch_interpro(opt=opt)
+    if (opt$skipipro == FALSE){
+        opt <- launch_interpro(opt=opt)
     } else {
         flog.info("Skipping Interproscan as requested in options.")
     }
 }
 
 #Classify 16Ss
-opt<-classify_16S_from_contigs(opt=opt)
+opt <- classify_16S_from_contigs(opt = opt)
 save.image(file = opt$projimage)
 
 #Evaluate assembly
-opt<-evaluate_assembly(opt=opt)
+opt <- evaluate_assembly(opt = opt)
 save.image(file = opt$projimage)
 
 #Get dose of each taxon and function
-if(opt$analysis %in% c("isolate", "isolaternaseq")){
-    classifyunassembled<-FALSE
+if (opt$analysis %in% c("isolate", "isolaternaseq")){
+    classifyunassembled <- FALSE
 } else {
-    classifyunassembled<-TRUE
+    classifyunassembled <- TRUE
 }
-opt<-get_contig_coverage(opt=opt, markduplicates=FALSE, classifyunassembled=classifyunassembled)
+opt <- get_contig_coverage(opt = opt, markduplicates = FALSE, classifyunassembled = classifyunassembled)
 
 #Bank information gathered
-objectstoexport<-names(opt)[names(opt) %in% c("contigsdata", "assemblystats", "contigperbasecoverage", "LKTdose")]
-export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
+objectstoexport <- names(opt)[names(opt) %in% c("contigsdata", "assemblystats", "contigperbasecoverage", "LKTdose")]
+export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
 save.image(file = opt$projimage)
 
 #Do specific blast-based analyses
-opt<-blast_databases(opt=opt, blastanalyses = opt$blastanalyses)
-objectstoexport<-names(opt)[names(opt) %in% opt$blastanalyses]
-export_from_list(objlist=opt, objnames = objectstoexport, destination = opt$sampledir)
+opt <- blast_databases(opt = opt, blastanalyses = opt$blastanalyses)
+objectstoexport <- names(opt)[names(opt) %in% opt$blastanalyses]
+export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
 save.image(file = opt$projimage)
 
 #Get feature stats
-opt<-add_blast_results_to_featuredata(opt=opt, blastanalyses=opt$blastanalyses)
-opt<-get_feature_stats(opt=opt)
-objectstoexport<-names(opt)[names(opt) %in% c("featuredata", "ucobias")]
-export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
+opt <- add_blast_results_to_featuredata(opt = opt, blastanalyses = opt$blastanalyses)
+opt <- get_feature_stats(opt = opt)
+objectstoexport <- names(opt)[names(opt) %in% c("featuredata", "ucobias")]
+export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
 save.image(file = opt$projimage)
 
 #Make functional analysis
-opt<-harvest_functions(opt=opt)
+opt <- harvest_functions(opt = opt)
 save.image(file = opt$projimage)
 
 #Compute readcounts if there are any reads
 if("readsdir" %in% names(opt)){
-    opt<-compute_readcounts(opt=opt)
+    opt <- compute_readcounts(opt = opt)
     #Save reads to outdir if applicable
-    bank_reads(opt=opt)
+    bank_reads(opt = opt)
 }
-objectstoexport<-names(opt)[names(opt) %in% c("interproscanoutput", "featuredose", "readstats")]
-export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
+
+objectstoexport <- names(opt)[names(opt) %in% c("interproscanoutput", "featuredose", "readstats")]
+export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
 save.image(file = opt$projimage)
 
 #End the analysis and gather information on the run
-opt$endtime<-Sys.time()
-opt<-gather_run_info(opt=opt)
-opt<-consolidate_tables(opt=opt)
+opt$endtime <- Sys.time()
+opt <- gather_run_info(opt = opt)
+opt <- consolidate_tables(opt = opt)
 objectstoexport <- names(opt)[names(opt) %in% c("projinfo", "taxa_16S_cons", opt$blastanalyses)]
-export_from_list(objlist=opt, objnames=objectstoexport, destination=opt$sampledir)
+export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
 save.image(file = opt$projimage)
 
 #Deal with Ucobias
 #Plot ucobias if proj is isolate and there seems to be contamination and split genomes
 if(opt$analysis == "isolate") {
-    LKTassemblystats<-subset(opt$assemblystats, TaxLevel=="LKT")
-    totnumgenomes<-sum(LKTassemblystats$ProbNumGenomes)
+    LKTassemblystats <- subset(opt$assemblystats, TaxLevel == "LKT")
+    totnumgenomes <- sum(LKTassemblystats$ProbNumGenomes)
     if(totnumgenomes > 1.6){
         print("Isolate might be contaminated. Plotting codon usage bias of different LKTs")
-        minPPM=5000
-        totcontigbases<-sum(opt$contigsdata$NumBases)
-        completegenomes<-subset(opt$assemblystats, TaxLevel == "LKT")
-        completegenomes<-as.character(subset(completegenomes, ProbNumGenomes > 0.2)[]$Taxon)
-        if(length(completegenomes) > 0){
-            opt$ucoplots<-compare_ucobias(featuredata=opt$featuredata, contigsdata=opt$contigsdata, taxlevel="LKT", taxaofinterest=completegenomes, ucobias=opt$ucobias, method="pca", frac=0.25)
+        minPPM = 5000
+        totcontigbases <- sum(opt$contigsdata$NumBases)
+        completegenomes <- subset(opt$assemblystats, TaxLevel == "LKT")
+        completegenomes <- as.character(subset(completegenomes, ProbNumGenomes > 0.2)[]$Taxon)
+        if (length(completegenomes) > 0){
+            opt$ucoplots <- compare_ucobias(featuredata = opt$featuredata, contigsdata = opt$contigsdata, taxlevel = "LKT", taxaofinterest = completegenomes, ucobias = opt$ucobias, method = "pca", frac = 0.25)
         }
-        opt<-deconvolute_contaminated_isolates(opt)
-        if(!(is.null(opt$wantedassemblies))){
-            levelinterest<-as.character(unique(opt$wantedassemblies$TaxLevel))
-            taxainterest<-as.character(unique(opt$wantedassemblies$Taxon))
+        opt <- deconvolute_contaminated_isolates(opt)
+        if (!(is.null(opt$wantedassemblies))){
+            levelinterest <- as.character(unique(opt$wantedassemblies$TaxLevel))
+            taxainterest <- as.character(unique(opt$wantedassemblies$Taxon))
             for(taxon in taxainterest){
-                contigsinterest<-opt$contigsdata[which(opt$contigsdata[ , levelinterest] == taxon), "Contig"]
-                wantedsequences<-opt$NHcontigs_sequence[contigsinterest]
-                targetname<-paste(opt$prefix, taxon, sep="_")
-                targetfilename<-paste(targetname, "fasta", sep=".")
+                contigsinterest <- opt$contigsdata[which(opt$contigsdata[ , levelinterest] == taxon), "Contig"]
+                wantedsequences <- opt$NHcontigs_sequence[contigsinterest]
+                targetname <- paste(opt$prefix, taxon, sep="_")
+                targetfilename <- paste(targetname, "fasta", sep=".")
                 flog.info(paste("Writing", targetfilename))
                 write.fasta(sequences = wantedsequences, names = names(wantedsequences), nbchar = 80, file.out = file.path(opt$sampledir, targetfilename))
             }
@@ -390,17 +390,17 @@ if(opt$analysis == "isolate") {
 }
 
 #Make a .jams file
-make_jams_file(opt=opt, outdir=opt$outdir)
+make_jams_file(opt = opt, outdir = opt$outdir)
 
 #Plot report
-print_jams_report(opt=opt, elements=c("readplots", "taxonomy", "SixteenSid", opt$blastanalyses, "func"))
+print_jams_report(opt = opt, elements = c("readplots", "taxonomy", "SixteenSid", opt$blastanalyses, "func"))
 
 #Cleanup and compress project
 setwd(opt$sampledir)
 unlink(c(opt$tmpsampdir, opt$iprodir, opt$covdir, opt$readsdir), recursive = TRUE)
 save.image(file = opt$projimage)
 setwd(opt$outdir)
-JAMStarball<-paste(paste0(opt$prefix, "_JAMS"), "tar", "gz", sep=".")
+JAMStarball <- paste(paste0(opt$prefix, "_JAMS"), "tar", "gz", sep=".")
 tarcmd<-paste("tar", "cf", "-", paste0(opt$prefix, "_JAMS"), "|", "pigz", "-9", "-p", opt$threads, ">", JAMStarball, collapse=" ")
 flog.info(paste("Compressing JAMS run for sample", opt$prefix))
 system(tarcmd)

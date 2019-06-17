@@ -22,8 +22,8 @@ require("stringr")
 jamsbinpath<-file.path(jamsdir, "libexec")
 jamsBWbinpath<-file.path(jamsdir, "BWlibexec")
 
-binexecs<-c("JAMSalpha", "JAMSbeta")
-BWbinexecs<-c("bankit","bootstrapswarm","joinlanesIlluminaBaseSpaceProject","makeswarmJAMS")
+binexecs<-c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db")
+BWbinexecs<-c("JAMSfullservice", "bankit", "bootstrapswarm", "joinlanesIlluminaBaseSpaceProject", "makeswarmJAMS")
 for(binexec in binexecs){
     sourcepath<-file.path(jamsbinpath, binexec)
     targetpath<-file.path(homefolder, "bin", binexec)
@@ -38,7 +38,6 @@ for(BWbinexec in BWbinexecs){
     print(paste("Linking executable to $HOME/bin with", "ln", "-s", sourcepath, targetpath))
     system(paste("ln", "-s", sourcepath, targetpath))
 }
-
 
 #Check if linuxbrew is installed, else halt
 if((system(str_c("which brew"), ignore.stdout = TRUE)) == 1){
@@ -56,7 +55,5 @@ BiocManager::install(pkgs=bioconductordeps, update = FALSE, ask=FALSE)
 setwd(jamsdir)
 devtools::install(upgrade=FALSE)
 
-
 #Install Linuxbrew dependencies
 system(paste("bash", file.path("BWlibexec", "install_brew_dependencies.sh")))
-

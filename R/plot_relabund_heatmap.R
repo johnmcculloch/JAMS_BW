@@ -3,7 +3,7 @@
 #' Plots relative abundance heatmaps annotated by the metadata
 #' @export
 
-plot_relabund_heatmap<-function(mgseqobj=NULL, glomby=NULL, heatpalette="diverging", hmtype=NULL, hmasPA=FALSE, compareby=NULL, invertbinaryorder=FALSE, ntop=NULL, ordercolsby=NULL, colcategories=NULL, cluster_rows=FALSE, subsetby=NULL, applyfilters=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, adjustpval=FALSE, showonlypbelow=NULL, showpval=TRUE, showl2fc=TRUE, maxl2fc=NULL, minl2fc=NULL, genomecompleteness=NULL, list.data=NULL, addtit=NULL, scaled=FALSE, mgSeqnorm=FALSE, cdict=NULL, maxnumheatmaps=NULL, numthreads=4, nperm=99, statsonlog=TRUE, ignoreunclassified=FALSE, returnstats=TRUE, ...){
+plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diverging", hmtype=NULL, hmasPA=FALSE, compareby=NULL, invertbinaryorder=FALSE, ntop=NULL, ordercolsby=NULL, colcategories=NULL, cluster_rows=FALSE, subsetby=NULL, applyfilters=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, adjustpval=FALSE, showonlypbelow=NULL, showpval=TRUE, showl2fc=TRUE, maxl2fc=NULL, minl2fc=NULL, genomecompleteness=NULL, list.data=NULL, addtit=NULL, scaled=FALSE, mgSeqnorm=FALSE, cdict=NULL, maxnumheatmaps=NULL, numthreads=4, nperm=99, statsonlog=TRUE, ignoreunclassified=FALSE, returnstats=TRUE, ...){
 
     #Get appropriate object to work with
     obj <- mgseqobj
@@ -55,6 +55,9 @@ plot_relabund_heatmap<-function(mgseqobj=NULL, glomby=NULL, heatpalette="divergi
                 genomecompleteness <- NULL
                 minl2fc <- 2
             }
+        } else {
+          featcutoff <- c(0, 0)
+          genomecompleteness <- NULL
         }
     }
 
@@ -82,7 +85,7 @@ plot_relabund_heatmap<-function(mgseqobj=NULL, glomby=NULL, heatpalette="divergi
     #subset by metadata column
     for (sp in 1:length(subset_points)){
         if (!(is.null(subsetby))){
-            samplesToKeep <- which((pData(obj)[,which(colnames(pData(obj))==subsetby)])==subset_points[sp])
+            samplesToKeep <- which((pData(obj)[,which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])
             print(paste("Plotting within", subset_points[sp]))
             colcategories <- colcategories[!(colcategories %in% subsetby)]
             subsetname <- subset_points[sp]
@@ -129,7 +132,7 @@ plot_relabund_heatmap<-function(mgseqobj=NULL, glomby=NULL, heatpalette="divergi
                 }
             }
 
-            currobj <- filter_experiment(mgseqobj=obj, featmaxatleastPPM=featmaxatleastPPM, featcutoff=featcutoff, samplesToKeep=samplesToKeep, asPA=asPA, asPPM=TRUE, mgSeqnorm=mgSeqnorm)
+            currobj <- filter_experiment(mgseqobj = obj, featmaxatleastPPM = featmaxatleastPPM, featcutoff = featcutoff, samplesToKeep = samplesToKeep, asPA = asPA, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
 
             #Compose an appropriate title for the plot
             if (length(unique(subset_points)) > 1){
@@ -357,7 +360,7 @@ plot_relabund_heatmap<-function(mgseqobj=NULL, glomby=NULL, heatpalette="divergi
                         #Must have at least two rows in a matrix to plot a heatmap
                         if (length(rowcutoff) > 1){
                             rowlist <- split(rowcutoff, ceiling(seq_along(rowcutoff)/50))
-                            matlist <- lapply(1:length(rowlist), function(x){countmat2[rowlist[[x]], ]})
+                            matlist <- lapply(1:length(rowlist), function(x){ countmat2[rowlist[[x]], ] })
                             rowlblcol_list <- lapply(1:length(rowlist), function(x){matstats$Colour[rowlist[[x]]]})
                             if (matstats$Method[1] == "MannWhitneyWilcoxon") {
                                 stattit <- paste(sigmeas, "<", showonlypbelow, "different between", compareby, "using MannWhitneyWilcoxon")
@@ -390,59 +393,60 @@ plot_relabund_heatmap<-function(mgseqobj=NULL, glomby=NULL, heatpalette="divergi
             } #End conditional for choosing stats method
 
             #Name stats in svec
-            stattitle <- paste(analysisname, statmsg, subsetname, sep="_")
+            stattitle <- paste(analysisname, statmsg, subsetname, sep = "_")
             names(svec)[s] <- stattitle
             s <- s + 1
 
             #If the matrix list is not empty, plot the heatmap. If there is nothing to plot, say so.
-            if(length(matlist)>0){
+            if (length(matlist) > 0){
                 #Cycle through list of matrices to transform into heatmaps.
-                 if(!(is.null(maxnumheatmaps))){
+                 if (!(is.null(maxnumheatmaps))){
                     #Prune graphics list to largest number allowed
-                    mhm<-min(maxnumheatmaps, length(matlist))
+                    mhm <- min(maxnumheatmaps, length(matlist))
                 } else {
-                    mhm<-length(matlist)
+                    mhm <- length(matlist)
                 }
 
-                for(hm in 1:mhm){
+                for (hm in 1:mhm){
                     #Regenerate the current matrix being plot from matrix list
-                    mathm<-matlist[[hm]]
-                    rowlblcol<-rowlblcol_list[[hm]]
+                    mathm <- matlist[[hm]]
+                    rowlblcol <- rowlblcol_list[[hm]]
                     #Plot the heatmap
-                    fontsizey=max(4, round((((-1/150)*(nrow(mathm)))+1)*5, 0))
-                    fontsizex=max(3, as.numeric(unlist(round((((-1/150)*(ncol(mathm)))+1)*5, 0))))
+                    fontsizey <- max(4, round((((-1/150)*(nrow(mathm)))+1)*5, 0))
+                    fontsizex <- max(3, as.numeric(unlist(round((((-1/150)*(ncol(mathm)))+1)*5, 0))))
 
-                    hmdf = as.data.frame(matrix(data=0, nrow=nrow(pData(currobj)), ncol=length(colcategories)))
-                    cores<-vector("list",length=length(colcategories))
+                    hmdf <- as.data.frame(matrix(data=0, nrow=nrow(pData(currobj)), ncol=length(colcategories)))
+                    cores <- vector("list",length=length(colcategories))
                     for (g in 1:length(colcategories)){
                         hmdf[ , g]<-pData(currobj)[ , which(colnames(pData(currobj))==colcategories[g])]
-                        colnames(hmdf)[g]<-colcategories[g]
+                        colnames(hmdf)[g] <- colcategories[g]
                         if (!(is.numeric(hmdf[ ,g]))){
-                            if(is.null(cdict)){
-                                cores[[g]]<-as.vector(rainbow(length(unique(hmdf[ ,g]))))
-                                names(cores[[g]])<-sort(unique(hmdf[ ,g]))
+                            if (is.null(cdict)){
+                                cores[[g]] <- as.vector(rainbow(length(unique(hmdf[ ,g]))))
+                                names(cores[[g]]) <- sort(unique(hmdf[ ,g]))
                             } else {
-                                ct<-cdict[[colcategories[g]]]
-                                cores[[g]]<-as.vector(ct$Hex)
-                                names(cores[[g]])<-as.vector(ct$Name)
+                                ct <- cdict[[colcategories[g]]]
+                                cores[[g]] <- as.vector(ct$Hex)
+                                names(cores[[g]]) <- as.vector(ct$Name)
                             }
                         } else {
                             #Variable is numeric, but check for variance in the numbers
-                            if((max(hmdf[ ,g])-min(hmdf[ ,g])) > 0 ){
-                                cores[[g]]<-colorRamp2(c(0, max(hmdf[ ,g])), c("white", "midnightblue"))
+                            if ((max(hmdf[, g]) - min(hmdf[, g])) > 0 ){
+                                cores[[g]] <- colorRamp2(c(0, max(hmdf[, g])), c("white", "midnightblue"))
                             } else {
-                                cores[[g]]<-as.vector(rainbow(length(unique(hmdf[ ,g]))))
-                                names(cores[[g]])<-sort(unique(hmdf[ ,g]))
+                                cores[[g]] <- as.vector(rainbow(length(unique(hmdf[, g]))))
+                                names(cores[[g]]) <- sort(unique(hmdf[, g]))
                             }
                         }
-                        names(cores)[g]<-colcategories[g]
+                        names(cores)[g] <- colcategories[g]
                     }
+
                     if(is.null(heatpalette) || heatpalette=="sequential"){
                         heatmapCols = colorRampPalette((brewer.pal(9, "YlOrRd")))(50)
                     } else {
                         heatmapCols = colorRampPalette(rev(brewer.pal(9, "RdYlBu")))(50)
                     }
-                    ha_column = HeatmapAnnotation(df = hmdf, col=cores)
+                    ha_column = HeatmapAnnotation(df = hmdf, col = cores)
 
                     #Build plot title
                     plotit<-paste(maintit, stattit, cutoffmsg, minPPMmsg, sep="\n")

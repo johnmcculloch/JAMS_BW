@@ -3,11 +3,11 @@
 copyfiles="false"
 deletefolder="false"
 dosample="false"
-helixcore="/data/MicrobiomeCore/WSMGS_John"
+omitreads="false"
 
 ##Get options
 message_use="
-bankit.sh
+bankit
 By John McCulloch
 Cleans up completed JAMS alpha runs on Biowulf/Helix
 
@@ -21,12 +21,13 @@ Use: $(basename "$0") [options] -d </path/to/destination> -o </path/to/origin> -
 -c Copy files (do not move them). Default is to move.
 -x Delete JAMS project folder at origin if it exists. 
 -p prefix.list file containing list of prefixes. If not present, will bank all prefixes which look complete in the origin directory.
+-n Omit banking of reads even if they are present. Useful for banking JAMSalpha runs from SRA data.
 
 "
 
-version="0.32"
-verdate="FEB-2019"
-message_ver="bankit.sh ver $version by John McCulloch $verdate"
+version="0.35"
+verdate="JUN-2019"
+message_ver="bankit ver $version by John McCulloch $verdate"
 
 #Define functions
 function die {
@@ -52,6 +53,7 @@ do
         p  ) prefixlist="$OPTARG" ;;
         c  ) copyfiles="true" ;;
         x  ) deletefolder="true" ;;
+        n  ) omitreads="true" ;;
         v  ) version; exit;;
         h  ) usage; exit;;
         \? ) echo "Unknown option: -$OPTARG" >&2; exit 1;;
@@ -140,9 +142,14 @@ do
         #Bank reads if they are present.
         if [ -e "$jamsreads" ]
         then
-            report2log "JAMS reads found. Banking them now."
-            mkdir -p "$destination"/reads
-            `echo "$cmdtype" "$jamsreads" "$destination"/reads/`
+            if [ "$omitreads" == "false" ]
+            then
+                report2log "JAMS reads found. Banking them now."
+                mkdir -p "$destination"/reads
+                `echo "$cmdtype" "$jamsreads" "$destination"/reads/`
+            else
+                report2log "JAMS reads found, but will not be banked as requested with the -n flag."
+            fi
         else
             report2log "No JAMS reads found."
         fi

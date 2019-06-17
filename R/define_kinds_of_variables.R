@@ -4,7 +4,7 @@
 #' @export
 
 #returns a list of variable names
-define_kinds_of_variables<-function(metadataXL=NULL, phenolabels=NULL, phenotable=NULL, maxclass=10, maxsubclass=4){
+define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phenotable = NULL, maxclass = 10, maxsubclass = 4){
 
     if(!(is.null(metadataXL))){
         metadata<-load_metadata_from_xl(xlsxFile=metadataXL)
@@ -81,7 +81,7 @@ define_kinds_of_variables<-function(metadataXL=NULL, phenolabels=NULL, phenotabl
         print(paste("Found continuous variables", paste0(variables_cont, collapse=",")))
     } else {
         print("Found no continuous variables.")
-    }  
+    }
     variable_list$continuous<-as.character(variables_cont)
 
     #Find binary variables

@@ -3,7 +3,7 @@
 #' Returns a data frame with the statistics for a feature count matrix ordered by highest variance or lowest Mann-Whitney-Wilcoxon test between binary categories.
 #' @export
 
-calculate_matrix_stats<-function(countmatrix=NULL, uselog=NULL, statsonlog=TRUE, stattype=NULL, classesvector=NULL, invertbinaryorder=FALSE, numthreads=4, nperm=99){
+calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, numthreads = 4, nperm = 99){
 
     #Test for silly stuff
     if((stattype %in% c("binary", "permanova", "anova")) && (is.null(classesvector))){
@@ -35,7 +35,7 @@ calculate_matrix_stats<-function(countmatrix=NULL, uselog=NULL, statsonlog=TRUE,
     if((uselog==TRUE) && (statsonlog == FALSE)){
         print("Transforming log2 counts back to raw counts for calculating stats.")
         #log2 transform if applicable
-        countmatrix2<-sapply(1:ncol(countmatrix), function(x){ countmatrix[,x]<-((2^(countmatrix[,x])) - 1)} )            
+        countmatrix2<-sapply(1:ncol(countmatrix), function(x){ countmatrix[,x]<-((2^(countmatrix[,x])) - 1)} )
         colnames(countmatrix2)<-colnames(countmatrix)
         countmatrix<-countmatrix2
     }
@@ -55,9 +55,9 @@ calculate_matrix_stats<-function(countmatrix=NULL, uselog=NULL, statsonlog=TRUE,
         matstats$Method<-rep("variance", nrow(matstats))
     } else if (stattype == "binary"){
         if(numclass == 2){
-            print("Calculating p-values with Mann-Whitney-Wilcoxon test.") 
+            print("Calculating p-values with Mann-Whitney-Wilcoxon test.")
         } else {
-            stop("To calculate p-values with Mann-Whitney-Wilcoxon test, the comparison variable must have exactly two classes.") 
+            stop("To calculate p-values with Mann-Whitney-Wilcoxon test, the comparison variable must have exactly two classes.")
         }
 
         discretenames<-sort(unique(classesvector))
@@ -90,7 +90,7 @@ calculate_matrix_stats<-function(countmatrix=NULL, uselog=NULL, statsonlog=TRUE,
 
     } else if (stattype %in% c("anova", "permanova")){
         require(parallel)
-        
+
 
         if (stattype == "permanova"){
             print("Calculating p-values with permanova. Please be patient...")
@@ -118,7 +118,7 @@ calculate_matrix_stats<-function(countmatrix=NULL, uselog=NULL, statsonlog=TRUE,
         if(numclass == 2){
             print("Calculating p-values for presence/absence testing with Fisher s exact test.")
         } else {
-            stop("To calculate p-values for presence/absence testing, the comparison variable must have exactly two classes.") 
+            stop("To calculate p-values for presence/absence testing, the comparison variable must have exactly two classes.")
         }
         matstats<-metagenomeSeq::fitPA(obj=countmatrix, cores=numthreads, cl=classesvector)
         matstats$adjPvalues<-NULL

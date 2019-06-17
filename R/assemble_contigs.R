@@ -87,8 +87,9 @@ assemble_contigs <- function(opt=NULL){
     }
 
     membytes90 <- (opt$totmembytes * 0.9)
+
     assemblercmd <- switch(opt$assembler, "megahit" = "megahit", "spades" = "spades.py")
-    opt$assemblerversion <- system2(assemblercmd, args="--version", stdout = TRUE, stderr = TRUE)
+    opt$assemblerversion <- system2(assemblercmd, args = "--version", stdout = TRUE, stderr = TRUE)
 
     #Build command from options present
     if (opt$assembler == "megahit"){
@@ -125,6 +126,7 @@ assemble_contigs <- function(opt=NULL){
 
     } else if(opt$assembler=="spades"){
         #Build arguments for SPAdes
+
         commonargs <- c("-t", opt$threads, "-m", (as.integer(opt$totmembytes/1000000000)), "-o", paste(opt$prefix, "assembly", sep="_"))
         if (opt$seqtype == "illuminamp"){
             readargs <- list("-s", c("--hqmp1-1", "--hqmp1-2"), c("--hqmp1-1", "--hqmp1-2", "--hqmp1-s"))
@@ -159,38 +161,38 @@ assemble_contigs <- function(opt=NULL){
             SPAdescontigsname<-"contigs.fasta"
         }
 
-        if(opt$seqtype=="iontorrent"){
-            platformargs<-"--iontorrent"
+        if (opt$seqtype == "iontorrent"){
+            platformargs <- "--iontorrent"
         } else {
-            platformargs<-NULL
+            platformargs <- NULL
         }
 
-        assemblerargs<-c(commonargs, otherargs, moltypeargs, platformargs, readinput)
+        assemblerargs <- c(commonargs, otherargs, moltypeargs, platformargs, readinput)
 
-        asscontigs<-file.path(paste(opt$prefix, "assembly", sep="_"), SPAdescontigsname)
-        asslog<-file.path(paste(opt$prefix, "assembly", sep="_"), "spades.log")
+        asscontigs <- file.path(paste(opt$prefix, "assembly", sep = "_"), SPAdescontigsname)
+        asslog <- file.path(paste(opt$prefix, "assembly", sep = "_"), "spades.log")
     }
 
     #Launch assembly
     flog.info(paste0("Assembling reads using ", opt$assembler, ". Please be patient..."))
-    flog.info(paste0("Assembler command used: ", paste(assemblercmd, paste0(assemblerargs, collapse=" "))))
+    flog.info(paste0("Assembler command used: ", paste(assemblercmd, paste0(assemblerargs, collapse = " "))))
 
     system2(assemblercmd, args = assemblerargs, stdout = TRUE, stderr = TRUE)
     flog.info(paste("Assembly of reads using", opt$assembler, "complete."))
 
     #Copy assembly log to the system
-    file.copy(asslog, file.path(opt$workdir, paste(paste(opt$prefix, opt$assembler, sep="_"), "log", sep=".")))
+    file.copy(asslog, file.path(opt$workdir, paste(paste(opt$prefix, opt$assembler, sep = "_"), "log", sep = ".")))
 
-    opt<-prepare_contigs_for_JAMS(opt=opt, fastafile=asscontigs)
+    opt <- prepare_contigs_for_JAMS(opt = opt, fastafile = asscontigs)
 
     #Bank assembly files to project directory
-    NHcontigsfastaout<-paste(paste(opt$prefix, "contigs", sep="_"), "fasta", sep=".")
+    NHcontigsfastaout <- paste(paste(opt$prefix, "contigs", sep = "_"), "fasta", sep = ".")
     write.fasta(sequences = opt$NHcontigs_sequence, names = names(opt$NHcontigs_sequence), nbchar = 80, file.out = file.path(opt$workdir, NHcontigsfastaout))
 
     if(opt$workdir != opt$sampledir){
         #Write contigs from opt directly to system
         write.fasta(sequences = opt$NHcontigs_sequence, names = names(opt$NHcontigs_sequence), nbchar = 80, file.out = file.path(opt$sampledir, NHcontigsfastaout))
-        system(paste("cp", asslog, file.path(opt$sampledir, paste(paste(opt$prefix, opt$assembler, sep="_"), "log", sep="."))))
+        system(paste("cp", asslog, file.path(opt$sampledir, paste(paste(opt$prefix, opt$assembler, sep = "_"), "log", sep = "."))))
     }
 
     return(opt)

@@ -18,14 +18,13 @@ Use: $(basename "$0") -o <path/to/outdir> -r </path/to/rawreads> -s [human|mouse
 -g Complete path to a text file with SRA accession numbers to use, will ignore reads;
 -a Complete path to a text file with NCBI assembly accession numbers to use, will ignore reads;
 -s Name of host species (default = mouse);
--j Project type (default = microbiome)
+-j Project type. Choose between metagenome, metatranscriptome, isolate or isolaternaseq. (default = metagenome)
 -d /path/to/JAMSdb
 -l [INTEGER] split swarm files into this number of lines. If ommited, will not split swarm file.
 
 "
 
-version="1.5"
-verdate="APR-2019"
+version="APR-2019"
 message_ver="makeswarmJAMS ver $version by John McCulloch $verdate"
 
 #Define defaults
