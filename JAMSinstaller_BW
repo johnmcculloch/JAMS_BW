@@ -49,7 +49,7 @@ bioconductordeps<-c("dada2", "metagenomeSeq", "ComplexHeatmap", "HybridMTest", "
 if (!requireNamespace("BiocManager", quietly = TRUE)){
     install.packages("BiocManager")
 }
-BiocManager::install(pkgs=bioconductordeps, update = FALSE, ask=FALSE)
+BiocManager::install(pkgs=bioconductordeps, update = FALSE, ask = FALSE)
 
 #Install the rest of JAMS
 setwd(jamsdir)
