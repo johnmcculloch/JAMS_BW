@@ -24,13 +24,13 @@ Use: $(basename "$0") -o <path/to/outdir> -r </path/to/rawreads> -s [human|mouse
 
 "
 
-version="APR-2019"
+version="JUN-2019"
 message_ver="makeswarmJAMS ver $version by John McCulloch $verdate"
 
 #Define defaults
 hostspecies="mouse"
 projtype="metagenome"
-dbdir="/data/MicrobiomeCore/JAMSdb/db2"
+dbdir="/data/MicrobiomeCore/JAMSdb/db"
 contigsdir=""
 
 #Get options
