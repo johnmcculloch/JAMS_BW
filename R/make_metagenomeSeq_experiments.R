@@ -3,7 +3,7 @@
 #' Returns a list vector of MetagenomeSeq MRexperiments for every analysis that is possible to make.
 #' @export
 
-make_metagenomeSeq_experiments<-function(pheno=NULL, list.data=NULL, onlyanalyses=NULL, minnumsampanalysis=NULL, minpropsampanalysis=0.1){
+make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1){
 
     #Get data for features
     Samples <- rownames(pheno)
@@ -12,8 +12,8 @@ make_metagenomeSeq_experiments<-function(pheno=NULL, list.data=NULL, onlyanalyse
     names(featuredoses) <- Samples
 
     #Find out which functional analyses can be made
-    anallist <- lapply(1:length(featuredoses), function (x) { as.character(unique(featuredoses[[x]][]$Analysis)) })
-    names(anallist) <- Samples
+    anallist <- lapply(1:length(featuredoses), function (x) { as.character(unique(featuredoses[[x]][]$Analysis)) } )
+      names(anallist) <- Samples
 
     allanalyses <- Reduce(union, anallist)
     numsampwithanalysis <- NULL
@@ -51,55 +51,55 @@ make_metagenomeSeq_experiments<-function(pheno=NULL, list.data=NULL, onlyanalyse
     print("Making LKT MRexperiment")
     LKTobjects <- paste(Samples, "LKTdose", sep="_")
     LKTdoses <- list.data[LKTobjects]
-    names(LKTdoses)<-Samples
+    names(LKTdoses) <- Samples
 
-    #Data should be redundant. But if for some reason it is not, make LKTs unique in a safe manner.
-    for(s in 1:length(Samples)){
+    #Data should be non-redundant. But if for some reason it is, make LKTs unique in a safe manner.
+    for (s in 1:length(Samples)){
         #get rid of bogus LKT dupes due to faulty NCBI taxonomy.
-        LKTdoses[[s]]<-LKTdoses[[s]][!(duplicated(LKTdoses[[s]][]$LKT)), ]
-        LKTdoses[[s]][]$LKT<-as.character(LKTdoses[[s]][]$LKT)
+        LKTdoses[[s]] <- LKTdoses[[s]][!(duplicated(LKTdoses[[s]][]$LKT)), ]
+        LKTdoses[[s]][]$LKT <- as.character(LKTdoses[[s]][]$LKT)
     }
-    LKTdosesall<-bind_rows(LKTdoses, .id = "id")
-    colnames(LKTdosesall)[which(colnames(LKTdosesall)=="id")]<-"Sample"
+    LKTdosesall <- bind_rows(LKTdoses, .id = "id")
+    colnames(LKTdosesall)[which(colnames(LKTdosesall) == "id")] <- "Sample"
 
     #Make tax table
     taxlvlspresent <- colnames(LKTdosesall)[colnames(LKTdosesall) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
 
-    tt<-LKTdosesall[ , taxlvlspresent]
-    tt<-tt[!(duplicated(tt)),]
+    tt <- LKTdosesall[ , taxlvlspresent]
+    tt <- tt[!(duplicated(tt)), ]
     #get rid of bogus LKT dupes due to faulty NCBI taxonomy.
-    tt<-tt[!(duplicated(tt$LKT)), ]
-    rownames(tt)<-tt$LKT
-    ttm<-as.matrix(tt)
-    taxtypes<-sapply(1:nrow(ttm), function(x) { paste(ttm[x,], collapse="-") })
+    tt <- tt[!(duplicated(tt$LKT)), ]
+    rownames(tt) <- tt$LKT
+    ttm <- as.matrix(tt)
+    taxtypes <- sapply(1:nrow(ttm), function(x) { paste(ttm[x,], collapse="-") })
 
     #Ensure that LKT doses conform to the taxtable
-    for(s in 1:length(Samples)){
-        intt<-NULL
-        taxinfo<-NULL
-        taxinfo<-as.matrix(LKTdoses[[s]][ , taxlvlspresent])
-        taxtypessample<-sapply(1:nrow(taxinfo), function(x) { paste(taxinfo[x,], collapse="-") })
-        #Which ones are represented
-        intt<-which(taxtypessample %in% taxtypes)
-        LKTdoses[[s]]<-LKTdoses[[s]][intt, ]
-    }
+    #for (s in 1:length(Samples)){
+    #    intt <- NULL
+    #    taxinfo <- NULL
+    #    taxinfo <- as.matrix(LKTdoses[[s]][ , taxlvlspresent])
+    #    taxtypessample <- sapply(1:nrow(taxinfo), function(x) { paste(taxinfo[x,], collapse="-") })
+    #    #Which ones are represented
+    #    intt <- which(taxtypessample %in% taxtypes)
+    #    LKTdoses[[s]] <- LKTdoses[[s]][intt, ]
+    #}
 
     #bind them up again
-    LKTdosesall<-bind_rows(LKTdoses, .id = "id")
-    colnames(LKTdosesall)[which(colnames(LKTdosesall)=="id")]<-"Sample"
+    LKTdosesall <- bind_rows(LKTdoses, .id = "id")
+    colnames(LKTdosesall)[which(colnames(LKTdosesall) == "id")] <- "Sample"
 
     #Make counts table
-    LKTallcounts<-LKTdosesall[, c("Sample", "LKT", "NumBases")]
+    LKTallcounts <- LKTdosesall[, c("Sample", "LKT", "NumBases")]
     #Be sure that data is not empty or redundant
-    LKTallcounts[is.na(LKTallcounts)]<-0
-    cts <- LKTallcounts %>% spread(Sample, NumBases)
-    cts[is.na(cts)]<-0
-    rownames(cts)<-cts$LKT
-    cts$LKT<-NULL
+    LKTallcounts[is.na(LKTallcounts)] <- 0
 
-    sampleorder<-rownames(pheno)
-    tt<-tt[rownames(cts), ]
-    cts<-cts[, sampleorder]
+    cts <- spread(LKTallcounts, Sample, NumBases, fill = 0, drop = FALSE)
+    rownames(cts) <- cts$LKT
+    cts$LKT <- NULL
+
+    sampleorder <- rownames(pheno)
+    tt <- tt[rownames(cts), ]
+    cts <- cts[, sampleorder]
 
     ##Create metagenomeSeq MRexperiment
     phenotypeData = AnnotatedDataFrame(pheno)

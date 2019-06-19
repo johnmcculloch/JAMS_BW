@@ -594,116 +594,121 @@ HsMm<-subset(taxnames, name_txt %in% c("Homo_sapiens", "Mus_musculus"))[]$tax_id
 taxidpresent<-unique(c(taxidpresent, HsMm))
 
 #Split taxidlist into chunks for speedier de-duplication of repeated node taxids
-chunksize=500
+chunksize=1000
 chunk2 <- function(x,n){ split(x, cut(seq_along(x), n, labels = FALSE)) }
 chunkcoords<-chunk2(1:length(taxidpresent), (length(taxidpresent)/chunksize))
 numchunks<-length(chunkcoords)
 flog.info(paste("The list of non-redundant Tax IDs present was split into", numchunks, "chunks of",  chunksize, "Tax IDs each."))
 
-taxtable<-NULL
-for(cnk in 1:numchunks){
+taxtable <- NULL
+for (cnk in 1:numchunks){
     flog.info(paste0("Processing chunk ", cnk,"/", numchunks, " using ", (opt$threads - 2), " threads ..."))
-    currchunk<-taxidpresent[chunkcoords[[cnk]]]
-    currchunk<-currchunk[which(!(is.na(currchunk)))]
+    currchunk <- taxidpresent[chunkcoords[[cnk]]]
+    currchunk <- currchunk[which(!(is.na(currchunk)))]
     #Deconvolute
-    currtaxlist<-mclapply(1:length(currchunk), function (x) { tryCatch(find_lineage(currchunk[x]), error = function(e) print(paste("Unable to process lineage for taxid", currchunk[x]))) }, mc.cores = (opt$threads - 2))
-    currtaxlist<-currtaxlist[sapply(currtaxlist, function(x){!(is.null(x))})]
-    currtaxtable<-plyr::ldply(currtaxlist, rbind)
-    currtaxtable<-as.data.frame(currtaxtable)
-    currtaxtable<-currtaxtable[, c("taxid", validtaxlvls)]
+    currtaxlist <- mclapply(1:length(currchunk), function (x) {
+        tryCatch(find_lineage(currchunk[x]), error = function(e) {
+            print(paste("Unable to process lineage for taxid", currchunk[x]))
+            return(NULL)
+        } )
+    }, mc.cores = (opt$threads - 2))
+
+    currtaxlist <- currtaxlist[sapply(currtaxlist, function(x){ !(is.null(x)) })]
+    currtaxtable <- plyr::ldply(currtaxlist, rbind)
+    currtaxtable <- as.data.frame(currtaxtable)
+    currtaxtable <- currtaxtable[, c("taxid", validtaxlvls)]
     currtaxtable[] <- lapply(currtaxtable, as.character)
-    for(colm in validtaxlvls){
-        currtaxtable[,colm][is.na(currtaxtable[,colm])] <- paste0(validtaxtags[which(validtaxlvls == colm)], "Unclassified")
+    for (colm in validtaxlvls){
+        currtaxtable[, colm][is.na(currtaxtable[, colm])] <- paste0(validtaxtags[which(validtaxlvls == colm)], "Unclassified")
     }
     #Fix kingdoms
-    currtaxtable[which(currtaxtable$superkingdom == "d__Bacteria"), "kingdom"]<-"k__Bacteria"
-    currtaxtable[which(currtaxtable$superkingdom == "d__Archaea"), "kingdom"]<-"k__Archaea"
-    currtaxtable[which(currtaxtable$superkingdom == "d__Viroids"), "kingdom"]<-"k__Viroids"
-    currtaxtable[which(currtaxtable$superkingdom == "d__Viruses"), "kingdom"]<-"k__Viruses"
+    currtaxtable[which(currtaxtable$superkingdom == "d__Bacteria"), "kingdom"] <- "k__Bacteria"
+    currtaxtable[which(currtaxtable$superkingdom == "d__Archaea"), "kingdom"] <- "k__Archaea"
+    currtaxtable[which(currtaxtable$superkingdom == "d__Viroids"), "kingdom"] <- "k__Viroids"
+    currtaxtable[which(currtaxtable$superkingdom == "d__Viruses"), "kingdom"] <- "k__Viruses"
 
     #eliminate duplicates
-    taxtable<-rbind(taxtable, currtaxtable)
-    taxtable<-taxtable[!duplicated(taxtable),]
+    taxtable <- rbind(taxtable, currtaxtable)
+    taxtable <- taxtable[!duplicated(taxtable),]
     flog.info(paste("Current taxtable has", length(unique(taxtable$taxid)), "unique Tax IDs"))
     save.image(opt$projimage)
 }
 
-taxtable_backup<-taxtable
+taxtable_backup <- taxtable
 
 #Include cellular oranisms ("131567"), root ("1") and unclassified ("0") taxids
-unclasstaxtable<-as.data.frame(matrix(nrow=3, ncol=(length(validtaxlvls)+1), data="Unclassified"), stringsAsFactors = FALSE)
-colnames(unclasstaxtable)<-c("taxid", validtaxlvls)
-unclasstaxtable$taxid<-c("0", "1", "131567")
-for(colm in validtaxlvls){
-    unclasstaxtable[,colm] <- paste0(validtaxtags[which(validtaxlvls == colm)], unclasstaxtable[,colm])
+unclasstaxtable <- as.data.frame(matrix(nrow = 3, ncol = (length(validtaxlvls) + 1), data = "Unclassified"), stringsAsFactors = FALSE)
+colnames(unclasstaxtable) <- c("taxid", validtaxlvls)
+unclasstaxtable$taxid <- c("0", "1", "131567")
+for (colm in validtaxlvls){
+    unclasstaxtable[, colm] <- paste0(validtaxtags[which(validtaxlvls == colm)], unclasstaxtable[, colm])
 }
-taxtable<-rbind(unclasstaxtable, taxtable)
+taxtable <- rbind(unclasstaxtable, taxtable)
 
 #Prune uninformative columns
-for(tl in 1:length(validtaxlvls)){
-    if(length(which(taxtable[ , validtaxlvls[tl]] %in% paste0(validtaxtags[tl], c("Missing", "Unclassified")))) == nrow(taxtable)){
+for (tl in 1:length(validtaxlvls)){
+    if (length(which(taxtable[ , validtaxlvls[tl]] %in% paste0(validtaxtags[tl], c("Missing", "Unclassified")))) == nrow(taxtable)){
         flog.info(paste("Eliminating taxlevel", validtaxlvls[tl], "because all elements are either missing or unclassified."))
-        taxtable[ , validtaxlvls[tl]]<-NULL
+        taxtable[ , validtaxlvls[tl]] <- NULL
     }
 }
 
 #Compute median genome sizes
+taxid2sizewithtaxa <- left_join(taxid2size, taxtable)
+taxid2sizewithtaxa <- taxid2sizewithtaxa[ , c("taxid", "superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species", "Size")]
+taxid2sizewithtaxa <- taxid2sizewithtaxa[which(!(is.na(taxid2sizewithtaxa$Size) == TRUE)), ]
 
-taxid2sizewithtaxa<-left_join(taxid2size, taxtable)
-taxid2sizewithtaxa<-taxid2sizewithtaxa[ , c("taxid", "superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species", "Size")]
-taxid2sizewithtaxa<-taxid2sizewithtaxa[which(!(is.na(taxid2sizewithtaxa$Size)==TRUE)), ]
-
-get_size_stats_taxlevel<-function(taxlevel=NULL, taxid2sizewithtaxa=NULL){
-    sizedata<-taxid2sizewithtaxa
-    colnames(sizedata)[which(colnames(sizedata) == taxlevel)]<-"Taxon"
-    medsizedf<-aggregate(Size ~ Taxon, FUN=median, data=sizedata)
-    colnames(medsizedf)[2]<-"Genome_Size_Median"
-    sdsizedf<-aggregate(Size ~ Taxon, FUN=sd, data=sizedata)
-    colnames(sdsizedf)[2]<-"Genome_Size_SD"
-    numsizedf<-aggregate(Size ~ Taxon, FUN=length, data=sizedata)
-    colnames(numsizedf)[2]<-"NumGenomes"
-    mediansizes<-left_join(medsizedf, sdsizedf)
-    mediansizes<-left_join(mediansizes, numsizedf)
+get_size_stats_taxlevel <- function(taxlevel = NULL, taxid2sizewithtaxa = NULL){
+    sizedata <- taxid2sizewithtaxa
+    colnames(sizedata)[which(colnames(sizedata) == taxlevel)] <- "Taxon"
+    medsizedf <- aggregate(Size ~ Taxon, FUN = median, data = sizedata)
+    colnames(medsizedf)[2] <- "Genome_Size_Median"
+    sdsizedf <- aggregate(Size ~ Taxon, FUN = sd, data = sizedata)
+    colnames(sdsizedf)[2] <- "Genome_Size_SD"
+    numsizedf <- aggregate(Size ~ Taxon, FUN = length, data = sizedata)
+    colnames(numsizedf)[2] <- "NumGenomes"
+    mediansizes <- left_join(medsizedf, sdsizedf)
+    mediansizes <- left_join(mediansizes, numsizedf)
     mediansizes[is.na(mediansizes)] <- 0
-    mediansizes$Genome_Size_Median<-round(mediansizes$Genome_Size_Median, 0)
-    mediansizes$Genome_Size_SD<-round(mediansizes$Genome_Size_SD, 0)
-    mediansizes$Rank<-rep(taxlevel, nrow(mediansizes))
+    mediansizes$Genome_Size_Median <- round(mediansizes$Genome_Size_Median, 0)
+    mediansizes$Genome_Size_SD <- round(mediansizes$Genome_Size_SD, 0)
+    mediansizes$Rank <- rep(taxlevel, nrow(mediansizes))
 
     return(mediansizes)
 }
 
-mediansizeslist<-lapply( c("kingdom", "phylum", "class", "order", "family", "genus", "species"), function (x) { get_size_stats_taxlevel(taxlevel=x, taxid2sizewithtaxa=taxid2sizewithtaxa) } )
-Median_Genome_Sizes<-plyr::ldply(mediansizeslist, rbind)
+mediansizeslist <- lapply( c("kingdom", "phylum", "class", "order", "family", "genus", "species"), function (x) { get_size_stats_taxlevel(taxlevel = x, taxid2sizewithtaxa = taxid2sizewithtaxa) } )
+Median_Genome_Sizes <- plyr::ldply(mediansizeslist, rbind)
 #Eliminate spurious category missing.
-Median_Genome_Sizes<-Median_Genome_Sizes[-(grep("__Missing", Median_Genome_Sizes$Taxon)),]
+Median_Genome_Sizes <- Median_Genome_Sizes[-(grep("__Missing", Median_Genome_Sizes$Taxon)), ]
 #Capitalize taxlevels for consistency
-Median_Genome_Sizes$Rank<-as.character(sapply(1:nrow(Median_Genome_Sizes), function (x) {  switch(Median_Genome_Sizes$Rank[x], "superkingdom"="Domain", "kingdom"="Kingdom", "phylum"="Phylum", "class"="Class", "order"="Order", "family"="Family", "genus"="Genus", "species"="Species", "is1"="IS1") } ))
+Median_Genome_Sizes$Rank <- as.character(sapply(1:nrow(Median_Genome_Sizes), function (x) {  switch(Median_Genome_Sizes$Rank[x], "superkingdom" = "Domain", "kingdom" = "Kingdom", "phylum" = "Phylum", "class" = "Class", "order" = "Order", "family" = "Family", "genus" = "Genus", "species" = "Species", "is1" = "IS1") } ))
 
 #Rename columns and get info only up to a single level below species
-finaltablevalidtaxlvls<-c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species", "is1")
-finaltablevalidtaxtags<-c("d__", "k__", "p__", "c__", "o__", "f__", "g__", "s__", "is1__")
-JAMStaxtable<-taxtable[ , c("taxid", finaltablevalidtaxlvls)]
+finaltablevalidtaxlvls <- c("superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species", "is1")
+finaltablevalidtaxtags <- c("d__", "k__", "p__", "c__", "o__", "f__", "g__", "s__", "is1__")
+JAMStaxtable <- taxtable[ , c("taxid", finaltablevalidtaxlvls)]
 
 #Infer Last Known Taxon for JAMStaxtable
-dunno<-c("Unclassified", "Missing")
-JAMStaxtable$LKT<-rep("LKT__Unclassified", nrow(JAMStaxtable))
-for(lvl in 1:(which(finaltablevalidtaxlvls == "species"))){
+dunno <- c("Unclassified", "Missing")
+JAMStaxtable$LKT <- rep("LKT__Unclassified", nrow(JAMStaxtable))
+for (lvl in 1:(which(finaltablevalidtaxlvls == "species"))){
     flog.info(paste("Finding which Last Known Taxa are at the", finaltablevalidtaxlvls[lvl], "level."))
-    JAMStaxtable$LKT[which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvl]] %in% paste0(finaltablevalidtaxtags[lvl], dunno)))]<-paste("LKT", JAMStaxtable[which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvl]] %in% paste0(finaltablevalidtaxtags[lvl], dunno))), finaltablevalidtaxlvls[lvl]], sep="__")
+    JAMStaxtable$LKT[which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvl]] %in% paste0(finaltablevalidtaxtags[lvl], dunno)))] <- paste("LKT", JAMStaxtable[which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvl]] %in% paste0(finaltablevalidtaxtags[lvl], dunno))), finaltablevalidtaxlvls[lvl]], sep = "__")
 }
 #use method of clipping up to two words at species to get Genus plus species, but only for bacteria. This is a temporary measure for NCBIs annoying habit of overinflating desposits at the species level.
-bacterialrows<-which(JAMStaxtable$superkingdom == "d__Bacteria")
-lvlnum<-which(finaltablevalidtaxlvls == "species")
-speciesLKTrows<-which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvlnum]] %in% paste0(finaltablevalidtaxtags[lvlnum], dunno)))
+bacterialrows <- which(JAMStaxtable$superkingdom == "d__Bacteria")
+lvlnum <- which(finaltablevalidtaxlvls == "species")
+speciesLKTrows <- which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvlnum]] %in% paste0(finaltablevalidtaxtags[lvlnum], dunno)))
 #Find which species LKT rows are within the bacterial domain
-rowstocorrect<-speciesLKTrows[(speciesLKTrows %in% bacterialrows)]
-JAMStaxtable$LKT[rowstocorrect]<-sapply(1:length(rowstocorrect), function (n) { paste0(sapply(strsplit(JAMStaxtable$LKT[rowstocorrect[n]], split='_', fixed=TRUE), function(x) (x[1:6])), collapse="_") })
+rowstocorrect <- speciesLKTrows[(speciesLKTrows %in% bacterialrows)]
+JAMStaxtable$LKT[rowstocorrect] <- sapply(1:length(rowstocorrect), function (n) { paste0(sapply(strsplit(JAMStaxtable$LKT[rowstocorrect[n]], split = '_', fixed = TRUE), function(x) (x[1:6])), collapse = "_") })
 
-colnames(JAMStaxtable)<-c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
+colnames(JAMStaxtable) <- c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
 
 #Export to system
-write.table(JAMStaxtable, file="JAMS_taxtable.tsv", col.names=TRUE, row.names=FALSE, sep="\t", quote=FALSE)
-write.table(Median_Genome_Sizes, file="JAMS_Median_Genome_Sizes.tsv", col.names=TRUE, row.names=FALSE, sep="\t", quote=FALSE)
+write.table(JAMStaxtable, file = "JAMS_taxtable.tsv", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+write.table(Median_Genome_Sizes, file = "JAMS_Median_Genome_Sizes.tsv", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
 
 save.image(opt$projimage)
 
@@ -713,8 +718,8 @@ save.image(opt$projimage)
 setwd(opt$k2db)
 for(organisms in c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebrate_mammalian")){
     flog.info(paste("Adding", organisms, "genomes to", opt$dbname, "kraken2 database."))
-    fna<-paste0("\'", "*.fna", "\'")
-    addcmd<-paste0("find genomes/", organisms, "/ -name ", fna, " -print0 | xargs -0 -P ", opt$threads, " -I{} -n1 kraken2-build --add-to-library {} --db ", opt$k2db, " 2>> add.dmp")
+    fna <- paste0("\'", "*.fna", "\'")
+    addcmd <- paste0("find genomes/", organisms, "/ -name ", fna, " -print0 | xargs -0 -P ", opt$threads, " -I{} -n1 kraken2-build --add-to-library {} --db ", opt$k2db, " 2>> add.dmp")
     system(addcmd)
 }
 
@@ -722,16 +727,16 @@ for(organisms in c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebr
 # Actually build the database using Kraken2
 setwd(opt$k2db)
 flog.info("Will now build the entire database. Please be VERY patient.")
-flog.info(paste("Maximum size of database will be", format(opt$maxsizebytes, scientific=FALSE), "bytes."))
-buildcmd<-paste("kraken2-build", "--build", "--threads", opt$threads, "--db", opt$k2db, "--max-db-size", format(opt$maxsizebytes, scientific=FALSE))
+flog.info(paste("Maximum size of database will be", format(opt$maxsizebytes, scientific = FALSE), "bytes."))
+buildcmd <- paste("kraken2-build", "--build", "--threads", opt$threads, "--db", opt$k2db, "--max-db-size", format(opt$maxsizebytes, scientific = FALSE))
 system(buildcmd)
 
 ###############
 ## Add timestamp
-tmstmp<-as.character(as.numeric(as.POSIXct(strptime(Sys.time(), "%Y-%m-%d %H:%M"))))
-verstmp<-as.character(packageVersion("JAMS"))
-JAMSk2dbver<-paste(opt$dbname, verstmp, tmstmp, sep="_")
-write.table(JAMSk2dbver, file="JAMSKdb.ver", sep="", row.names=FALSE, col.names=FALSE, quote=FALSE)
+tmstmp <- as.character(as.numeric(as.POSIXct(strptime(Sys.time(), "%Y-%m-%d %H:%M"))))
+verstmp <- as.character(packageVersion("JAMS"))
+JAMSk2dbver <- paste(opt$dbname, verstmp, tmstmp, sep = "_")
+write.table(JAMSk2dbver, file = "JAMSKdb.ver", sep = "", row.names = FALSE, col.names = FALSE, quote = FALSE)
 save.image(opt$projimage)
 
 flog.info("JAMS kraken2 database building is complete.")

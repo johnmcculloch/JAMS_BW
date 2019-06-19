@@ -423,6 +423,9 @@ if(!(is.null(jamspath))){
     #Get sample list from current pheno
     Samples <- as.character(rownames(pheno))
 
+    flog.info("Saving R session image. Please be patient.")
+    save.image()
+
     #Make MetagenomeSeq-style experiments
     flog.info("Making metagenomeSeq MRexperiment objects")
     expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data)

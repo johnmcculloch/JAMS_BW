@@ -38,7 +38,7 @@ finalfolder=`pwd`
 scratchfolder=""
 slurmjobiddep=""
 metadata=""
-jamsdbfolder="/data/MicrobiomeCore/JAMSdb/db2"
+jamsdbfolder="/data/MicrobiomeCore/JAMSdb/db"
 host="mouse"
 projtype="metagenome"
 
@@ -140,8 +140,13 @@ then
     launchjamsjob=`cat launchjams.job`
 else
     #Lanes are joined, so no need to do it in a swarm
-    makeswarmJAMS -o $outfolder -r $rawreadsfolder -d $jamsdbfolder -s $host -j $projtype
-    bootstrapswarm -s JAMS.swarm -l 15 -t 48 -m 128 -g 750 -j $makeswarmjob -w R
+    makeswarmJAMS -o $outfolder -r $readsfolder -d $jamsdbfolder -s $host -j $projtype
+    if [ "$slurmjobiddep" == "" ]
+    then
+        bootstrapswarm -s JAMS.swarm -l 15 -t 48 -m 128 -g 750 -w R
+    else
+        bootstrapswarm -s JAMS.swarm -l 15 -t 48 -m 128 -g 750 -j $slurmjobiddep -w R
+    fi
     echo "JAMSalpha launched" > JAMSalphaLaunched.flag
     date >> JAMSalphaLaunched.flag
 fi
