@@ -184,7 +184,7 @@ echo JAMSbeta -p "$projname" -o "$betafolder" -y "$jamsfiles" -x "$betafolder"/"
 echo '#!/bin/bash
 #Run JAMSbeta
 bankalphajob=`cat bankalpha.job`
-swarm -g 128 -t 48 --time 12:00:00 --partition=norm,ccr --dependency=afterany:$bankalphajob -f launchbeta.swarm > launchbeta.job
+swarm -g 128 -t 48 --time 12:00:00 --partition=norm,ccr --dependency=afterany:$bankalphajob --module R -f launchbeta.swarm > launchbeta.job
 ' > launchbetaswarm.sh
 chmod 755 launchbetaswarm.sh
 

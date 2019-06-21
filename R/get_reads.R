@@ -47,23 +47,23 @@ get_reads<-function(opt=NULL){
                 flog.info("You chose a tarball as input but it does not look like a tar.gz file. Aborting now.")
                 q()
             }
-            targetfilename<-file.path(readsworkdir, paste(opt$prefix, "rawreads.tar.gz", sep="_"))
+            targetfilename <- file.path(readsworkdir, paste(opt$prefix, "rawreads.tar.gz", sep = "_"))
             system2('cp', args = c(opt$readstarball, targetfilename), stdout = TRUE, stderr = TRUE)
             #Decompress using pigz
-            commandtorun<-paste("pigz -p", opt$threads, "-dc", targetfilename, "| tar xf -", collapse=" ")
+            commandtorun <- paste("pigz -p", opt$threads, "-dc", targetfilename, "| tar xf -", collapse = " ")
             flog.info("Decompressing tarball with reads.")
             system(commandtorun)
             file.remove(targetfilename)
 
         } else {
             #Copy R1, R2 and U reads
-            fastqsinopt<-names(opt)[which(names(opt) %in% c("R1", "R2", "SE"))]
+            fastqsinopt <- names(opt)[which(names(opt) %in% c("R1", "R2", "SE"))]
             if(length(fastqsinopt) < 1){
                 flog.info("You must supply either reads to assemble or contigs or a GenBank SRA accession number as input. None of these were found. Check arguments passed JAMSalpha. Aborting now.")
                 q()
             }
             flog.info(paste("You supplied", paste(fastqsinopt, collapse=", "), "reads."))
-            myfastqs<-opt[fastqsinopt]
+            myfastqs <- opt[fastqsinopt]
 
             #Check if files actually exist
             if(!(all(file.exists(as.character(myfastqs))))){
@@ -72,21 +72,21 @@ get_reads<-function(opt=NULL){
             }
 
             #Copy reads
-            for(f in 1:length(myfastqs)){
-                rtype<-names(myfastqs)[f]
-                if(filetype(myfastqs[[f]])=="gzfile"){
-                    suffix<-"fastq.gz"
+            for (f in 1:length(myfastqs)){
+                rtype <- names(myfastqs)[f]
+                if (filetype(myfastqs[[f]])=="gzfile"){
+                    suffix <- "fastq.gz"
                 } else {
-                    suffix<-"fastq"
+                    suffix <- "fastq"
                 }
 
-                targetfilename<-file.path(readsworkdir, paste(paste(opt$prefix, rtype, sep="_"), suffix, sep="."))
+                targetfilename <- file.path(readsworkdir, paste(paste(opt$prefix, rtype, sep="_"), suffix, sep="."))
                 flog.info(paste("Copying", rtype))
                 system2('cp', args = c(myfastqs[[f]], targetfilename), stdout = TRUE, stderr = TRUE)
                 #In case files are gzipped, ungzip them
-                if(suffix=="fastq.gz"){
+                if (suffix == "fastq.gz"){
                     flog.info(paste("Decompressing gzipped file", rtype))
-                    commandtorun<-paste("pigz -d", targetfilename, collapse=" ")
+                    commandtorun <- paste("pigz -d", targetfilename, collapse=" ")
                     system(commandtorun)
                 }
             }
@@ -94,22 +94,25 @@ get_reads<-function(opt=NULL){
     }
 
     #find out number of files and rename accordingly
-    rawfiles<-sort(list.files())
-    if(length(rawfiles)==1){
+    rawfiles <- sort(list.files())
+    if(length(rawfiles) == 1){
         flog.info("Found a single fastq file. Will assume this is of unpaired reads.")
         file.rename(rawfiles, paste0(opt$prefix, "_SE.fastq"))
         opt$libstructure<-"singleend"
-    } else if (length(rawfiles)==2){
+    } else if (length(rawfiles) == 2){
         flog.info("Found two fastq files. Will assume these are paired reads.")
         file.rename(rawfiles, paste0(opt$prefix, c("_R1.fastq", "_R2.fastq")))
         opt$libstructure<-"pairedend"
+    } else if (length(rawfiles) == 0){
+        flog.info("Found NO files. Aborting now.")
+        q()
     } else {
-        flog.info("Found more than two files. Currently, JAMS supports only either paired reads OR single-end reads, but not both kinds simultaneously. Aborting now.")
+        flog.info(paste("Found", length(rawfiles), "files. Currently, JAMS supports only either paired reads OR single-end reads, but not both kinds simultaneously. Aborting now."))
         q()
     }
 
-    rawfastqs<-sort(list.files(pattern="*.fastq$"))
-    opt$rawreads<-rawfastqs
+    rawfastqs <- sort(list.files(pattern="*.fastq$"))
+    opt$rawreads <- rawfastqs
 
     return(opt)
 }
