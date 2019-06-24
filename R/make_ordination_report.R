@@ -1,39 +1,43 @@
-#' make_ordination_report(project=NULL, expvec=NULL, usefulexp=NULL, mgSeqnorm=FALSE, genomecompleteness=NULL, variable_list=NULL, list.data=NULL, doreads=NULL, cdict=NULL, ellipse = "auto", samplesToKeep=NULL, featuresToKeep=NULL, ...)
+#' make_ordination_report(project = NULL, expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", samplesToKeep = NULL, featuresToKeep=NULL, appendtofilename = NULL, ...)
 #'
 #' Generates standard ordination plots for analyses named in expobjects.
 #' @export
 
-make_ordination_report<-function(project=NULL, expvec=NULL, usefulexp=NULL, mgSeqnorm=FALSE, genomecompleteness=NULL, variable_list=NULL, list.data=NULL, doreads=NULL, cdict=NULL, ellipse = "auto", samplesToKeep=NULL, featuresToKeep=NULL, ...){
+make_ordination_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", samplesToKeep = NULL, featuresToKeep=NULL, appendtofilename = NULL, ...){
 
     if(is.null(usefulexp)){
-        usefulexp<-names(expvec)[!(names(expvec) %in% c("SFLD", "Coils", "Gene3D", "Phobius", "ProSitePatterns", "SMART", "ProDom"))]
+        usefulexp <- names(expvec)[!(names(expvec) %in% c("SFLD", "Coils", "Gene3D", "Phobius", "ProSitePatterns", "SMART", "ProDom"))]
     } else {
-        usefulexp<-names(expvec)[(names(expvec) %in% usefulexp)]
+        usefulexp <- names(expvec)[(names(expvec) %in% usefulexp)]
     }
-    expvec2<-expvec[usefulexp]
+    expvec2 <- expvec[usefulexp]
 
     #Set variables
-    variables_disc<-variable_list$discrete
-    variables_bin<-variable_list$binary
-    variables_cont<-variable_list$continuous
-    variables_subs<-variable_list$subsettable
+    variables_disc <- variable_list$discrete
+    variables_bin <- variable_list$binary
+    variables_cont <- variable_list$continuous
+    variables_subs <- variable_list$subsettable
 
-    pt<-as.data.frame(pData(expvec[[1]]))
-    variables_all<-unique(c(variables_disc, variables_subs, variables_bin, variables_cont))
-    readscols<-(colnames(pt)[(colnames(pt) %in% c("GbNAHS", "PctAss"))])
-    if(length(readscols) > 0){
-        if(is.null(doreads)){
+    pt <- as.data.frame(pData(expvec2[[1]]))
+    variables_all <- unique(c(variables_disc, variables_subs, variables_bin, variables_cont))
+    readscols <- (colnames(pt)[(colnames(pt) %in% c("GbNAHS", "PctAss"))])
+    if (length(readscols) > 0){
+        if (is.null(doreads)){
             doreads=TRUE
         }
     }
 
-    #Plot heatmaps in tandem to saving dataframes with stats.
-    pdffn<-paste(paste("JAMS", project, "Ordination_plots", sep="_"), "pdf", sep=".")
+    #Plot ordination plots in tandem to saving dataframes with stats.
+    basepdffn <- paste("JAMS", project, "Ordination_plots", sep="_")
+    if (!(is.null(appendtofilename))){
+        basepdffn <- paste(basepdffn, appendtofilename, sep = "_")
+    }
+    pdffn <- paste(basepdffn, "pdf", sep=".")
     #Check if fn exists to avoid overwriting.
-    ffn=1
-    while(file.exists(pdffn)){
-        pdffn<-paste(paste("JAMS", project, "Ordination_plots", ffn, sep="_"), "pdf", sep=".")
-        ffn=ffn + 1
+    ffn <- 1
+    while (file.exists(pdffn)){
+        pdffn <- paste(paste0(basepdffn, ffn), "pdf", sep=".")
+        ffn <- ffn + 1
         if(ffn > 100){
             stop("I think you have enough plots already. May I suggest you try looking through them.")
         }
@@ -51,13 +55,13 @@ make_ordination_report<-function(project=NULL, expvec=NULL, usefulexp=NULL, mgSe
         grid.table(c("Check for sequencing depth bias"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 25))
 
         #Cycle through possible experiments
-        for(e in 1:length(expvec)){
-            print(plot_Ordination(mgseqobj = expvec[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", colourby = "GbNAHS", logtran = TRUE, transp = TRUE, permanova = FALSE, ellipse = FALSE, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep))
+        for(e in 1:length(expvec2)){
+            print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", colourby = "GbNAHS", logtran = TRUE, transp = TRUE, permanova = FALSE, ellipse = FALSE, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep))
         }
     }
 
-    variables_all<-unique(c(variables_disc, variables_subs, variables_bin, variables_cont))
-    variables_discontinuous<-variables_all[!(variables_all %in% variables_cont)]
+    variables_all <- unique(c(variables_disc, variables_subs, variables_bin, variables_cont))
+    variables_discontinuous <- variables_all[!(variables_all %in% variables_cont)]
 
     #plot ordination if there are any plottable variables
     if(length(variables_all) > 0){
@@ -68,10 +72,10 @@ make_ordination_report<-function(project=NULL, expvec=NULL, usefulexp=NULL, mgSe
             plot.new()
             grid.table(c("Marking samples by", variables_all[c]), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 25))
 
-            for(e in 1:length(expvec)){
-                flog.info(paste("Plotting", names(expvec)[e], " and marking by", variables_all[c]))
+            for(e in 1:length(expvec2)){
+                flog.info(paste("Plotting", names(expvec2)[e], " and marking by", variables_all[c]))
 
-                print(plot_Ordination(mgseqobj = expvec[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", colourby = variables_all[c], shapeby=NULL, log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep))
+                print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", colourby = variables_all[c], shapeby=NULL, log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep))
                 #If there are any subsettable variables, subset by them.
                 validsubs<-variables_subs[!(variables_subs %in% variables_all[c])]
 
@@ -84,12 +88,12 @@ make_ordination_report<-function(project=NULL, expvec=NULL, usefulexp=NULL, mgSe
                             #check if there is more than one class when subset
                             classtest[k]<-(length(unique(pt[,variables_all[c]][which(pt[,vs]==discnamesvs[k])]))>1)
                         }
-       
+
                         #Plot if there is more than one class in a subset, else skip, as it is pointless.
                         if(all(classtest)){
                             plot.new()
                             grid.table(c("Marking samples by", variables_all[c], "Subsetting samples by", vs), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 25))
-                            print(plot_Ordination(mgseqobj = expvec[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", subsetby=vs, colourby = variables_all[c], log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep))
+                            print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", subsetby=vs, colourby = variables_all[c], log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep))
                         } else {
                             flog.info(paste("Will not plot", variables_all[c], "within", vs, "because",  paste0(discnamesvs[!classtest], collapse=", " ),  "do(es) not have more than a single class."))
                         } #End conditional that there is more than a single class

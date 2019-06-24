@@ -3,7 +3,7 @@
 #' Generates standard comparative heatmaps and spreadsheet based on relative abundance difference between binary categories for analyses named in expvectors.
 #' @export
 
-make_heatmap_report <- function(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, genomecompleteness = NULL, variable_list = NULL, adjustpval = NULL, list.data = NULL, hmasPA = FALSE, mgSeqnorm = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, ...){
+make_heatmap_report <- function(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, genomecompleteness = NULL, variable_list = NULL, adjustpval = NULL, list.data = NULL, hmasPA = FALSE, mgSeqnorm = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, ...){
 
     if (is.null(usefulexp)){
         usefulexp <- names(expvec)[!(names(expvec) %in% c("FeatType", "vfdb", "SFLD", "Coils", "Gene3D", "Phobius", "ProSitePatterns", "SMART", "resfinder", "ProDom"))]
@@ -49,14 +49,17 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
     XLn <- 0
     HMn <- 0
 
-    #Plot heatmaps in tandem to saving dataframes with stats.
-    pdffn <- paste(paste("JAMS", project, plotname, sep="_"), "pdf", sep=".")
+    basepdffn <- paste("JAMS", project, plotname, sep="_")
+    if (!(is.null(appendtofilename))){
+        basepdffn <- paste(basepdffn, appendtofilename, sep = "_")
+    }
+    pdffn <- paste(basepdffn, "pdf", sep=".")
     #Check if fn exists to avoid overwriting.
     ffn <- 1
     while (file.exists(pdffn)){
-        pdffn <- paste(paste("JAMS", project, plotname, ffn, sep = "_"), "pdf", sep = ".")
+        pdffn <- paste(paste0(basepdffn, ffn), "pdf", sep=".")
         ffn <- ffn + 1
-        if (ffn > 100){
+        if(ffn > 100){
             stop("I think you have enough plots already. May I suggest you try looking through them.")
         }
     }
@@ -178,17 +181,22 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
         compvecXL<-compvec
         names(compvecXL)<-sapply(1:length(compvecXL), function(x){ stringr::str_trunc(names(compvecXL)[x], 30) })
 
-        XLfn<-paste(paste("JAMS", project, statname, sep="_"), "xlsx", sep=".")
+        baseXLfn <- paste("JAMS", project, statname, sep="_")
+        if (!(is.null(appendtofilename))){
+            baseXLfn <- paste(baseXLfn, appendtofilename, sep = "_")
+        }
+        XLfn <- paste(baseXLfn, "xlsx", sep=".")
         #Ensure no overwriting.
-        xfn=1
-        while(file.exists(XLfn)){
-            XLfn<-paste(paste("JAMS", project, statname, xfn, sep="_"), "xlsx", sep=".")
-            xfn=xfn + 1
+        xfn <- 1
+        while (file.exists(XLfn)){
+            XLfn <- paste(paste0(baseXLfn, xfn), "xlsx", sep=".")
+            xfn <- xfn + 1
             if(xfn > 100){
                 stop("I think you have enough tables already. May I suggest you try looking through them.")
             }
         }
-        write.xlsx(compvecXL, file = XLfn, asTable=TRUE, rowNames=TRUE, colNames = TRUE, borders = "surrounding", colWidths="auto")
+
+        write.xlsx(compvecXL, file = XLfn, asTable = TRUE, rowNames = TRUE, colNames = TRUE, borders = "surrounding", colWidths="auto")
     }
 
     return(flog.info(paste("Comparative report complete with", XLn, "spreadsheet comparisons and", HMn, "heatmap comparisons")))

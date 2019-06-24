@@ -19,7 +19,7 @@ Use: $(basename "$0") [options] -d </path/to/destination> -o </path/to/origin> -
 -d /path/to/destination (must already exist)
 -o /path/to/origin (with *_JAMS.tar.gz files)
 -c Copy files (do not move them). Default is to move.
--x Delete JAMS project folder at origin if it exists. 
+-x Delete JAMS project folder at origin if it exists.
 -p prefix.list file containing list of prefixes. If not present, will bank all prefixes which look complete in the origin directory.
 -n Omit banking of reads even if they are present. Useful for banking JAMSalpha runs from SRA data.
 
@@ -36,7 +36,7 @@ function die {
 }
 
 function report2log {
-    now=$(date "+%Y-%m-%d %H:%M:%S") 
+    now=$(date "+%Y-%m-%d %H:%M:%S")
     echo "${now} -> $@" >> "$destination"/bankit_log.txt
     echo "$@"
 }
@@ -44,7 +44,7 @@ function report2log {
 #Get options
 usage () { echo "$message_use"; }
 version () { echo "$message_ver"; }
-options=':d:o:p:xchv'
+options=':d:o:p:nxchv'
 while getopts $options option
 do
     case $option in

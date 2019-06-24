@@ -48,11 +48,12 @@ update_metadata<-function(metadataXL=NULL, phenotable=NULL, phenolabels=NULL, ex
 
     if(!(is.null(readdata))){
         #Make sure that pheno contains only the samples there is data for.
-        pheno<-pheno[readdata$Sample, ]
-
+        #phenotable<-phenotable[readdata$Sample, ]
         #Add sequencing info
-        pheno<-adjust_phenotable(phenotable=phenotable, phenolabels=phenolabels, readdata=readdata)
+        newmetadata <- adjust_phenotable(phenotable=phenotable, phenolabels=phenolabels, readdata=readdata)
         #Get rid of samples with not enough data
+        pheno<-newmetadata[[1]]
+        phenolabels<-newmetadata[[2]]
         pheno<-subset(pheno, GbNAHS > minGbNAHS)
         pheno<-subset(pheno, PctAss > minPctAssembly)
     } else {

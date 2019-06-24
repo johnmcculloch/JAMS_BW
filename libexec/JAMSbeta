@@ -241,7 +241,7 @@ if (!(is.null(jamspath))){
         metadataXL <- opt$excel_metadata
         #Get metadata from XL file
         flog.info(paste("Using", metadataXL, "Excel format file to obtain metadata."))
-        metadata <- load_metadata_from_xl(xlsxFile=metadataXL)
+        metadata <- load_metadata_from_xl(xlsxFile = metadataXL)
         phenotable <- metadata[[1]]
         phenolabels <- metadata[[2]]
     } else {
@@ -265,7 +265,11 @@ if (!(is.null(jamspath))){
     }
 
     #If phenolabels exists, make sure that phenotable contains only data described in phenolabels.
-    if(exists("phenolabels")){
+    if (exists("phenolabels")){
+        if (!all(colnames(phenolabels) %in% c("Var_label", "Var_type"))) {
+            stop("Could not find the Var_label and/or Var_type columns in phenolabels table. Consult documentation and check metadata file(s).")
+        }
+
         validcols<-as.character(phenolabels$Var_label)
         flog.info(paste("Phenolabels contains", length(validcols), "categories."))
 
@@ -275,7 +279,7 @@ if (!(is.null(jamspath))){
         }
 
         ptsampcol<-as.character(phenolabels$Var_label[which(phenolabels$Var_type=="Sample")])
-        if(length(ptsampcol)!=1){
+        if (length(ptsampcol) != 1){
              stop("You must define exactly one column as being the Sample column in your metadata. Please see documenation.")
         } else {
              flog.info(paste("Samples are in the", ptsampcol, "column in the metadata."))
@@ -294,8 +298,8 @@ if (!(is.null(jamspath))){
     } else {
         #No phenolabels, so try and find at least a Sample column in the metadata.
         flog.info("Phenolabels not found. Will attempt to find which column is the Sample data.")
-        ptsampcol<-colnames(phenotable)[which(colnames(phenotable) == "Sample")]
-        if(length(ptsampcol)!=1){
+        ptsampcol<-colnames(phenotable)[which(colnames(phenotable) %in% c("Sample", "sample"))]
+        if (length(ptsampcol) != 1){
             stop("You must define exactly one column as being the Sample column in your metadata. Please see documenation.")
         }
     }
@@ -329,7 +333,7 @@ if(!(is.null(jamspath))){
     flog.info(paste("Will build experiments for samples:", paste0(Samples_want, collapse=", ")))
     flog.info(paste("Searching for .jams files in", jamspath, sep=" "))
     flog.info("Loading all wanted .jams files into a single object. Please be patient.")
-    list.data<-load_jamsfiles_from_system(path=jamspath, onlysamples=Samples_want)
+    list.data <- load_jamsfiles_from_system(path = jamspath, onlysamples = Samples_want)
     #fnalldfs<-paste("JAMS_", project, "_", "list_data", ".dat", sep="")
     #flog.info(paste("Saving JAMS list.data object as", fnalldfs, sep=" "))
     #save(list.data, file=paste(experimentspath, fnalldfs, sep="/"))
@@ -370,7 +374,7 @@ if(!(is.null(jamspath))){
     ## Evaluate reads, if required ##
     if(doreads == TRUE){
         flog.info("Evaluating sequencing.")
-        readdata <- make_readdata(Samples = Samples_have, list.data=list.data)
+        readdata <- make_readdata(Samples = Samples_have, list.data = list.data)
         readplots <- plot_readdata(readdata = readdata)
 
         #Add sequencing info
@@ -474,9 +478,9 @@ if (opt$export_tables == TRUE){
 flog.info("Making a dictionary of colours for consistency throughout plots.")
 cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno)
 
-usefulexp <- names(expvec)[!(names(expvec) %in% c("Coils", "Gene3D", "Phobius", "ProSitePatterns","SMART"))]
-usefulfunctionalexp <- usefulexp[!(usefulexp %in% "LKT")]
-reasonableexp <- usefulexp[!(usefulexp %in% c("FeatType", "ProDom", "SFLD"))]
+allexp <- names(expvec)
+basicexp <- c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO")[c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO") %in% allexp]
+specialexp <- c("vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM")[c("vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM") %in% allexp]
 
 flog.info("Saving R session image. Please be patient.")
 save.image()
@@ -490,23 +494,52 @@ if ("isolate" %in% pheno$JAMS_Run_type){
     applyfilters = "moderate"
 }
 
+whoopsieplot <- function(msg="trying to do this."){
+    flog.info(paste("Whoops, something went wrong while", msg))
+    dev.off()
+}
+
 if (opt$ordination == TRUE){
     flog.info("Will now try to generate ordination plots based on Metadata which looks meaningful.")
-    make_ordination_report(project = project, expvec = expvec, mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict)
+    flog.info(paste0("Generating ordination plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
+    tryCatch((make_ordination_report(project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict)), error = function(e) whoopsieplot("generating ordination plots for basic analyses"))
+
+    if (length(specialexp) > 0){
+        flog.info(paste0("Generating ordination plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
+        tryCatch((make_ordination_report(project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict)), error = function(e) whoopsieplot("generating ordination plots for special analyses"))
+    }
 }
 
 if (opt$make_exploratory_reports == TRUE){
-    make_heatmap_report(report = "exploratory", project = project, expvec = expvec, usefulexp = reasonableexp, applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)
+    flog.info(paste0("Generating exploratory heatmap plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
+    tryCatch((make_heatmap_report(report = "exploratory", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating exploratory heatmaps for basic analyses"))
+
+    if (length(specialexp) > 0){
+        flog.info(paste0("Generating exploratory heatmap plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
+        tryCatch((make_heatmap_report(report = "exploratory", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating exploratory heatmaps for special analyses"))
+    }
 }
 
 if (opt$make_comparative_reports == TRUE){
-    make_heatmap_report(report = "comparative", project = project, expvec = expvec, usefulexp = reasonableexp, applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)
+    flog.info(paste0("Generating comparative heatmap plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
+    tryCatch((make_heatmap_report(report = "comparative", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating comparative heatmaps for basic analyses"))
+
+    if (length(specialexp) > 0){
+        flog.info(paste0("Generating comparative heatmap plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
+        tryCatch((make_heatmap_report(report = "comparative", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating comparative heatmaps for special analyses"))
+    }
 }
 
 if (opt$make_PA_reports == TRUE){
-    make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = reasonableexp, applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)
+    flog.info(paste0("Generating presence/absence heatmap plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
+    tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating presence/absence heatmaps for basic analyses"))
+
+    if (length(specialexp) > 0){
+        flog.info(paste0("Generating presence/absence heatmap plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
+        tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating presence/absence heatmaps for special analyses"))
+    }
 }
 
 if (opt$make_alpha_reports == TRUE){
-    make_alpha_report(project = project, expvec = expvec, usefulexp = usefulexp, variable_list = variable_list, cdict = cdict)
+    make_alpha_report(project = project, expvec = expvec, usefulexp = basicexp, variable_list = variable_list, cdict = cdict)
 }

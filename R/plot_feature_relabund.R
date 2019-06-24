@@ -3,7 +3,7 @@
 #' Plots the relative abundance of an entity present in a sample or group of samples and subsets by taxonomy.
 #' @export
 
-plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, glomby=NULL, accession=NULL, groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, uselog=TRUE, statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel="p.format", plottitle=NULL, asPA=FALSE, subsetbytaxlevel=NULL, taxtable=NULL, list.data=NULL, cdict=NULL,max_categories = 3, ...){
+plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, glomby=NULL, accession=NULL, groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, uselog=TRUE, statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel="p.format", plottitle=NULL, asPA=FALSE, subsetbytaxlevel=NULL, taxtable=NULL, list.data=NULL, cdict=NULL, max_categories = 3, ...){
 
     require(reshape2)
     obj<-mgseqobj
@@ -32,7 +32,7 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
         asPA=FALSE
     }
 
-    if (!(missing(subsetby))){    
+    if (!(missing(subsetby))){
         subset_points<-sort(unique((pData(obj)[, which(colnames(pData(obj))==subsetby)])))
     }else{
         subset_points<-"none"
@@ -46,82 +46,81 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
         feature<-accession
     }
 
-    if(is.null(plottitle)){
-        featdesc<-paste(feature, fData(obj)[feature,"Description"], sep="-")
+    if (is.null(plottitle)){
+        featdesc <- paste(feature, fData(obj)[feature, "Description"], sep="-")
         if(length(feature) < 3){
-            plottitle<-paste(featdesc, collapse = ' AND ')
+            plottitle <- paste(featdesc, collapse = ' AND ')
         } else {
-            plottitle<-paste("Several features of", analysis)
+            plottitle <- paste("Several features of", analysis)
         }
     }
 
-    gvec<-NULL
-    gvec<-vector("list",length=1000)
-    plotcount=1
+    gvec <- NULL
+    gvec <- vector("list",length=1000)
+    plotcount = 1
 
     for (sp in 1:length(subset_points)){
 
-        if (!(is.null(subsetby))){ 
-            samplesToKeep = which((pData(obj)[,which(colnames(pData(obj))==subsetby)])==subset_points[sp])
-            currobj=obj[ , samplesToKeep]
-            maintit<-paste(plottitle, paste("Subset:", subset_points[sp]), sep="\n")
+        if (!(is.null(subsetby))){
+            samplesToKeep = which((pData(obj)[,which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])
+            currobj = obj[ , samplesToKeep]
+            maintit <- paste(plottitle, paste("Subset:", subset_points[sp]), sep = "\n")
         } else {
             currobj = obj
             maintit <- plottitle
         }
 
-        currobj<-filter_experiment(mgseqobj=currobj, asPA=asPA, asPPM=TRUE, mgSeqnorm=mgSeqnorm)
+        currobj <- filter_experiment(mgseqobj = currobj, asPA = asPA, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
 
         if (is.factor(pData(currobj)[,groupby])) { # use order if factor
           discretenames <- levels(pData(currobj)[,groupby])
         } else {
-          discretenames<-sort(unique(as.character(pData(currobj)[,which(colnames(pData(currobj))==groupby)])))
+          discretenames <- sort(unique(as.character(pData(currobj)[, which(colnames(pData(currobj)) == groupby)])))
         }
-        classIndex<-NULL
-        classIndex<-list()
+        classIndex <- NULL
+        classIndex <- list()
         for (n in 1:length(discretenames)){
-            classIndex[[n]]=which(pData(currobj)[,which(colnames(pData(currobj))==groupby)]==discretenames[n])
+            classIndex[[n]] = which(pData(currobj)[, which(colnames(pData(currobj)) == groupby)] == discretenames[n])
             names(classIndex)[[n]] <- discretenames[n]
         }
-        par(cex.axis=0.5, cex.main=1, cex.sub=0.5, las=2)
-        
-        mat = MRcounts(currobj, norm = FALSE, log = uselog)
+        par(cex.axis = 0.5, cex.main = 1, cex.sub = 0.5, las = 2)
+
+        mat <- MRcounts(currobj, norm = FALSE, log = uselog)
 
         #Protect against feature being absent
-        if(all(feature %in% rownames(mat))){
-
-            #if there is more than a single feature, add their relabunds up in an appropriate manner. 
-            if(length(feature) == 1){
-                l = lapply(classIndex, function(j) { mat[feature, j] })
+        if (all(feature %in% rownames(mat))){
+            #if there is more than a single feature, add their relabunds up in an appropriate manner.
+            if (length(feature) == 1){
+                l <- lapply(classIndex, function(j) { mat[feature, j] })
             } else {
-                mat2<-mat[feature, ]
-                if(uselog==TRUE){
-                    mat3<-(2^(mat2)-1)
-                    mat2<-t(colSums(mat3))
-                    mat2<-log2(mat2+1)
+                mat2 < -mat[feature, ]
+                if (uselog == TRUE){
+                    mat3 <- (2^(mat2) - 1)
+                    mat2 <- t(colSums(mat3))
+                    mat2 <- log2(mat2 + 1)
                 } else {
-                    mat2<-t(colSums(mat2))
+                    mat2 <- t(colSums(mat2))
                 }
-                l = lapply(classIndex, function(j) { mat2[, j] })
+                l <- lapply(classIndex, function(j) { mat2[, j] })
             }
-            
-            y = unlist(l)
-            x = rep(seq(along = l), sapply(l, length))
-            xnam = rep(names(l), sapply(l, length))
-            dat<-data.frame(xnam=xnam, x=x, y=y)
-            
+
+            y <- unlist(l)
+            x <- rep(seq(along = l), sapply(l, length))
+            xnam <- rep(names(l), sapply(l, length))
+            dat <- data.frame(xnam = xnam, x = x, y = y)
+
             if(length(discretenames) < nrow(pData(currobj))){
-                jitfact=-(0.3/nrow(pData(currobj)))*(length(discretenames)) + 0.25
+                jitfact <- -( 0.3 / nrow(pData(currobj))) * (length(discretenames)) + 0.25
             } else {
-                jitfact=0
+                jitfact = 0
             }
-            
+
             if (!(is.null(shapeby))){
                 shapeindex = lapply(classIndex, function(j) { pData(currobj)[j, which(colnames(pData(currobj))==shapeby)] })
                 shp=unlist(shapeindex)
                 dat$shape<-shp
             }
-            
+
             if(!(is.null(colourby))){
                 colourindex = lapply(classIndex, function(j) { pData(currobj)[j, which(colnames(pData(currobj))==colourby)] })
                 col=unlist(colourindex)
@@ -141,22 +140,22 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
                         p <- p + scale_color_manual(values = groupcols)
                     }
                 }
-                
+
             } else {
                 p <- ggplot(dat, aes(factor(xnam), y))
             }
-            
+
             if(asPA!=TRUE){
                 p <- p + geom_boxplot(outlier.shape=NA)
             }
-            
+
             if (!(is.null(shapeby))){
                 p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0), aes(shape=shape))
             } else {
                 p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0))
             }
             p <- p + theme_minimal()
-            
+
             if((length(discretenames) > 1) && (length(discretenames) <= max_categories)){
                 if(missing(signiflabel)){
                     signiflabel="p.format"
@@ -170,14 +169,14 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
 
             p <- p + ggtitle(maintit)
 
-            if(!(is.null(colourby))){ 
+            if(!(is.null(colourby))){
                 p <- p + labs(colour = colourby)
             }
 
-            if(!(is.null(shapeby))){ 
+            if(!(is.null(shapeby))){
                 p <- p + labs(shape = shapeby)
             }
-            
+
             if(uselog==TRUE){
                 ytit<-"log2 of (Relative Abundance in PPM)"
                 #p <- p + scale_y_continuous(expand = c(0, 0),  sec.axis = sec_axis(trans=~expm1(.*log(2)), name="Percentage relative abundance"))
@@ -207,7 +206,7 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
                 ctit<-"black"
                 tt$Colour[which(tt$Phylum=="Unclassified")]<-"#000000"
 
-                #Get data for features 
+                #Get data for features
                 wantedSamples<-rownames(pData(currobj))
                 featureobjects<-paste(wantedSamples, "featuredose", sep="_")
                 featuredoses<-list.data[featureobjects]
@@ -243,7 +242,7 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
                 rownames(submat)<-submat$Taxon
                 submat$Taxon<-NULL
                 submat<-as.matrix(submat)
-                
+
                 #Add missing data for samples with 0
                 samplesnotzero<-wantedSamples[(wantedSamples %in% colnames(submat))]
                 sampleszero<-wantedSamples[!(wantedSamples %in% samplesnotzero)]
@@ -267,7 +266,7 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
                 for(ds in 1:length(discretenames)){
                     #Get a matrix with only the samples applicable
                     samplesingroup<-classIndex2[[discretenames[ds]]]
- 
+
                     #Fix dimensions if a single feature
                     if(nrow(submat) != 1){
                         groupstratmat<-submat[ , samplesingroup]
@@ -281,7 +280,7 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
                     skipplot = FALSE
                     if(nrow(groupstratmat) > 1){
                         notzero<-names(which(rowSums(groupstratmat) > 0))
-                        if(length(notzero) > 1 ){                        
+                        if(length(notzero) > 1 ){
                             groupstratmat<-groupstratmat[notzero, ]
                         } else if (length(notzero) == 1)  {
                             groupstratmat<-t(groupstratmat[notzero, ])
@@ -354,6 +353,6 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
 
     #Redefine graphics list as ones only containing plots
     gvec<-gvec[sapply(gvec, function(x){!(is.null(x))})]
-    
+
     return(gvec)
 }
