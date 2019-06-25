@@ -1,204 +1,59 @@
-#!/bin/bash
-##Get options
-message_use="
-JAMSfullservice
-By John McCulloch
-Launches JAMSalpha swarm files from either a downloaded Illumina BaseSpace folder, from a BaseSpace accession ID, from reads, and then banks the JAMSalpha runs and compares samples using JAMSbeta
+#!/usr/bin/env Rscript
+jamsdir<-getwd()
+slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+#Decide which kind of system you are on.
+if(nchar(slurmjobid) < 3){
+   stop("You are not on a node on Biowulf. This installation script will only work on HPC Biowulf. Refer to documentation. Aborting now.")
+}
+homefolder <- as.character(Sys.getenv("HOME"))
 
-Use: $(basename "$0") {-b </path/to/BasespaceRun> | -i <123456789> | -r </path/to/rawreads/folder>} -p <ProjectName> -d </path/to/destination/folder> [-s <sub.map>] [-c </path/to/scratch/folder>] [-x <Project_Metadata.xlsx>] [-j <123456789>]
+#Make sure we are writing to the right place
+rlibs <- as.character(Sys.getenv("R_LIBS"))
+print(paste("Global variable R_LIBS is set to", rlibs))
 
--h Help
--v Version
--b Full path to where previously downloaded BaseSpace run is. Using this option will override the -i option.
--i BaseSpace Run ID to download automatically. BaseSpace Sequence Hub CLI must be installed on your system. See (https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview).
--r Full path to a folder containing Illumina sequencing reads (a single or a pair of fastq files for each sample). Using this option will override the -b option.
--p Project name for creating output finalfolder.
--o Full path to destination (output) folder where final results will be banked to. [default = current folder]
--c Full path to a scratch folder where JAMSalpha will run. This is optional. JAMSalpha results will then be banked to the destination folder set with the -d option.
--s Tab-limited substitution map for renaming BaseSpace prefixes with new ones.
--H Host species (human, mouse, none, taxid, species_name or /path/to/index) [Default = human]
--a JAMSalpha analysis type (metagenome, metatranscriptome, isolate, isolaternaseq) [Default = metagenome]
--t Number of CPUs for JAMSalpha [Default = 32]
--d Path to JAMS database directory
--x Project metadata file in JAMS format for running JAMSbeta. For specifications see https://github.com/johnmcculloch/JAMS_BW/wiki/JAMSbeta. If a metadata file is not supplied, JAMSbeta will not run and this script will stop after banking JAMSalpha output to the destination folder.
--j Slurm job id to add as initial dependency for first batch [optional].
+#Install devtools and stringr if not present
+if(!(all((c("devtools", "stringr") %in% rownames(installed.packages()))))){
+    install.packages(c("devtools", "stringr"))
+}
+require("devtools")
+require("stringr")
 
-"
+#Make symlinks for JAMS executables
+jamsbinpath<-file.path(jamsdir, "libexec")
+jamsBWbinpath<-file.path(jamsdir, "BWlibexec")
 
-version="1.0"
-verdate="JUN-2019"
-message_ver="JAMSfullservice ver $version by John McCulloch $verdate"
-
-#Define defaults
-basespacefolder=""
-basespaceid=""
-submap=""
-readsfolder=""
-projname="MyProject"
-finalfolder=`pwd`
-scratchfolder=""
-slurmjobiddep=""
-metadata=""
-jamsdbfolder="/data/MicrobiomeCore/JAMSdb/db"
-host="mouse"
-projtype="metagenome"
-threads=32
-
-#Get options
-usage () { echo "$message_use"; }
-
-version () { echo "$message_ver"; }
-function die {
-    echo "$@" >&2
-    exit 1
+binexecs<-c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db")
+BWbinexecs<-c("JAMSfullservice", "bankit", "bootstrapswarm", "joinlanesIlluminaBaseSpaceProject", "makeswarmJAMS")
+for(binexec in binexecs){
+    sourcepath<-file.path(jamsbinpath, binexec)
+    targetpath<-file.path(homefolder, "bin", binexec)
+    print(paste("Linking executable to $HOME/bin with", "ln", "-s", sourcepath, targetpath))
+    system(paste("ln", "-s", sourcepath, targetpath))
 }
 
-options=':b:i:p:r:o:c:s::H:t:a:d:x:j:vh'
-while getopts $options option
-do
-    case $option in
-        b  ) basespacefolder="$OPTARG" ;;
-        i  ) basespaceid="$OPTARG" ;;
-        p  ) projname="$OPTARG" ;;
-        r  ) readsfolder="$OPTARG" ;;
-        o  ) finalfolder="$OPTARG" ;;
-        c  ) scratchfolder="$OPTARG" ;;
-        s  ) submap="$OPTARG" ;;
-        H  ) host="$OPTARG" ;;
-        a  ) projtype="$OPTARG" ;;
-        t  ) threads="$OPTARG" ;;
-        d  ) jamsdbfolder="$OPTARG" ;;
-        x  ) metadata="$OPTARG" ;;
-        j  ) slurmjobiddep="$OPTARG" ;;
-        v  ) version; exit ;;
-        h  ) usage; exit ;;
-        \? ) echo "Unknown option: -$OPTARG" >&2; exit 1;;
-        :  ) echo "Missing option argument for -$OPTARG" >&2; exit 1;;
-        *  ) echo "Unimplemented option: -$OPTARG" >&2; exit 1;;
-    esac
-done
+#Make symlinks for Biowulf executables
+for(BWbinexec in BWbinexecs){
+    sourcepath<-file.path(jamsBWbinpath, BWbinexec)
+    targetpath<-file.path(homefolder, "bin", BWbinexec)
+    print(paste("Linking executable to $HOME/bin with", "ln", "-s", sourcepath, targetpath))
+    system(paste("ln", "-s", sourcepath, targetpath))
+}
 
-shift $(($OPTIND - 1))
+#Check if linuxbrew is installed, else halt
+if((system(str_c("which brew"), ignore.stdout = TRUE)) == 1){
+    stop("You must install Linuxbrew before running this installation script. Refer to documentation. Aborting now.")
+}
 
-#Check for silly stuff
-#if [ "$basespacefolder" == "" && "$basespaceid" == "" && "$readsfolder" == "" ]
-#then
-#    echo "$message_use"
-#    die "You must supply sequencing reads as input, either as a folder with reads, a BaseSpace run folder with lanes to be joined, or a BaseSpace ID so a run can be downloaded."
-#fi
+#Install Bioconductor packages
+bioconductordeps<-c("dada2", "metagenomeSeq", "ComplexHeatmap", "HybridMTest", "genefilter")
+if (!requireNamespace("BiocManager", quietly = TRUE)){
+    install.packages("BiocManager")
+}
+BiocManager::install(pkgs=bioconductordeps, update = FALSE, ask = FALSE)
 
-projectfolder="$finalfolder"/"$projname"
-mkdir -p "$projectfolder"
+#Install the rest of JAMS
+setwd(jamsdir)
+devtools::install(upgrade=FALSE)
 
-#If there is no scratch folder, do it all in the project folder
-if [ "$scratchfolder" == "" ]
-then
-    outfolder="$projectfolder"
-else
-    outfolder="$scratchfolder"/"$projname"
-    mkdir -p "$outfolder"
-fi
-
-#If there are no joined reads, then join them.
-if [ "$readsfolder" == "" ]
-then
-    cd "$outfolder"
-    #If there is no downloaded BaseSpace folder, then download one
-    if [ "$basespacefolder" == "" ]
-    then
-        echo "Downloading raw reads from BaseSpace run ID number $basespaceid"
-        mkdir rawdata
-        cd rawdata
-        bs download project -i "$basespaceid" -o targetrun
-        cd "$outfolder"
-        basespacefolder="$outfolder"/rawdata
-    fi
-
-    #make swarm for joining the lanes
-    rawreadsfolder="$outfolder"/rawreads
-    mkdir -p "$rawreadsfolder"
-
-    if [ "$submap" == "" ]
-    then
-        echo joinlanesIlluminaBaseSpaceProject -o $basespacefolder -d $rawreadsfolder -t > joinlanes.swarm
-    else
-        echo joinlanesIlluminaBaseSpaceProject -o $basespacefolder -d $rawreadsfolder -s $submap -t > joinlanes.swarm
-    fi
-    #Launch the swarm for joining lanes
-    swarm -g 128 -t "$threads" --time 18:00:00 --partition=norm,ccr -f joinlanes.swarm > joinlanes.job
-fi
-
-#make JAMSalpha.swarm
-if [ "$readsfolder" == "" ]
-then
-    #Make the swarm file only after joinlanes has run
-    echo makeswarmJAMS -o $outfolder -r $rawreadsfolder -d $jamsdbfolder -s $host -j $projtype > makeswarm.swarm
-    #Launch the make swarm
-    joinlanesjob=`cat joinlanes.job`
-    swarm -g 1 -t 2 --time 00:30:00 --partition=quick --dependency=afterany:$joinlanesjob -f makeswarm.swarm > makeswarm.job
-    makeswarmjob=`cat makeswarm.job`
-    #Launch JAMSalpha for each sample
-    echo "sleep 120; bootstrapswarm -s JAMS.swarm -l 15 -t $threads -m 120 -g 750 -j $makeswarmjob -w R" > launchJAMS.swarm
-    swarm -g 1 -t 2 --time 00:30:00 --partition=quick --dependency=afterany:$makeswarmjob -f launchJAMS.swarm > launchjams.job
-    launchjamsjob=`cat launchjams.job`
-else
-    #Lanes are joined, so no need to do it in a swarm
-    makeswarmJAMS -o $outfolder -r $readsfolder -d $jamsdbfolder -s $host -j $projtype
-    if [ "$slurmjobiddep" == "" ]
-    then
-        bootstrapswarm -s JAMS.swarm -l 15 -t "$threads" -m 120 -g 750 -w R
-    else
-        bootstrapswarm -s JAMS.swarm -l 15 -t "$threads" -m 120 -g 750 -j $slurmjobiddep -w R
-    fi
-    echo "JAMSalpha launched" > JAMSalphaLaunched.flag
-    date >> JAMSalphaLaunched.flag
-fi
-
-###############################
-## Plan for banking procedures
-alphafolder="$projectfolder"/JAMS_alpha
-mkdir -p "$alphafolder"
-
-escalpha=`echo -e "$alphafolder" | sed s/"\/"/"\\\\\\\\\/"/g`
-escout=`echo -e "$outfolder" | sed s/"\/"/"\\\\\\\\\/"/g`
-
-#make a bash script for banking JAMSalpha results once JAMSalpha has finished running.
-echo '#!/bin/bash
-#bank it
-echo "bankit -d alphafolder -o outfolder -c" > bankalpha.swarm
-JAMSalphajob=`cat chunk.job`
-swarm -g 64 -t 2 --time 12:00:00 --partition=norm,ccr --dependency=afterany:$JAMSalphajob -f bankalpha.swarm > bankalpha.job
-' > tmp
-cat tmp | sed s/"alphafolder"/"$escalpha"/g | sed s/"outfolder"/"$escout"/g > launchbankit.sh
-rm tmp
-chmod 755 launchbankit.sh
-
-################################
-# Plan for JAMSbeta procedures
-betafolder="$projectfolder"/JAMS_beta
-mkdir -p "$betafolder"
-cp "$metadata" "$betafolder"/"$projname"_Metadata.xlsx
-jamsfiles="$alphafolder"/jamsfiles
-
-#make a bash script for running JAMSbeta once JAMSalpha has been banked.
-echo JAMSbeta -p "$projname" -o "$betafolder" -y "$jamsfiles" -x "$betafolder"/"$projname"_Metadata.xlsx -g 0.25 -a 25 -d -f -k -b > launchbeta.swarm
-
-#Launch JAMSbeta only after JAMSalpha has been banked.
-echo '#!/bin/bash
-#Run JAMSbeta
-bankalphajob=`cat bankalpha.job`
-swarm -g 128 -t 48 --time 12:00:00 --partition=norm,ccr --dependency=afterany:$bankalphajob --module R -f launchbeta.swarm > launchbeta.job
-' > launchbetaswarm.sh
-chmod 755 launchbetaswarm.sh
-
-#If JAMSalpha has been launched already, then run the launchbankit and JAMSbeta scripts immediately, otherwise, launch it through a swarm after the launch JAMS swarm has been run.
-if [ -f JAMSalphaLaunched.flag ]
-then
-    bash launchbankit.sh
-    bash launchbetaswarm.sh
-else
-    sbatch --partition=norm,quick --time=00:30:00 --cpus-per-task=2 --mem-per-cpu=1g --dependency=afterany:$launchjamsjob launchbankit.sh > launchbankit.job
-
-    launchbankit=`cat launchbankit.job`
-    sbatch --partition=norm,quick --time=00:30:00 --cpus-per-task=2 --mem-per-cpu=1g --dependency=afterany:$launchbankit launchbetaswarm.sh > launchbetaswarm.job
-fi
+#Install Linuxbrew dependencies
+system(paste("bash", file.path("BWlibexec", "install_brew_dependencies.sh")))
