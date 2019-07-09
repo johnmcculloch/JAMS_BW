@@ -26,7 +26,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
 
     pt <- as.data.frame(pData(expvec2[[1]]))
     readscols <- (colnames(pt)[(colnames(pt) %in% c("GbNAHS", "PctAss"))])
-    colcategories <- append(variables_all, readscols, after=length(variables_all))
+    colcategories <- append(variables_all, readscols, after = length(variables_all))
 
     if (report == "comparative"){
         plotname <- "Feature_Heatmaps_Comparative"
@@ -99,7 +99,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
 
                     #Verify if there are enough samples in each category to go ahead
 
-                    mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]], heatpalette="diverging", hmtype=report, hmasPA=FALSE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
+                    mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]], heatpalette="diverging", hmtype=report, hmasPA=FALSE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
                     compvec <- append(compvec, mycomp, after=length(compvec))
 
@@ -108,7 +108,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                     plot.new()
                     grid.table(c("Features with highest variance", names(expvec2)[a], "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                    mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]],  heatpalette="diverging", hmtype=report, ntop=topcats, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
+                    mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]],  heatpalette="diverging", hmtype=report, ntop=topcats, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
                     compvec <- append(compvec, mycomp, after=length(compvec))
 
@@ -116,26 +116,26 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                     plot.new()
                     grid.table(c(names(expvec2)[a], "Features present or absent", paste("between", cmp), "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                    mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]],  heatpalette="diverging", hmtype=report, hmasPA=TRUE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
+                    mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]],  heatpalette="diverging", hmtype=report, hmasPA=TRUE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
                     compvec <- append(compvec, mycomp, after=length(compvec))
                 }
             }
-            HMn=HMn+1
+            HMn <- HMn + 1
 
-            if(length(variables_subs) > 0){
+            if (length(variables_subs) > 0){
                 #If there is any subsettable data, then do that.
                 validsubs<-NULL
                 validsubs<-variables_subs[!(variables_subs %in% cmp)]
                 for (vs in validsubs){
-                    XLn=XLn+1
+                    XLn <- XLn + 1
 
-                    if(makeheatmaps==TRUE){
-                        if(report == "comparative"){
+                    if (makeheatmaps == TRUE){
+                        if (report == "comparative"){
                             plot.new()
                             grid.table(c(names(expvec2)[a], "Features most different", paste("between", cmp), paste("Subset by", vs)), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                            mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]], subsetby=vs, heatpalette="diverging", hmtype=report, hmasPA=FALSE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, adjustpval=adjustpval, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
+                            mycomp <- plot_relabund_heatmap(mgseqobj = expvec2[[a]], subsetby = vs, heatpalette = "diverging", hmtype = report, hmasPA = FALSE, compareby = cmp, ntop = topcats, invertbinaryorder = FALSE, colcategories = colcategories, cluster_rows = TRUE, applyfilters = applyfilters, adjustpval = adjustpval, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ignoreunclassified = TRUE, showonlypbelow = showonlypbelow, showpval = TRUE, showl2fc = TRUE, list.data = list.data, cdict = cdict, maxnumheatmaps = maxnumheatmaps, numthreads = numthreads, nperm = nperm, statsonlog = TRUE, returnstats = makespreadsheets)
 
                             compvec <- append(compvec, mycomp, after=length(compvec))
 
@@ -144,7 +144,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                             plot.new()
                             grid.table(c("Features with highest variance", names(expvec2)[a], "Subsetting by group"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                            mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]], subsetby=vs, heatpalette="diverging", hmtype=report, ntop=topcats, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
+                            mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]], subsetby=vs, heatpalette="diverging", hmtype=report, ntop=topcats, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
                             compvec <- append(compvec, mycomp, after=length(compvec))
 
@@ -152,19 +152,19 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                             plot.new()
                             grid.table(c(names(expvec2)[a], "Features present or absent", paste("between", cmp), paste("Subset by", vs)), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                            mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]], subsetby=vs, heatpalette="diverging", hmtype=report, hmasPA=TRUE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
+                            mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]], subsetby=vs, heatpalette="diverging", hmtype=report, hmasPA=TRUE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
                             compvec <- append(compvec, mycomp, after=length(compvec))
 
                         } #Type of report conditional
                     } #If heatmaps are to be made conditional
-                    HMn=HMn+1
+                    HMn <- HMn + 1
                 } #End of for each valid subset loop
             } #If there are any subsets conditional
         } #End of for each experiment loop
     } #End of for each comparison loop
 
-    if(makeheatmaps==TRUE){
+    if (makeheatmaps == TRUE){
         #Final message
         authors=as.character(as.person(packageDescription("JAMS")$Author))
         finalmessage=c(packageDescription("JAMS")$Title, paste("JAMS version", packageVersion("JAMS")), authors, paste("Contact:", "john.mcculloch@nih.gov"), "National Cancer Institute", "National Institutes of Health", "Bethesda, MD, USA")

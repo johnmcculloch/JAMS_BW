@@ -5,7 +5,7 @@
 \title{get_contig_coverage}
 \usage{
 get_contig_coverage(opt = NULL, markduplicates = FALSE,
-  classifyunassembled = TRUE, usekraken1 = FALSE)
+  classifyunassembled = TRUE)
 }
 \description{
 JAMSalpha function

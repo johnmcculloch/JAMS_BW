@@ -4,7 +4,9 @@
 \alias{harvest_functions}
 \title{harvest_functions}
 \usage{
-harvest_functions(opt = opt)
+harvest_functions(opt = opt, noninterproanalyses = c("FeatType",
+  "ECNumber", "Product", "resfinder", "plasmidfinder", "napdos",
+  "serofinderH", "serofinderO", "vfdb"))
 }
 \description{
 JAMSalpha function

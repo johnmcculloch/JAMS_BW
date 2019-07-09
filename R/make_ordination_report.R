@@ -3,7 +3,7 @@
 #' Generates standard ordination plots for analyses named in expobjects.
 #' @export
 
-make_ordination_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", samplesToKeep = NULL, featuresToKeep=NULL, appendtofilename = NULL, ...){
+make_ordination_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified=TRUE, appendtofilename = NULL, ...){
 
     if(is.null(usefulexp)){
         usefulexp <- names(expvec)[!(names(expvec) %in% c("SFLD", "Coils", "Gene3D", "Phobius", "ProSitePatterns", "SMART", "ProDom"))]
@@ -75,25 +75,25 @@ make_ordination_report <- function(project = NULL, expvec = NULL, usefulexp = NU
             for(e in 1:length(expvec2)){
                 flog.info(paste("Plotting", names(expvec2)[e], " and marking by", variables_all[c]))
 
-                print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", colourby = variables_all[c], shapeby=NULL, log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep))
+                print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", colourby = variables_all[c], shapeby=NULL, log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified = ignoreunclassified))
                 #If there are any subsettable variables, subset by them.
-                validsubs<-variables_subs[!(variables_subs %in% variables_all[c])]
+                validsubs <- variables_subs[!(variables_subs %in% variables_all[c])]
 
-                if(length(validsubs)>0){
+                if (length(validsubs)>0){
                     for (vs in validsubs){
                         #Test if there is more than one class within the subset
-                        discnamesvs<-unique(pt[,vs])
-                        classtest<-NULL
+                        discnamesvs <- unique(pt[, vs])
+                        classtest <- NULL
                         for(k in 1:length(discnamesvs)){
                             #check if there is more than one class when subset
-                            classtest[k]<-(length(unique(pt[,variables_all[c]][which(pt[,vs]==discnamesvs[k])]))>1)
+                            classtest[k] <- (length(unique(pt[, variables_all[c]][which(pt[, vs] == discnamesvs[k])])) > 1)
                         }
 
                         #Plot if there is more than one class in a subset, else skip, as it is pointless.
-                        if(all(classtest)){
+                        if (all(classtest)){
                             plot.new()
                             grid.table(c("Marking samples by", variables_all[c], "Subsetting samples by", vs), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 25))
-                            print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", subsetby=vs, colourby = variables_all[c], log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep))
+                            print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", subsetby=vs, colourby = variables_all[c], log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=ignoreunclassified))
                         } else {
                             flog.info(paste("Will not plot", variables_all[c], "within", vs, "because",  paste0(discnamesvs[!classtest], collapse=", " ),  "do(es) not have more than a single class."))
                         } #End conditional that there is more than a single class

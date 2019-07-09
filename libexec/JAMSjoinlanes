@@ -1,0 +1,256 @@
+#!/usr/bin/env Rscript
+suppressPackageStartupMessages(library(RCurl))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(futile.logger))
+suppressPackageStartupMessages(library(parallel))
+suppressPackageStartupMessages(library(benchmarkme))
+#####################################
+# Define System-specific Functions ##
+#####################################
+if ((.Platform$OS.type) != "unix"){
+    stop("JAMS only works on UNIX. Install Linux and try again.")
+}
+
+#Get slurm job ID
+slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+
+#Decide which kind of system you are on.
+if(nchar(slurmjobid) < 3){
+   print("You are not on a Slurm Workload Cluster")
+   #Define appropriate functions for non-slurm system
+   detectBatchCPUs <- function() {
+        ncores <- detectCores()
+        if (is.na(ncores)) {
+            stop("Could not determine how many CPUs you have. Aborting.")
+        }
+        return(ncores)
+    }
+
+    detectAvailRAM <- function(){
+        totmembytes<-as.numeric(get_ram())
+
+        return(totmembytes)
+    }
+
+} else {
+    print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
+    #Define appropriate functions for slurm system
+    detectBatchCPUs <- function() {
+        ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+        if (is.na(ncores)) {
+            ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE"))
+        }
+        if (is.na(ncores)) {
+            stop("Could not determine how many CPUs you have. Aborting.")
+        }
+        return(ncores)
+    }
+
+    detectAvailRAM <- function(){
+        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
+        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
+        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+
+        if(!(is.na(mempernode))){
+            totmem <- mempernode
+        } else {
+            totmem <- mempercpu * cpuspertask
+        }
+
+        totmembytes<-totmem * 1000000
+
+        return(totmembytes)
+    }
+}
+
+############################
+## Define other functions ##
+############################
+filetype <- function(path){
+    f = file(path)
+    ext = summary(f)$class
+    close.connection(f)
+    ext
+}
+
+# get path of running script
+getScriptPath <- function() {
+    cmdArgs <- commandArgs(trailingOnly = FALSE)
+    needle <- "--file="
+    match <- grep(needle, cmdArgs)
+    if (length(match) > 0) {
+        return(dirname(normalizePath(sub(needle, "", cmdArgs[match]))))
+    } else {
+        return(dirname(normalizePath(sys.frames()[[1]]$ofile)))
+    }
+}
+
+JAMSauthors <- as.character(as.person(packageDescription("JAMS")$Author))
+
+#########################
+# Get options from args #
+#########################
+#Define defaults
+defopt <- list()
+defopt$verstr <- paste0("JAMSjoinlanes v", packageVersion("JAMS"))
+defopt$origin <- getwd()
+defopt$destination <- file.path(defopt$origin, "rawreads")
+defopt$tarup <- FALSE
+defopt$threads <- detectBatchCPUs()
+
+option_list <- list(
+    make_option(c("-o", "--origin"), default = defopt$origin, action="store",
+                help = str_c("path to directory where runs are (default: ", defopt$origin, ")")),
+    make_option(c("-d", "--destination"), default = defopt$destination, action="store",
+                help = str_c("Path of directory where you want the merged reads (default: ", defopt$destination, ")")),
+    make_option(c("-s", "--substitutionmap"), default = NULL, action="store",
+                help = str_c("Optional tab limited text file for sample name substitution in the format: oldname[TAB]newname")),
+    make_option(c("-z", "--tarup"), default = defopt$tarup, action="store_true",
+                help = str_c("Output joined lanes as a tarball (reads.tar.gz) rather than two separate fastq files. (default: ", defopt$tarup, ")")),
+    make_option(c("-t", "--threads"), default=defopt$threads, action="store",
+                help = str_c("number of threads (default: ", defopt$threads, ")")),
+    make_option(c("-v", "--version"), action="store_true",
+                help ="report version")
+)
+
+# parse the options
+args <- commandArgs(trailingOnly = TRUE)
+opt <- parse_args(OptionParser(option_list=option_list), args)
+opt <- merge.list(opt, defopt)
+
+#####################
+## Set environment ##
+#####################
+
+# print version & exit if -v
+if (!is.null(opt$version)) {
+    print(opt$verstr)
+    quit()
+}
+
+#Get Script path
+opt$bindir <- getScriptPath()
+#detect resources
+opt$totmembytes <- detectAvailRAM()
+opt$maxsizebytes <- (as.numeric((opt$maxsizeGB)) * 1000000000)
+
+#Fix path relativity
+fixrelpath <- function(JAMSpath = NULL){
+    require(R.utils)
+    if (!(isAbsolutePath(JAMSpath))){
+        fixedpath <- getAbsolutePath(JAMSpath)
+    } else {
+        fixedpath <- JAMSpath
+    }
+
+    return(fixedpath)
+}
+
+for (pathtofix in c("origin", "destination", "substitutionmap")){
+    if (!is.null(opt[[pathtofix]])){
+        opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
+    }
+}
+
+# give help if needed input option not provided
+if (is.null(opt$origin)) {
+    print("You must supply a folder with reads to join.")
+    parse_args(OptionParser(option_list = option_list), c("-h"))
+    q()
+}
+
+###################
+## Main Function ##
+###################
+suppressPackageStartupMessages(library(JAMS))
+flog.info("Creating directory to hold output reads.")
+dir.create(opt$destination, recursive = TRUE)
+setwd(opt$destination)
+
+opt$projimage <- file.path(opt$destination, ".RData")
+save.image(opt$projimage)
+
+#Get a list of fastq files
+rawfastqpaths <- list.files(path = opt$origin, pattern = "fastq.gz", full.names = TRUE, recursive = TRUE)
+rawfastqnames <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 1) })
+datasetids <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 2)[1] })
+#Make a dataframe with all the info
+rawfastqsdf <- data.frame(Filenames = rawfastqnames, Filepaths = rawfastqpaths, DatasetIDs = datasetids, stringsAsFactors = FALSE)
+rawfastqsdf$Prefix <- NULL
+rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 2)[1] } )
+rawfastqsdf$Lane <- sapply(1:nrow(rawfastqsdf), function(x) { tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 3)[1] } )
+rawfastqsdf$BaseSpaceSample <- sapply(1:nrow(rawfastqsdf), function(x) { tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 4)[1] } )
+rawfastqsdf$OriPrefix <- sapply(1:nrow(rawfastqsdf), function(x) { paste(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_"))[1:((which(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")) == tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 4)[1])) - 1)], collapse = "_") } )
+save.image(opt$projimage)
+
+#Adjust prefix if there is a substitution map
+if (!(is.null(opt$substitutionmap))){
+    submap <- read.table(opt$substitutionmap, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+    colnames(submap) <- c("OriPrefix", "Prefix")
+    rawfastqsdf <- left_join(rawfastqsdf, submap, by = "OriPrefix")
+    rawfastqsdf$Prefix[which(is.na(rawfastqsdf$Prefix) == TRUE)] <- rawfastqsdf$OriPrefix[which(is.na(rawfastqsdf$Prefix) == TRUE)]
+} else {
+    rawfastqsdf$Prefix <- rawfastqsdf$OriPrefix
+}
+save.image(opt$projimage)
+
+OriPrefixes <- unique(rawfastqsdf$OriPrefix)
+flog.info(paste("Found original BaseSpaceSample names:", paste0(OriPrefixes, collapse = ", ")))
+for (currsamp in OriPrefixes){
+    flog.info(paste("Processing sample", currsamp))
+    currsampdf <- subset(rawfastqsdf, OriPrefix == currsamp)
+    currprefix <- currsampdf$Prefix[1]
+    flog.info(paste("Output prefix for this sample is", currprefix))
+    flog.info("Processing R1")
+
+    currR1df <- currsampdf[which(currsampdf$Read == "R1"), ]
+    currR1df <- currR1df[order(currR1df$Lane) , ]
+    dsorder <- currR1df$DatasetIDs
+    fastqR1in <- paste(currR1df$Filepaths, collapse = " ")
+    fastqR1out <- file.path(opt$destination, paste(paste(currprefix, "R1", sep = "_"), "fastq", "gz", sep = "."))
+    joinR1cmd <- paste("cat", fastqR1in, ">", fastqR1out)
+    flog.info(paste("Command used:", joinR1cmd))
+    system(joinR1cmd)
+    flog.info("Counting number of reads.")
+    numR1 <- system2("zcat", args = paste(fastqR1out, "| wc -l | awk -F\'[\t]\' \'{print $1/4}\'"), stdout = TRUE)
+    flog.info(paste(currprefix, "R1 has", numR1, "reads"))
+    if (opt$tarup == TRUE){
+       gunzip(fastqR1out, remove = TRUE)
+    }
+
+    if ("R2" %in% currsampdf$Read){
+        flog.info("Processing R2")
+        currR2df <- currsampdf[which(currsampdf$Read == "R2"), ]
+        currR2df <- currR2df[match(currR2df$DatasetIDs, dsorder) , ]
+        fastqR2in <- paste(currR2df$Filepaths, collapse = " ")
+        fastqR2out <- file.path(opt$destination, paste(paste(currprefix, "R2", sep = "_"), "fastq", "gz", sep = "."))
+        joinR2cmd <- paste("cat", fastqR2in, ">", fastqR2out)
+        flog.info(paste("Command used:", joinR2cmd))
+        system(joinR2cmd)
+        numR2 <- system2("zcat", args = paste(fastqR2out, "| wc -l | awk -F\'[\t]\' \'{print $1/4}\'"), stdout = TRUE)
+        flog.info(paste(currprefix, "R2 has", numR2, "reads"))
+        if (opt$tarup == TRUE){
+           gunzip(fastqR2out, remove = TRUE)
+        }
+
+        numR1 <- as.numeric(numR1)
+        numR2 <- as.numeric(numR2)
+        if (numR1 != numR2){
+            mismatchwarning <- paste("WARNING: files for sample with output prefix", currprefix, "have different numbers of reads. Check your inputs for this sample.")
+            flog.info(mismatchwarning)
+        } else {
+            flog.info(paste("Files for sample with output prefix", currprefix ,"both have the same number of reads."))
+        }
+        if (opt$tarup == TRUE){
+            flog.info("Compressing reads into a .tar.gz file.")
+            R1fastq <- file.path(opt$destination, paste(paste(currprefix, "R1", sep = "_"), "fastq", sep = "."))
+            R2fastq <- file.path(opt$destination, paste(paste(currprefix, "R2", sep = "_"), "fastq", sep = "."))
+            tarout <- file.path(opt$destination, paste(paste(currprefix, "raw", "reads", sep = "_"), "tar", "gz", sep = "."))
+            tarcmd <- paste("tar cf -", R1fastq, R2fastq, "| pigz -9 -p", opt$threads, ">", tarout)
+            system(tarcmd)
+            file.remove(c(R1fastq, R2fastq))
+        }
+    }
+}
+flog.info("Joining of lanes completed. Thank you for using JAMSjoinlanes.")

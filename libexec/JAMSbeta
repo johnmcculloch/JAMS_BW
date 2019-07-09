@@ -80,87 +80,87 @@ exporttabletsv<-function(dataobj=NULL, project=NULL, basename=NULL, row.names = 
 
 option_list <- list(
     make_option(c("-p", "--projectname"),
-                action="store", default="Generic",
+                action="store", default = "MyProject",
                 type="character",
                 help="Name of project to be used as prefix for output files (required)"),
 
     make_option(c("-o", "--outdir"),
-                action="store", default=NULL,
+                action="store", default = getwd(),
                 type="character",
-                help ="path to where you want2 the output."),
+                help ="path to where you want the output."),
 
     make_option(c("-x", "--excel_metadata"),
-                action="store", default=NULL,
+                action="store", default = NULL,
                 type="character",
                 help="Metadata file in Excel format, with sheet_1 for phenotable and sheet_2 for phenolabels"),
 
     make_option(c("-t", "--phenotable"),
-                action="store", default=NULL,
+                action="store", default = NULL,
                 type="character",
                 help="Metadata file in tsv format, with headers"),
 
     make_option(c("-l", "--phenolabels"),
-                action="store", default=NULL,
+                action="store", default = NULL,
                 type="character",
                 help="Phenolabels file in tsv format, describing metadata file headers"),
 
     make_option(c("-c", "--maxnumclasses"),
-                action="store", default=10,
+                action="store", default = 10,
                 type="numeric",
                 help="Maximum number of classes for a discrete variable to be kept. Default=10"),
 
     make_option(c("-y", "--jamsfiles_path"),
-                action="store", default=NULL,
+                action="store", default = NULL,
                 type="character",
                 help ="path to where all .jams files are"),
 
     make_option(c("-g", "--minGbNAHS"),
-                action="store", default=0,
+                action="store", default = 0,
                 type="numeric",
                 help ="If using reads, what is the minimum amount of usable data, in Gbp, for a sample to be included in an experiment. (Default=0)"),
 
     make_option(c("-a", "--minPctAssembly"),
-                action="store", default=0,
+                action="store", default = 0,
                 type="numeric",
                 help ="If using reads, what is the minimum percentage assembly into contigs for a sample to be included in an experiment. (Default=0)"),
 
     make_option(c("-w", "--load_experiments"),
-                action="store", default=NULL,
+                action="store", default = NULL,
                 type="character",
                 help ="Do not make experiments, load experiments in .dat format present in this path."),
 
     make_option(c("-e", "--export_tables"),
-                action="store_true", default=FALSE,
+                action="store_true", default = FALSE,
                 type="logical",
                 help ="Export relative abundance tables and feature data tables in tsv format."),
 
     make_option(c("-d", "--ordination"),
-                action="store_true", default=FALSE,
+                action="store_true", default = FALSE,
                 type="logical",
                 help ="Generate ordination plots."),
 
     make_option(c("-f", "--make_exploratory_reports"),
-                action="store_true", default=FALSE,
+                action="store_true", default = FALSE,
                 type="logical",
                 help ="Generate Relative Abundace heatmaps and spreadsheets based on variance analysis."),
 
     make_option(c("-k", "--make_comparative_reports"),
-                action="store_true", default=FALSE,
+                action="store_true", default = FALSE,
                 type="logical",
                 help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
 
     make_option(c("-b", "--make_PA_reports"),
-                action="store_true", default=FALSE,
+                action="store_true", default = FALSE,
                 type="logical",
                 help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
 
     make_option(c("-z", "--make_alpha_reports"),
-                action="store_true", default=FALSE,
+                action="store_true", default = FALSE,
                 type="logical",
                 help ="Generate alpha diversity plots."),
 
     make_option(c("-v", "--version"),
-                action="store_true", help ="report version")
+                action="store_true", help = "report version")
  )
 
 # get the cmd line options to the script
@@ -170,7 +170,7 @@ args <- commandArgs(trailingOnly = TRUE)
 opt <- parse_args(OptionParser(option_list=option_list), args)
 
 #Add version from package to opt
-opt$verstr<-paste0("JAMS v", packageVersion("JAMS"))
+opt$verstr <- paste0("JAMS v", packageVersion("JAMS"))
 
 # print version & exit if -v
 if (!is.null(opt$version)) {
@@ -250,15 +250,15 @@ if (!(is.null(jamspath))){
         phenolabelstsv <- opt$phenolabels
 
         if (!(is.null(phenotabletsv))){
-            phenotable <- read.table(file=phenotabletsv, header=TRUE, sep="\t")
+            phenotable <- read.table(file = phenotabletsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
         }
         if (!(is.null(phenolabelstsv))){
-            phenolabels <- read.table(file=phenolabelstsv, header=TRUE, sep="\t")
+            phenolabels <- read.table(file = phenolabelstsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
         }
     }
 
     #Stop if something went wrong
-    if(!(exists("phenotable")) || (nrow(phenotable) < 1)){
+    if (!(exists("phenotable")) || (nrow(phenotable) < 1)){
         stop("No data found in the metadata file supplied. Please check file.")
     } else {
         flog.info(paste("Metadata has", ncol(phenotable), "columns."))
@@ -270,7 +270,7 @@ if (!(is.null(jamspath))){
             stop("Could not find the Var_label and/or Var_type columns in phenolabels table. Consult documentation and check metadata file(s).")
         }
 
-        validcols<-as.character(phenolabels$Var_label)
+        validcols <- as.character(phenolabels$Var_label)
         flog.info(paste("Phenolabels contains", length(validcols), "categories."))
 
         #Stop if you are asking for more than you have.
@@ -278,7 +278,7 @@ if (!(is.null(jamspath))){
             stop("Phenolabels has more categories than the metadata in phenotable. Review and try again.")
         }
 
-        ptsampcol<-as.character(phenolabels$Var_label[which(phenolabels$Var_type=="Sample")])
+        ptsampcol <- as.character(phenolabels$Var_label[which(phenolabels$Var_type == "Sample")])
         if (length(ptsampcol) != 1){
              stop("You must define exactly one column as being the Sample column in your metadata. Please see documenation.")
         } else {
@@ -290,7 +290,7 @@ if (!(is.null(jamspath))){
 
         #Stop if the classes you want in phenolabels do not exist in phenotable.
         if(all(validcols %in% colnames(phenotable))){
-            phenotable<-phenotable[ , validcols]
+            phenotable <- phenotable[ , validcols]
         } else {
             stop("One or more classes specified in phenolabels is missing as (a) column(s) in phenotable. Please check files.")
         }
@@ -298,7 +298,7 @@ if (!(is.null(jamspath))){
     } else {
         #No phenolabels, so try and find at least a Sample column in the metadata.
         flog.info("Phenolabels not found. Will attempt to find which column is the Sample data.")
-        ptsampcol<-colnames(phenotable)[which(colnames(phenotable) %in% c("Sample", "sample"))]
+        ptsampcol <- colnames(phenotable)[which(colnames(phenotable) %in% c("Sample", "sample"))]
         if (length(ptsampcol) != 1){
             stop("You must define exactly one column as being the Sample column in your metadata. Please see documenation.")
         }
@@ -330,8 +330,8 @@ if(!(is.null(jamspath))){
 
     #Exclude samples in pheno table which have not been loaded in list.data
     Samples_want <- as.character(phenotable[ , ptsampcol])
-    flog.info(paste("Will build experiments for samples:", paste0(Samples_want, collapse=", ")))
-    flog.info(paste("Searching for .jams files in", jamspath, sep=" "))
+    flog.info(paste("Will build experiments for samples:", paste0(Samples_want, collapse = ", ")))
+    flog.info(paste("Searching for .jams files in", jamspath, sep = " "))
     flog.info("Loading all wanted .jams files into a single object. Please be patient.")
     list.data <- load_jamsfiles_from_system(path = jamspath, onlysamples = Samples_want)
     #fnalldfs<-paste("JAMS_", project, "_", "list_data", ".dat", sep="")
@@ -343,7 +343,7 @@ if(!(is.null(jamspath))){
     save.image()
 
     #These are the samples that were actually loaded into list.data
-    Samples_have <- name_samples(list.data=list.data)
+    Samples_have <- name_samples(list.data = list.data)
 
     #Redefine phenotable to include only samples I have in list.data
     phenotable <- phenotable[(phenotable[, ptsampcol] %in% Samples_have), ]
@@ -470,6 +470,8 @@ if (opt$export_tables == TRUE){
         tt <- as.data.frame(fData(mgseqobj))
         exporttabletsv(dataobj = tt, project = project, basename = paste(analysis, "FeatTable", sep = "_"), row.names = FALSE, col.names = TRUE, path = tablespath)
     }
+    #Export as spreadsheet
+    export_expvec_to_XL(expvec=expvec, filename=paste(paste(project, "counts", "PPM", sep="_"), "xlsx", sep="."))
 }
 
 ########################################
@@ -482,19 +484,20 @@ allexp <- names(expvec)
 basicexp <- c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO")[c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO") %in% allexp]
 specialexp <- c("vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM")[c("vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM") %in% allexp]
 
-flog.info("Saving R session image. Please be patient.")
-save.image()
-
-#######################
-## Do optional tasks ##
-#######################
 if ("isolate" %in% pheno$JAMS_Run_type){
     applyfilters = "none"
 } else {
     applyfilters = "moderate"
 }
 
-whoopsieplot <- function(msg="trying to do this."){
+flog.info("Saving R session image. Please be patient.")
+save.image()
+
+#######################
+## Do optional tasks ##
+#######################
+
+whoopsieplot <- function(msg = "trying to do this."){
     flog.info(paste("Whoops, something went wrong while", msg))
     dev.off()
 }
@@ -531,12 +534,16 @@ if (opt$make_comparative_reports == TRUE){
 }
 
 if (opt$make_PA_reports == TRUE){
-    flog.info(paste0("Generating presence/absence heatmap plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-    tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating presence/absence heatmaps for basic analyses"))
+    if (length(variable_list$binary) > 0){
+        flog.info(paste0("Generating presence/absence heatmap plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
+        tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating presence/absence heatmaps for basic analyses"))
 
-    if (length(specialexp) > 0){
-        flog.info(paste0("Generating presence/absence heatmap plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
-        tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating presence/absence heatmaps for special analyses"))
+        if (length(specialexp) > 0){
+            flog.info(paste0("Generating presence/absence heatmap plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
+            tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating presence/absence heatmaps for special analyses"))
+        }
+    } else {
+        flog.info("There are no binary variables in the metadata supplied. PA testing can only be carried out with variables with exactly two classes.")
     }
 }
 

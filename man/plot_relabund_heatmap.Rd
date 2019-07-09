@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_relabund_heatmap.R
 \name{plot_relabund_heatmap}
 \alias{plot_relabund_heatmap}
-\title{plot_relabund_heatmap(mgseqobj=NULL, glomby=NULL, heatpalette="diverging", hmtype="exploratory", hmasPA=FALSE, compareby=NULL, invertbinaryorder=FALSE, ntop=40, ordercolsby=NULL, colcategories=NULL, cluster_rows=FALSE, subsetby=NULL, applyfilters=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, adjustpval=FALSE, showonlypbelow=NULL, showpval=TRUE, showl2fc=TRUE, maxl2fc=NULL, minl2fc=NULL, genomecompleteness=NULL, list.data=NULL, addtit=NULL, scaled=FALSE, mgSeqnorm=FALSE, cdict=NULL, maxnumheatmaps=NULL, numthreads=4, nperm=99, statsonlog=TRUE, ignoreunclassified=FALSE, returnstats=TRUE, ...)}
+\title{plot_relabund_heatmap(mgseqobj=NULL, glomby=NULL, heatpalette="diverging", hmtype=NULL, hmasPA=FALSE, compareby=NULL, invertbinaryorder=FALSE, ntop=NULL, ordercolsby=NULL, colcategories=NULL, cluster_rows=FALSE, subsetby=NULL, applyfilters=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, adjustpval=FALSE, showonlypbelow=NULL, showpval=TRUE, showl2fc=TRUE, maxl2fc=NULL, minl2fc=NULL, genomecompleteness=NULL, list.data=NULL, addtit=NULL, scaled=FALSE, mgSeqnorm=FALSE, cdict=NULL, maxnumheatmaps=NULL, numthreads=4, nperm=99, statsonlog=TRUE, ignoreunclassified=TRUE, returnstats=TRUE, ...)}
 \usage{
 plot_relabund_heatmap(mgseqobj = NULL, glomby = NULL,
   heatpalette = "diverging", hmtype = NULL, hmasPA = FALSE,
@@ -15,7 +15,7 @@ plot_relabund_heatmap(mgseqobj = NULL, glomby = NULL,
   genomecompleteness = NULL, list.data = NULL, addtit = NULL,
   scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL,
   maxnumheatmaps = NULL, numthreads = 4, nperm = 99,
-  statsonlog = TRUE, ignoreunclassified = FALSE, returnstats = TRUE,
+  statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = TRUE,
   ...)
 }
 \description{

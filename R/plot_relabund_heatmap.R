@@ -1,9 +1,9 @@
-#' plot_relabund_heatmap(mgseqobj=NULL, glomby=NULL, heatpalette="diverging", hmtype="exploratory", hmasPA=FALSE, compareby=NULL, invertbinaryorder=FALSE, ntop=40, ordercolsby=NULL, colcategories=NULL, cluster_rows=FALSE, subsetby=NULL, applyfilters=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, adjustpval=FALSE, showonlypbelow=NULL, showpval=TRUE, showl2fc=TRUE, maxl2fc=NULL, minl2fc=NULL, genomecompleteness=NULL, list.data=NULL, addtit=NULL, scaled=FALSE, mgSeqnorm=FALSE, cdict=NULL, maxnumheatmaps=NULL, numthreads=4, nperm=99, statsonlog=TRUE, ignoreunclassified=FALSE, returnstats=TRUE, ...)
+#' plot_relabund_heatmap(mgseqobj=NULL, glomby=NULL, heatpalette="diverging", hmtype=NULL, hmasPA=FALSE, compareby=NULL, invertbinaryorder=FALSE, ntop=NULL, ordercolsby=NULL, colcategories=NULL, cluster_rows=FALSE, subsetby=NULL, applyfilters=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, adjustpval=FALSE, showonlypbelow=NULL, showpval=TRUE, showl2fc=TRUE, maxl2fc=NULL, minl2fc=NULL, genomecompleteness=NULL, list.data=NULL, addtit=NULL, scaled=FALSE, mgSeqnorm=FALSE, cdict=NULL, maxnumheatmaps=NULL, numthreads=4, nperm=99, statsonlog=TRUE, ignoreunclassified=TRUE, returnstats=TRUE, ...)
 #'
 #' Plots relative abundance heatmaps annotated by the metadata
 #' @export
 
-plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diverging", hmtype=NULL, hmasPA=FALSE, compareby=NULL, invertbinaryorder=FALSE, ntop=NULL, ordercolsby=NULL, colcategories=NULL, cluster_rows=FALSE, subsetby=NULL, applyfilters=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, adjustpval=FALSE, showonlypbelow=NULL, showpval=TRUE, showl2fc=TRUE, maxl2fc=NULL, minl2fc=NULL, genomecompleteness=NULL, list.data=NULL, addtit=NULL, scaled=FALSE, mgSeqnorm=FALSE, cdict=NULL, maxnumheatmaps=NULL, numthreads=4, nperm=99, statsonlog=TRUE, ignoreunclassified=FALSE, returnstats=TRUE, ...){
+plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diverging", hmtype=NULL, hmasPA=FALSE, compareby=NULL, invertbinaryorder=FALSE, ntop=NULL, ordercolsby=NULL, colcategories=NULL, cluster_rows=FALSE, subsetby=NULL, applyfilters=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, adjustpval=FALSE, showonlypbelow=NULL, showpval=TRUE, showl2fc=TRUE, maxl2fc=NULL, minl2fc=NULL, genomecompleteness=NULL, list.data=NULL, addtit=NULL, scaled=FALSE, mgSeqnorm=FALSE, cdict=NULL, maxnumheatmaps=NULL, numthreads=4, nperm=99, statsonlog=TRUE, ignoreunclassified=TRUE, returnstats=TRUE, ...){
 
     #Get appropriate object to work with
     obj <- mgseqobj
@@ -17,15 +17,15 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
         obj <- obj[featuresToKeep, ]
     }
 
-    analysis<-attr(obj, "analysis")
-    analysisname<-analysis
+    analysis <- attr(obj, "analysis")
+    analysisname <- analysis
 
-    if(!(is.null(glomby))){
+    if (!(is.null(glomby))){
         obj <- agglomerate_features(mgseqobj=obj, glomby=glomby)
         if (analysis != "LKT"){
-            analysisname<-attr(obj, "analysis")
+            analysisname <- attr(obj, "analysis")
         } else {
-            analysisname<-glomby
+            analysisname <- glomby
         }
     }
 
@@ -109,7 +109,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
             }
 
             if(!(is.null(featmaxatleastPPM))){
-                minPPMmsg <- paste("Highest feature must be >", featmaxatleastPPM, "PPM", sep=" ")
+                minPPMmsg <- paste("Highest feature must be >", featmaxatleastPPM, "PPM", sep = " ")
             } else {
                 minPPMmsg <- "Highest feature must be > 0 PPM"
                 featmaxatleastPPM <- 0
@@ -152,7 +152,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
             countmat <- countmat[rowsToKeep, ]
 
             if (ignoreunclassified == TRUE){
-               dunno <- c(paste(analysis, "none"), "LKT__d__Unclassified")
+               dunno <- c(paste(analysis, "none", sep="_"), "LKT__d__Unclassified")
                rowsToKeep <- which(!(rownames(countmat) %in% dunno))
                countmat <- countmat[rowsToKeep, ]
             }
@@ -160,8 +160,10 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
             #Rename rows to include description if not taxonomic data
             if (analysis != "LKT"){
                 feattable <- fData(currobj)
-                feattable$Feature <- paste(feattable$Accession, feattable$Description, sep="-")
+                feattable$Feature <- paste(feattable$Accession, feattable$Description, sep = "-")
                 rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]
+                #Allow up to 40 characters for readability. Full names can be seen in the spreadsheet.
+                rownames(countmat) <- strtrim(rownames(countmat2), 40)
             }
             matrixSamples <- colnames(countmat)
             matrixRows <- rownames(countmat)
@@ -169,7 +171,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
             #Discard taxa below required level of completeness
             if (!(is.null(genomecompleteness))){
                 print(paste("Genome completeness must be", genomecompleteness, "in at least one sample"))
-                genomecompletenessdf <- get_genome_completeness(pheno=pData(currobj), list.data=list.data)
+                genomecompletenessdf <- get_genome_completeness(pheno = pData(currobj), list.data = list.data)
                 featuresToKeep2 <- rownames(genomecompletenessdf)[which(rowMax(as.matrix(genomecompletenessdf)) >= genomecompleteness)]
                 countmat <- countmat[(rownames(countmat)[(rownames(countmat) %in% featuresToKeep2)]), ]
                 completenessmsg <- paste("Genome completeness >", genomecompleteness)
@@ -182,7 +184,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
 
             #Calculate matrix stats and get new matrix.
             if (stattype == "variance"){
-                matstats <- calculate_matrix_stats(countmatrix=countmat, stattype="variance")
+                matstats <- calculate_matrix_stats(countmatrix = countmat, stattype = "variance")
                 #Bank raw stats
                 matstatsbank <- as.data.frame(matstats)
                 if (!(is.null(genomecompleteness))){
@@ -190,7 +192,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                     genomecompletenessdf$MedianGenomeComp <- rowMedians(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$SDGenomeComp <- rowSds(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
-                    genomecompletenessdf <- genomecompletenessdf[,c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
+                    genomecompletenessdf <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
                     matstatsbank <- left_join(matstatsbank, genomecompletenessdf)
                     rownames(matstatsbank) <- matstatsbank$Taxa
                     matstatsbank$Taxa <- NULL
@@ -217,7 +219,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                 cl = pData(currobj)[ , which(colnames(pData(currobj)) == compareby)]
                 discretenames <- sort(unique(cl))
 
-                matstats <- calculate_matrix_stats(countmatrix=countmat, uselog=TRUE, statsonlog=statsonlog, stattype=stattype, classesvector=cl, invertbinaryorder=invertbinaryorder, numthreads=numthreads, nperm=nperm)
+                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = TRUE, statsonlog = statsonlog, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, nperm = nperm)
 
                 #Bank raw stats
                 matstatsbank <- as.data.frame(matstats)
@@ -226,7 +228,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                     genomecompletenessdf$MedianGenomeComp <- rowMedians(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$SDGenomeComp <- rowSds(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
-                    genomecompletenessdf <- genomecompletenessdf[,c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
+                    genomecompletenessdf <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
                     matstatsbank <- left_join(matstatsbank, genomecompletenessdf)
                     rownames(matstatsbank) <- matstatsbank$Taxa
                     matstatsbank$Taxa <- NULL
@@ -244,7 +246,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                         rownames(countmat2)[r] <- paste(feature, rank, sep = "-")
                     }
                     #Create a list of matrices each of maximum 50 rows
-                    topcats <- 50
+                    topcats <- min(nrow(countmat2), 50)
                     rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
                     matlist <- lapply(1:length(rowlist), function(x){ countmat2[rowlist[[x]], ] })
                     rowlblcol_list <- lapply(1:length(rowlist), function(x){rep("black", length(rowlist[[x]]))})
@@ -495,7 +497,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                     }
 
                     #Draw the heatmap
-                    par(oma=c(10,7,3,10)+0.1, xpd=TRUE)
+                    par(oma = c(10,7,3,10)+0.1, xpd = TRUE)
                     draw(ht1, heatmap_legend_side = "right", annotation_legend_side = "right", padding = unit(c(4, 2, 2, 2), "mm"))
 
                     #Print what the column annotations are

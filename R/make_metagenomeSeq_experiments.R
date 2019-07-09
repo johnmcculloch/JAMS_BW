@@ -13,12 +13,12 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlya
 
     #Find out which functional analyses can be made
     anallist <- lapply(1:length(featuredoses), function (x) { as.character(unique(featuredoses[[x]][]$Analysis)) } )
-      names(anallist) <- Samples
+    names(anallist) <- Samples
 
     allanalyses <- Reduce(union, anallist)
     numsampwithanalysis <- NULL
     for (pa in 1:length(allanalyses)){
-        possibleanalysis<-allanalyses[pa]
+        possibleanalysis <- allanalyses[pa]
         numsampwithanalysis[pa] <- length(which(sapply(1:length(anallist), function(x) { (possibleanalysis %in% anallist[[x]]) } ) == TRUE))
     }
 
@@ -33,8 +33,10 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlya
         possibleanalyses <- names(numsampwithanalysis[numsampwithanalysis >= minnumsampanalysis])
     }
 
-    if(!is.null(onlyanalyses)){
+    if (!is.null(onlyanalyses)){
         possibleanalyses <- allanalyses[allanalyses %in% onlyanalyses]
+    } else {
+        possibleanalyses <- allanalyses
     }
 
     #Stop if unreasonable
@@ -44,8 +46,8 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlya
 
     #Make a vector for holding experiment list
     expvec <- NULL
-    expvec <- vector("list",length=(length(possibleanalyses) + 1))
-    e=1
+    expvec <- vector("list",length = (length(possibleanalyses) + 1))
+    e <- 1
 
     #Start by making LKT experiment
     print("Making LKT MRexperiment")
@@ -67,22 +69,10 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlya
 
     tt <- LKTdosesall[ , taxlvlspresent]
     tt <- tt[!(duplicated(tt)), ]
-    #get rid of bogus LKT dupes due to faulty NCBI taxonomy.
+    #get rid of LKT dupes due to NCBI taxonomy names at species level including subspecies nomenclature. Sigh. These are usually unclassified species.
     tt <- tt[!(duplicated(tt$LKT)), ]
     rownames(tt) <- tt$LKT
     ttm <- as.matrix(tt)
-    taxtypes <- sapply(1:nrow(ttm), function(x) { paste(ttm[x,], collapse="-") })
-
-    #Ensure that LKT doses conform to the taxtable
-    #for (s in 1:length(Samples)){
-    #    intt <- NULL
-    #    taxinfo <- NULL
-    #    taxinfo <- as.matrix(LKTdoses[[s]][ , taxlvlspresent])
-    #    taxtypessample <- sapply(1:nrow(taxinfo), function(x) { paste(taxinfo[x,], collapse="-") })
-    #    #Which ones are represented
-    #    intt <- which(taxtypessample %in% taxtypes)
-    #    LKTdoses[[s]] <- LKTdoses[[s]][intt, ]
-    #}
 
     #bind them up again
     LKTdosesall <- bind_rows(LKTdoses, .id = "id")
@@ -102,15 +92,18 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlya
     cts <- cts[, sampleorder]
 
     ##Create metagenomeSeq MRexperiment
-    phenotypeData = AnnotatedDataFrame(pheno)
-    ttdata = AnnotatedDataFrame(tt)
-    mgseq = newMRexperiment(cts, phenoData=phenotypeData, featureData=ttdata)
+    phenotypeData <- AnnotatedDataFrame(pheno)
+    ttdata <- AnnotatedDataFrame(tt)
+    mgseq <- newMRexperiment(cts, phenoData = phenotypeData, featureData = ttdata)
 
-    attr(mgseq, "analysis")<-"LKT"
+    attr(mgseq, "analysis") <- "LKT"
 
-    expvec[[e]]<-mgseq
-    names(expvec)[e]<-"LKT"
-    e = e + 1
+    #Register the total number of NAHS bases sequenced for each sample
+    TotBasesSamples <- colSums(cts)
+
+    expvec[[e]] <- mgseq
+    names(expvec)[e] <- "LKT"
+    e <- e + 1
 
     #Now, for the functional analyses
     for (a in 1:length(possibleanalyses)) {
@@ -133,8 +126,7 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlya
         featureall[is.na(featureall)] <- 0
         colnames(featureall)[1] <- "Sample"
 
-        cts <- featureall %>% spread(Sample, NumBases)
-        cts[is.na(cts)] <- 0
+        cts <- spread(featureall, Sample, NumBases, fill = 0, drop = TRUE)
         #Just double check that there are no dupes
         if (length(which(duplicated(cts$Accession) == TRUE)) > 0){
             print(paste("Found", length(which(duplicated(cts$Accession) == TRUE)), "duplicated accessions. Keeping the first on in each case."))
@@ -159,8 +151,6 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlya
             }
             rownames(ftt) <- ftt$Accession
             ftt$Description <- ftt$Class
-            #Eliminate resfinder_none (not being a resistance gene) as a category
-            cts <- cts[which(rownames(cts) != paste(analysis, "none", sep = "_")), ]
         }
 
         sampleorder <- rownames(phenoanal)
@@ -170,7 +160,7 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlya
         ##Create metagenomeSeq MRexperiment
         phenotypeData <- AnnotatedDataFrame(phenoanal)
         ttdata <- AnnotatedDataFrame(ftt)
-        mgseq <- newMRexperiment(cts, phenoData=phenotypeData, featureData=ttdata)
+        mgseq <- newMRexperiment(cts, phenoData = phenotypeData, featureData = ttdata)
 
         attr(mgseq, "analysis") <- analysis
 

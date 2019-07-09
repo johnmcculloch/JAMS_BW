@@ -8,7 +8,7 @@ suppressPackageStartupMessages(library(benchmarkme))
 #####################################
 # Define System-specific Functions ##
 #####################################
-if((.Platform$OS.type) != "unix"){
+if ((.Platform$OS.type) != "unix"){
     stop("JAMS only works on UNIX. Install Linux and try again.")
 }
 
@@ -16,7 +16,7 @@ if((.Platform$OS.type) != "unix"){
 slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
 
 #Decide which kind of system you are on.
-if(nchar(slurmjobid) < 3){
+if (nchar(slurmjobid) < 3){
    print("You are not on a Slurm Workload Cluster")
    #Define appropriate functions for non-slurm system
    detectBatchCPUs <- function() {
@@ -52,13 +52,13 @@ if(nchar(slurmjobid) < 3){
         mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
         cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
 
-        if(!(is.na(mempernode))){
+        if (!(is.na(mempernode))){
             totmem <- mempernode
         } else {
             totmem <- mempercpu * cpuspertask
         }
 
-        totmembytes<-totmem * 1000000
+        totmembytes <- totmem * 1000000
 
         return(totmembytes)
     }
@@ -68,8 +68,8 @@ if(nchar(slurmjobid) < 3){
 ## Define other functions ##
 ############################
 filetype <- function(path){
-    f = file(path)
-    ext = summary(f)$class
+    f <- file(path)
+    ext <- summary(f)$class
     close.connection(f)
     ext
 }
@@ -92,17 +92,18 @@ JAMSauthors <- as.character(as.person(packageDescription("JAMS")$Author))
 # Get options from args #
 #########################
 #Define defaults
-defopt<-list()
-defopt$verstr<-paste0("JAMS v", packageVersion("JAMS"))
-defopt$outdir<-getwd()
-defopt$host<-"mouse"
-defopt$seqtype<-"illuminape"
-defopt$assembler<-"megahit"
-defopt$analysis<-"metagenome"
-defopt$prefix<-"MySample"
-defopt$skipipro<-FALSE
-defopt$testdependencies<-FALSE
-defopt$threads<-detectBatchCPUs()
+defopt <- list()
+defopt$verstr <- paste0("JAMS v", packageVersion("JAMS"))
+defopt$outdir <- getwd()
+defopt$host <- "human"
+defopt$seqtype <- "illuminape"
+defopt$assembler <- "megahit"
+defopt$analysis <- "metagenome"
+defopt$prefix <- "MySample"
+defopt$skipipro <- FALSE
+defopt$testdependencies <- FALSE
+defopt$threads <- detectBatchCPUs()
+defopt$krakenconfidencescore <- 0.000005
 
 option_list <- list(
     make_option(c("-f", "--R1"), action="store", default=NULL,
@@ -127,7 +128,10 @@ option_list <- list(
                 type="character",
                 help="Tarball (.tar.gz) containing reads file(s) in fastq format."),
     make_option(c("-d", "--dbdir"), default=NULL, action="store",
+                type="character",
                 help = str_c("path to JAMS database directory")),
+    make_option(c("-k", "--krakenconfidencescore"), default=defopt$krakenconfidencescore, type="numeric", action="store",
+                help = str_c("confidence score threshold for kraken2 classificaiton (default: ", defopt$krakenconfidencescore, "). Only change this if you really know what you are doing.")),
     make_option(c("-o", "--outdir"), default=defopt$outdir, action="store",
                 help = str_c("output directory (default: ", defopt$outdir, ")")),
     make_option(c("-p", "--prefix"), default=NULL, action="store",
@@ -152,7 +156,7 @@ option_list <- list(
 
 # parse the options
 args <- commandArgs(trailingOnly = TRUE)
-opt <- parse_args(OptionParser(option_list=option_list), args)
+opt <- parse_args(OptionParser(option_list = option_list), args)
 opt <- merge.list(opt, defopt)
 
 #####################
@@ -171,7 +175,7 @@ opt$bindir <- getScriptPath()
 #Abort if unreasonable instructions
 if (!(opt$analysis %in% c("metagenome", "metatranscriptome", "isolate", "isolaternaseq"))){
     print("For an analysis chooose between one of these four options: metagenome, metatranscriptome, isolate or isolaternaseq.")
-    parse_args(OptionParser(option_list=option_list), c("-h"))
+    parse_args(OptionParser(option_list = option_list), c("-h"))
     q()
 }
 
@@ -241,22 +245,21 @@ if (is.null(opt$tmpdir)){
         opt$tmpdir<-slurmtmpdir
     }
 } else {
-    if(!(dir.exists(opt$tmpdir))){
+    if (!(dir.exists(opt$tmpdir))){
         flog.info(paste("The temporary directory specified does not exist."))
-        opt$tmpdir<-NULL
+        opt$tmpdir <- NULL
     }
 }
 
 if (!(is.null(opt$tmpdir))){
-    opt$tmpsampdir<-file.path(opt$tmpdir, paste(opt$prefix, "JAMStemp", sep="_"))
+    opt$tmpsampdir <- file.path(opt$tmpdir, paste(opt$prefix, "JAMStemp", sep="_"))
     dir.create(opt$tmpsampdir, showWarnings = FALSE, recursive = FALSE)
     flog.info(paste("Temporary Sample directory is", opt$tmpsampdir))
     flog.info(paste("Will work from within this directory and copy final files to", opt$sampledir))
-    opt$workdir<-opt$tmpsampdir
+    opt$workdir <- opt$tmpsampdir
 } else {
-    opt$workdir<-opt$sampledir
+    opt$workdir <- opt$sampledir
 }
-
 
 opt$projimage <- file.path(opt$sampledir, ".RData")
 
@@ -276,11 +279,11 @@ save.image(file = opt$projimage)
 
 #Obtain contigs
 setwd(opt$workdir)
-opt <- get_contigs(opt=opt)
+opt <- get_contigs(opt = opt)
 save.image(file = opt$projimage)
 
 #Add some contig statistics
-seqstats <- get_sequence_stats(sequences=opt$NHcontigs_sequence)
+seqstats <- get_sequence_stats(sequences = opt$NHcontigs_sequence)
 colnames(seqstats)[which(colnames(seqstats) == "Sequence")] <- "Contig"
 opt$contigsdata <- left_join(opt$contigsdata, seqstats)
 save.image(file = opt$projimage)
@@ -378,14 +381,14 @@ if(opt$analysis == "isolate") {
             for(taxon in taxainterest){
                 contigsinterest <- opt$contigsdata[which(opt$contigsdata[ , levelinterest] == taxon), "Contig"]
                 wantedsequences <- opt$NHcontigs_sequence[contigsinterest]
-                targetname <- paste(opt$prefix, taxon, sep="_")
-                targetfilename <- paste(targetname, "fasta", sep=".")
+                targetname <- paste(opt$prefix, taxon, sep = "_")
+                targetfilename <- paste(targetname, "fasta", sep = ".")
                 flog.info(paste("Writing", targetfilename))
                 write.fasta(sequences = wantedsequences, names = names(wantedsequences), nbchar = 80, file.out = file.path(opt$sampledir, targetfilename))
             }
         }
     } else {
-        flog.info(paste("Isolate genome is predicted to be", round((totnumgenomes*100), 1), "% complete"))
+        flog.info(paste("Isolate genome is predicted to be", round((totnumgenomes * 100), 1), "% complete"))
     }
 }
 

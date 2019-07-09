@@ -22,19 +22,19 @@ require("stringr")
 jamsbinpath<-file.path(jamsdir, "libexec")
 jamsBWbinpath<-file.path(jamsdir, "BWlibexec")
 
-binexecs<-c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db")
-BWbinexecs<-c("JAMSfullservice", "bankit", "bootstrapswarm", "joinlanesIlluminaBaseSpaceProject", "makeswarmJAMS")
+binexecs<-c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db", "JAMSjoinlanes")
 for(binexec in binexecs){
-    sourcepath<-file.path(jamsbinpath, binexec)
-    targetpath<-file.path(homefolder, "bin", binexec)
+    sourcepath <- file.path(jamsbinpath, binexec)
+    targetpath <- file.path(homefolder, "bin", binexec)
     print(paste("Linking executable to $HOME/bin with", "ln", "-s", sourcepath, targetpath))
     system(paste("ln", "-s", sourcepath, targetpath))
 }
 
 #Make symlinks for Biowulf executables
+BWbinexecs<-c("JAMSfullservice", "bankit", "bootstrapswarm", "makeswarmJAMS")
 for(BWbinexec in BWbinexecs){
-    sourcepath<-file.path(jamsBWbinpath, BWbinexec)
-    targetpath<-file.path(homefolder, "bin", BWbinexec)
+    sourcepath <- file.path(jamsBWbinpath, BWbinexec)
+    targetpath <- file.path(homefolder, "bin", BWbinexec)
     print(paste("Linking executable to $HOME/bin with", "ln", "-s", sourcepath, targetpath))
     system(paste("ln", "-s", sourcepath, targetpath))
 }
@@ -49,11 +49,11 @@ bioconductordeps<-c("dada2", "metagenomeSeq", "ComplexHeatmap", "HybridMTest", "
 if (!requireNamespace("BiocManager", quietly = TRUE)){
     install.packages("BiocManager")
 }
-BiocManager::install(pkgs=bioconductordeps, update = FALSE, ask = FALSE)
+BiocManager::install(pkgs = bioconductordeps, update = FALSE, ask = FALSE)
 
 #Install the rest of JAMS
 setwd(jamsdir)
-devtools::install(upgrade=FALSE)
+devtools::install(upgrade = FALSE)
 
 #Install Linuxbrew dependencies
 system(paste("bash", file.path("BWlibexec", "install_brew_dependencies.sh")))

@@ -3,7 +3,7 @@
 #' Filters a metagenomeSeq object by several criteria.
 #' @export
 
-filter_experiment<-function(mgseqobj=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, asPA=FALSE, asPPM=TRUE, mgSeqnorm=FALSE){
+filter_experiment <- function(mgseqobj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, asPA = FALSE, asPPM = TRUE, mgSeqnorm = FALSE){
 
         #Get only samples you asked for
         if(!(is.null(samplesToKeep))){

@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-blast_databases <- function(opt=NULL, blastanalyses=NULL){
+blast_databases <- function(opt = NULL, blastanalyses = NULL, QcovThreshold = 75, HitcovThreshold = 75, PidentThreshold = 75){
 
     #Set working directory to workdir
     setwd(opt$workdir)
@@ -39,13 +39,13 @@ blast_databases <- function(opt=NULL, blastanalyses=NULL){
 
             #Find out if db is protein or DNA
             if (length(grep("nhr", list.files(blastdbori))) > 0){
-                dbtype<-"nucl"
-                blastargs<-c("-num_threads", opt$threads, "-query", "genes.fna", "-db", blastdb, "-outfmt", "'6 qseqid qstart qend qlen sseqid sstart send slen evalue length pident gaps'", "-evalue", "1E-20", "-max_target_seqs", "10000", "-culling_limit", "1", ">", "blast.out")
-                blastprog<-"blastn"
+                dbtype <- "nucl"
+                blastargs <- c("-num_threads", opt$threads, "-query", "genes.fna", "-db", blastdb, "-outfmt", "'6 qseqid qstart qend qlen sseqid sstart send slen evalue length pident gaps'", "-evalue", "1E-20", "-max_target_seqs", "10000", "-culling_limit", "1", ">", "blast.out")
+                blastprog <- "blastn"
             } else {
-                dbtype<-"prot"
-                blastargs<-c("-num_threads", opt$threads, "-query", "proteome.faa", "-db", blastdb, "-outfmt", "'6 qseqid qstart qend qlen sseqid sstart send slen evalue length pident gaps'", "-evalue", "1E-20", "-max_target_seqs", "10000", "-culling_limit", "1", ">", "blast.out")
-                blastprog<-"blastp"
+                dbtype <- "prot"
+                blastargs <- c("-num_threads", opt$threads, "-query", "proteome.faa", "-db", blastdb, "-outfmt", "'6 qseqid qstart qend qlen sseqid sstart send slen evalue length pident gaps'", "-evalue", "1E-20", "-max_target_seqs", "10000", "-culling_limit", "1", ">", "blast.out")
+                blastprog <- "blastp"
             }
             #Blast query sequences against database
             system2(blastprog, args = blastargs, stdout = TRUE, stderr = TRUE)
@@ -59,16 +59,16 @@ blast_databases <- function(opt=NULL, blastanalyses=NULL){
                 file.remove("blast.out")
 
                 #Cleanup
-                blastout$Qcov <- round(((blastout$qend - blastout$qstart)/blastout$qlen)*100, 2)
-                blastout$Hitcov <- round(((blastout$send - blastout$sstart)/blastout$slen)*100, 2)
+                blastout$Qcov <- round(((blastout$qend - blastout$qstart)/blastout$qlen) * 100, 2)
+                blastout$Hitcov <- round(((blastout$send - blastout$sstart)/blastout$slen) * 100, 2)
                 blastout <- blastout[, c("Feature", "Accession", "Qcov", "Hitcov", "Pident", "gaps", "evalue")]
-                blastout <- subset(blastout, Qcov > 75)
-                blastout <- subset(blastout, Hitcov > 75)
-                blastout <- subset(blastout, Pident > 75)
+                blastout <- subset(blastout, Qcov > QcovThreshold)
+                blastout <- subset(blastout, Hitcov > HitcovThreshold)
+                blastout <- subset(blastout, Pident > PidentThreshold)
                 if (nrow(blastout) > 0){
                     blastout <- left_join(blastout, opt$featuredata)
                     blastout$LKT <- opt$contigsdata$LKT[match(blastout$Contig, opt$contigsdata$Contig)]
-                    if(blastanalysis == "resfinder" & !is.null(lookup)){
+                    if (blastanalysis == "resfinder" & !is.null(lookup)){
                         blastout <- left_join(blastout, lookup, by="Accession")
                         blastout[is.na(blastout[])] <- "none"
                     }
