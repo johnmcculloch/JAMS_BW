@@ -173,7 +173,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
         dev.off()
     }
 
-    if(makespreadsheets==TRUE){
+     if (makespreadsheets == TRUE){
         #Output statistics to system as spreadsheet.
         #flush out any null dfs in list
         compvec<-compvec[sapply(compvec, function(x){!(is.null(x))})]

@@ -490,6 +490,11 @@ if ("isolate" %in% pheno$JAMS_Run_type){
     applyfilters = "moderate"
 }
 
+whoopsieplot <- function(msg = "trying to do this."){
+    flog.info(paste("Whoops, something went wrong while", msg))
+    dev.off()
+}
+
 flog.info("Saving R session image. Please be patient.")
 save.image()
 
@@ -497,10 +502,6 @@ save.image()
 ## Do optional tasks ##
 #######################
 
-whoopsieplot <- function(msg = "trying to do this."){
-    flog.info(paste("Whoops, something went wrong while", msg))
-    dev.off()
-}
 
 if (opt$ordination == TRUE){
     flog.info("Will now try to generate ordination plots based on Metadata which looks meaningful.")

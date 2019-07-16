@@ -45,11 +45,12 @@ if((system(str_c("which brew"), ignore.stdout = TRUE)) == 1){
 }
 
 #Install Bioconductor packages
-bioconductordeps<-c("dada2", "metagenomeSeq", "ComplexHeatmap", "HybridMTest", "genefilter")
+bioconductordeps<-c("dada2", "metagenomeSeq", "HybridMTest", "genefilter")
 if (!requireNamespace("BiocManager", quietly = TRUE)){
     install.packages("BiocManager")
 }
 BiocManager::install(pkgs = bioconductordeps, update = FALSE, ask = FALSE)
+install_github("jokergoo/ComplexHeatmap")
 
 #Install the rest of JAMS
 setwd(jamsdir)

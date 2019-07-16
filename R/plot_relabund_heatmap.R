@@ -1,9 +1,9 @@
-#' plot_relabund_heatmap(mgseqobj=NULL, glomby=NULL, heatpalette="diverging", hmtype=NULL, hmasPA=FALSE, compareby=NULL, invertbinaryorder=FALSE, ntop=NULL, ordercolsby=NULL, colcategories=NULL, cluster_rows=FALSE, subsetby=NULL, applyfilters=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, adjustpval=FALSE, showonlypbelow=NULL, showpval=TRUE, showl2fc=TRUE, maxl2fc=NULL, minl2fc=NULL, genomecompleteness=NULL, list.data=NULL, addtit=NULL, scaled=FALSE, mgSeqnorm=FALSE, cdict=NULL, maxnumheatmaps=NULL, numthreads=4, nperm=99, statsonlog=TRUE, ignoreunclassified=TRUE, returnstats=TRUE, ...)
+#' plot_relabund_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "diverging", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, colcategories = NULL, cluster_rows = FALSE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, ...)
 #'
 #' Plots relative abundance heatmaps annotated by the metadata
 #' @export
 
-plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diverging", hmtype=NULL, hmasPA=FALSE, compareby=NULL, invertbinaryorder=FALSE, ntop=NULL, ordercolsby=NULL, colcategories=NULL, cluster_rows=FALSE, subsetby=NULL, applyfilters=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, adjustpval=FALSE, showonlypbelow=NULL, showpval=TRUE, showl2fc=TRUE, maxl2fc=NULL, minl2fc=NULL, genomecompleteness=NULL, list.data=NULL, addtit=NULL, scaled=FALSE, mgSeqnorm=FALSE, cdict=NULL, maxnumheatmaps=NULL, numthreads=4, nperm=99, statsonlog=TRUE, ignoreunclassified=TRUE, returnstats=TRUE, ...){
+plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = "diverging", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, colcategories = NULL, cluster_rows = FALSE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, ...){
 
     #Get appropriate object to work with
     obj <- mgseqobj
@@ -21,7 +21,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
     analysisname <- analysis
 
     if (!(is.null(glomby))){
-        obj <- agglomerate_features(mgseqobj=obj, glomby=glomby)
+        obj <- agglomerate_features(mgseqobj = obj, glomby = glomby)
         if (analysis != "LKT"){
             analysisname <- attr(obj, "analysis")
         } else {
@@ -71,7 +71,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
     }
 
     if (!(is.null(subsetby))){
-        subset_points <- sort(unique((pData(obj)[, which(colnames(pData(obj))==subsetby)])))
+        subset_points <- sort(unique((pData(obj)[, which(colnames(pData(obj)) == subsetby)])))
     } else {
         subset_points <- "none"
     }
@@ -108,7 +108,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                 featcutoff <- c(0,0)
             }
 
-            if(!(is.null(featmaxatleastPPM))){
+            if (all(c((!(is.null(featmaxatleastPPM))), (featmaxatleastPPM > 0)))) {
                 minPPMmsg <- paste("Highest feature must be >", featmaxatleastPPM, "PPM", sep = " ")
             } else {
                 minPPMmsg <- "Highest feature must be > 0 PPM"
@@ -136,12 +136,12 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
 
             #Compose an appropriate title for the plot
             if (length(unique(subset_points)) > 1){
-                maintit <- paste(hmtypemsg, analysisname, paste("within", subset_points[sp]), sep=" | ")
+                maintit <- paste(hmtypemsg, analysisname, paste("within", subset_points[sp]), sep = " | ")
             } else {
-                maintit <- paste(hmtypemsg, analysisname, sep=" | ")
+                maintit <- paste(hmtypemsg, analysisname, sep = " | ")
             }
             if (!is.null(addtit)) {
-                maintit <- paste(addtit, maintit, sep="\n")
+                maintit <- paste(addtit, maintit, sep = "\n")
             }
 
             #Get counts matrix
@@ -152,7 +152,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
             countmat <- countmat[rowsToKeep, ]
 
             if (ignoreunclassified == TRUE){
-               dunno <- c(paste(analysis, "none", sep="_"), "LKT__d__Unclassified")
+               dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")
                rowsToKeep <- which(!(rownames(countmat) %in% dunno))
                countmat <- countmat[rowsToKeep, ]
             }
@@ -162,8 +162,9 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                 feattable <- fData(currobj)
                 feattable$Feature <- paste(feattable$Accession, feattable$Description, sep = "-")
                 rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]
-                #Allow up to 40 characters for readability. Full names can be seen in the spreadsheet.
-                rownames(countmat) <- strtrim(rownames(countmat2), 40)
+            } else {
+                #get genome completeness for taxonomic objects
+                genomecompletenessdf <- get_genome_completeness(pheno = pData(currobj), list.data = list.data)
             }
             matrixSamples <- colnames(countmat)
             matrixRows <- rownames(countmat)
@@ -171,7 +172,6 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
             #Discard taxa below required level of completeness
             if (!(is.null(genomecompleteness))){
                 print(paste("Genome completeness must be", genomecompleteness, "in at least one sample"))
-                genomecompletenessdf <- get_genome_completeness(pheno = pData(currobj), list.data = list.data)
                 featuresToKeep2 <- rownames(genomecompletenessdf)[which(rowMax(as.matrix(genomecompletenessdf)) >= genomecompleteness)]
                 countmat <- countmat[(rownames(countmat)[(rownames(countmat) %in% featuresToKeep2)]), ]
                 completenessmsg <- paste("Genome completeness >", genomecompleteness)
@@ -205,7 +205,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                 for (r in 1:nrow(countmat2)){
                     feature <- rownames(countmat2)[r]
                     rank <- getOrdinalNumber1(as.numeric(which(rownames(countmat2) == feature)))
-                    rownames(countmat2)[r] <- paste(feature, rank, sep = "-")
+                    rownames(countmat2)[r] <- paste(rank, feature, sep = "-")
                 }
                 #Create a list of matrices each of maximum 50 rows
                 rowlist <- split(1:topcats, ceiling(seq_along(1:topcats)/50))
@@ -238,27 +238,28 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                 #Account for the fact that if there is only a single class within compareby variable, stats may have been coerced to variance.
                 if (matstats$Method[1] == "variance") {
                     matstats$Colour <- rep("black", nrow(matstats))
-                    countmat2 = countmat[rownames(matstats), ]
+                    countmat2 <- countmat[rownames(matstats), ]
                     #Add rank variance to matrix names
                     for (r in 1:nrow(countmat2)){
                         feature <- rownames(countmat2)[r]
                         rank <- getOrdinalNumber1(as.numeric(which(rownames(countmat2) == feature)))
-                        rownames(countmat2)[r] <- paste(feature, rank, sep = "-")
+                        rownames(countmat2)[r] <- paste(rank, feature, sep = "-")
                     }
                     #Create a list of matrices each of maximum 50 rows
                     topcats <- min(nrow(countmat2), 50)
                     rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
                     matlist <- lapply(1:length(rowlist), function(x){ countmat2[rowlist[[x]], ] })
+                    statslist <- lapply(1:length(rowlist), function(x){ matstats[rowlist[[x]], ] })
                     rowlblcol_list <- lapply(1:length(rowlist), function(x){rep("black", length(rowlist[[x]]))})
                     stattit <- paste("Top", topcats, "most variant features across samples")
-                    statmsg <- paste("Var", compareby, sep="_")
+                    statmsg <- paste("Var", compareby, sep = "_")
                 } else {
 
-                    if(!(is.null(minl2fc)) & ("l2fc" %in% colnames(matstats))){
+                    if (!(is.null(minl2fc)) & ("l2fc" %in% colnames(matstats))){
                         #Check if there is enough leftover after filter.
                         if (length(which(matstats$absl2fc > minl2fc)) < 2){
                             print(paste("There are less than 2 features which have >", minl2fc, "l2fc."))
-                            minl2fc <- round((max((matstats$absl2fc[order(matstats$absl2fc, decreasing=TRUE)][min(length(matstats$absl2fc),40)]), 0.5)), 1)
+                            minl2fc <- round((max((matstats$absl2fc[order(matstats$absl2fc, decreasing = TRUE)][min(length(matstats$absl2fc), 40)]), 0.5)), 1)
                         }
                         minl2fcmsg <- paste("log2foldchange >", minl2fc)
                         matstats <- subset(matstats, absl2fc > minl2fc)
@@ -289,26 +290,16 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                         } else if (matstats$Method[1] == "variance"){
                             statmsg <- paste("Var", compareby, sep="_")
                         }
-
                     }
 
                     countmat2 <- as.matrix(countmat[rownames(matstats), ])
-
-                    if ((showl2fc==TRUE) & ("l2fc" %in% colnames(matstats))){
-                        rownames(countmat2) <- paste(rownames(countmat2), " | L2FC=  ", round(matstats$l2fc, 1),sep = "")
-                    }
-
-                    #Add Odds Ratio if PA
-                    if ("oddsRatio" %in% colnames(matstats)){
-                        rownames(countmat2) <- paste(rownames(countmat2), " | OR=  ", paste(round(matstats$oddsRatio, 1), "(", round(matstats$lower, 1), "-", round(matstats$upper, 1), ")", sep= ""), sep = "")
-                    }
 
                     #If adjustpval is set to auto, then find out which is best and re-set it to either TRUE or FALSE
                     if (("pval" %in% colnames(matstats)) && adjustpval == "auto"){
                         propsigadj <- length(which(matstats$padj_fdr < 0.05)) / length(matstats$padj_fdr)
                         propsignonadj <- length(which(matstats$pval < 0.05)) / length(matstats$pval)
                         fracsigadj <- propsigadj / propsignonadj
-                        if((!is.na(fracsigadj)) && (fracsigadj > 0.2)){
+                        if ((!is.na(fracsigadj)) && (fracsigadj > 0.2)){
                             adjustpval = TRUE
                         } else {
                             adjustpval = FALSE
@@ -317,14 +308,8 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
 
                     if (("pval" %in% colnames(matstats)) && adjustpval != TRUE){
                         sigmeas <- "pval"
-                        if (showpval == TRUE){
-                            rownames(countmat2) <- paste((paste(paste0(sigmeas, "="), round(matstats[,sigmeas], 3), "|", sep = "")), rownames(countmat2))
-                        }
                     } else if (("pval" %in% colnames(matstats)) && adjustpval == TRUE){
                         sigmeas <- "padj_fdr"
-                        if (showpval == TRUE){
-                            rownames(countmat2) <- paste((paste(paste0(sigmeas, "="), round(matstats[,sigmeas], 3), "|", sep = "")), rownames(countmat2))
-                        }
                     }
 
                     if (is.null(showonlypbelow)){
@@ -335,9 +320,10 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                         }
                         countmat2 <- countmat2[1:topcats, ]
                         #Create a list of matrices each of maximum 50 rows
-                        rowlist <- split(1:topcats, ceiling(seq_along(1:topcats)/50))
+                        rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
                         matlist <- lapply(1:length(rowlist), function(x){ countmat2[rowlist[[x]], ] })
-                        rowlblcol_list <- lapply(1:length(rowlist), function(x){matstats$Colour[rowlist[[x]]]})
+                        statslist <- lapply(1:length(rowlist), function(x){ matstats[rowlist[[x]], ] })
+                        rowlblcol_list <- lapply(1:length(rowlist), function(x) { matstats$Colour[rowlist[[x]]] })
 
                         if (matstats$Method[1] == "MannWhitneyWilcoxon") {
                             stattit <- paste("Top", topcats, "different between", compareby, "using MannWhitneyWilcoxon")
@@ -361,9 +347,9 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
 
                         #Must have at least two rows in a matrix to plot a heatmap
                         if (length(rowcutoff) > 1){
-                            rowlist <- split(rowcutoff, ceiling(seq_along(rowcutoff)/50))
+                            rowlist <- split(rowcutoff, ceiling(seq_along(rowcutoff) / 50))
                             matlist <- lapply(1:length(rowlist), function(x){ countmat2[rowlist[[x]], ] })
-                            rowlblcol_list <- lapply(1:length(rowlist), function(x){matstats$Colour[rowlist[[x]]]})
+                            statslist <- lapply(1:length(rowlist), function(x){ matstats[rowlist[[x]], ] })
                             if (matstats$Method[1] == "MannWhitneyWilcoxon") {
                                 stattit <- paste(sigmeas, "<", showonlypbelow, "different between", compareby, "using MannWhitneyWilcoxon")
                             } else if (matstats$Method[1] == "permanova"){
@@ -402,7 +388,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
             #If the matrix list is not empty, plot the heatmap. If there is nothing to plot, say so.
             if (length(matlist) > 0){
                 #Cycle through list of matrices to transform into heatmaps.
-                 if (!(is.null(maxnumheatmaps))){
+                if (!(is.null(maxnumheatmaps))){
                     #Prune graphics list to largest number allowed
                     mhm <- min(maxnumheatmaps, length(matlist))
                 } else {
@@ -412,15 +398,17 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                 for (hm in 1:mhm){
                     #Regenerate the current matrix being plot from matrix list
                     mathm <- matlist[[hm]]
-                    rowlblcol <- rowlblcol_list[[hm]]
+                    rownames(mathm) <- strtrim(rownames(mathm), 60)
+                    stathm <- statslist[[hm]]
+                    rowlblcol <- stathm$Colour
                     #Plot the heatmap
-                    fontsizey <- max(4, round((((-1/150)*(nrow(mathm)))+1)*5, 0))
-                    fontsizex <- max(3, as.numeric(unlist(round((((-1/150)*(ncol(mathm)))+1)*5, 0))))
+                    fontsizey <- min(5, round((((-1 / 150) * (nrow(mathm))) + 1) * 6, 0))
+                    fontsizex <- min(4, as.numeric(unlist(round((((-1 / 150) * (ncol(mathm))) + 1) * 6, 0))))
 
-                    hmdf <- as.data.frame(matrix(data=0, nrow=nrow(pData(currobj)), ncol=length(colcategories)))
-                    cores <- vector("list",length=length(colcategories))
+                    hmdf <- as.data.frame(matrix(data = 0, nrow = nrow(pData(currobj)), ncol = length(colcategories)))
+                    cores <- vector("list", length = length(colcategories))
                     for (g in 1:length(colcategories)){
-                        hmdf[ , g]<-pData(currobj)[ , which(colnames(pData(currobj))==colcategories[g])]
+                        hmdf[ , g] <- pData(currobj)[ , which(colnames(pData(currobj)) == colcategories[g])]
                         colnames(hmdf)[g] <- colcategories[g]
                         if (!(is.numeric(hmdf[ ,g]))){
                             if (is.null(cdict)){
@@ -443,29 +431,31 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                         names(cores)[g] <- colcategories[g]
                     }
 
-                    if(is.null(heatpalette) || heatpalette=="sequential"){
+                    if (heatpalette == "sequential"){
                         heatmapCols = colorRampPalette((brewer.pal(9, "YlOrRd")))(50)
-                    } else {
+                    } else if (is.null(heatpalette) || heatpalette == "diverging"){
                         heatmapCols = colorRampPalette(rev(brewer.pal(9, "RdYlBu")))(50)
+                    } else {
+                        heatmapCols = colorRampPalette(rev(brewer.pal(9, heatpalette)))(50)
                     }
-                    ha_column = HeatmapAnnotation(df = hmdf, col = cores)
+                    ha_column <- HeatmapAnnotation(df = hmdf, col = cores, annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 9, col = "black"))
 
                     #Build plot title
-                    plotit<-paste(maintit, stattit, cutoffmsg, minPPMmsg, sep="\n")
+                    plotit <- paste(maintit, stattit, cutoffmsg, minPPMmsg, sep = "\n")
 
-                    if(stattype=="binary"){
-                        l2fcmsg<-paste(minl2fcmsg, maxl2fcmsg, sep=" | ")
-                        plotit<-paste(plotit, l2fcmsg, sep="\n")
+                    if (all(c((any(!(c(is.null(minl2fc), is.null(maxl2fc))))), ("l2fc" %in% colnames(matstats))))){
+                        l2fcmsg <- paste(minl2fcmsg, maxl2fcmsg, sep = " | ")
+                        plotit <- paste(plotit, l2fcmsg, sep = "\n")
                     }
 
-                    if(!(is.null(genomecompleteness))){
-                        plotit<-paste(plotit, completenessmsg, sep="\n")
+                    if (!(is.null(genomecompleteness))){
+                        plotit <- paste(plotit, completenessmsg, sep = "\n")
                     }
 
                     #Add plot number if there is more than one heatmap matrix.
-                    if(length(matlist)>1){
-                        hmcounter<-paste(hm, length(matlist), sep="/")
-                        plotit<-paste(plotit, paste("Heatmap", hmcounter), sep="\n")
+                    if (length(matlist) > 1){
+                        hmcounter <- paste(hm, length(matlist), sep = "/")
+                        plotit <- paste(plotit, paste("Heatmap", hmcounter), sep = "\n")
                     }
 
                     if (scaled == TRUE) {
@@ -479,33 +469,90 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                         }
                     }
 
+                    #Include row annotations for pvalues and l2fc if required.
+                    if (("l2fc" %in% colnames(stathm))) {
+                        #Get l2fc amplitude for the current heatmap
+                        l2fcamplitude <- round(stathm$l2fc, 1)
+                        maximuml2fctoshow = 15
+                        #Take into account that l2fc may contain only infinites
+                        l2fcamplitudeculled <- l2fcamplitude
+                        l2fcamplitudeculled[which(l2fcamplitudeculled == Inf)] <- maximuml2fctoshow
+                        l2fcamplitudeculled[which(l2fcamplitudeculled == -Inf)] <- (maximuml2fctoshow * -1)
+                        l2fcamplitudeshifted <- l2fcamplitudeculled + 15 #Offset amplitude to contain only positive values, maintaining their relativity
+                    }
+
+                    if (showl2fc == TRUE){
+                        showl2fc = "text"
+                    }
+
+                    #This is not the most eficient way of doing it, but will keep it like this for now as it is working.
+                    if (all(c((sigmeas %in% colnames(stathm)), showpval))){
+                        statannot <- as.character(signif(stathm[, sigmeas], 2))
+                        if (all(c(("l2fc" %in% colnames(stathm)), (showl2fc %in% c("text", "plot"))))) {
+                            if (showl2fc == "text"){
+                                #Show pvalue AND l2fc
+                                row_ha <- HeatmapAnnotation(which = "row", Pval = anno_text(statannot, gp = gpar(fontsize = fontsizey)), Log2FC = anno_text(l2fcamplitude, gp = gpar(fontsize = fontsizey)))
+                            } else {
+                                row_ha <- HeatmapAnnotation(which = "row", Pval = anno_text(statannot, gp = gpar(fontsize = fontsizey)), Log2FC = anno_points(l2fcamplitudeshifted, ylim = c(0, 30), width = unit(0.8, "cm"), axis_param = list(side = "bottom", at = c(0, 15, 30), labels = c("<-15", "0", ">15"), labels_rot = 90)), annotation_name_gp = gpar(fontsize = 6, col = "black"))
+                            }
+
+                        } else {
+                            #Show only pval
+                            row_ha <- rowAnnotation(Pval = anno_text(statannot, gp = gpar(fontsize = fontsizey)))
+                        }
+
+                    } else {
+
+                        if (all(c(("l2fc" %in% colnames(stathm)), (showl2fc %in% c("text", "plot"))))) {
+                            #Show l2fc only
+                            if (showl2fc == "text"){
+                                row_ha <- rowAnnotation(Log2FC = anno_text(l2fcamplitude, gp = gpar(fontsize = fontsizey)))
+                            } else {
+                                row_ha <- rowAnnotation(Log2FC = anno_points(l2fcamplitudeshifted, ylim = c(0, 30), width = unit(0.8, "cm"), axis_param = list(side = "bottom", at = c(0, 15, 30), labels = c("<-15", "0", ">15"), labels_rot = 90)), annotation_name_gp = gpar(fontsize = 6, col = "black"))
+                            }
+                        } else {
+                            row_ha <- NULL
+                        }
+                    }
+
                     #Determine column order explicitly if required and draw heatmap
                     if (!(is.null(ordercolsby))){
-                        co<-NULL
-                        colgroups<-sort(unique(pData(currobj)[,which(colnames(pData(currobj))==ordercolsby)]))
+                        co <- NULL
+                        colgroups <- sort(unique(pData(currobj)[, which(colnames(pData(currobj)) == ordercolsby)]))
                         for(w in 1:length(unique(colgroups))){
-                            wantedsamp<-pData(currobj)[]$Sample[which(pData(currobj)[,ordercolsby]==colgroups[w])]
+                            wantedsamp <- pData(currobj)[]$Sample[which(pData(currobj)[, ordercolsby] == colgroups[w])]
                             #get temporary matrix with only one group to calculate distance
-                            gmat<-mathm[ ,wantedsamp]
-                            hcmat<-hclust(dist(t(gmat)))
-                            gord<-hcmat$order
-                            co<-append(co, colnames(gmat)[gord], after=length(co))
+                            gmat <- mathm[, wantedsamp]
+                            hcmat <- hclust(dist(t(gmat)))
+                            gord <- hcmat$order
+                            co <- append(co, colnames(gmat)[gord], after = length(co))
                         }
-                        ht1 = Heatmap(mathm, name = lname, cluster_columns = FALSE, column_order = co, column_title = plotit, column_title_gp = gpar(fontsize = 10), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), cluster_rows = cluster_rows, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(title = lname, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 10)))
+                        ht1 = Heatmap(mathm, name = lname, cluster_columns = FALSE, column_order = co, column_title = plotit, column_title_gp = gpar(fontsize = 10), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(title = lname, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
                     } else {
-                        ht1 = Heatmap(mathm, name = lname, column_title = plotit, column_title_gp = gpar(fontsize = 10), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), cluster_rows = cluster_rows, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(title = lname, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 10)))
+                        ht1 = Heatmap(mathm, name = lname, column_title = plotit, column_title_gp = gpar(fontsize = 10), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(title = lname, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
                     }
 
                     #Draw the heatmap
-                    par(oma = c(10,7,3,10)+0.1, xpd = TRUE)
-                    draw(ht1, heatmap_legend_side = "right", annotation_legend_side = "right", padding = unit(c(4, 2, 2, 2), "mm"))
+                    par(oma = c(10, 7, 3, 10) + 0.1, xpd = TRUE)
+                    draw(ht1, heatmap_legend_side = "right", annotation_legend_side = "right", padding = unit(c(4, 2, 10, 2), "mm"))
 
                     #Print what the column annotations are
-                    for(an in colnames(hmdf)) {
-                        decorate_annotation(an, {
-                            grid.text(an, unit(0, "npc") - unit(2, "mm"), 0.5, default.units = "npc", just = "right", gp=gpar(fontsize=10, col="black"))
+                    #for(an in colnames(hmdf)) {
+                    #    decorate_annotation(an, {
+                    #        grid.text(an, unit(0, "npc") - unit(2, "mm"), 0.5, default.units = "npc", just = "right", gp = gpar(fontsize = 10, col = "black"))
+                    #    } )
+                    #}
+                    if (all(c(("pval" %in% colnames(stathm)), showpval))) {
+                        decorate_annotation("Pval", {
+                            grid.text(sigmeas, y = unit(1, "npc") + unit(2, "mm"), just = "bottom", gp = gpar(fontsize = 5, col = "black"))
                         })
                     }
+                    if (all(c(("l2fc" %in% colnames(stathm)), (showl2fc %in% c("text", "plot", TRUE))))) {
+                        decorate_annotation("Log2FC", {
+                            grid.text("Log2FC", y = unit(1, "npc") + unit(2, "mm"), just = "bottom", gp = gpar(fontsize = 5, col = "black"))
+                        })
+                    }
+
                     #gvec[[n]]<-recordPlot()
                     n <- n + 1
 
@@ -515,8 +562,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
                 }
             } else {
                 #There is no valid matrix, so print out the conditions which led the matrix to be empty.
-
-                plotit<-c(stattit, paste(cutoffmsg, minPPMmsg, sep=", "))
+                plotit <- c(stattit, paste(cutoffmsg, minPPMmsg, sep=", "))
                 plot.new()
                 grid.table(c(maintit, "No features fulfilling", plotit), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 10))
                 #gvec[[n]]<-recordPlot()
@@ -539,7 +585,7 @@ plot_relabund_heatmap <- function(mgseqobj=NULL, glomby=NULL, heatpalette="diver
     } #End subset by loop
 
     #Redefine stats list as ones only containing data
-    svec<-svec[sapply(svec, function(x){!(is.null(x))})]
+    svec<-svec[sapply(svec, function(x){ !(is.null(x)) } )]
 
     if(returnstats == TRUE){
         return(svec)

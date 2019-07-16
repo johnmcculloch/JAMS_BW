@@ -32,29 +32,29 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         }
     }
 
-    if((uselog==TRUE) && (statsonlog == FALSE)){
+    if ((uselog == TRUE) && (statsonlog == FALSE)){
         print("Transforming log2 counts back to raw counts for calculating stats.")
         #log2 transform if applicable
-        countmatrix2<-sapply(1:ncol(countmatrix), function(x){ countmatrix[,x]<-((2^(countmatrix[,x])) - 1)} )
-        colnames(countmatrix2)<-colnames(countmatrix)
-        countmatrix<-countmatrix2
+        countmatrix2 <- sapply(1:ncol(countmatrix), function(x){ countmatrix[, x] <- ((2 ^ (countmatrix[, x])) - 1)} )
+        colnames(countmatrix2) <- colnames(countmatrix)
+        countmatrix <- countmatrix2
     }
 
     #Protect against rows with empty data
-    rowsToKeep = which(rowSums(countmatrix) > 0)
-    countmatrix = countmatrix[rowsToKeep, ]
+    rowsToKeep <- which(rowSums(countmatrix) > 0)
+    countmatrix <- countmatrix[rowsToKeep, ]
 
     #Calculate matrix stats and get new matrix.
     if(stattype == "variance"){
         print("Calculating variance across samples.")
-        featStatsSD = apply(countmatrix, 1, sd)
-        featStatsMAD = apply(countmatrix, 1, mad)
-        matstats<-data.frame(SD = as.vector(unlist(featStatsSD)), MAD = as.vector(unlist(featStatsMAD)))
+        featStatsSD <- apply(countmatrix, 1, sd)
+        featStatsMAD <- apply(countmatrix, 1, mad)
+        matstats <- data.frame(SD = as.vector(unlist(featStatsSD)), MAD = as.vector(unlist(featStatsMAD)))
         rownames(matstats) <- rownames(countmatrix)
         matstats <- matstats[order(matstats$SD, decreasing = TRUE), ]
         matstats$Method <- rep("variance", nrow(matstats))
     } else if (stattype == "binary"){
-        if(numclass == 2){
+        if (numclass == 2){
             print("Calculating p-values with Mann-Whitney-Wilcoxon test.")
         } else {
             stop("To calculate p-values with Mann-Whitney-Wilcoxon test, the comparison variable must have exactly two classes.")
@@ -65,15 +65,28 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         mwpval <- lapply(1:nrow(countmatrix), function(x) wilcox.test(countmatrix[x,] ~ classesvector)$p.value)
 
         #Get Log2 Fold Change (l2fc)
-        if(uselog == TRUE && (statsonlog == TRUE)){
-            #get log2 fold changes from raw counts, remembering that MRcounts adds 1 to log2(0). This is taken into account by subtracting 1 when elevating 2 to the power of log2 transformed counts.
-            l2fc <- sapply(1:nrow(countmatrix), function(x) { foldchange2logratio(foldchange(sum(round((2^(as.numeric(countmatrix[x,]))) - 1, 0)[which(classesvector == discretenames[1])]), sum(round((2^(as.numeric(countmatrix[x,]))) - 1, 0)[which(classesvector == discretenames[2])])), base = 2) } )
-        } else {
-            l2fc <- sapply(1:nrow(countmatrix), function(x){ foldchange2logratio(foldchange(sum(countmatrix[x, which(classesvector == discretenames[1])]), sum(countmatrix[x, which(classesvector == discretenames[2])])), base = 2) })
+        getl2fc <- function(countsvec = NULL, classesvector = NULL, discretenames= NULL, method = "median", countsinlog = NULL){
+            #If counts are in log space, transform them back
+            if (countsinlog == TRUE){
+                countsvecNL <- as.numeric(sapply(countsvec, function (x) { ((2 ^ x) - 1) }))
+            } else {
+                countsvecNL <- as.numeric(countsvec)
+            }
+            countsvecG1 <- countsvecNL[which(classesvector == discretenames[1])]
+            statscountsvecG1 <- get(method)(countsvecG1)
+            countsvecG2 <- countsvecNL[which(classesvector == discretenames[2])]
+            statscountsvecG2 <- get(method)(countsvecG2)
+            l2fc <- foldchange2logratio(foldchange(statscountsvecG1, statscountsvecG2), base = 2)
+            if (is.na(l2fc)){
+                l2fc <- 0
+            }
+
+            return(l2fc)
         }
 
-        l2fc <- as.vector(unlist(l2fc))
-        if(invertbinaryorder == TRUE){
+        l2fc <- sapply(1:nrow(countmatrix), function(x) { getl2fc(countsvec = countmatrix[x, ], classesvector = classesvector, discretenames = discretenames, countsinlog = uselog, method = "median") })
+
+        if (invertbinaryorder == TRUE){
             l2fc <- (l2fc * -1)
         }
         matstats <- data.frame(pval = as.vector(unlist(mwpval)), l2fc = l2fc)
@@ -82,7 +95,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
 
         #Adjust p-values
         adjlist <- lapply(p.adjust.methods, function(x){ p.adjust(matstats$pval, method = x, n = length(matstats$pval)) })
-        names(adjlist) <- paste("padj", p.adjust.methods, sep="_")
+        names(adjlist) <- paste("padj", p.adjust.methods, sep = "_")
         adjdf <- as.data.frame(adjlist)
         matstats <- cbind(matstats, adjdf)
         matstats <- matstats[order(matstats$pval, decreasing = FALSE), ]
