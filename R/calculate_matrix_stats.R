@@ -127,7 +127,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         matstats$Method <- rep(stattype, nrow(matstats))
     } else if (stattype == "PA"){
         require(parallel)
-        if(numclass == 2){
+        if (numclass == 2){
             print("Calculating p-values for presence/absence testing with Fisher s exact test.")
         } else {
             stop("To calculate p-values for presence/absence testing, the comparison variable must have exactly two classes.")

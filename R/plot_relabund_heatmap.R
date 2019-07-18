@@ -192,8 +192,8 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     genomecompletenessdf$MedianGenomeComp <- rowMedians(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$SDGenomeComp <- rowSds(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
-                    genomecompletenessdf <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
-                    matstatsbank <- left_join(matstatsbank, genomecompletenessdf)
+                    genomecompletenessdfmedians <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
+                    matstatsbank <- left_join(matstatsbank, genomecompletenessdfmedians)
                     rownames(matstatsbank) <- matstatsbank$Taxa
                     matstatsbank$Taxa <- NULL
                 }
@@ -208,8 +208,9 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     rownames(countmat2)[r] <- paste(rank, feature, sep = "-")
                 }
                 #Create a list of matrices each of maximum 50 rows
-                rowlist <- split(1:topcats, ceiling(seq_along(1:topcats)/50))
+                rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
                 matlist <- lapply(1:length(rowlist), function(x){countmat2[rowlist[[x]], ]})
+                statslist <- lapply(1:length(rowlist), function(x){ matstats[rowlist[[x]], ] })
                 rowlblcol_list <- lapply(1:length(rowlist), function(x){ rep("black", length(rowlist[[x]])) })
                 stattit <- paste("Top", topcats, "most variant features across samples")
 
@@ -228,8 +229,8 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     genomecompletenessdf$MedianGenomeComp <- rowMedians(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$SDGenomeComp <- rowSds(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
-                    genomecompletenessdf <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
-                    matstatsbank <- left_join(matstatsbank, genomecompletenessdf)
+                    genomecompletenessdfmedians <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
+                    matstatsbank <- left_join(matstatsbank, genomecompletenessdfmedians)
                     rownames(matstatsbank) <- matstatsbank$Taxa
                     matstatsbank$Taxa <- NULL
                 }
@@ -253,6 +254,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     rowlblcol_list <- lapply(1:length(rowlist), function(x){rep("black", length(rowlist[[x]]))})
                     stattit <- paste("Top", topcats, "most variant features across samples")
                     statmsg <- paste("Var", compareby, sep = "_")
+
                 } else {
 
                     if (!(is.null(minl2fc)) & ("l2fc" %in% colnames(matstats))){
@@ -401,9 +403,11 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     rownames(mathm) <- strtrim(rownames(mathm), 60)
                     stathm <- statslist[[hm]]
                     rowlblcol <- stathm$Colour
+                    ht1fs <- 10
+
                     #Plot the heatmap
                     fontsizey <- min(5, round((((-1 / 150) * (nrow(mathm))) + 1) * 6, 0))
-                    fontsizex <- min(4, as.numeric(unlist(round((((-1 / 150) * (ncol(mathm))) + 1) * 6, 0))))
+                    fontsizex <- as.numeric(unlist(round((((-1 / 150) * (ncol(mathm))) + 1) * 5, 0)))
 
                     hmdf <- as.data.frame(matrix(data = 0, nrow = nrow(pData(currobj)), ncol = length(colcategories)))
                     cores <- vector("list", length = length(colcategories))
@@ -438,12 +442,12 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     } else {
                         heatmapCols = colorRampPalette(rev(brewer.pal(9, heatpalette)))(50)
                     }
-                    ha_column <- HeatmapAnnotation(df = hmdf, col = cores, annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 9, col = "black"))
+                    ha_column <- HeatmapAnnotation(df = hmdf, col = cores, annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"))
 
                     #Build plot title
                     plotit <- paste(maintit, stattit, cutoffmsg, minPPMmsg, sep = "\n")
 
-                    if (all(c((any(!(c(is.null(minl2fc), is.null(maxl2fc))))), ("l2fc" %in% colnames(matstats))))){
+                    if (all(c((any(!(c(is.null(minl2fc), is.null(maxl2fc))))), ("l2fc" %in% colnames(stathm))))){
                         l2fcmsg <- paste(minl2fcmsg, maxl2fcmsg, sep = " | ")
                         plotit <- paste(plotit, l2fcmsg, sep = "\n")
                     }
@@ -456,6 +460,23 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     if (length(matlist) > 1){
                         hmcounter <- paste(hm, length(matlist), sep = "/")
                         plotit <- paste(plotit, paste("Heatmap", hmcounter), sep = "\n")
+                    }
+
+                    #Switch plot title if doing a dual heatmap with genome completeness
+                    #Get genome completeness hmdf if in taxonomic space
+                    ht1fs <- 10
+                    hm1tit <- plotit
+                    if (analysis == "LKT"){
+                        gchmdf <- genomecompletenessdf[rownames(mathm), colnames(mathm)]
+                        gchmdf <- as.matrix(gchmdf)
+                        gchmdf <- gchmdf * 100
+                        #Cull genome completeness to 400% max, to preserve scale across heatmaps
+                        gchmdf[which(gchmdf[] > 400)] <- 400
+                        if (ncol(mathm) < 51){
+                            ht1fs <- 7
+                            dualHMtit <- plotit
+                            hm1tit <- "Relative Abundance"
+                        }
                     }
 
                     if (scaled == TRUE) {
@@ -480,36 +501,46 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                         l2fcamplitudeculled[which(l2fcamplitudeculled == -Inf)] <- (maximuml2fctoshow * -1)
                         l2fcamplitudeshifted <- l2fcamplitudeculled + 15 #Offset amplitude to contain only positive values, maintaining their relativity
                     }
+                    #Include annotations for Odds Ratio if PA
+                    if ("oddsRatio" %in% colnames(stathm)){
+                        ORamplitude <- paste0(round(stathm$oddsRatio, 2), paste0("(", paste(round(stathm$lower, 2), round(stathm$upper, 2), sep = "-"), ")"))
+                    }
 
                     if (showl2fc == TRUE){
                         showl2fc = "text"
                     }
 
                     #This is not the most eficient way of doing it, but will keep it like this for now as it is working.
-                    if (all(c((sigmeas %in% colnames(stathm)), showpval))){
+                    if (all(c(("pval" %in% colnames(stathm)), showpval))){
                         statannot <- as.character(signif(stathm[, sigmeas], 2))
+                        #If showing Log2FC then do so
                         if (all(c(("l2fc" %in% colnames(stathm)), (showl2fc %in% c("text", "plot"))))) {
                             if (showl2fc == "text"){
                                 #Show pvalue AND l2fc
-                                row_ha <- HeatmapAnnotation(which = "row", Pval = anno_text(statannot, gp = gpar(fontsize = fontsizey)), Log2FC = anno_text(l2fcamplitude, gp = gpar(fontsize = fontsizey)))
+                                row_ha <- HeatmapAnnotation(which = "row", Pval = anno_text(statannot, gp = gpar(fontsize = fontsizey)), Log2FC = anno_text(l2fcamplitude, gp = gpar(fontsize = fontsizey)), gap = unit(3, "mm"))
                             } else {
                                 row_ha <- HeatmapAnnotation(which = "row", Pval = anno_text(statannot, gp = gpar(fontsize = fontsizey)), Log2FC = anno_points(l2fcamplitudeshifted, ylim = c(0, 30), width = unit(0.8, "cm"), axis_param = list(side = "bottom", at = c(0, 15, 30), labels = c("<-15", "0", ">15"), labels_rot = 90)), annotation_name_gp = gpar(fontsize = 6, col = "black"))
                             }
-
+                        } else if ("oddsRatio" %in% colnames(stathm)) {
+                            #Show Pval and Odds Ratio
+                            row_ha <- rowAnnotation(Pval = anno_text(statannot, gp = gpar(fontsize = fontsizey)), OR = anno_text(ORamplitude, gp = gpar(fontsize = fontsizey)))
                         } else {
                             #Show only pval
                             row_ha <- rowAnnotation(Pval = anno_text(statannot, gp = gpar(fontsize = fontsizey)))
                         }
 
                     } else {
-
+                        #OK, not showing p-values
                         if (all(c(("l2fc" %in% colnames(stathm)), (showl2fc %in% c("text", "plot"))))) {
-                            #Show l2fc only
+                            #If showing Log2FC then do so
                             if (showl2fc == "text"){
                                 row_ha <- rowAnnotation(Log2FC = anno_text(l2fcamplitude, gp = gpar(fontsize = fontsizey)))
                             } else {
                                 row_ha <- rowAnnotation(Log2FC = anno_points(l2fcamplitudeshifted, ylim = c(0, 30), width = unit(0.8, "cm"), axis_param = list(side = "bottom", at = c(0, 15, 30), labels = c("<-15", "0", ">15"), labels_rot = 90)), annotation_name_gp = gpar(fontsize = 6, col = "black"))
                             }
+                        } else if ("oddsRatio" %in% colnames(stathm)) {
+                            #Show only Odds Ratio
+                            row_ha <- rowAnnotation(OR = anno_text(ORamplitude, gp = gpar(fontsize = fontsizey)))
                         } else {
                             row_ha <- NULL
                         }
@@ -527,14 +558,34 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                             gord <- hcmat$order
                             co <- append(co, colnames(gmat)[gord], after = length(co))
                         }
-                        ht1 = Heatmap(mathm, name = lname, cluster_columns = FALSE, column_order = co, column_title = plotit, column_title_gp = gpar(fontsize = 10), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(title = lname, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                        ht1 <- Heatmap(mathm, name = lname, cluster_columns = FALSE, column_order = co, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = lname, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
                     } else {
-                        ht1 = Heatmap(mathm, name = lname, column_title = plotit, column_title_gp = gpar(fontsize = 10), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(title = lname, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                        ht1 <- Heatmap(mathm, name = lname, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = lname, labels = PctBreakPtsLbls, at = Log2Breaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
                     }
+                    #Make a genome completeness heatmap if in taxonomic space
+                    if (analysis == "LKT"){
+                        #Draw heatmap with completeness if taxonomic analysis
+                        GCheatmapCols <- colorRamp2(c(0, 100, 200, 300, 400), c("white", "forestgreen", "blue", "firebrick1", "black"))
+                        GCha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
+                        ht2 <- Heatmap(gchmdf, name = "GenComp", column_title = "% Genome completeness", column_title_gp = gpar(fontsize = ht1fs), top_annotation = GCha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, cluster_rows = FALSE, column_order = column_order(ht1), show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = "% GenComp", labels = c("0%", "100%", "200%", "300%", "> 400%"), title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
 
-                    #Draw the heatmap
-                    par(oma = c(10, 7, 3, 10) + 0.1, xpd = TRUE)
-                    draw(ht1, heatmap_legend_side = "right", annotation_legend_side = "right", padding = unit(c(4, 2, 10, 2), "mm"))
+
+                        #Plot heatmaps side by side if there are 50 samples or less. Else plot one on each page.
+                        if (ncol(mathm) < 51){
+                            ht_list = ht1 + ht2
+                            draw(ht_list, heatmap_legend_side = "bottom", annotation_legend_side = "right", ht_gap = unit(0.2, "cm"), padding = unit(c(4, 20, 10, 4), "mm"), column_title = dualHMtit, column_title_gp = gpar(fontsize = 10))
+                        } else {
+                            par(oma = c(10, 7, 3, 10) + 0.1, xpd = TRUE)
+                            draw(ht1, heatmap_legend_side = "bottom", annotation_legend_side = "right", padding = unit(c(4, 20, 10, 4), "mm"))
+                            plot.new()
+                            draw(ht2, heatmap_legend_side = "bottom", annotation_legend_side = "right", padding = unit(c(4, 20, 10, 4), "mm"))
+                        }
+
+                    } else {
+                        #Draw the heatmap
+                        par(oma = c(10, 7, 3, 10) + 0.1, xpd = TRUE)
+                        draw(ht1, heatmap_legend_side = "bottom", annotation_legend_side = "right", padding = unit(c(4, 20, 10, 4), "mm"))
+                    }
 
                     #Print what the column annotations are
                     #for(an in colnames(hmdf)) {
@@ -544,12 +595,17 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     #}
                     if (all(c(("pval" %in% colnames(stathm)), showpval))) {
                         decorate_annotation("Pval", {
-                            grid.text(sigmeas, y = unit(1, "npc") + unit(2, "mm"), just = "bottom", gp = gpar(fontsize = 5, col = "black"))
+                            grid.text(sigmeas, y = unit(1, "npc") + unit(5, "mm"), just = "bottom", gp = gpar(fontsize = 5, col = "black"))
                         })
                     }
                     if (all(c(("l2fc" %in% colnames(stathm)), (showl2fc %in% c("text", "plot", TRUE))))) {
                         decorate_annotation("Log2FC", {
-                            grid.text("Log2FC", y = unit(1, "npc") + unit(2, "mm"), just = "bottom", gp = gpar(fontsize = 5, col = "black"))
+                            grid.text("Log2FC", y = unit(1, "npc") + unit(5, "mm"), just = "bottom", gp = gpar(fontsize = 5, col = "black"))
+                        })
+                    }
+                    if ("oddsRatio" %in% colnames(stathm)) {
+                        decorate_annotation("OR", {
+                            grid.text("Odds Ratio", y = unit(1, "npc") + unit(5, "mm"), just = "bottom", gp = gpar(fontsize = 5, col = "black"))
                         })
                     }
 
