@@ -46,6 +46,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
 
     #Calculate matrix stats and get new matrix.
     if(stattype == "variance"){
+
         print("Calculating variance across samples.")
         featStatsSD <- apply(countmatrix, 1, sd)
         featStatsMAD <- apply(countmatrix, 1, mad)
@@ -53,6 +54,9 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         rownames(matstats) <- rownames(countmatrix)
         matstats <- matstats[order(matstats$SD, decreasing = TRUE), ]
         matstats$Method <- rep("variance", nrow(matstats))
+        #Add rank variance to matrix names
+        matstats$Rank <- sapply(1:nrow(matstats), function(x) { getOrdinalNumber1(x) })
+
     } else if (stattype == "binary"){
         if (numclass == 2){
             print("Calculating p-values with Mann-Whitney-Wilcoxon test.")

@@ -52,13 +52,13 @@ if(nchar(slurmjobid) < 3){
         mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
         cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
 
-        if(!(is.na(mempernode))){
+        if (!(is.na(mempernode))){
             totmem <- mempernode
         } else {
             totmem <- mempercpu * cpuspertask
         }
 
-        totmembytes<-totmem * 1000000
+        totmembytes <- totmem * 1000000
 
         return(totmembytes)
     }
@@ -97,6 +97,8 @@ defopt$verstr <- paste0("JAMSjoinlanes v", packageVersion("JAMS"))
 defopt$origin <- getwd()
 defopt$destination <- file.path(defopt$origin, "rawreads")
 defopt$tarup <- FALSE
+#defopt$checkcount <- FALSE
+defopt$prefixlist <- NULL
 defopt$threads <- detectBatchCPUs()
 
 option_list <- list(
@@ -107,9 +109,13 @@ option_list <- list(
     make_option(c("-s", "--substitutionmap"), default = NULL, action="store",
                 help = str_c("Optional tab limited text file for sample name substitution in the format: oldname[TAB]newname")),
     make_option(c("-z", "--tarup"), default = defopt$tarup, action="store_true",
-                help = str_c("Output joined lanes as a tarball (reads.tar.gz) rather than two separate fastq files. (default: ", defopt$tarup, ")")),
+                help = str_c("Output joined lanes as a tarball (reads.tar.gz) rather than two separate fastq files.")),
+#    make_option(c("-c", "--checkcount"), default = defopt$checkcount, action="store_true",
+#                help = str_c("If forward and reverse reads are present for a sample, check that they have the same number of reads.")),
     make_option(c("-t", "--threads"), default=defopt$threads, action="store",
                 help = str_c("number of threads (default: ", defopt$threads, ")")),
+    make_option(c("-p", "--prefixlist"), action="store",
+                help = "Only process these specific original prefixes."),
     make_option(c("-v", "--version"), action="store_true",
                 help ="report version")
 )
@@ -195,6 +201,16 @@ if (!(is.null(opt$substitutionmap))){
 }
 save.image(opt$projimage)
 
+if (!(is.null(opt$prefixlist))) {
+    validOriPrefixes <- as.character(as.matrix(read.table(file = opt$prefixlist, sep = " ", header = FALSE, stringsAsFactors = FALSE))[, 1])
+    flog.info(paste("Culling prefix list to the following original BaseSpaceSample names:", paste0(validOriPrefixes, collapse = ", ")))
+    rawfastqsdf <- subset(rawfastqsdf, OriPrefix %in% validOriPrefixes)
+    if (nrow(rawfastqsdf) < 1){
+        flog.info("There are no samples matching the criteria imposed. Aborting now.")
+        q()
+    }
+}
+
 OriPrefixes <- unique(rawfastqsdf$OriPrefix)
 flog.info(paste("Found original BaseSpaceSample names:", paste0(OriPrefixes, collapse = ", ")))
 for (currsamp in OriPrefixes){
@@ -212,8 +228,10 @@ for (currsamp in OriPrefixes){
     joinR1cmd <- paste("cat", fastqR1in, ">", fastqR1out)
     flog.info(paste("Command used:", joinR1cmd))
     system(joinR1cmd)
+
     flog.info("Counting number of reads.")
     numR1 <- system2("zcat", args = paste(fastqR1out, "| wc -l | awk -F\'[\t]\' \'{print $1/4}\'"), stdout = TRUE)
+
     flog.info(paste(currprefix, "R1 has", numR1, "reads"))
     if (opt$tarup == TRUE){
        gunzip(fastqR1out, remove = TRUE)

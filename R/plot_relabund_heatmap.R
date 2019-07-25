@@ -3,7 +3,7 @@
 #' Plots relative abundance heatmaps annotated by the metadata
 #' @export
 
-plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = "diverging", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, colcategories = NULL, cluster_rows = FALSE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, ...){
+plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, colcategories = NULL, cluster_rows = FALSE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, ...){
 
     #Get appropriate object to work with
     obj <- mgseqobj
@@ -82,6 +82,8 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
     s <- 1
     n <- 1
 
+    numfeats <- nrow(MRcounts(obj))
+
     #subset by metadata column
     for (sp in 1:length(subset_points)){
         if (!(is.null(subsetby))){
@@ -93,8 +95,6 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
             samplesToKeep = rownames(pData(obj))
             subsetname <- "no_sub"
         }
-
-        numfeats <- nrow(MRcounts(obj))
 
         #There must be at least two samples for a heatmap and at least two features
         if ((length(samplesToKeep) > 1) && (numfeats > 1)){
@@ -201,19 +201,12 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
 
                 matstats$Colour <- rep("black", nrow(matstats))
                 countmat2 <- countmat[rownames(matstats), ]
-                #Add rank variance to matrix names
-                for (r in 1:nrow(countmat2)){
-                    feature <- rownames(countmat2)[r]
-                    rank <- getOrdinalNumber1(as.numeric(which(rownames(countmat2) == feature)))
-                    rownames(countmat2)[r] <- paste(rank, feature, sep = "-")
-                }
                 #Create a list of matrices each of maximum 50 rows
                 rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
                 matlist <- lapply(1:length(rowlist), function(x){countmat2[rowlist[[x]], ]})
                 statslist <- lapply(1:length(rowlist), function(x){ matstats[rowlist[[x]], ] })
                 rowlblcol_list <- lapply(1:length(rowlist), function(x){ rep("black", length(rowlist[[x]])) })
                 stattit <- paste("Top", topcats, "most variant features across samples")
-
                 statmsg <- stattype
 
             } else {
@@ -240,12 +233,6 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                 if (matstats$Method[1] == "variance") {
                     matstats$Colour <- rep("black", nrow(matstats))
                     countmat2 <- countmat[rownames(matstats), ]
-                    #Add rank variance to matrix names
-                    for (r in 1:nrow(countmat2)){
-                        feature <- rownames(countmat2)[r]
-                        rank <- getOrdinalNumber1(as.numeric(which(rownames(countmat2) == feature)))
-                        rownames(countmat2)[r] <- paste(rank, feature, sep = "-")
-                    }
                     #Create a list of matrices each of maximum 50 rows
                     topcats <- min(nrow(countmat2), 50)
                     rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
@@ -321,8 +308,14 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                             print(paste("Showing top", topcats, "features."))
                         }
                         countmat2 <- countmat2[1:topcats, ]
-                        #Create a list of matrices each of maximum 50 rows
-                        rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
+                        #Create a list of matrices each of maximum ~50 rows
+                        if((topcats %% 50) == 1){
+                            chunksize <- 48
+                        } else {
+                            chunksize <- 50
+                        }
+
+                        rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / chunksize))
                         matlist <- lapply(1:length(rowlist), function(x){ countmat2[rowlist[[x]], ] })
                         statslist <- lapply(1:length(rowlist), function(x){ matstats[rowlist[[x]], ] })
                         rowlblcol_list <- lapply(1:length(rowlist), function(x) { matstats$Colour[rowlist[[x]]] })
@@ -349,7 +342,14 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
 
                         #Must have at least two rows in a matrix to plot a heatmap
                         if (length(rowcutoff) > 1){
-                            rowlist <- split(rowcutoff, ceiling(seq_along(rowcutoff) / 50))
+                            #Account for the fact that if the remainder of a chunk of 50 is 1 then a heatmap with a single feature cannot be drawn. Oh my, I have seen everything havent I...
+                            if((length(rowcutoff) %% 50) == 1){
+                                chunksize <- 48
+                            } else {
+                                chunksize <- 50
+                            }
+
+                            rowlist <- split(rowcutoff, ceiling(seq_along(rowcutoff) / chunksize))
                             matlist <- lapply(1:length(rowlist), function(x){ countmat2[rowlist[[x]], ] })
                             statslist <- lapply(1:length(rowlist), function(x){ matstats[rowlist[[x]], ] })
                             if (matstats$Method[1] == "MannWhitneyWilcoxon") {
@@ -406,7 +406,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     ht1fs <- 10
 
                     #Plot the heatmap
-                    fontsizey <- min(5, round((((-1 / 150) * (nrow(mathm))) + 1) * 6, 0))
+                    fontsizey <- min(6, round((((-1 / 150) * (nrow(mathm))) + 1) * 6, 0))
                     fontsizex <- as.numeric(unlist(round((((-1 / 150) * (ncol(mathm))) + 1) * 5, 0)))
 
                     hmdf <- as.data.frame(matrix(data = 0, nrow = nrow(pData(currobj)), ncol = length(colcategories)))
@@ -436,11 +436,28 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     }
 
                     if (heatpalette == "sequential"){
-                        heatmapCols = colorRampPalette((brewer.pal(9, "YlOrRd")))(50)
-                    } else if (is.null(heatpalette) || heatpalette == "diverging"){
-                        heatmapCols = colorRampPalette(rev(brewer.pal(9, "RdYlBu")))(50)
+                        heatmapCols <- colorRampPalette((brewer.pal(9, "YlOrRd")))(50)
+                    } else if (heatpalette == "diverging"){
+                        heatmapCols <- colorRampPalette(rev(brewer.pal(9, "RdYlBu")))(50)
                     } else {
-                        heatmapCols = colorRampPalette(rev(brewer.pal(9, heatpalette)))(50)
+                        PctHmColours <- c("blue4", "blue", "slategray1", "khaki", "orange", "tomato", "red", "magenta2", "magenta4")
+                        if (analysis == "LKT"){
+                            RelabundBreakPts <- c(0.0001, 0.001, 0.1, 1, 2.5, 5, 10, 50, 100)
+                            relabundscalename <- "Relative Abundance (%)"
+                            RelabundBreakPtsLbls <- as.character(paste0(RelabundBreakPts, "%"))
+                            HMrelabundBreaks <- Pct2log2PPM(RelabundBreakPts)
+                        } else {
+                            countmatdistrib <- sapply(1:nrow(mathm), function(x) { quantile(mathm[x, ], probs=c(0.20, 0.5, 0.95)) })
+                            median20 <- median(countmatdistrib["20%", ])
+                            median50 <- median(countmatdistrib["50%", ])
+                            median95 <- median(countmatdistrib["95%", ])
+                            HMrelabundBreaks <- c(0, (median20 / 2), median20, median50, ((median50 + median95) * (1/3)), ((median50 + median95) * (2/3)), median95,  (median95 * 2), max(mathm))
+
+                            RelabundBreakPts <- round(((2 ^ (HMrelabundBreaks)) - 1), 0)
+                            relabundscalename <- "Parts Per Million"
+                            RelabundBreakPtsLbls <- as.character(paste(RelabundBreakPts, "PPM"))
+                        }
+                        heatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
                     }
                     ha_column <- HeatmapAnnotation(df = hmdf, col = cores, annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"))
 
@@ -541,6 +558,10 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                         } else if ("oddsRatio" %in% colnames(stathm)) {
                             #Show only Odds Ratio
                             row_ha <- rowAnnotation(OR = anno_text(ORamplitude, gp = gpar(fontsize = fontsizey)))
+                        } else if ("Rank" %in% colnames(stathm)){
+                            #Include variance rank if Present
+                            VarRank <- as.character(stathm$Rank)
+                            row_ha <- rowAnnotation(Rank = anno_text(VarRank, gp = gpar(fontsize = fontsizey)))
                         } else {
                             row_ha <- NULL
                         }
@@ -558,9 +579,9 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                             gord <- hcmat$order
                             co <- append(co, colnames(gmat)[gord], after = length(co))
                         }
-                        ht1 <- Heatmap(mathm, name = lname, cluster_columns = FALSE, column_order = co, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = lname, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                        ht1 <- Heatmap(mathm, name = lname, cluster_columns = FALSE, column_order = co, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
                     } else {
-                        ht1 <- Heatmap(mathm, name = lname, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = lname, labels = PctBreakPtsLbls, at = Log2Breaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                        ht1 <- Heatmap(mathm, name = "Relative_Abundance", column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
                     }
                     #Make a genome completeness heatmap if in taxonomic space
                     if (analysis == "LKT"){
@@ -569,22 +590,22 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                         GCha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
                         ht2 <- Heatmap(gchmdf, name = "GenComp", column_title = "% Genome completeness", column_title_gp = gpar(fontsize = ht1fs), top_annotation = GCha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, cluster_rows = FALSE, column_order = column_order(ht1), show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = "% GenComp", labels = c("0%", "100%", "200%", "300%", "> 400%"), title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
 
-
                         #Plot heatmaps side by side if there are 50 samples or less. Else plot one on each page.
                         if (ncol(mathm) < 51){
                             ht_list = ht1 + ht2
-                            draw(ht_list, heatmap_legend_side = "bottom", annotation_legend_side = "right", ht_gap = unit(0.2, "cm"), padding = unit(c(4, 20, 10, 4), "mm"), column_title = dualHMtit, column_title_gp = gpar(fontsize = 10))
+                            draw(ht_list, heatmap_legend_side = "bottom", annotation_legend_side = "right", ht_gap = unit(0.2, "cm"), padding = unit(c(2, 2, 2, 2), "mm"), column_title = dualHMtit, column_title_gp = gpar(fontsize = 10))
+                            drawseparateGChm <- FALSE
                         } else {
                             par(oma = c(10, 7, 3, 10) + 0.1, xpd = TRUE)
-                            draw(ht1, heatmap_legend_side = "bottom", annotation_legend_side = "right", padding = unit(c(4, 20, 10, 4), "mm"))
-                            plot.new()
-                            draw(ht2, heatmap_legend_side = "bottom", annotation_legend_side = "right", padding = unit(c(4, 20, 10, 4), "mm"))
+                            draw(ht1, heatmap_legend_side = "bottom", annotation_legend_side = "right", padding = unit(c(2, 2, 2, 2), "mm"))
+                            drawseparateGChm <- TRUE
                         }
 
                     } else {
                         #Draw the heatmap
                         par(oma = c(10, 7, 3, 10) + 0.1, xpd = TRUE)
-                        draw(ht1, heatmap_legend_side = "bottom", annotation_legend_side = "right", padding = unit(c(4, 20, 10, 4), "mm"))
+                        draw(ht1, heatmap_legend_side = "bottom", annotation_legend_side = "right", padding = unit(c(2, 2, 2, 2), "mm"))
+                        drawseparateGChm <- FALSE
                     }
 
                     #Print what the column annotations are
@@ -608,9 +629,19 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                             grid.text("Odds Ratio", y = unit(1, "npc") + unit(5, "mm"), just = "bottom", gp = gpar(fontsize = 5, col = "black"))
                         })
                     }
+                    if ("Rank" %in% colnames(stathm)) {
+                        decorate_annotation("Rank", {
+                            grid.text("Rank", y = unit(1, "npc") + unit(5, "mm"), just = "bottom", gp = gpar(fontsize = 5, col = "black"))
+                        })
+                    }
 
                     #gvec[[n]]<-recordPlot()
                     n <- n + 1
+
+                    if (drawseparateGChm == TRUE){
+                        draw(ht2, heatmap_legend_side = "bottom", annotation_legend_side = "right", padding = unit(c(2, 2, 2, 2), "mm"))
+                        n <- n + 1
+                    }
 
                     if(n > 100){
                         stop("There are too many combinations. I think you have had enough plots. I am stopping here.")
@@ -641,7 +672,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
     } #End subset by loop
 
     #Redefine stats list as ones only containing data
-    svec<-svec[sapply(svec, function(x){ !(is.null(x)) } )]
+    svec <- svec[sapply(svec, function(x){ !(is.null(x)) } )]
 
     if(returnstats == TRUE){
         return(svec)

@@ -16,6 +16,7 @@ Use: $(basename "$0") {-b </path/to/BasespaceRun> | -i <123456789> | -r </path/t
 -o Full path to destination (output) folder where final results will be banked to. [default = current folder]
 -c Full path to a scratch folder where JAMSalpha will run. This is optional. JAMSalpha results will then be banked to the destination folder set with the -d option.
 -s Tab-limited substitution map for renaming BaseSpace prefixes with new ones.
+-l File with prefix list to restrict samples to only these, even if there are more in the basespace folder.
 -H Host species (human, mouse, none, taxid, species_name or /path/to/index) [Default = human]
 -a JAMSalpha analysis type (metagenome, metatranscriptome, isolate, isolaternaseq) [Default = metagenome]
 -t Number of CPUs for JAMSalpha [Default = 32]
@@ -25,8 +26,8 @@ Use: $(basename "$0") {-b </path/to/BasespaceRun> | -i <123456789> | -r </path/t
 
 "
 
-version="1.0"
-verdate="JUN-2019"
+version="1.1"
+verdate="JUL-2019"
 message_ver="JAMSfullservice ver $version by John McCulloch $verdate"
 
 #Define defaults
@@ -54,7 +55,7 @@ function die {
     exit 1
 }
 
-options=':b:i:p:r:o:c:s::H:t:a:d:x:j:vh'
+options=':b:i:p:r:o:c:s:l:H:t:a:d:x:j:vh'
 while getopts $options option
 do
     case $option in
@@ -65,6 +66,7 @@ do
         o  ) finalfolder="$OPTARG" ;;
         c  ) scratchfolder="$OPTARG" ;;
         s  ) submap="$OPTARG" ;;
+        l  ) prefixlist="$OPTARG" ;;
         H  ) host="$OPTARG" ;;
         a  ) projtype="$OPTARG" ;;
         t  ) threads="$OPTARG" ;;
@@ -119,14 +121,22 @@ then
     rawreadsfolder="$outfolder"/rawreads
     mkdir -p "$rawreadsfolder"
 
+    if [ "$prefixlist" != "" ]
+    then
+        restricttoprefixes=`echo "-p $prefixlist"`
+    else
+        restricttoprefixes=""
+    fi
+
     if [ "$submap" == "" ]
     then
-        echo JAMSjoinlanes -o $basespacefolder -d $rawreadsfolder -z > joinlanes.swarm
+        echo JAMSjoinlanes $restricttoprefixes -o $basespacefolder -d $rawreadsfolder -z > joinlanes.swarm
     else
-        echo JAMSjoinlanes -o $basespacefolder -d $rawreadsfolder -s $submap -z > joinlanes.swarm
+        echo JAMSjoinlanes $restricttoprefixes -o $basespacefolder -d $rawreadsfolder -s $submap -z > joinlanes.swarm
     fi
+
     #Launch the swarm for joining lanes
-    swarm -g 128 -t "$threads" --time 18:00:00 --partition=norm,ccr -f joinlanes.swarm > joinlanes.job
+    swarm -g 96 -t "$threads" --time 18:00:00 --partition=norm,ccr --module R -f joinlanes.swarm > joinlanes.job
 fi
 
 #make JAMSalpha.swarm
@@ -136,7 +146,7 @@ then
     echo makeswarmJAMS -o $outfolder -r $rawreadsfolder -d $jamsdbfolder -s $host -j $projtype > makeswarm.swarm
     #Launch the make swarm
     joinlanesjob=`cat joinlanes.job`
-    swarm -g 1 -t 2 --time 00:30:00 --partition=quick --dependency=afterany:$joinlanesjob -f makeswarm.swarm > makeswarm.job
+    swarm -g 1 -t 2 --time 00:30:00 --partition=quick --dependency=afterany:$joinlanesjob --module R -f makeswarm.swarm > makeswarm.job
     makeswarmjob=`cat makeswarm.job`
     #Launch JAMSalpha for each sample
     echo "sleep 120; bootstrapswarm -s JAMS.swarm -l 15 -t $threads -m 120 -g 750 -j $makeswarmjob -w R" > launchJAMS.swarm
@@ -166,9 +176,9 @@ escout=`echo -e "$outfolder" | sed s/"\/"/"\\\\\\\\\/"/g`
 #make a bash script for banking JAMSalpha results once JAMSalpha has finished running.
 echo '#!/bin/bash
 #bank it
-echo "bankit -d alphafolder -o outfolder -c" > bankalpha.swarm
+echo "bankit -d alphafolder -o outfolder -x" > bankalpha.swarm
 JAMSalphajob=`cat chunk.job`
-swarm -g 64 -t 2 --time 12:00:00 --partition=norm,ccr --dependency=afterany:$JAMSalphajob -f bankalpha.swarm > bankalpha.job
+swarm -g 64 -t 2 --time 12:00:00 --partition=norm,ccr --dependency=afterany:$JAMSalphajob --module R -f bankalpha.swarm > bankalpha.job
 ' > tmp
 cat tmp | sed s/"alphafolder"/"$escalpha"/g | sed s/"outfolder"/"$escout"/g > launchbankit.sh
 rm tmp
