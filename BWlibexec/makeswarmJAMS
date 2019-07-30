@@ -1,173 +1,241 @@
-#!/bin/bash
-outdir=""
-readsdir=""
-maxlines=""
+#!/usr/bin/env Rscript
+suppressPackageStartupMessages(library(RCurl))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(futile.logger))
+suppressPackageStartupMessages(library(parallel))
+suppressPackageStartupMessages(library(benchmarkme))
+suppressPackageStartupMessages(library(openxlsx))
+#####################################
+# Define System-specific Functions ##
+#####################################
+if ((.Platform$OS.type) != "unix"){
+    stop("This script only works on UNIX. Install Linux and try again.")
+}
 
-message_use="
-makeswarmJAMS.sh
-By John McCulloch
-Creates a BioWulf swarm file for running JAMS_alpha
+#Get slurm job ID
+slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
 
-Use: $(basename "$0") -o <path/to/outdir> -r </path/to/rawreads> -s [human|mouse|none] -j [metagenome|metatranscriptome|isolate|isolaternaseq]
+#Decide which kind of system you are on.
+if(nchar(slurmjobid) < 3){
+   print("You are not on a Slurm Workload Cluster")
+   #Define appropriate functions for non-slurm system
+   detectBatchCPUs <- function() {
+        ncores <- detectCores()
+        if (is.na(ncores)) {
+            stop("Could not determine how many CPUs you have. Aborting.")
+        }
+        return(ncores)
+    }
 
--h Help;
--v Version;
--o Complete path to where you want the project (default= current directory);
--r Complete path to where the reads are (default= [outdir]/rawreads);
--c Complete path to where contigs are. If contigs are supplied, will ignore reads;
--g Complete path to a text file with SRA accession numbers to use, will ignore reads;
--a Complete path to a text file with NCBI assembly accession numbers to use, will ignore reads;
--s Name of host species (default = mouse);
--j Project type. Choose between metagenome, metatranscriptome, isolate or isolaternaseq. (default = metagenome)
--d /path/to/JAMSdb
--l [INTEGER] split swarm files into this number of lines. If ommited, will not split swarm file.
+    detectAvailRAM <- function(){
+        totmembytes<-as.numeric(get_ram())
 
-"
+        return(totmembytes)
+    }
 
-version="JUN-2019"
-message_ver="makeswarmJAMS ver $version by John McCulloch $verdate"
+} else {
+    print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
+    #Define appropriate functions for slurm system
+    detectBatchCPUs <- function() {
+        ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+        if (is.na(ncores)) {
+            ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE"))
+        }
+        if (is.na(ncores)) {
+            stop("Could not determine how many CPUs you have. Aborting.")
+        }
+        return(ncores)
+    }
 
+    detectAvailRAM <- function(){
+        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
+        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
+        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+
+        if (!(is.na(mempernode))){
+            totmem <- mempernode
+        } else {
+            totmem <- mempercpu * cpuspertask
+        }
+
+        totmembytes <- totmem * 1000000
+
+        return(totmembytes)
+    }
+}
+
+############################
+## Define other functions ##
+############################
+filetype <- function(path){
+    f = file(path)
+    ext = summary(f)$class
+    close.connection(f)
+    ext
+}
+
+# get path of running script
+getScriptPath <- function() {
+    cmdArgs <- commandArgs(trailingOnly = FALSE)
+    needle <- "--file="
+    match <- grep(needle, cmdArgs)
+    if (length(match) > 0) {
+        return(dirname(normalizePath(sub(needle, "", cmdArgs[match]))))
+    } else {
+        return(dirname(normalizePath(sys.frames()[[1]]$ofile)))
+    }
+}
+
+#########################
+# Get options from args #
+#########################
 #Define defaults
-hostspecies="mouse"
-projtype="metagenome"
-dbdir="/data/MicrobiomeCore/JAMSdb/db"
-contigsdir=""
+defopt <- list()
+defopt$verstr <- paste0("makeswarmJAMS v", "1.0")
+defopt$outputfolder <- getwd()
+defopt$readsfolder <- file.path(defopt$outputfolder, "rawreads")
+defopt$hostspecies <- "human"
+defopt$analysis <- "metagenome"
+defopt$skipinterpro <- FALSE
+defopt$jamsdb <- "/data/MicrobiomeCore/JAMSdb/db"
 
-#Get options
-usage () { echo "$message_use"; }
-version () { echo "$message_ver"; }
+option_list <- list(
+    make_option(c("-r", "--readsfolder"), default = defopt$readsfolder, action="store",
+                help = str_c("path to root directory where reads are (default: ", defopt$readsfolder, ")")),
+    make_option(c("-o", "--outputfolder"), default = defopt$outputfolder, action="store",
+                help = str_c("path to where you want the JAMSalpha ouutputs (default: ", defopt$outputfolder, ")")),
+    make_option(c("-H", "--hostspecies"), default = defopt$hostspecies, action="store",
+                help = str_c("Name or taxid of host species (default: ", defopt$hostspecies, ")")),
+    make_option(c("-A", "--analysis"), default = defopt$analysis, action="store",
+                help = str_c("Project type. Choose between metagenome, metatranscriptome, isolate or isolaternaseq. (default: ", defopt$analysis, ")")),
+    make_option(c("-d", "--jamsdb"), default = defopt$jamsdb, action="store",
+                help = str_c("Path to JAMS database (default: ", defopt$jamsdb, ")")),
+    make_option(c("-p", "--prefixlist"), default = NULL, action="store",
+                help = str_c("Text file with a list of read prefixes to restrict swarm to.")),
+    make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
+                help = str_c("Use -n option in swarm file, for skipping InterproScan, even if available.)")),
+    make_option(c("-v", "--version"), action="store_true",
+                help ="report version")
+)
 
-options=':r:o:c:g:a:s:l:j:d:hv'
-while getopts $options option
-do
-    case $option in
-        r  ) readsdir="$OPTARG" ;;
-        c  ) contigsdir="$OPTARG" ;;
-        g  ) sralist="$OPTARG" ;;
-        a  ) acclist="$OPTARG" ;;
-        o  ) outdir="$OPTARG" ;;
-        s  ) hostspecies="$OPTARG" ;;
-        j  ) projtype="$OPTARG" ;;
-        d  ) dbdir="$OPTARG" ;;
-        l  ) maxlines="$OPTARG" ;;
-        v  ) version; exit;;
-        h  ) usage; exit;;
-        \? ) echo "Unknown option: -$OPTARG" >&2; exit 1;;
-        :  ) echo "Missing option argument for -$OPTARG" >&2; exit 1;;
-        *  ) echo "Unimplemented option: -$OPTARG" >&2; exit 1;;
-    esac
-done
+# parse the options
+args <- commandArgs(trailingOnly = TRUE)
+opt <- parse_args(OptionParser(option_list=option_list), args)
+opt <- merge.list(opt, defopt)
 
-shift $(($OPTIND - 1))
+#####################
+## Set environment ##
+#####################
 
-if [ "$outdir" == "" ]
-then
-    outdir=`pwd`
-fi
+# print version & exit if -v
+if (!is.null(opt$version)) {
+    print(opt$verstr)
+    quit()
+}
 
-#Chomp an eventual "/" off the end of the path
-outdir=`echo $outdir | sed $'s/\/$//g'`
+#Get Script path
+opt$bindir <- getScriptPath()
 
-if [ "$contigsdir" != "" ]
-then
-    echo "You supplied contigs. Ignoring reads."
-    useinput="contigs"
-    #Chomp an eventual "/" off the end of the path
-    contigsdir=`echo $contigsdir | sed $'s/\/$//g'`
-    cd $contigsdir
-    list=`ls *.fasta *.fna`
-    cd -
-elif [ "$sralist" != "" ]
-then
-    echo "You supplied a list of SRA accession numbers. Ignoring reads."
-    useinput="sra"
-    list=`cat "$sralist" | tr "\n" " "`
-elif [ "$acclist" != "" ]
-then
-    echo "You supplied a list of NCBI assembly accession numbers. Ignoring reads."
-    useinput="acc"
-    list=`cat "$acclist" | tr "\n" " "`
-else
-    useinput="reads"
-    #Not contigs, so do reads.
-    if [ "$readsdir" == "" ]
-    then
-        readsdir="$outdir"/rawreads
-    fi
-    #Chomp an eventual "/" off the end of the path
-    readsdir=`echo $readsdir | sed $'s/\/$//g'`
-    cd $readsdir
-    list=`ls *.gz *.fastq | cut -f 1 -d "_" | sort | uniq`
-    cd -
-fi
+#Fix path relativity
+fixrelpath <- function(JAMSpath = NULL){
+    require(R.utils)
+    if (!(isAbsolutePath(JAMSpath))){
+        fixedpath <- getAbsolutePath(JAMSpath)
+    } else {
+        fixedpath <- JAMSpath
+    }
 
+    return(fixedpath)
+}
 
-if [ "$useinput" == "reads" ]
-then
-    #Not contigs, do reads.
-    for sample in $list
-    do
-        istar=`ls "$readsdir"/"$sample"_* | grep -c "\.tar\.gz"`
-        if [ "$istar" == "1" ]
-        then
-            tarfilename=`ls "$readsdir"/"$sample"_* | rev | cut -f 1 -d "/" | rev`
-            echo "JAMSalpha -d $dbdir -o $outdir -t $readsdir/$tarfilename -p $sample -A $projtype -H $hostspecies" >> tmp.swm
-        else
-            myfastqs=`ls "$readsdir"/"$sample"_*fast* | sort`
-            #Single or paired
-            numfastqs=`echo $myfastqs | wc -w`
-            if [ "$numfastqs" == "2" ]
-            then
-                echo "Reads are paired"
-                fastqf=`echo $myfastqs | cut -f 1 -d " "`
-                fastqr=`echo $myfastqs | cut -f 2 -d " "`
-                echo "JAMSalpha -d $dbdir -o $outdir -f $fastqf -r $fastqr -p $sample -A $projtype -H $hostspecies" >> tmp.swm
-            elif [ "$numfastqs" == "1" ]
-            then
-                echo "Reads are single ended"
-                echo "JAMSalpha -d $dbdir -o $outdir -U $myfastqs -p $sample -A $projtype -H $hostspecies" >> tmp.swm
-            else
-                echo "There are more than two fastq files per sample. Join lanes first. Aborting now."
-                exit 1
-            fi
-        fi
-    done
+for (pathtofix in c("readsfolder", "outputfolder", "prefixlist")){
+    if (!is.null(opt[[pathtofix]])){
+        opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
+    }
+}
 
-elif [ "$useinput" == "contigs" ]
-then
-    #Not reads do contigs.
-    for contig in $list
-    do
-        prefix=`echo $contig | rev | cut -f 2- -d "." | rev`
-        echo "JAMSalpha -d $dbdir -o $outdir -c $contigsdir/$contig -p $prefix -A $projtype -H none" >> tmp.swm
-    done
+#Define useful functions
+is.redundant<-function(vec){
+    propunique <- length(unique(vec))/length(vec)
+    if (propunique < 1){
+        redundant = TRUE
+    } else {
+        redundant = FALSE
+    }
 
-elif [ "$useinput" == "sra" ]
-then
-    #Not reads do sra.
-    for prefix in $list
-    do
-        echo "JAMSalpha -d $dbdir -o $outdir -g $prefix -p $prefix -A $projtype -H $hostspecies" >> tmp.swm
-    done
-elif [ "$useinput" == "acc" ]
-then
-    #Not reads do acc.
-    for prefix in $list
-    do
-        #Clean prefixes up to avoid undercores and dots
-        clpref=`echo $prefix | cut -f 1 -d "." | sed s/"_"/""/g`
-        echo "JAMSalpha -d $dbdir -o $outdir -a $prefix -p $clpref -A isolate -H none" >> tmp.swm
-    done
-else
-    #something went wrong
-    echo "Input is missing. Check your options."
-    exit 1
-fi
+    return(redundant)
+}
 
-if [ "$maxlines" != "" ]
-then
-    split tmp.swm -l "$maxlines" -d JAMS.swarm
-    rm tmp.swm
-else
-    mv tmp.swm JAMS.swarm
-fi
+find_container<-function(x) {
+    prefsuff<- unlist(strsplit(rawfastqsdf$Filenames[x], split = "\\."))
+    container <- paste(prefsuff[(which(prefsuff %in% c("fastq", "tar"))):(length(prefsuff))], collapse = ".")
+
+    return(container)
+}
+
+find_read<-function(x) {
+    prefsuff <- unlist(strsplit(rawfastqsdf$Filenames[x], split = "\\."))
+    read <- tail(unlist(strsplit(prefsuff[1], split = "_")), n=1)
+
+    return(read)
+}
+
+###################
+## Main Function ##
+###################
+#suppressPackageStartupMessages(library(JAMS))
+#Load prefix list if present
+if (!(is.null(opt$prefixlist))){
+    wantedprefixes <- read.table(opt$prefixlist, header = FALSE, sep = " ", stringsAsFactors = FALSE)
+    wantedprefixes <- as.character(as.matrix(wantedprefixes))
+}
+
+commonoptions <- paste("-d", opt$jamsdb, "-A", opt$analysis, "-o", opt$outputfolder, "-H", opt$hostspecies, collapse = " ")
+if (opt$skipinterpro == TRUE) {
+    commonoptions <- paste(commonoptions, "-n", collapse = " ")
+}
+
+if (!(is.null(opt$readsfolder))){
+    flog.info("Searching for reads files in reads folder.")
+    rawfastqpaths <- list.files(path = opt$readsfolder, pattern = "fastq", full.names = TRUE, recursive = TRUE)
+    rawfastqnames <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 1) })
+    datasetids <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 2)[1] })
+
+    #Make a dataframe with all the info
+    rawfastqsdf <- data.frame(Filenames = rawfastqnames, Filepaths = rawfastqpaths, DatasetIDs = datasetids, stringsAsFactors = FALSE)
+    rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { find_read(x) } )
+    rawfastqsdf$Container <- sapply(1:nrow(rawfastqsdf), function(x) { find_container(x) } )
+    rawfastqsdf$Prefix <- sapply(1:nrow(rawfastqsdf), function(x) { paste(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_"))[1:((which(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")) == tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 4)[1])) - 1)], collapse = "_") } )
+    
+    if (!(is.null(opt$prefixlist))){
+         rawfastqsdf <- subset(rawfastqsdf, Prefix %in% wantedprefixes)
+         if (nrow(rawfastqsdf) < 1){
+             flog.info("Could not find a single prefix requested in the reads folder supplied.")
+             q()
+         }  
+    }
+
+    prefixestouse <- unique(rawfastqsdf$Prefix)
+    swarm <- NULL
+    for (p in 1:length(prefixestouse)){
+        prefix <- prefixestouse[p]
+        relevantfiles <- subset(rawfastqsdf, Prefix == prefix)
+        if (all(c("R1", "R2") %in% relevantfiles$Read)) {
+            FR <- paste("-f", relevantfiles$Filepaths[which(relevantfiles$Read == "R1")], sep = " ")
+            RR <- paste("-r", relevantfiles$Filepaths[which(relevantfiles$Read == "R2")], sep = " ")
+            readsinput <- paste(FR, RR)
+        } else {
+            if (relevantfiles$Container[1] == "tar.gz"){
+                readsinput <- paste("-t", relevantfiles$Filepaths[1])
+            } else {
+                readsinput <- paste("-U", relevantfiles$Filepaths[1])
+            }
+        }
+        swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", prefix, collapse = " ")
+    }
+
+}
+
+#Write swarm file to system
+write.table(swarm, file = "JAMS.swarm", sep = "\n", row.names = FALSE, quote = FALSE)
