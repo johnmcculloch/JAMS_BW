@@ -108,7 +108,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                     plot.new()
                     grid.table(c("Features with highest variance", names(expvec2)[a], "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                    mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]],  heatpalette=heatpalette, hmtype=report, ntop=topcats, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
+                    mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]], heatpalette=heatpalette, hmtype=report, ntop=topcats, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
                     compvec <- append(compvec, mycomp, after=length(compvec))
 

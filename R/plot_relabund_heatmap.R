@@ -102,10 +102,10 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
             if (!(is.null(featcutoff))){
                 thresholdPPM <- featcutoff[1]
                 sampcutoffpct <- min(featcutoff[2], 100)
-                cutoffmsg <- paste("Feature must be >", thresholdPPM, "PPM in at least ", sampcutoffpct, "% of samples", sep="")
+                cutoffmsg <- paste("Feature must be >", thresholdPPM, "PPM in at least ", sampcutoffpct, "% of samples", sep = "")
             } else {
                 cutoffmsg <- "Feature must be > 0 PPM in at least 0% of samples"
-                featcutoff <- c(0,0)
+                featcutoff <- c(0, 0)
             }
 
             if (all(c((!(is.null(featmaxatleastPPM))), (featmaxatleastPPM > 0)))) {
@@ -244,23 +244,32 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
 
                 } else {
 
-                    if (!(is.null(minl2fc)) & ("l2fc" %in% colnames(matstats))){
+                    if (all(c((!(is.null(minl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
                         #Check if there is enough leftover after filter.
                         if (length(which(matstats$absl2fc > minl2fc)) < 2){
                             print(paste("There are less than 2 features which have >", minl2fc, "l2fc."))
-                            minl2fc <- round((max((matstats$absl2fc[order(matstats$absl2fc, decreasing = TRUE)][min(length(matstats$absl2fc), 40)]), 0.5)), 1)
+                            #Redefine min l2fc to whatever is the lowest available keeping between 2 and 40 features to plot.
+                            minl2fc <- matstats[order(matstats$absl2fc, decreasing = TRUE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
+                            print(paste("Resetting minimum l2fc to", round(minl2fc, 2)))
                         }
-                        minl2fcmsg <- paste("log2foldchange >", minl2fc)
+                        minl2fcmsg <- paste("log2foldchange >", round(minl2fc, 2))
                         matstats <- subset(matstats, absl2fc > minl2fc)
                     } else {
                         minl2fcmsg <- "log2foldchange > 0"
                     }
 
-                    if (!(is.null(maxl2fc)) & ("l2fc" %in% colnames(matstats))){
+                    if (all(c((!(is.null(maxl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
+                        #Check if there is enough leftover after filter.
+                        if (length(which(matstats$absl2fc < maxl2fc)) < 2){
+                            print(paste("There are less than 2 features which have <", maxl2fc, "l2fc."))
+                            #Redefine max l2fc to whatever is the lowest available keeping between 2 and 40 features to plot.
+                            maxl2fc <- matstats[order(matstats$absl2fc, decreasing = FALSE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
+                            print(paste("Resetting maximum l2fc to", round(maxl2fc, 2)))
+                        }
+                        maxl2fcmsg <- paste("log2foldchange <", round(maxl2fc, 2))
                         matstats <- subset(matstats, absl2fc < maxl2fc)
-                        maxl2fcmsg <- paste("log2foldchange <", maxl2fc)
                     } else {
-                        maxl2fcmsg <- "log2foldchange < Inf"
+                        maxl2fcmsg <- "log2foldchange > Inf"
                     }
 
                     if ("l2fc" %in% colnames(matstats)){
@@ -368,15 +377,20 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                             #rowlblcol_list<-list(matstats$Colour[1:allIhave])
                             #Report nothing was found
                             matlist<-NULL
-                            if (matstats$Method[1] == "MannWhitneyWilcoxon") {
-                                stattit <- c(paste(sigmeas, "<", showonlypbelow, "different between"), paste(compareby, "using MannWhitneyWilcoxon"))
-                            } else if (matstats$Method[1] == "permanova"){
-                                stattit <- c(paste(sigmeas, "<", showonlypbelow, "different between"), paste(compareby, "using PERMANOVA"))
-                            } else if (matstats$Method[1] == "anova"){
-                                stattit <- c(paste(sigmeas, "<", showonlypbelow, "different between"), paste(compareby, "using ANOVA"))
-                            } else if (matstats$Method[1] == "fisher"){
-                                stattit <- c(paste(sigmeas, "<", showonlypbelow, "Present/Absent between"), paste(compareby, "using Fishers test"))
-                            } #End conditional to define statistics title
+                            if (!(is.na(matstats$Method[1]))) {
+                                if (matstats$Method[1] == "MannWhitneyWilcoxon") {
+                                    stattit <- c(paste(sigmeas, "<", showonlypbelow, "different between"), paste(compareby, "using MannWhitneyWilcoxon"))
+                                } else if (matstats$Method[1] == "permanova"){
+                                    stattit <- c(paste(sigmeas, "<", showonlypbelow, "different between"), paste(compareby, "using PERMANOVA"))
+                                } else if (matstats$Method[1] == "anova"){
+                                    stattit <- c(paste(sigmeas, "<", showonlypbelow, "different between"), paste(compareby, "using ANOVA"))
+                                } else if (matstats$Method[1] == "fisher"){
+                                    stattit <- c(paste(sigmeas, "<", showonlypbelow, "Present/Absent between"), paste(compareby, "using Fishers test"))
+                                } #End conditional for getting stats title
+                            } else {
+                                #Stats failed for some reason, like there are no stat features fulfilling the filtering criteria
+                                stattit <- NULL
+                            }
                         } #End conditional that there are two rows or more to plot
                     } #End conditional for only showing feats with certain pval
                 } #End conditional that stats method is not variance
@@ -440,25 +454,34 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     } else if (heatpalette == "diverging"){
                         heatmapCols <- colorRampPalette(rev(brewer.pal(9, "RdYlBu")))(50)
                     } else {
+                        #This is the colour spectrum we are aiming to span
                         PctHmColours <- c("blue4", "blue", "slategray1", "khaki", "orange", "tomato", "red", "magenta2", "magenta4")
+
                         if (analysis == "LKT"){
-                            RelabundBreakPts <- c(0.0001, 0.001, 0.1, 1, 2.5, 5, 10, 50, 100)
+                            PctBreakPts <- c(0.0001, 0.001, 0.1, 1, 2.5, 5, 10, 50, 100)
+                            RelabundBreakPts <- signif(PctBreakPts, digits = 3)
                             relabundscalename <- "Relative Abundance (%)"
                             RelabundBreakPtsLbls <- as.character(paste0(RelabundBreakPts, "%"))
-                            HMrelabundBreaks <- Pct2log2PPM(RelabundBreakPts)
+                            HMrelabundBreaks <- Pct2log2PPM(PctBreakPts)
                         } else {
-                            countmatdistrib <- sapply(1:nrow(mathm), function(x) { quantile(mathm[x, ], probs=c(0.20, 0.5, 0.95)) })
-                            median20 <- median(countmatdistrib["20%", ])
-                            median50 <- median(countmatdistrib["50%", ])
-                            median95 <- median(countmatdistrib["95%", ])
-                            HMrelabundBreaks <- c(0, (median20 / 2), median20, median50, ((median50 + median95) * (1/3)), ((median50 + median95) * (2/3)), median95,  (median95 * 2), max(mathm))
-
-                            RelabundBreakPts <- round(((2 ^ (HMrelabundBreaks)) - 1), 0)
+                            #Let us see what the distribution looks like to fit it to the colour spectrum
+                            #Transform to PPM
+                            quantprobs <- round(((2:(length(PctHmColours) - 1)) * (1/length(PctHmColours))), 1)
+                            #quantprobs <- c(0.10, 0.20, 0.35, 0.50, 0.85, 0.95, 0.99)
+                            nonlogmat <- round(((2 ^ (mathm)) - 1), 0)
+                            #Transform tget quantiles
+                            countmatdistrib <- apply(nonlogmat, function (x) {quantile(x, probs = quantprobs) }, MARGIN = 2)
+                            #take median values of these
+                            medpoints <- rowMedians(countmatdistrib)
+                            PPMrelabundBreaks <- c(0, medpoints, max(nonlogmat))
+                            HMrelabundBreaks <- log2(PPMrelabundBreaks + 1)
+                            RelabundBreakPts <- PPMrelabundBreaks
                             relabundscalename <- "Parts Per Million"
                             RelabundBreakPtsLbls <- as.character(paste(RelabundBreakPts, "PPM"))
                         }
                         heatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
                     }
+
                     ha_column <- HeatmapAnnotation(df = hmdf, col = cores, annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"))
 
                     #Build plot title

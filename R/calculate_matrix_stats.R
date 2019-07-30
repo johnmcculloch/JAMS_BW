@@ -18,14 +18,16 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
     }
 
     #If auto, decide what to do
-    if(stattype == "auto"){
-        if(is.null(classesvector)){
+    if (stattype %in% c("auto", "PA")){
+        if (is.null(classesvector)){
             stattype <- "variance"
         } else {
             if(numclass > 2){
                 stattype <- "anova"
             } else if (numclass == 2) {
-                stattype <- "binary"
+                if (stattype != "PA"){
+                    stattype <- "binary"
+                }
             } else {
                 stattype <- "variance"
             }
