@@ -1,60 +1,185 @@
 #!/usr/bin/env Rscript
-jamsdir<-getwd()
-slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
-#Decide which kind of system you are on.
-if(nchar(slurmjobid) < 3){
-   stop("You are not on a node on Biowulf. This installation script will only work on HPC Biowulf. Refer to documentation. Aborting now.")
+if ((.Platform$OS.type) != "unix"){
+    stop("JAMS only works on UNIX. Install Linux and try again.")
 }
+
+print_help <- function(){
+   cat("JAMSinstaller - a script for installing the JAMS package safely on your system.\n")
+   cat("Please read instructions on this page before attempting to install:\nhttps://github.com/johnmcculloch/JAMS_BW/wiki/Installing_JAMS_on_Biowulf\n")
+   cat("\n")
+   cat("Usage: JAMSinstaller --install [options]\n")
+   cat("\n")
+   cat("Options:\n")
+   cat("--onlybeta    #Installs only JAMSbeta. Useful to install on a computer where only JAMSbeta will be run.\n")
+   cat("--linkto   #Creates symbolic links to the JAMS excecutables to this path. Default: ~/bin\n")
+   cat("\n")
+   cat("If only --install is passed, both JAMSalpha and JAMSbeta will be installed,\nand symlinks to the excecutables will be created in the user\'s ~/bin folder,\nwhich is assumed to be in $PATH\n")
+   cat("\n")
+   q()
+}
+
+# get path of running script
+getScriptPath <- function() {
+    cmdArgs <- commandArgs(trailingOnly = FALSE)
+    needle <- "--file="
+    match <- grep(needle, cmdArgs)
+    if (length(match) > 0) {
+        return(dirname(normalizePath(sub(needle, "", cmdArgs[match]))))
+    } else {
+        return(dirname(normalizePath(sys.frames()[[1]]$ofile)))
+    }
+}
+
+#Allow for some very simple options with base package fucntions, as we still do not know what the user has installed.
+args <- commandArgs(trailingOnly = TRUE)
+
+if (length(args) > 0){
+    if(!all((as.character(args) %in% c("--install", "--onlybeta",  "--linkto")))){
+        print_help()
+    }
+} else {
+    print_help()
+}
+
+#Decide what to install and where
+if (("--onlybeta") %in% (as.character(args))){
+    installalpha <- FALSE
+} else {
+    installalpha <- TRUE
+}
+
 homefolder <- as.character(Sys.getenv("HOME"))
+if ("--linnkto" %in% (as.character(args))){
+    linkto <- args[(which(args) == "--linkto") + 1]
+} else {
+    linkto <- file.path(homefolder, "bin")
+}
+
+if (!file.exists(linkto)){
+    stop(paste("The specified folder for creating executable symbolic links does not exist:", linkto))
+}
+
+jamsdir <- getScriptPath()
 
 #Make sure we are writing to the right place
 rlibs <- as.character(Sys.getenv("R_LIBS"))
-print(paste("Global variable R_LIBS is set to", rlibs))
+
+#Decide which kind of system you are on.
+slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+if (nchar(slurmjobid) > 3){
+    onbiowulf <- TRUE
+    #Define appropriate functions for slurm system
+    detectBatchCPUs <- function() {
+        ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+        if (is.na(ncores)) {
+            ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE"))
+        }
+        if (is.na(ncores)) {
+            stop("Could not determine how many CPUs you have. Aborting.")
+        }
+        return(ncores)
+    }
+
+    detectAvailRAM <- function(){
+        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
+        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
+        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+
+        if(!(is.na(mempernode))){
+            totmem <- mempernode
+        } else {
+            totmem <- mempercpu * cpuspertask
+        }
+
+        totmembytes<-totmem * 1000000
+
+        return(totmembytes)
+    }
+
+} else {
+    onbiowulf <- FALSE
+    detectBatchCPUs <- function() {
+         ncores <- detectCores()
+         if (is.na(ncores)) {
+             stop("Could not determine how many CPUs you have. Aborting.")
+         }
+         return(ncores)
+     }
+
+     detectAvailRAM <- function(){
+         totmembytes<-as.numeric(get_ram())
+
+         return(totmembytes)
+     }
+
+    if (installalpha == TRUE){
+        stop("You are not on a node on Biowulf. This version of JAMSalpha will only work on HPC Biowulf. Refer to documentation. Aborting now. If you want to install only JAMSbeta, use the --onlybeta option.")
+    }
+    #Check if linuxbrew is installed, else halt
+    if((system("which brew", ignore.stdout = TRUE)) == 1){
+        stop("You must install Linuxbrew before running this installation script. Refer to documentation. Aborting now.")
+    }
+
+    if (length(rlibs) < 5){
+        rlibs <- .libPaths()[1]
+    }
+}
+
+cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
 
 #Install devtools and stringr if not present
-if(!(all((c("devtools", "stringr") %in% rownames(installed.packages()))))){
-    install.packages(c("devtools", "stringr"))
+repos <- "https://cloud.r-project.org"
+if(!(all((c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager") %in% rownames(installed.packages()))))){
+    install.packages(c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager"), lib = rlibs, repos = repos)
 }
 require("devtools")
 require("stringr")
+require("parallel")
+require("benchmarkme")
+require("BiocManager")
 
-#Make symlinks for JAMS executables
-jamsbinpath<-file.path(jamsdir, "libexec")
-jamsBWbinpath<-file.path(jamsdir, "BWlibexec")
-
-binexecs<-c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db", "JAMSjoinlanes")
-for(binexec in binexecs){
-    sourcepath <- file.path(jamsbinpath, binexec)
-    targetpath <- file.path(homefolder, "bin", binexec)
-    print(paste("Linking executable to $HOME/bin with", "ln", "-s", sourcepath, targetpath))
-    system(paste("ln", "-s", sourcepath, targetpath))
-}
-
-#Make symlinks for Biowulf executables
-BWbinexecs<-c("JAMSfullservice", "bankit", "bootstrapswarm", "makeswarmJAMS")
-for(BWbinexec in BWbinexecs){
-    sourcepath <- file.path(jamsBWbinpath, BWbinexec)
-    targetpath <- file.path(homefolder, "bin", BWbinexec)
-    print(paste("Linking executable to $HOME/bin with", "ln", "-s", sourcepath, targetpath))
-    system(paste("ln", "-s", sourcepath, targetpath))
-}
-
-#Check if linuxbrew is installed, else halt
-if((system(str_c("which brew"), ignore.stdout = TRUE)) == 1){
-    stop("You must install Linuxbrew before running this installation script. Refer to documentation. Aborting now.")
-}
+threads <- detectBatchCPUs()
+cat(paste("You have", threads, "cpus available\n"))
+bytesRAM <- detectAvailRAM()
+cat(paste0("You have ~", round(bytesRAM/1E9, 1), " Gbytes of RAM available\n"))
 
 #Install Bioconductor packages
-bioconductordeps<-c("dada2", "metagenomeSeq", "HybridMTest", "genefilter")
-if (!requireNamespace("BiocManager", quietly = TRUE)){
-    install.packages("BiocManager")
-}
-BiocManager::install(pkgs = bioconductordeps, update = TRUE, ask = FALSE)
+bioconductordeps <- c("dada2", "metagenomeSeq", "HybridMTest", "genefilter")
+BiocManager::install(pkgs = bioconductordeps, update = TRUE, ask = FALSE, site_repository = repos, lib = rlibs)
 install_github("jokergoo/ComplexHeatmap")
 
 #Install the rest of JAMS
-setwd(jamsdir)
-devtools::install(upgrade = FALSE)
+devtools::install(jamsdir, upgrade = FALSE, lib = rlibs, repos = repos)
 
-#Install Linuxbrew dependencies
-system(paste("bash", file.path("BWlibexec", "install_brew_dependencies.sh")))
+#Make symlinks for JAMS executables
+jamsbinpath <- file.path(jamsdir, "libexec")
+jamsBWbinpath <- file.path(jamsdir, "BWlibexec")
+
+binexecs <- c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db", "JAMSjoinlanes")
+for (binexec in binexecs){
+    sourcepath <- file.path(jamsbinpath, binexec)
+    targetpath <- file.path(linkto, binexec)
+    if (file.exists(targetpath)){
+        cat(paste(targetpath, "already exists\n"))
+    } else {
+      cat(paste("Linking executable with", "ln", "-s", sourcepath, targetpath, "\n"))
+      system(paste("ln", "-s", sourcepath, targetpath))
+    }
+}
+
+#Make symlinks for Biowulf executables
+if (onbiowulf == TRUE){
+    BWbinexecs<-c("JAMSfullservice", "bankit", "bootstrapswarm", "makeswarmJAMS")
+    for(BWbinexec in BWbinexecs){
+        sourcepath <- file.path(jamsbinpath, binexec)
+        targetpath <- file.path(linkto, binexec)
+        if (file.exists(targetpath)){
+            cat(paste(targetpath, "already exists\n"))
+        } else {
+          cat(paste("Linking executable with", "ln", "-s", sourcepath, targetpath, "\n"))
+          system(paste("ln", "-s", sourcepath, targetpath))
+        }
+    }
+    #Install Linuxbrew dependencies
+    system(paste("bash", file.path("BWlibexec", "install_brew_dependencies.sh")))
+}

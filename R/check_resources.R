@@ -3,8 +3,8 @@
 #' JAMSalpha function
 #' @export
 
-check_resources<-function(opt=opt){
-    opt$abort<-FALSE
+check_resources <- function(opt = opt){
+    opt$abort <- FALSE
 
     #Check for non-R software dependencies
     deps <- c("pigz", "wget", "sratoolkit", "samtools", "trimmomatic", "bowtie2", "megahit", "spades", "kraken2", "convert2bed", "bedtools")

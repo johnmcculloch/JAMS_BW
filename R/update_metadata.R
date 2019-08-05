@@ -3,7 +3,7 @@
 #' Updates the metadata in from an MetagenomeSeq experiments present in expvec from an Excel spreadsheet with phenotable and phenolabels.
 #' @export
 
-update_metadata<-function(metadataXL=NULL, phenotable=NULL, phenolabels=NULL, expvec=NULL, maxclass=10, minGbNAHS=0, minPctAssembly=0, readdata=NULL){
+update_metadata <- function(metadataXL=NULL, phenotable=NULL, phenolabels=NULL, expvec=NULL, maxclass=10, minGbNAHS=0, minPctAssembly=0, readdata=NULL){
 
     if(!(is.null(metadataXL))){
         metadata<-load_metadata_from_xl(xlsxFile=metadataXL)

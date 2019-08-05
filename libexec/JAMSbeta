@@ -14,62 +14,82 @@ slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
 
 #Decide which kind of system you are on.
 if(nchar(slurmjobid) < 3){
-   print("You are not on a Slurm Workload Cluster")
-   #Define appropriate functions for non-slurm system
-   detectBatchCPUs <- function() {
-        ncores <- detectCores()
-        if (is.na(ncores)) {
-            stop("Could not determine how many CPUs you have. Aborting.")
-        }
-        return(ncores)
-    }
-
-    detectAvailRAM <- function(){
-        totmembytes<-as.numeric(get_ram())
-
-        return(totmembytes)
-    }
-
+    cat("You are not on a Slurm Workload Cluster\n")
 } else {
-    print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
-    #Define appropriate functions for slurm system
-    detectBatchCPUs <- function() {
-        ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
-        if (is.na(ncores)) {
-            ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE"))
-        }
-        if (is.na(ncores)) {
-            stop("Could not determine how many CPUs you have. Aborting.")
-        }
-        return(ncores)
-    }
-
-    detectAvailRAM <- function(){
-        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
-        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
-        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
-
-        if(!(is.na(mempernode))){
-            totmem <- mempernode
-        } else {
-            totmem <- mempercpu * cpuspertask
-        }
-
-        totmembytes<-totmem * 1000000
-
-        return(totmembytes)
-    }
-
+    cat(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid, "\n"))
 }
 
 ############################
 ## Define extra functions ##
 ############################
 
-exporttabletsv<-function(dataobj=NULL, project=NULL, basename=NULL, row.names = TRUE, col.names = TRUE, path=NULL){
-    flname<-paste(paste("JAMS", project, basename, sep="_"), "tsv", sep=".")
-    if(!missing(path)){
-        flname<-paste(path, flname, sep="/")
+detectHardwareResources <- function(){
+    #First off, detect if on Slurm type cluster
+    #Get slurm job ID
+    slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+
+    if(nchar(slurmjobid) < 3){
+       #Define appropriate functions for non-slurm system
+       detectBatchCPUs <- function() {
+            ncores <- detectCores()
+            if (is.na(ncores)) {
+                stop("Could not determine how many CPUs you have. Aborting.")
+            }
+            return(ncores)
+        }
+
+        detectAvailRAM <- function(){
+            totmembytes<-as.numeric(get_ram())
+
+            return(totmembytes)
+        }
+
+    } else {
+        #Define appropriate functions for slurm system
+        detectBatchCPUs <- function() {
+            ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+            if (is.na(ncores)) {
+                ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE"))
+            }
+            if (is.na(ncores)) {
+                stop("Could not determine how many CPUs you have. Aborting.")
+            }
+            return(ncores)
+        }
+
+        detectAvailRAM <- function(){
+            mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
+            mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
+            cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+
+            if(!(is.na(mempernode))){
+                totmem <- mempernode
+            } else {
+                totmem <- mempercpu * cpuspertask
+            }
+
+            totmembytes<-totmem * 1000000
+
+            return(totmembytes)
+        }
+    }
+    hardwareRes <- NULL
+    hardwareRes[1] <- detectBatchCPUs()
+    hardwareRes[2] <- detectAvailRAM()
+    names(hardwareRes) <- c("threads", "memory")
+
+    return(hardwareRes)
+}
+
+whoopsieplot <- function(msg = "trying to do this."){
+    flog.info(paste("Whoops, something went wrong while", msg))
+    dev.off()
+}
+
+exporttabletsv <- function(dataobj = NULL, project = NULL, basename = NULL, row.names = TRUE, col.names = TRUE, path = NULL){
+    flname <- paste(paste("JAMS", project, basename, sep = "_"), "tsv", sep = ".")
+    if (!is.null(path)){
+        flname <- paste(path, flname, sep = "/")
     }
     write.table(dataobj, file = flname, quote = FALSE, sep = "\t", eol = "\n", na = "NA", dec = ".", row.names = row.names, col.names = col.names)
 }
@@ -124,11 +144,6 @@ option_list <- list(
                 type="numeric",
                 help ="If using reads, what is the minimum percentage assembly into contigs for a sample to be included in an experiment. (Default=0)"),
 
-    make_option(c("-w", "--load_experiments"),
-                action="store", default = NULL,
-                type="character",
-                help ="Do not make experiments, load experiments in .dat format present in this path."),
-
     make_option(c("-e", "--export_tables"),
                 action="store_true", default = FALSE,
                 type="logical",
@@ -159,6 +174,11 @@ option_list <- list(
                 type="logical",
                 help ="Generate alpha diversity plots."),
 
+    make_option(c("-w", "--load_workspace"),
+                action="store", default = NULL,
+                type="character",
+                help ="/path/to/.RData  -  Continue or change the JAMSbeta pipeline from a previous workspace with an .RData file"),
+
     make_option(c("-v", "--version"),
                 action="store_true", help = "report version")
  )
@@ -167,7 +187,7 @@ option_list <- list(
 args <- commandArgs(trailingOnly = TRUE)
 
 # parse the options
-opt <- parse_args(OptionParser(option_list=option_list), args)
+opt <- parse_args(OptionParser(option_list = option_list), args)
 
 #Add version from package to opt
 opt$verstr <- paste0("JAMS v", packageVersion("JAMS"))
@@ -179,49 +199,76 @@ if (!is.null(opt$version)) {
 }
 
 #Fix path relativity
-fixrelpath<-function(JAMSpath=NULL){
+fixrelpath <- function(JAMSpath = NULL){
     require(R.utils)
     if(!(isAbsolutePath(JAMSpath))){
-        fixedpath<-getAbsolutePath(JAMSpath)
+        fixedpath <- getAbsolutePath(JAMSpath)
     } else {
-        fixedpath<-JAMSpath
+        fixedpath <- JAMSpath
     }
 
     return(fixedpath)
 }
 
-for (pathtofix in c("outdir", "excel_metadata", "phenotable", "phenolabels", "jamsfiles_path", "load_experiments")){
-    if(!is.null(opt[[pathtofix]])){
-        opt[[pathtofix]]<-fixrelpath(opt[[pathtofix]])
+for (pathtofix in c("outdir", "excel_metadata", "phenotable", "phenolabels", "jamsfiles_path", "load_workspace")){
+    if (!is.null(opt[[pathtofix]])){
+        opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
     }
 }
 
 # Determine output directory
 if (!is.null(opt$outdir)) {
-    outpath <- as.character(opt$outdir)
-    setwd(outpath)
+    setwd(opt$outdir)
 } else {
-    outpath <- getwd()
+    opt$outdir <- getwd()
 }
-flog.info(paste("Content will be output to", outpath))
+flog.info(paste("Content will be output to", opt$outdir))
 
 # give help if needed input option not provided
-if(is.null(opt$jamsfiles_path) & is.null(opt$load_experiments)) {
-    parse_args(OptionParser(option_list=option_list), c("-h"))
-    stop("You must supply either .jams files with the -y option or .dat files with the -w option.")
+if (all(c((is.null(opt$load_workspace)), (is.null(opt$jamsfiles_path))))) {
+    parse_args(OptionParser(option_list = option_list), c("-h"))
+    stop("You must supply .jams files with the -y option to build experiments. If you want to use a previous R session image, use --load_workspace")
 } else {
-    jamspath<-opt$jamsfiles_path
-    exppath<-opt$load_experiments
-    if((!(is.null(jamspath))) & (!(is.null(exppath)))){
-        stop("You must chose if you want to BUILD experiments using .jams files with the -y option or USE .dat files with the -w option. Please choose a single one of these options.")
+    if (!is.null(opt$load_workspace)){
+        flog.info("Attempting to continue from a previous JAMSbeta R session.")
+        #Decide if workspace supplied is a folder or an image file itself.
+        if(file.info(as.character(opt$load_workspace))$isdir == TRUE){
+            opt$load_workspace <- file.path(opt$load_workspace, ".RData")
+        }
+        if (file.exists(opt$load_workspace)) {
+            projimagesize <- file.size(opt$load_workspace)
+            flog.info(paste("Found previous R session file with", projimagesize, "bytes at", as.character(opt$load_workspace)))
+            saveRDS(opt, file = "preloadopt.rds") #Save current options, or else it will be substituted when loading workspace image.
+            flog.info("Loading saved workspace image. Please be patient...")
+            load(opt$load_workspace)
+            preloadopt <- readRDS("preloadopt.rds")
+            #Replace old options with new ones
+            opt$replaced <- NULL
+            optstosub <- names(preloadopt)[!(names(preloadopt) %in% c("jamsfiles_path", "load_workspace", "projimage", "projimagesize"))]
+            for (nametosub in optstosub){
+                if (opt[[nametosub]] != preloadopt[[nametosub]]){
+                    flog.info(paste0("For ", nametosub, ", ", opt[[nametosub]], " has been replaced with ", preloadopt[[nametosub]]))
+                    opt[[nametosub]] <- preloadopt[[nametosub]]
+                    opt$replaced <- append(opt$replaced, nametosub)
+                }
+            }
+            optstoreset <- c("make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "ordination", "export_tables")[(!(c("make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "ordination", "export_tables") %in% opt$replaced))]
+            for (resetopt in optstoreset){
+                flog.info(paste("Option", resetopt, "is set to FALSE."))
+                opt[[resetopt]] <- FALSE
+            }
+            #file.remove("preloadopt.rds")
+        } else {
+            parse_args(OptionParser(option_list = option_list), c("-h"))
+            stop("Unable to find a previous R session file in the output folder. If you want to build experiments from scratch, do not use the --continue (-u) option.")
+        }
     }
 }
 
 #Set defaults
 asPA <- FALSE
-requirelistdata <- TRUE
 maxclass <- as.numeric(opt$maxnumclasses)
-
+opt$projimage <- file.path(opt$outdir, ".RData")
 ###################
 ## Start project ##
 ###################
@@ -229,41 +276,53 @@ suppressPackageStartupMessages(library(JAMS))
 flog.info("JAMSbeta start. Gathering information...")
 project <- as.character(opt$projectname)
 flog.info(paste("Using", project, "for name of project"))
-opt$threads <- detectBatchCPUs()
+
+opt$threads <- as.numeric(detectHardwareResources()["threads"])
 flog.info(paste("You have", opt$threads, "CPUs available."))
 
 ##################
 ## Get metadata ##
 ##################
-#Get metadata.
-if (!(is.null(jamspath))){
-    if (!(is.null(opt$excel_metadata))) {
-        metadataXL <- opt$excel_metadata
-        #Get metadata from XL file
-        flog.info(paste("Using", metadataXL, "Excel format file to obtain metadata."))
-        metadata <- load_metadata_from_xl(xlsxFile = metadataXL)
-        phenotable <- metadata[[1]]
-        phenolabels <- metadata[[2]]
-    } else {
-        #Metadata not in XL, so get from tsv
-        phenotabletsv <- opt$phenotable
-        phenolabelstsv <- opt$phenolabels
 
-        if (!(is.null(phenotabletsv))){
-            phenotable <- read.table(file = phenotabletsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-        }
-        if (!(is.null(phenolabelstsv))){
-            phenolabels <- read.table(file = phenolabelstsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-        }
+#keep metadata if it has changed from a previous version.
+if (!is.null(opt$replaced)){
+    if (!("excel_metadata" %in% opt$replaced)){
+        opt$excel_metadata <- NULL
     }
-
-    #Stop if something went wrong
-    if (!(exists("phenotable")) || (nrow(phenotable) < 1)){
-        stop("No data found in the metadata file supplied. Please check file.")
-    } else {
-        flog.info(paste("Metadata has", ncol(phenotable), "columns."))
+    if (!("phenotable" %in% opt$replaced)){
+        opt$phenotable <- NULL
+        opt$phenolabels <- NULL
     }
+}
 
+#Get metadata
+if (!(is.null(opt$excel_metadata))) {
+    metadataXL <- opt$excel_metadata
+    #Get metadata from XL file
+    flog.info(paste("Using", metadataXL, "Excel format file to obtain metadata."))
+    metadata <- load_metadata_from_xl(xlsxFile = metadataXL)
+    phenotable <- metadata[[1]]
+    phenolabels <- metadata[[2]]
+} else {
+    #Metadata not in XL, so get from tsv
+    if (!(is.null(opt$phenotable))){
+        phenotable <- read.table(file = opt$phenotable, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+    }
+    if (!(is.null(opt$phenolabels))){
+        phenolabels <- read.table(file = opt$phenolabels, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+    }
+}
+
+#Stop if something went wrong
+if (!(exists("phenotable")) || (nrow(phenotable) < 1)){
+    stop("No data found in the metadata file supplied. Please check file.")
+} else {
+    flog.info(paste("Metadata has", ncol(phenotable), "columns."))
+}
+
+##########
+## Will keep this running in all cases. Not sure of the consequences for when loading a workspace and NOT changing metadata.
+if (TRUE){
     #If phenolabels exists, make sure that phenotable contains only data described in phenolabels.
     if (exists("phenolabels")){
         if (!all(colnames(phenolabels) %in% c("Var_label", "Var_type"))) {
@@ -305,71 +364,67 @@ if (!(is.null(jamspath))){
     }
 
     #Stop if something went wrong after subsetting phenotable to desired columns in phenolabels.
-    if(nrow(phenotable) < 1){
+        if(nrow(phenotable) < 1){
         stop("No data found in the metadata file supplied. Please check file.")
     }
 }
 
-##################################################
-## Either build experiments or load experiments ##
-##################################################
-if(!(is.null(jamspath))){
-    #Build experiments if a jamspath was supplied.
-    flog.info(paste("Will build experiments with files in", jamspath))
-
-    ###########################################
-    ## Load everything into a single object. ##
-    ###########################################
-    flog.info("Metadata seems reasonable. Will go ahead with building experiments.")
-    #Create directory for experiments objects
-    #experimentspath<-paste(outpath, "Experiments", sep = "/")
-    #if(!(dir.exists(experimentspath))){
-    #    flog.info("Creating directory to hold experiments.")
-    #    dir.create(experimentspath, showWarnings = FALSE, recursive = FALSE)
-    #}
-
-    #Exclude samples in pheno table which have not been loaded in list.data
-    Samples_want <- as.character(phenotable[ , ptsampcol])
-    flog.info(paste("Will build experiments for samples:", paste0(Samples_want, collapse = ", ")))
-    flog.info(paste("Searching for .jams files in", jamspath, sep = " "))
-    flog.info("Loading all wanted .jams files into a single object. Please be patient.")
-    list.data <- load_jamsfiles_from_system(path = jamspath, onlysamples = Samples_want)
-    #fnalldfs<-paste("JAMS_", project, "_", "list_data", ".dat", sep="")
-    #flog.info(paste("Saving JAMS list.data object as", fnalldfs, sep=" "))
-    #save(list.data, file=paste(experimentspath, fnalldfs, sep="/"))
-
+#Is there a list.data object? If not, make one.
+Samples_want <- as.character(phenotable[ , ptsampcol])
+if (!(exists("list.data"))) {
+    #make a list.data object from jamsfiles
+    flog.info(paste("Searching for .jams files in", opt$jamsfiles_path, sep = " "))
+    flog.info("Loading all wanted .jams files into a single object.")
+    if (length(Samples_want) > 200){
+        flog.info("Crikey! There are over 200 samples to load. Go grab a coffee, this will take some time.")
+    }
+    list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = Samples_want)
     #Save session
-    flog.info("Saving R session image. Please be patient.")
-    save.image()
+    flog.info("Saving R workspace image. Please be patient.")
+    save.image(opt$projimage)
+}
 
-    #These are the samples that were actually loaded into list.data
-    Samples_have <- name_samples(list.data = list.data)
+Samples_have <- name_samples(list.data = list.data)
+Samples_missing <- Samples_want[!(Samples_want %in% Samples_have)]
+if (length(Samples_missing) > 0){
+    flog.warn(paste("The following samples in the metadata were not loaded, for lack of jamsfiles or otherwise. Check your metadata and jamsfiles path and restart if desired."))
+    flog.warn(paste("MISSING:", paste0(Samples_missing, collapse = ", ")))
+}
 
-    #Redefine phenotable to include only samples I have in list.data
-    phenotable <- phenotable[(phenotable[, ptsampcol] %in% Samples_have), ]
+#If replacing metadata, check if they are the same samples.
+if (exists("pheno")){
+    if (any(c("excel_metadata", "phenotable") %in% opt$replaced)){
+        #Readjust metadata for replacement
+        adjustmetadata <- TRUE
+    } else {
+        #Keep metadata as is.
+        adjustmetadata <- FALSE
+    }
+} else {
+    #Adjust metadata for making experiments
+    adjustmetadata <- TRUE
+}
+
+#Adjust metadata if required
+if (adjustmetadata == TRUE){
 
     #See if there are reads data in list.data, and analyze reads if there is
     if (length(grep("_readstats", names(list.data))) > 0){
         flog.info("Found sequencing read assembly data in jams objects. Will incorporate read and assembly information.")
         doreads = TRUE
-
         # Set minimum number of Gb filter to 0 if not specified
-        minGbNAHS=as.numeric(opt$minGbNAHS)
+        minGbNAHS <- as.numeric(opt$minGbNAHS)
         flog.info(paste("Will not include any sample with less than", minGbNAHS, "Gbp of usable data."))
-
         # Set minimum percentage assembly filter to 0 if not specified
-        minPctAssembly=as.numeric(opt$minPctAssembly)
+        minPctAssembly <- as.numeric(opt$minPctAssembly)
         flog.info(paste("Will not include any sample with less than", minPctAssembly, "percent of reads assembled into contigs."))
-
     } else {
         flog.info("Sequencing read assembly data was not found in jams objects.")
-        doreads = FALSE
+        doreads <- FALSE
     }
 
-    #######################################
-    ## Create Phyloseq and MGseq objects ##
-    #######################################
-    #Create a final phenotypic table to be used for metagenomeSeq experiments
+    rownames(phenotable)<-phenotable$Sample
+    phenotable <- phenotable[Samples_have, ]
 
     ## Evaluate reads, if required ##
     if(doreads == TRUE){
@@ -405,7 +460,6 @@ if(!(is.null(jamspath))){
         variables_subs <- NULL
         variables_bin <- NULL
     }
-
     #Now that variables have been defined, plot original assembly and read status to pdf
     if (doreads == TRUE){
         assvecplot <- NULL
@@ -423,7 +477,17 @@ if(!(is.null(jamspath))){
         print(assvecplot)
         dev.off()
     }
+}
 
+#If there are no metagenomeSeq experiments, then build some.
+if (!exists("expvec")){
+    #Exclude samples in pheno table which have not been loaded in list.data
+    flog.info(paste("Will build experiments for samples:", paste0(Samples_have, collapse = ", ")))
+
+    #######################################
+    ## Create Phyloseq and MGseq objects ##
+    #######################################
+    #Create a final phenotypic table to be used for metagenomeSeq experiments
     #Get sample list from current pheno
     Samples <- as.character(rownames(pheno))
 
@@ -435,19 +499,41 @@ if(!(is.null(jamspath))){
     expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data)
 
     flog.info("Saving R session image. Please be patient.")
-    save.image()
-
+    save.image(opt$projimage)
 } else {
-    #Ask for jams files.
-    flog.info("Please supply a path where .jams files are to be found.")
+    #Expvec exists. Either do nothing, or replace the metadata.
+    flog.info(paste("Found a list of metagenomeSeq experiments for the following analyses:", paste0(names(expvec), collapse = ", ")))
+    #Check structure and integrity of experiments and see if they match the metadata.
+    Samples_have <- rownames(pData(expvec[["LKT"]]))
+    #do this later
+    #Replace metadata in expvec if required
+    if (any(c("excel_metadata", "phenotable") %in% opt$replaced)) {
+        if ("excel_metadata" %in% opt$replaced){
+            mdXL <- opt$excel_metadata
+            phenotableFN <- NULL
+            phenolabelsFN <- NULL
+        } else {
+            mdXL <- NULL
+            phenotableFN <- opt$phenotable
+            phenolabelsFN <- opt$phenolabels
+        }
+        if (exists("readdata")){
+            readdata2 <- readdata
+        } else {
+            readdata2 <- NULL
+        }
+        flog.info("Replacing metadata in current metagenomeSeq experiments.")
+        expvec <- update_metadata(metadataXL = mdXL, phenotable=phenotableFN, phenolabels=phenolabelsFN, expvec=expvec, maxclass=maxclass, minGbNAHS=as.numeric(opt$minGbNAHS), minPctAssembly=as.numeric(opt$minPctAssembly), readdata=readdata2)
+    }
 }
+
 
 ###################
 ## Export tables ##
 ###################
 if (opt$export_tables == TRUE){
     flog.info("Exporting count and feature tables.")
-    tablespath <- paste(outpath, "Tables", sep = "/")
+    tablespath <- paste(opt$outdir, "Tables", sep = "/")
     if (!(dir.exists(tablespath))){
         flog.info("Creating directory to hold tables.")
         dir.create(tablespath, showWarnings = FALSE, recursive = FALSE)
@@ -488,11 +574,6 @@ if ("isolate" %in% pheno$JAMS_Run_type){
     applyfilters = "none"
 } else {
     applyfilters = "moderate"
-}
-
-whoopsieplot <- function(msg = "trying to do this."){
-    flog.info(paste("Whoops, something went wrong while", msg))
-    dev.off()
 }
 
 flog.info("Saving R session image. Please be patient.")
