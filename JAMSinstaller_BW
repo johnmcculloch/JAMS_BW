@@ -155,7 +155,7 @@ devtools::install(jamsdir, upgrade = FALSE, lib = rlibs, repos = repos)
 jamsbinpath <- file.path(jamsdir, "libexec")
 jamsBWbinpath <- file.path(jamsdir, "BWlibexec")
 
-binexecs <- c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db", "JAMSjoinlanes")
+binexecs <- c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db", "JAMSjoinlanes", "makeswarmJAMS")
 for (binexec in binexecs){
     sourcepath <- file.path(jamsbinpath, binexec)
     targetpath <- file.path(linkto, binexec)
@@ -169,7 +169,7 @@ for (binexec in binexecs){
 
 #Make symlinks for Biowulf executables
 if (onbiowulf == TRUE){
-    BWbinexecs<-c("JAMSfullservice", "bankit", "bootstrapswarm", "makeswarmJAMS")
+    BWbinexecs<-c("JAMSfullservice", "bankit", "bootstrapswarm")
     for(BWbinexec in BWbinexecs){
         sourcepath <- file.path(jamsbinpath, binexec)
         targetpath <- file.path(linkto, binexec)

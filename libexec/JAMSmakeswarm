@@ -87,24 +87,37 @@ getScriptPath <- function() {
     }
 }
 
+#Fix path relativity
+fixrelpath <- function(JAMSpath = NULL){
+    require(R.utils)
+    if (!(isAbsolutePath(JAMSpath))){
+        fixedpath <- getAbsolutePath(JAMSpath)
+    } else {
+        fixedpath <- JAMSpath
+    }
+
+    return(fixedpath)
+}
+
 #########################
 # Get options from args #
 #########################
 #Define defaults
 defopt <- list()
-defopt$verstr <- paste0("makeswarmJAMS v", "1.0")
+defopt$verstr <- paste0("JAMSmakeswarm v", "1.0")
 defopt$outputfolder <- getwd()
 defopt$readsfolder <- file.path(defopt$outputfolder, "rawreads")
 defopt$hostspecies <- "human"
 defopt$analysis <- "metagenome"
 defopt$skipinterpro <- FALSE
 defopt$jamsdb <- "/data/MicrobiomeCore/JAMSdb/db"
+defopt$swarmfile <- fixrelpath(JAMSpath = "JAMS.swarm")
 
 option_list <- list(
     make_option(c("-r", "--readsfolder"), default = defopt$readsfolder, action="store",
                 help = str_c("path to root directory where reads are (default: ", defopt$readsfolder, ")")),
     make_option(c("-o", "--outputfolder"), default = defopt$outputfolder, action="store",
-                help = str_c("path to where you want the JAMSalpha ouutputs (default: ", defopt$outputfolder, ")")),
+                help = str_c("path to where you want the JAMSalpha outputs (default: ", defopt$outputfolder, ")")),
     make_option(c("-H", "--hostspecies"), default = defopt$hostspecies, action="store",
                 help = str_c("Name or taxid of host species (default: ", defopt$hostspecies, ")")),
     make_option(c("-A", "--analysis"), default = defopt$analysis, action="store",
@@ -115,6 +128,8 @@ option_list <- list(
                 help = str_c("Text file with a list of read prefixes to restrict swarm to.")),
     make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
                 help = str_c("Use -n option in swarm file, for skipping InterproScan, even if available.)")),
+    make_option(c("-s", "--swarmfile"), default = defopt$jamsdb, action="store",
+                help = str_c("File name for swarm file to be created (default: ", defopt$swarmfile, ")")),
     make_option(c("-v", "--version"), action="store_true",
                 help ="report version")
 )
@@ -137,19 +152,7 @@ if (!is.null(opt$version)) {
 #Get Script path
 opt$bindir <- getScriptPath()
 
-#Fix path relativity
-fixrelpath <- function(JAMSpath = NULL){
-    require(R.utils)
-    if (!(isAbsolutePath(JAMSpath))){
-        fixedpath <- getAbsolutePath(JAMSpath)
-    } else {
-        fixedpath <- JAMSpath
-    }
-
-    return(fixedpath)
-}
-
-for (pathtofix in c("readsfolder", "outputfolder", "prefixlist")){
+for (pathtofix in c("readsfolder", "outputfolder", "prefixlist", "swarmfile")){
     if (!is.null(opt[[pathtofix]])){
         opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
     }
@@ -188,7 +191,7 @@ find_read<-function(x) {
 #Load prefix list if present
 if (!(is.null(opt$prefixlist))){
     wantedprefixes <- read.table(opt$prefixlist, header = FALSE, sep = " ", stringsAsFactors = FALSE)
-    wantedprefixes <- as.character(as.matrix(wantedprefixes))
+    wantedprefixes <- as.character(wantedprefixes[, 1])
 }
 
 commonoptions <- paste("-d", opt$jamsdb, "-A", opt$analysis, "-o", opt$outputfolder, "-H", opt$hostspecies, collapse = " ")
@@ -207,13 +210,13 @@ if (!(is.null(opt$readsfolder))){
     rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { find_read(x) } )
     rawfastqsdf$Container <- sapply(1:nrow(rawfastqsdf), function(x) { find_container(x) } )
     rawfastqsdf$Prefix <- sapply(1:nrow(rawfastqsdf), function(x) { paste(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_"))[1:((which(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")) == tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 4)[1])) - 1)], collapse = "_") } )
-    
+
     if (!(is.null(opt$prefixlist))){
          rawfastqsdf <- subset(rawfastqsdf, Prefix %in% wantedprefixes)
          if (nrow(rawfastqsdf) < 1){
              flog.info("Could not find a single prefix requested in the reads folder supplied.")
              q()
-         }  
+         }
     }
 
     prefixestouse <- unique(rawfastqsdf$Prefix)
@@ -238,4 +241,4 @@ if (!(is.null(opt$readsfolder))){
 }
 
 #Write swarm file to system
-write.table(swarm, file = "JAMS.swarm", sep = "\n", row.names = FALSE, quote = FALSE)
+write.table(swarm, file = opt$swarmfile, sep = "\n", row.names = FALSE, col.names = FALSE, quote = FALSE)
