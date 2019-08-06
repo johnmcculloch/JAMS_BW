@@ -128,8 +128,10 @@ option_list <- list(
                 help = str_c("Text file with a list of read prefixes to restrict swarm to.")),
     make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
                 help = str_c("Use -n option in swarm file, for skipping InterproScan, even if available.)")),
-    make_option(c("-s", "--swarmfile"), default = defopt$jamsdb, action="store",
+    make_option(c("-s", "--swarmfile"), default = defopt$swarmfile, action="store",
                 help = str_c("File name for swarm file to be created (default: ", defopt$swarmfile, ")")),
+    make_option(c("-c", "--checkprefixexists"), default = NULL,
+                action="store", help = str_c("Optional path to folder with banked .jams files. If ")),
     make_option(c("-v", "--version"), action="store_true",
                 help ="report version")
 )
@@ -199,6 +201,13 @@ if (opt$skipinterpro == TRUE) {
     commonoptions <- paste(commonoptions, "-n", collapse = " ")
 }
 
+if (!is.null(opt$checkprefixexists)){
+    cat("Checking if prefixes in swarm file coincide with prefixes in:\n")
+    cat(paste(as.character(opt$checkprefixexists), "\n"))
+    jamsfns <- list.files(path = opt$checkprefixexists, pattern=".jams$")
+    usedprefixes <- sapply(1:length(jamsfns), function(x) { unlist(strsplit(jamsfns[x], split="\\."))[1] } )
+}
+
 if (!(is.null(opt$readsfolder))){
     flog.info("Searching for reads files in reads folder.")
     rawfastqpaths <- list.files(path = opt$readsfolder, pattern = "fastq", full.names = TRUE, recursive = TRUE)
@@ -220,6 +229,19 @@ if (!(is.null(opt$readsfolder))){
     }
 
     prefixestouse <- unique(rawfastqsdf$Prefix)
+    if (!is.null(opt$checkprefixexists)){
+        if (length(usedprefixes) > 0){
+            alreadyusedprexixes <- prefixestouse[(prefixestouse %in% usedprefixes)]
+            if (length(alreadyusedprexixes) > 0){
+                cat("WARNING: THE FOLLOWING PREFIXES HAVE BEEN FOUND IN\n")
+                cat(paste(as.character(opt$checkprefixexists), "\n"))
+                cat(paste(paste0(alreadyusedprexixes, collapse = ", "), "\n"))
+                cat("THESE PREFIXES HAVE BEEN ELIMINATED FROM THE SWARM FILE GENERATED.\n")
+                prefixestouse <- prefixestouse[!(prefixestouse %in% usedprefixes)]
+            }
+        }
+    }
+
     swarm <- NULL
     for (p in 1:length(prefixestouse)){
         prefix <- prefixestouse[p]

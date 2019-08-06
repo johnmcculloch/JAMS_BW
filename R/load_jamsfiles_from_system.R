@@ -4,16 +4,16 @@
 #' Loads all JAMS files from system
 #' @export
 
-load_jamsfiles_from_system<-function(path = ".", onlysamples=NULL, loadfromscratch = TRUE, list.data = NULL){
+load_jamsfiles_from_system <- function(path = ".", onlysamples = NULL, loadfromscratch = TRUE, list.data = NULL){
     fljams = list.files(path = path, pattern="*.jams$")
 
-    if(length(fljams)<1){
+    if (length(fljams)<1){
         stop("There are no .jams files in the specified path.")
     }
 
-    currpath<-getwd()
+    currpath <- getwd()
     #Create temp files directory if needed.
-    jamstempfilespath<-paste(currpath, "jamstempfiles", sep = "/")
+    jamstempfilespath <- paste(currpath, "jamstempfiles", sep = "/")
     if(!(dir.exists(jamstempfilespath))){
         print("Creating directory to hold raw data.")
         dir.create(jamstempfilespath, showWarnings = FALSE, recursive = FALSE)
