@@ -9,11 +9,12 @@ fix_interproscanoutput<-function(opt=NULL){
         #Get interprojob
         opt$iprojob <- system2('cat', args=file.path(opt$iprodir, "ipro.job"), stdout = TRUE, stderr = FALSE)
         #See if job finished
-        iprojobstatus<-system2('sacct', args=c("-j", opt$iprojob), stdout = TRUE)
+        iprojobstatus <- system2('sacct', args=c("-j", opt$iprojob), stdout = TRUE)
         #eliminate header
-        iprojobstatus<-iprojobstatus[3:length(iprojobstatus)]
+        iprojobstatus <- iprojobstatus[3:length(iprojobstatus)]
+        iprojobstatus <- iprojobstatus[grep("quick", iprojobstatus)]
         ratiojobscomplete <- length(grep("COMPLETED", iprojobstatus))/length(iprojobstatus)
-        runningjobs<-length(grep("RUNNING", iprojobstatus))
+        runningjobs <- length(grep("RUNNING", iprojobstatus))
 
         #Delay if there still are jobs to complete
         nattempt=1
@@ -26,11 +27,12 @@ fix_interproscanoutput<-function(opt=NULL){
             Sys.sleep(600)
             nattempt <- nattempt + 1
             #See if job finished
-            iprojobstatus<-system2('sacct', args=c("-j", opt$iprojob), stdout = TRUE)
+            iprojobstatus <- system2('sacct', args=c("-j", opt$iprojob), stdout = TRUE)
             #eliminate header
-            iprojobstatus<-iprojobstatus[3:length(iprojobstatus)]
-            ratiojobscomplete<-length(grep("COMPLETED", iprojobstatus))/length(iprojobstatus)
-            runningjobs<-length(grep("RUNNING", iprojobstatus))
+            iprojobstatus <- iprojobstatus[3:length(iprojobstatus)]
+            iprojobstatus <- iprojobstatus[grep("quick", iprojobstatus)]
+            ratiojobscomplete <- length(grep("COMPLETED", iprojobstatus))/length(iprojobstatus)
+            runningjobs <- length(grep("RUNNING", iprojobstatus))
         }
 
         flog.info("Harvesting and integrating Interproscan data.")
@@ -59,11 +61,11 @@ fix_interproscanoutput<-function(opt=NULL){
         ipro$AALength<-as.numeric(ipro$AALength)
 
         #Fill in the blanks
-        ipro<-ipro %>% mutate(Description = ifelse(Description=="","none",Description))
-        ipro<-ipro %>% mutate(IproAcc = ifelse(IproAcc=="","none",IproAcc))
-        ipro<-ipro %>% mutate(IproDesc = ifelse(IproDesc=="","none",IproDesc))
-        ipro<-ipro %>% mutate(GOterms = ifelse(GOterms=="","none",GOterms))
-        ipro<-ipro %>% mutate(Pathways = ifelse(Pathways=="","none",Pathways))
+        ipro <- ipro %>% mutate(Description = ifelse(Description == "", "none", Description))
+        ipro <- ipro %>% mutate(IproAcc = ifelse(IproAcc == "", "none", IproAcc))
+        ipro <- ipro %>% mutate(IproDesc = ifelse(IproDesc == "", "none", IproDesc))
+        ipro <- ipro %>% mutate(GOterms = ifelse(GOterms == "", "none", GOterms))
+        ipro <- ipro %>% mutate(Pathways = ifelse(Pathways == "", "none", Pathways))
 
         #remove eventual duplicates
         ipro<-ipro[!duplicated(ipro), ]
