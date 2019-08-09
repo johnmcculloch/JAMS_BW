@@ -121,12 +121,17 @@ if (nchar(slurmjobid) > 3){
         stop("You must install Linuxbrew before running this installation script. Refer to documentation. Aborting now.")
     }
 
-    if (length(rlibs) < 5){
+    if (nchar(rlibs) < 5){
         rlibs <- .libPaths()[1]
     }
 }
 
 cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
+if (onbiowulf == TRUE){
+    system("export TMP=/scratch/$USER")
+} else {
+    system("export TMP=~/")
+}
 
 #Install devtools and stringr if not present
 repos <- "https://cloud.r-project.org"
