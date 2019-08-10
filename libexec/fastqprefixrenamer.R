@@ -1,11 +1,7 @@
 #!/usr/bin/env Rscript
-suppressPackageStartupMessages(library(RCurl))
-suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(futile.logger))
-suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(library(benchmarkme))
-suppressPackageStartupMessages(library(openxlsx))
 #####################################
 # Define System-specific Functions ##
 #####################################
@@ -196,7 +192,10 @@ find_container <- function(x) {
 ###################
 ## Main Function ##
 ###################
-#suppressPackageStartupMessages(library(JAMS))
+suppressPackageStartupMessages(library(RCurl))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(parallel))
+suppressPackageStartupMessages(library(openxlsx))
 
 if (opt$destination != opt$readsfolder){
     flog.info("Destination directory and origin are different.")
@@ -262,17 +261,7 @@ if (is.redundant(rawfastqsdf$NewFN)){
     q()
 }
 
-
-
-
-
-myexp
-resexp
-
-
-
 rawfastqsdf$NewFullFN <- file.path(opt$destination, rawfastqsdf$NewFN)
-
 save.image(opt$projimage)
 
 #Copy or move the files
