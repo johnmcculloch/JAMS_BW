@@ -3,6 +3,10 @@ suppressWarnings(suppressPackageStartupMessages(library(optparse)))
 suppressWarnings(suppressPackageStartupMessages(library(futile.logger)))
 suppressWarnings(suppressPackageStartupMessages(library(benchmarkme)))
 suppressWarnings(suppressPackageStartupMessages(library(tidyverse)))
+suppressWarnings(suppressPackageStartupMessages(library(RCurl)))
+suppressWarnings(suppressPackageStartupMessages(library(parallel)))
+suppressWarnings(suppressPackageStartupMessages(library(openxlsx)))
+
 #####################################
 # Define System-specific Functions ##
 #####################################
@@ -199,13 +203,9 @@ find_container <- function(x) {
     return(container)
 }
 
-
 ###################
 ## Main Function ##
 ###################
-suppressWarnings(suppressPackageStartupMessages(library(RCurl)))
-suppressWarnings(suppressPackageStartupMessages(library(parallel)))
-suppressWarnings(suppressPackageStartupMessages(library(openxlsx)))
 
 if (opt$destination != opt$readsfolder){
     flog.info("Destination directory and origin are different.")
