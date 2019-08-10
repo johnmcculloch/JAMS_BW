@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
-suppressPackageStartupMessages(library(optparse))
-suppressPackageStartupMessages(library(futile.logger))
-suppressPackageStartupMessages(library(benchmarkme))
+suppressWarnings(suppressPackageStartupMessages(library(optparse)))
+suppressWarnings(suppressPackageStartupMessages(library(futile.logger)))
+suppressWarnings(suppressPackageStartupMessages(library(benchmarkme)))
+suppressWarnings(suppressPackageStartupMessages(library(tidyverse)))
 #####################################
 # Define System-specific Functions ##
 #####################################
@@ -202,10 +203,9 @@ find_container <- function(x) {
 ###################
 ## Main Function ##
 ###################
-suppressPackageStartupMessages(library(RCurl))
-suppressPackageStartupMessages(library(tidyverse))
-suppressPackageStartupMessages(library(parallel))
-suppressPackageStartupMessages(library(openxlsx))
+suppressWarnings(suppressPackageStartupMessages(library(RCurl)))
+suppressWarnings(suppressPackageStartupMessages(library(parallel)))
+suppressWarnings(suppressPackageStartupMessages(library(openxlsx)))
 
 if (opt$destination != opt$readsfolder){
     flog.info("Destination directory and origin are different.")
