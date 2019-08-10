@@ -263,8 +263,17 @@ rawfastqsdf$Container <- sapply(1:nrow(rawfastqsdf), function (x) { find_contain
 rawfastqsdf$NewFN <- paste(paste(rawfastqsdf$Prefix, rawfastqsdf$Read, sep = "_"), rawfastqsdf$Container, sep = ".")
 
 #Check if they are duplicates
-if (is.redundant(rawfastqsdf$NewFN)){
+if (is.redundant(rawfastqsdf$Prefix)){
     flog.info("There is more than one sample with the same filename. Check substitution table and try again. Aborting now.")
+    dupes <- rawfastqsdf$Prefix[duplicated(rawfastqsdf$Prefix)]
+    flog.info(paste("The following original prefixes found in the reads folder are duplicated:", paste0(dupes, collapse = ", ")))
+    q()
+}
+
+if (is.redundant(rawfastqsdf$NewFN)){
+    flog.info("There is more than one sample with the same output filename. Check substitution table and try again. Aborting now.")
+    dupes <- rawfastqsdf$NewFN[duplicated(rawfastqsdf$NewFN)]
+    flog.info(paste("The following new prefixes are duplicated:", paste0(dupes, collapse = ", ")))
     q()
 }
 
