@@ -131,7 +131,7 @@ option_list <- list(
     make_option(c("-s", "--swarmfile"), default = defopt$swarmfile, action="store",
                 help = str_c("File name for swarm file to be created (default: ", defopt$swarmfile, ")")),
     make_option(c("-c", "--checkprefixexists"), default = NULL,
-                action="store", help = str_c("Optional path to folder with banked .jams files. If ")),
+                action="store", help = str_c("Optional path to folder with banked .jams files. If prefix already exists a warning is issued.")),
     make_option(c("-v", "--version"), action="store_true",
                 help ="report version")
 )

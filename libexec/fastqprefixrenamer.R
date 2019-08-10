@@ -106,25 +106,35 @@ defopt$threads <- as.numeric(detectHardwareResources()["threads"])
 option_list <- list(
     make_option(c("-r", "--readsfolder"), default = defopt$readsfolder, action="store",
                 help = str_c("path to root directory where reads are (default: ", defopt$readsfolder, ")")),
+
     make_option(c("-d", "--destination"), default = defopt$destination, action="store",
                 help = str_c("path to root directory where reads are (default: ", defopt$destination, ")")),
+
     make_option(c("-t", "--substitutionmap"), default = NULL, action="store",
                 help = str_c("Tab limited text file for sample name substitution in the format: oldname[TAB]newname")),
+
     make_option(c("-x", "--substitutionspreadsheet"), default = NULL, action="store",
                 help = str_c("Tab limited xlsx spreadsheet for sample name substitution")),
-    make_option(c("-b", "--basespaceformat"), default = defopt$basespaceformat, action="store_true",
-                help = str_c("Original prefixes are in Basespace format, i.e. OldPrefix_S264_R1_001.fastq.gz. (default: FALSE. Prefixes are in OldPrefix_R1.fastq format.)")),
+
+    make_option(c("-b", "--basespaceformat"), default = defopt$basespaceformat,
+                action="store_true", help = str_c("Original prefixes are in Basespace format, i.e. OldPrefix_S264_R1_001.fastq.gz. (default: FALSE. Prefixes are in OldPrefix_R1.fastq format.)")),
+
     make_option(c("-m", "--move"), default = defopt$move, action="store_true",
                 help = str_c("Copy to destination rather than move. (default: FALSE. Prefixes are in OldPrefix_R1.fastq format.)")),
+
+    make_option(c("-c", "--checkprefixexists"), default = NULL,
+                action="store", help = str_c("Optional path to folder with banked .jams files. If prefix already exists, a warning is issued, will abort before start of renaming.")),
+
     make_option(c("-s", "--simulate"), default = defopt$simulate, action="store_true",
                 help = str_c("Simulate and print commands for renaming, do not actually rename.")),
+
     make_option(c("-v", "--version"), action="store_true",
                 help ="report version")
 )
 
 # parse the options
 args <- commandArgs(trailingOnly = TRUE)
-opt <- parse_args(OptionParser(option_list=option_list), args)
+opt <- parse_args(OptionParser(option_list = option_list), args)
 opt <- merge.list(opt, defopt)
 
 #####################
@@ -155,7 +165,7 @@ fixrelpath <- function(JAMSpath = NULL){
     return(fixedpath)
 }
 
-for (pathtofix in c("readsfolder", "destination", "substitutionmap", "substitutionspreadsheet")){
+for (pathtofix in c("readsfolder", "destination", "substitutionmap", "substitutionspreadsheet", "checkprefixexists")){
     if (!is.null(opt[[pathtofix]])){
         opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
     }
@@ -261,8 +271,29 @@ if (is.redundant(rawfastqsdf$NewFN)){
     q()
 }
 
-rawfastqsdf$NewFullFN <- file.path(opt$destination, rawfastqsdf$NewFN)
+#Check if new prefix has already been used.
+if (!is.null(opt$checkprefixexists)){
+    flog.info("Checking if new prefixes proposed in substitution table coincide with prefixes found in:")
+    flog.info(as.character(opt$checkprefixexists))
+    jamsfns <- list.files(path = opt$checkprefixexists, pattern=".jams$")
+    usedprefixes <- sapply(1:length(jamsfns), function(x) { unlist(strsplit(jamsfns[x], split="\\."))[1] } )
+}
+
+prefixestouse <- unique(rawfastqsdf$Prefix)
+if (!is.null(opt$checkprefixexists)){
+    if (length(usedprefixes) > 0){
+        alreadyusedprexixes <- prefixestouse[(prefixestouse %in% usedprefixes)]
+        if (length(alreadyusedprexixes) > 0){
+            flog.warn(paste("WARNING: THE FOLLOWING PREFIXES HAVE BEEN FOUND IN", as.character(opt$checkprefixexists)))
+            flog.warn(paste0(alreadyusedprexixes, collapse = ", "))
+            flog.warn("Check your filenames and substitution table. ABORTING NOW.")
+            q()
+        }
+    }
+}
 save.image(opt$projimage)
+
+rawfastqsdf$NewFullFN <- file.path(opt$destination, rawfastqsdf$NewFN)
 
 #Copy or move the files
 if (opt$move == TRUE){
