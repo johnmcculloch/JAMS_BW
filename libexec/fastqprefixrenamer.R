@@ -154,9 +154,6 @@ if (!is.null(opt$version)) {
 
 #Get Script path
 opt$bindir <- getScriptPath()
-#detect resources
-opt$totmembytes <- detectAvailRAM()
-opt$maxsizebytes <- (as.numeric((opt$maxsizeGB)) * 1000000000)
 
 #Fix path relativity
 fixrelpath <- function(JAMSpath = NULL){
