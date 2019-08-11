@@ -248,6 +248,13 @@ if (!(is.null(opt$substitutionmap))){
     q()
 }
 
+#Test for redundancy in substitution map.
+redtestsubmap <- apply(submap, is.redundant, MARGIN=2)
+if (any(redtestsubmap)){
+    flog.warn(paste("Values in substitution table column(s)" , paste0(names(which(redtestsubmap == TRUE)), collapse = " and "), "are not unique. Check table and try again. Aborting now"))
+    q()
+}
+
 rawfastqsdf <- subset(rawfastqsdf, OriPrefix %in% (submap$OriPrefix))
 
 if (nrow(rawfastqsdf) < 1){
@@ -258,22 +265,27 @@ if (nrow(rawfastqsdf) < 1){
 #Tack on the new prefixes
 rawfastqsdf <- left_join(rawfastqsdf, submap, by = "OriPrefix")
 #Tack on the destinations
-
 rawfastqsdf$Container <- sapply(1:nrow(rawfastqsdf), function (x) { find_container(x) } )
 rawfastqsdf$NewFN <- paste(paste(rawfastqsdf$Prefix, rawfastqsdf$Read, sep = "_"), rawfastqsdf$Container, sep = ".")
 
+
 #Check if they are duplicates
-if (is.redundant(rawfastqsdf$Prefix)){
-    flog.info("There is more than one sample with the same filename. Check substitution table and try again. Aborting now.")
-    dupes <- rawfastqsdf$Prefix[duplicated(rawfastqsdf$Prefix)]
-    flog.info(paste("The following original prefixes found in the reads folder are duplicated:", paste0(dupes, collapse = ", ")))
+rawfastqsdfR1 <- subset(rawfastqsdf, Read == "R1")
+if (is.redundant(rawfastqsdfR1$OriPrefix)){
+    flog.warn("There is more than one input fastq file with the same prefix. Check input reads folder substitution table and try again. Aborting now.")
+    dupes <- rawfastqsdfR1$OriPrefix[duplicated(rawfastqsdfR1$OriPrefix)]
+    flog.warn(paste("The following original prefixes found in the reads folder are duplicated:", paste0(dupes, collapse = ", ")))
+    dupefns <- rawfastqsdf$Filepaths[which(rawfastqsdf$OriPrefix %in% dupes)]
+    flog.warn(paste("The following input filenames have the same prefix:\n", paste0(dupefns, collapse = "\n")))
     q()
 }
 
-if (is.redundant(rawfastqsdf$NewFN)){
-    flog.info("There is more than one sample with the same output filename. Check substitution table and try again. Aborting now.")
-    dupes <- rawfastqsdf$NewFN[duplicated(rawfastqsdf$NewFN)]
-    flog.info(paste("The following new prefixes are duplicated:", paste0(dupes, collapse = ", ")))
+if (is.redundant(rawfastqsdfR1$Prefix)){
+    flog.warn("There is more than one output fastq file with the same prefix. Check input reads folder substitution table and try again. Aborting now.")
+    dupes <- rawfastqsdfR1$Prefix[duplicated(rawfastqsdfR1$Prefix)]
+    flog.warn(paste("The following new prefixes are duplicated:", paste0(dupes, collapse = ", ")))
+    dupefns <- rawfastqsdf$NewFN[which(rawfastqsdf$Prefix %in% dupes)]
+    flog.warn(paste("The following proposed output filenames are identical:", paste0(dupefns, collapse = ", ")))
     q()
 }
 
@@ -294,6 +306,8 @@ if (!is.null(opt$checkprefixexists)){
             flog.warn(paste0(alreadyusedprexixes, collapse = ", "))
             flog.warn("Check your filenames and substitution table. ABORTING NOW.")
             q()
+        } else {
+            flog.info("None of the proposed new prefixes have been used previously")
         }
     }
 }
