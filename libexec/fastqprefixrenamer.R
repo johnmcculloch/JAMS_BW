@@ -291,8 +291,7 @@ if (is.redundant(rawfastqsdfR1$Prefix)){
 
 #Check if new prefix has already been used.
 if (!is.null(opt$checkprefixexists)){
-    flog.info("Checking if new prefixes proposed in substitution table coincide with prefixes found in:")
-    flog.info(as.character(opt$checkprefixexists))
+    flog.info(paste("Checking if new prefixes proposed in substitution table coincide with prefixes found in:", as.character(opt$checkprefixexists)))
     jamsfns <- list.files(path = opt$checkprefixexists, pattern=".jams$")
     usedprefixes <- sapply(1:length(jamsfns), function(x) { unlist(strsplit(jamsfns[x], split="\\."))[1] } )
 }
