@@ -126,6 +126,8 @@ option_list <- list(
                 help = str_c("Path to JAMS database (default: ", defopt$jamsdb, ")")),
     make_option(c("-p", "--prefixlist"), default = NULL, action="store",
                 help = str_c("Text file with a list of read prefixes to restrict swarm to.")),
+    make_option(c("-g", "--sralist"),
+                default = NULL, action="store", help = str_c("List of SRA accessions to get reads for assembly.")),
     make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
                 help = str_c("Use -n option in swarm file, for skipping InterproScan, even if available.)")),
     make_option(c("-s", "--swarmfile"), default = defopt$swarmfile, action="store",
@@ -161,7 +163,7 @@ for (pathtofix in c("readsfolder", "outputfolder", "prefixlist", "swarmfile")){
 }
 
 #Define useful functions
-is.redundant<-function(vec){
+is.redundant <- function(vec){
     propunique <- length(unique(vec))/length(vec)
     if (propunique < 1){
         redundant = TRUE
@@ -172,8 +174,8 @@ is.redundant<-function(vec){
     return(redundant)
 }
 
-find_container<-function(x) {
-    prefsuff<- unlist(strsplit(rawfastqsdf$Filenames[x], split = "\\."))
+find_container <- function(x) {
+    prefsuff <- unlist(strsplit(rawfastqsdf$Filenames[x], split = "\\."))
     container <- paste(prefsuff[(which(prefsuff %in% c("fastq", "tar"))):(length(prefsuff))], collapse = ".")
 
     return(container)
@@ -184,6 +186,23 @@ find_read<-function(x) {
     read <- tail(unlist(strsplit(prefsuff[1], split = "_")), n=1)
 
     return(read)
+}
+
+check_prefixes <- function(opt = NULL){
+    if (!is.null(opt$checkprefixexists)){
+        if (length(opt$usedprefixes) > 0){
+            opt$alreadyusedprexixes <- opt$prefixestouse[(opt$prefixestouse %in% opt$usedprefixes)]
+            if (length(opt$alreadyusedprexixes) > 0){
+                cat("WARNING: THE FOLLOWING PREFIXES HAVE BEEN FOUND IN\n")
+                cat(paste(as.character(opt$checkprefixexists), "\n"))
+                cat(paste(paste0(opt$alreadyusedprexixes, collapse = ", "), "\n"))
+                cat("THESE PREFIXES HAVE BEEN ELIMINATED FROM THE SWARM FILE GENERATED.\n")
+                opt$prefixestouse <- opt$prefixestouse[!(opt$prefixestouse %in% opt$usedprefixes)]
+            }
+        }
+    }
+
+    return(opt)
 }
 
 ###################
@@ -205,7 +224,7 @@ if (!is.null(opt$checkprefixexists)){
     cat("Checking if prefixes in swarm file coincide with prefixes in:\n")
     cat(paste(as.character(opt$checkprefixexists), "\n"))
     jamsfns <- list.files(path = opt$checkprefixexists, pattern=".jams$")
-    usedprefixes <- sapply(1:length(jamsfns), function(x) { unlist(strsplit(jamsfns[x], split="\\."))[1] } )
+    opt$usedprefixes <- sapply(1:length(jamsfns), function(x) { unlist(strsplit(jamsfns[x], split="\\."))[1] } )
 }
 
 if (!(is.null(opt$readsfolder))){
@@ -228,23 +247,12 @@ if (!(is.null(opt$readsfolder))){
          }
     }
 
-    prefixestouse <- unique(rawfastqsdf$Prefix)
-    if (!is.null(opt$checkprefixexists)){
-        if (length(usedprefixes) > 0){
-            alreadyusedprexixes <- prefixestouse[(prefixestouse %in% usedprefixes)]
-            if (length(alreadyusedprexixes) > 0){
-                cat("WARNING: THE FOLLOWING PREFIXES HAVE BEEN FOUND IN\n")
-                cat(paste(as.character(opt$checkprefixexists), "\n"))
-                cat(paste(paste0(alreadyusedprexixes, collapse = ", "), "\n"))
-                cat("THESE PREFIXES HAVE BEEN ELIMINATED FROM THE SWARM FILE GENERATED.\n")
-                prefixestouse <- prefixestouse[!(prefixestouse %in% usedprefixes)]
-            }
-        }
-    }
+    opt$prefixestouse <- unique(rawfastqsdf$Prefix)
+    opt <- check_prefixes(opt = opt)
 
     swarm <- NULL
-    for (p in 1:length(prefixestouse)){
-        prefix <- prefixestouse[p]
+    for (p in 1:length(opt$prefixestouse)){
+        prefix <- opt$prefixestouse[p]
         relevantfiles <- subset(rawfastqsdf, Prefix == prefix)
         if (all(c("R1", "R2") %in% relevantfiles$Read)) {
             FR <- paste("-f", relevantfiles$Filepaths[which(relevantfiles$Read == "R1")], sep = " ")
@@ -260,6 +268,18 @@ if (!(is.null(opt$readsfolder))){
         swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", prefix, collapse = " ")
     }
 
+} else if (!is.null(opt$sralist)){
+    wantedaccessions <- read.table(opt$sralist, header = FALSE, sep = " ", stringsAsFactors = FALSE)
+    wantedaccessions <- as.character(wantedaccessions[, 1])
+    opt$prefixestouse <- wantedaccessions
+    opt <- check_prefixes(opt = opt)
+
+    swarm <- NULL
+    for (p in 1:length(opt$prefixestouse)){
+        prefix <- opt$prefixestouse[p]
+        readsinput <- paste("-g", prefix)
+        swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", prefix, collapse = " ")
+    }
 }
 
 #Write swarm file to system
