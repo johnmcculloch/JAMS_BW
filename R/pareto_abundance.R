@@ -1,5 +1,5 @@
 #' pareto_abundance(LKTdose=NULL, samplename=NULL, taxlevel=NULL, assemblystats=NULL, showcompletenesstext=TRUE, showcompletenessline=TRUE, showcontigline=FALSE, showparetocurve=TRUE, showpercentagetext=TRUE)
-#' 
+#'
 #' Plots a pareto chart of the relative abundance of a taxon.
 #' @export
 
@@ -64,7 +64,7 @@ pareto_abundance<-function(LKTdose=NULL, samplename=NULL, list.data=NULL, taxlev
             df.tail <- data.frame("Remainder", sum(df.rest$NumBases), sum(df.rest$Percentage), max(df.rest$Pctcum))
         }
         colnames(df.tail) <- colnames(df.rest)
-        dfdose <- rbind(df.top, df.tail)   
+        dfdose <- rbind(df.top, df.tail)
     }
 
     #Add phylum information
@@ -93,7 +93,7 @@ pareto_abundance<-function(LKTdose=NULL, samplename=NULL, list.data=NULL, taxlev
     dfdose$lbls <- factor(dfdose$lbls, levels=dfdose$lbls)
 
     #Draw relabund bars
-    if(taxlevel %in% c("Domain", "Phylum")){
+    if(taxlevel %in% c("Domain", "Kingdom", "Phylum")){
         plot.df <- ggplot(dfdose, aes(x=lbls)) + geom_bar(aes(y=Percentage), stat="identity", fill=dfdose$Colour)
     } else {
         plot.df <- ggplot(dfdose, aes(x=lbls)) + geom_bar(aes(y=Percentage, fill=PhylumInfo), stat="identity") +  scale_fill_manual(values = PhyColours)
