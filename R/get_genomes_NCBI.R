@@ -16,7 +16,7 @@ get_genomes_NCBI<-function(organisms="bacteria", assembly_summary=NULL, outputdi
 
     if(is.null(assembly_summary)){
         print("Downloading assembly_summary.txt from GenBank")
-        GBURL<-"http://ftp.ncbi.nlm.nih.gov/genomes/genbank"
+        GBURL<-"https://ftp.ncbi.nlm.nih.gov/genomes/genbank"
         ASURL<-paste(GBURL, organisms, "assembly_summary.txt", sep="/")
         assembly_summary<-fread(ASURL, stringsAsFactors=FALSE, sep="\t", header=TRUE, quote="")
         assembly_summary<-as.data.frame(assembly_summary)
