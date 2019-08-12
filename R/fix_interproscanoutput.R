@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-fix_interproscanoutput<-function(opt=NULL){
+fix_interproscanoutput<-function(opt = NULL){
 
     if("iprodir" %in% names(opt)){
         #Get interprojob
@@ -19,9 +19,15 @@ fix_interproscanoutput<-function(opt=NULL){
         runningjobs <- length(grep("RUNNING", iprojobstatus))
 
         #Delay if there still are jobs to complete
-        nattempt=1
+        nattempt <- 1
+        if (opt$analysis %in% c("metagenome", "metatranscriptome")){
+            requirediprocompleteness <- 0.9
+        } else {
+            requirediprocompleteness <- 0.97
+        }
+
         #Wait until jobs are close to complete
-        while ((ratiojobscomplete < 0.9) && nattempt < 50) {
+        while ((ratiojobscomplete < requirediprocompleteness) && nattempt < 50) {
             flog.info("Interproscan analysis of proteome is still incomplete.")
             flog.info(paste("There are", runningjobs, " Interpro jobs running for this sample."))
             flog.info(paste("The proportion of Interpro jobs complete is currently", round(ratiojobscomplete, 2)))
@@ -72,7 +78,7 @@ fix_interproscanoutput<-function(opt=NULL){
         ipro <- ipro %>% mutate(Pathways = ifelse(Pathways == "", "none", Pathways))
 
         #remove eventual duplicates
-        ipro<-ipro[!duplicated(ipro), ]
+        ipro <- ipro[!duplicated(ipro), ]
         opt$interproscanoutput<-ipro
     }
 
