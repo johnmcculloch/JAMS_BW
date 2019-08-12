@@ -245,6 +245,11 @@ if (all(c((is.null(opt$load_workspace)), (is.null(opt$jamsfiles_path))))) {
             #Replace old options with new ones
             opt$replaced <- NULL
             optstosub <- names(preloadopt)[!(names(preloadopt) %in% c("jamsfiles_path", "load_workspace", "projimage", "projimagesize"))]
+            optstoreset <- c("make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "ordination", "export_tables")[(!(c("make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "ordination", "export_tables") %in% opt$replaced))]
+            for (resetopt in optstoreset){
+                #flog.info(paste("Option", resetopt, "is set to FALSE."))
+                opt[[resetopt]] <- FALSE
+            }
             for (nametosub in optstosub){
                 if (opt[[nametosub]] != preloadopt[[nametosub]]){
                     flog.info(paste0("For ", nametosub, ", ", opt[[nametosub]], " has been replaced with ", preloadopt[[nametosub]]))
@@ -252,12 +257,7 @@ if (all(c((is.null(opt$load_workspace)), (is.null(opt$jamsfiles_path))))) {
                     opt$replaced <- append(opt$replaced, nametosub)
                 }
             }
-            optstoreset <- c("make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "ordination", "export_tables")[(!(c("make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "ordination", "export_tables") %in% opt$replaced))]
-            for (resetopt in optstoreset){
-                flog.info(paste("Option", resetopt, "is set to FALSE."))
-                opt[[resetopt]] <- FALSE
-            }
-            #file.remove("preloadopt.rds")
+            file.remove("preloadopt.rds")
         } else {
             parse_args(OptionParser(option_list = option_list), c("-h"))
             stop("Unable to find a previous R session file in the output folder. If you want to build experiments from scratch, do not use the --continue (-u) option.")
@@ -491,9 +491,6 @@ if (!exists("expvec")){
     #Get sample list from current pheno
     Samples <- as.character(rownames(pheno))
 
-    flog.info("Saving R session image. Please be patient.")
-    save.image()
-
     #Make MetagenomeSeq-style experiments
     flog.info("Making metagenomeSeq MRexperiment objects")
     expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data)
@@ -576,13 +573,9 @@ if ("isolate" %in% pheno$JAMS_Run_type){
     applyfilters = "moderate"
 }
 
-flog.info("Saving R session image. Please be patient.")
-save.image()
-
 #######################
 ## Do optional tasks ##
 #######################
-
 
 if (opt$ordination == TRUE){
     flog.info("Will now try to generate ordination plots based on Metadata which looks meaningful.")
@@ -632,3 +625,7 @@ if (opt$make_PA_reports == TRUE){
 if (opt$make_alpha_reports == TRUE){
     make_alpha_report(project = project, expvec = expvec, usefulexp = basicexp, variable_list = variable_list, cdict = cdict)
 }
+
+#Save image
+flog.info("Saving R session image. Please be patient.")
+save.image(opt$projimage)
