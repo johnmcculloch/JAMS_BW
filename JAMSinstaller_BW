@@ -175,7 +175,7 @@ for (binexec in binexecs){
 
 #Make symlinks for Biowulf executables
 if (onbiowulf == TRUE){
-    BWbinexecs<-c("JAMSfullservice", "bankit", "bootstrapswarm")
+    BWbinexecs<-c("bankit", "bootstrapswarm")
     for(BWbinexec in BWbinexecs){
         sourcepath <- file.path(jamsbinpath, binexec)
         targetpath <- file.path(linkto, binexec)
