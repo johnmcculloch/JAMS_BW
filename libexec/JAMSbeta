@@ -245,7 +245,7 @@ if (all(c((is.null(opt$load_workspace)), (is.null(opt$jamsfiles_path))))) {
             #Replace old options with new ones
             opt$replaced <- NULL
             optstosub <- names(preloadopt)[!(names(preloadopt) %in% c("jamsfiles_path", "load_workspace", "projimage", "projimagesize"))]
-            optstoreset <- c("make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "ordination", "export_tables")[(!(c("make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "ordination", "export_tables") %in% opt$replaced))]
+            optstoreset <- c("excel_metadata", "make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "ordination", "export_tables")[(!(c("excel_metadata", "make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "ordination", "export_tables") %in% opt$replaced))]
             for (resetopt in optstoreset){
                 #flog.info(paste("Option", resetopt, "is set to FALSE."))
                 opt[[resetopt]] <- FALSE

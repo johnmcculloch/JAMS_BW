@@ -1,9 +1,9 @@
-#' make_ordination_report(project = NULL, expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", samplesToKeep = NULL, featuresToKeep=NULL, appendtofilename = NULL, ...)
+#' make_ordination_report(project = NULL, algorithm = "PCA", expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified=TRUE, appendtofilename = NULL, ...)
 #'
 #' Generates standard ordination plots for analyses named in expobjects.
 #' @export
 
-make_ordination_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified=TRUE, appendtofilename = NULL, ...){
+make_ordination_report <- function(project = NULL, algorithm = "PCA", expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, appendtofilename = NULL, ...){
 
     if(is.null(usefulexp)){
         usefulexp <- names(expvec)[!(names(expvec) %in% c("SFLD", "Coils", "Gene3D", "Phobius", "ProSitePatterns", "SMART", "ProDom"))]
@@ -56,7 +56,7 @@ make_ordination_report <- function(project = NULL, expvec = NULL, usefulexp = NU
 
         #Cycle through possible experiments
         for(e in 1:length(expvec2)){
-            print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", colourby = "GbNAHS", logtran = TRUE, transp = TRUE, permanova = FALSE, ellipse = FALSE, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep))
+            print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = algorithm, colourby = "GbNAHS", logtran = TRUE, transp = TRUE, permanova = FALSE, ellipse = FALSE, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep))
         }
     }
 
@@ -75,7 +75,7 @@ make_ordination_report <- function(project = NULL, expvec = NULL, usefulexp = NU
             for(e in 1:length(expvec2)){
                 flog.info(paste("Plotting", names(expvec2)[e], " and marking by", variables_all[c]))
 
-                print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", colourby = variables_all[c], shapeby=NULL, log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified = ignoreunclassified))
+                print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = algorithm, colourby = variables_all[c], shapeby=NULL, log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified = ignoreunclassified))
                 #If there are any subsettable variables, subset by them.
                 validsubs <- variables_subs[!(variables_subs %in% variables_all[c])]
 
@@ -93,7 +93,7 @@ make_ordination_report <- function(project = NULL, expvec = NULL, usefulexp = NU
                         if (all(classtest)){
                             plot.new()
                             grid.table(c("Marking samples by", variables_all[c], "Subsetting samples by", vs), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 25))
-                            print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = "PCA", subsetby=vs, colourby = variables_all[c], log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=ignoreunclassified))
+                            print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = algorithm, subsetby=vs, colourby = variables_all[c], log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=ignoreunclassified))
                         } else {
                             flog.info(paste("Will not plot", variables_all[c], "within", vs, "because",  paste0(discnamesvs[!classtest], collapse=", " ),  "do(es) not have more than a single class."))
                         } #End conditional that there is more than a single class
