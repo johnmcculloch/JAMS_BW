@@ -502,6 +502,7 @@ if (!exists("expvec")){
     flog.info(paste("Found a list of metagenomeSeq experiments for the following analyses:", paste0(names(expvec), collapse = ", ")))
     #Check structure and integrity of experiments and see if they match the metadata.
     Samples_have <- rownames(pData(expvec[["LKT"]]))
+    pheno <- pheno[Samples_have, ]
     #do this later
     #Replace metadata in expvec if required
     if (any(c("excel_metadata", "phenotable") %in% opt$replaced)) {
