@@ -44,8 +44,10 @@ if (length(args) > 0){
 #Decide what to install and where
 if (("--onlybeta") %in% (as.character(args))){
     installalpha <- FALSE
+    binexecs <- c("JAMSbeta", "JAMSjoinlanes", "JAMSmakeswarm")
 } else {
     installalpha <- TRUE
+    binexecs <- c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db", "JAMSjoinlanes", "JAMSmakeswarm")
 }
 
 homefolder <- as.character(Sys.getenv("HOME"))
@@ -132,7 +134,7 @@ if (onbiowulf == TRUE){
     system("brew install gcc@8 libxml2")
 }
 
-cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
+#cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
 if (onbiowulf == TRUE){
     system("export TMP=/scratch/$USER")
 } else {
@@ -158,8 +160,7 @@ cat(paste0("You have ~", round(bytesRAM/1E9, 1), " Gbytes of RAM available\n"))
 #Install Bioconductor packages
 bioconductordeps <- c("dada2", "metagenomeSeq", "HybridMTest", "genefilter")
 BiocManager::install(pkgs = bioconductordeps, update = TRUE, ask = FALSE, site_repository = repos)
-install_github("jokergoo/ComplexHeatmap")
-
+devtools::install_github("jokergoo/ComplexHeatmap")
 #Install the rest of JAMS
 devtools::install(jamsdir, upgrade = FALSE, repos = repos)
 
@@ -167,7 +168,6 @@ devtools::install(jamsdir, upgrade = FALSE, repos = repos)
 jamsbinpath <- file.path(jamsdir, "libexec")
 jamsBWbinpath <- file.path(jamsdir, "BWlibexec")
 
-binexecs <- c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db", "JAMSjoinlanes", "JAMSmakeswarm")
 for (binexec in binexecs){
     sourcepath <- file.path(jamsbinpath, binexec)
     targetpath <- file.path(linkto, binexec)
