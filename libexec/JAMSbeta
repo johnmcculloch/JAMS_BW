@@ -206,9 +206,9 @@ suppressPackageStartupMessages(library(JAMS))
 detectHardwareResources <- function(){
     #First off, detect if on Slurm type cluster
     #Get slurm job ID
-    slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+    currslurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
 
-    if(nchar(slurmjobid) < 3){
+    if(nchar(currslurmjobid) < 3){
        #Define appropriate functions for non-slurm system
        detectBatchCPUs <- function() {
             ncores <- detectCores()
@@ -227,7 +227,7 @@ detectHardwareResources <- function(){
     } else {
         #Define appropriate functions for slurm system
         detectBatchCPUs <- function() {
-            jobinforaw <- system2("sacct", args = c("-j", slurmjobid, "-X"), stdout = TRUE)[3]
+            jobinforaw <- system2("sacct", args = c("-j", currslurmjobid, "-X"), stdout = TRUE)[3]
             jobinfo <- unlist(strsplit(jobinforaw, split=" "))[which(unlist(strsplit(jobinforaw, split=" ")) != "")]
             ncores <- as.integer(jobinfo[5])
             if (is.na(ncores)) {
@@ -329,7 +329,14 @@ if (length(Dupes) > 0){
 
 ##########
 ## Will keep this running in all cases. Not sure of the consequences for when loading a workspace and NOT changing metadata.
-if (TRUE){
+opt$metadatavetting <- TRUE
+if (!is.null(opt$load_workspace)){
+    if (!any((c("excel_metadata", "phenotable") %in% opt$replaced))) {
+        opt$metadatavetting <- FALSE
+    }
+}
+
+if (opt$metadatavetting == TRUE){
     #If phenolabels exists, make sure that phenotable contains only data described in phenolabels.
     if (exists("phenolabels")){
         if (!all(colnames(phenolabels) %in% c("Var_label", "Var_type"))) {
