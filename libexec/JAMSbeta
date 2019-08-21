@@ -19,81 +19,6 @@ if(nchar(slurmjobid) < 3){
     cat(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid, "\n"))
 }
 
-############################
-## Define extra functions ##
-############################
-
-detectHardwareResources <- function(){
-    #First off, detect if on Slurm type cluster
-    #Get slurm job ID
-    slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
-
-    if(nchar(slurmjobid) < 3){
-       #Define appropriate functions for non-slurm system
-       detectBatchCPUs <- function() {
-            ncores <- detectCores()
-            if (is.na(ncores)) {
-                stop("Could not determine how many CPUs you have. Aborting.")
-            }
-            return(ncores)
-        }
-
-        detectAvailRAM <- function(){
-            totmembytes<-as.numeric(get_ram())
-
-            return(totmembytes)
-        }
-
-    } else {
-        #Define appropriate functions for slurm system
-        detectBatchCPUs <- function() {
-            ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
-            if (is.na(ncores)) {
-                ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE"))
-            }
-            if (is.na(ncores)) {
-                stop("Could not determine how many CPUs you have. Aborting.")
-            }
-            return(ncores)
-        }
-
-        detectAvailRAM <- function(){
-            mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
-            mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
-            cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
-
-            if(!(is.na(mempernode))){
-                totmem <- mempernode
-            } else {
-                totmem <- mempercpu * cpuspertask
-            }
-
-            totmembytes<-totmem * 1000000
-
-            return(totmembytes)
-        }
-    }
-    hardwareRes <- NULL
-    hardwareRes[1] <- detectBatchCPUs()
-    hardwareRes[2] <- detectAvailRAM()
-    names(hardwareRes) <- c("threads", "memory")
-
-    return(hardwareRes)
-}
-
-whoopsieplot <- function(msg = "trying to do this."){
-    flog.info(paste("Whoops, something went wrong while", msg))
-    dev.off()
-}
-
-exporttabletsv <- function(dataobj = NULL, project = NULL, basename = NULL, row.names = TRUE, col.names = TRUE, path = NULL){
-    flname <- paste(paste("JAMS", project, basename, sep = "_"), "tsv", sep = ".")
-    if (!is.null(path)){
-        flname <- paste(path, flname, sep = "/")
-    }
-    write.table(dataobj, file = flname, quote = FALSE, sep = "\t", eol = "\n", na = "NA", dec = ".", row.names = row.names, col.names = col.names)
-}
-
 #################
 ## Get options ##
 #################
@@ -125,7 +50,7 @@ option_list <- list(
                 help="Phenolabels file in tsv format, describing metadata file headers"),
 
     make_option(c("-c", "--maxnumclasses"),
-                action="store", default = 10,
+                action="store", default = 15,
                 type="numeric",
                 help="Maximum number of classes for a discrete variable to be kept. Default=10"),
 
@@ -273,6 +198,88 @@ opt$projimage <- file.path(opt$outdir, ".RData")
 ## Start project ##
 ###################
 suppressPackageStartupMessages(library(JAMS))
+################################
+## Define extra functions now ##
+## They may be missing due to ##
+##  workspace being reloaded  ##
+################################
+detectHardwareResources <- function(){
+    #First off, detect if on Slurm type cluster
+    #Get slurm job ID
+    slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+
+    if(nchar(slurmjobid) < 3){
+       #Define appropriate functions for non-slurm system
+       detectBatchCPUs <- function() {
+            ncores <- detectCores()
+            if (is.na(ncores)) {
+                stop("Could not determine how many CPUs you have. Aborting.")
+            }
+            return(ncores)
+        }
+
+        detectAvailRAM <- function(){
+            totmembytes<-as.numeric(get_ram())
+
+            return(totmembytes)
+        }
+
+    } else {
+        #Define appropriate functions for slurm system
+        detectBatchCPUs <- function() {
+
+          jobinforaw <- system2("sacct", args = c("-j", slurmjobid, "-X"), stdout = TRUE)[3]
+          jobinfo <- unlist(strsplit(jobinforaw, split=" "))[which(unlist(strsplit(jobinforaw, split=" ")) != "")]
+
+
+
+            ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+            if (is.na(ncores)) {
+                ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE"))
+            }
+            if (is.na(ncores)) {
+                stop("Could not determine how many CPUs you have. Aborting.")
+            }
+            return(ncores)
+        }
+
+        detectAvailRAM <- function(){
+            mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
+            mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
+            cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+
+            if(!(is.na(mempernode))){
+                totmem <- mempernode
+            } else {
+                totmem <- mempercpu * cpuspertask
+            }
+
+            totmembytes <- totmem * 1000000
+
+            return(totmembytes)
+        }
+    }
+    hardwareRes <- NULL
+    hardwareRes[1] <- detectBatchCPUs()
+    hardwareRes[2] <- detectAvailRAM()
+    names(hardwareRes) <- c("threads", "memory")
+
+    return(hardwareRes)
+}
+
+whoopsieplot <- function(msg = "trying to do this."){
+    flog.info(paste("Whoops, something went wrong while", msg))
+    dev.off()
+}
+
+exporttabletsv <- function(dataobj = NULL, project = NULL, basename = NULL, row.names = TRUE, col.names = TRUE, path = NULL){
+    flname <- paste(paste("JAMS", project, basename, sep = "_"), "tsv", sep = ".")
+    if (!is.null(path)){
+        flname <- paste(path, flname, sep = "/")
+    }
+    write.table(dataobj, file = flname, quote = FALSE, sep = "\t", eol = "\n", na = "NA", dec = ".", row.names = row.names, col.names = col.names)
+}
+
 flog.info("JAMSbeta start. Gathering information...")
 project <- as.character(opt$projectname)
 flog.info(paste("Using", project, "for name of project"))
@@ -318,6 +325,13 @@ if (!(exists("phenotable")) || (nrow(phenotable) < 1)){
     stop("No data found in the metadata file supplied. Please check file.")
 } else {
     flog.info(paste("Metadata has", ncol(phenotable), "columns."))
+}
+
+#Check for and eliminate duplicates
+Dupes <- phenotable$Sample[duplicated(phenotable$Sample)]
+if (length(Dupes) > 0){
+    phenotable <- subset(phenotable, !(Sample %in% Dupes))
+    flog.warn(paste("There are duplicated sample prefixes in the metadata. Samples", paste0(Dupes, collapse = ", "), "have been excluded from metadata. Will continue with building experiments. If you still want these samples, fix metadata and relaunch JAMSbeta."))
 }
 
 ##########
@@ -384,6 +398,11 @@ if (!(exists("list.data"))) {
     save.image(opt$projimage)
 }
 
+if (exists("Dupes")){
+    list.data[grep(paste0(Dupes, "_"), names(list.data))] <- NULL
+    list.data <- list.data[sapply(list.data, function(x){ !(is.null(x)) } )]
+}
+
 Samples_have <- name_samples(list.data = list.data)
 Samples_missing <- Samples_want[!(Samples_want %in% Samples_have)]
 if (length(Samples_missing) > 0){
@@ -423,7 +442,7 @@ if (adjustmetadata == TRUE){
         doreads <- FALSE
     }
 
-    rownames(phenotable)<-phenotable$Sample
+    rownames(phenotable) <- phenotable$Sample
     phenotable <- phenotable[Samples_have, ]
 
     ## Evaluate reads, if required ##
