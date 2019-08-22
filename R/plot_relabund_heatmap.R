@@ -466,7 +466,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                         } else {
                             #Let us see what the distribution looks like to fit it to the colour spectrum
                             #Transform to PPM
-                            quantprobs <- round(((2:(length(PctHmColours) - 1)) * (1/length(PctHmColours))), 1)
+                            quantprobs <- round(((2:(length(PctHmColours) - 1)) * (1 / length(PctHmColours))), 1)
                             #quantprobs <- c(0.10, 0.20, 0.35, 0.50, 0.85, 0.95, 0.99)
                             nonlogmat <- round(((2 ^ (mathm)) - 1), 0)
                             #Transform tget quantiles
@@ -479,7 +479,11 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                             relabundscalename <- "Parts Per Million"
                             RelabundBreakPtsLbls <- as.character(paste(RelabundBreakPts, "PPM"))
                         }
-                        heatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
+                        if ( hmasPA == FALSE ) {
+                            heatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
+                        } else {
+                            heatmapCols <- colorRamp2(c(0, 1), c("blue4", "red"))
+                        }
                     }
 
                     ha_column <- HeatmapAnnotation(df = hmdf, col = cores, annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"))
