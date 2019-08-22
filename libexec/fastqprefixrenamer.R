@@ -18,9 +18,9 @@ if ((.Platform$OS.type) != "unix"){
 detectHardwareResources <- function(){
     #First off, detect if on Slurm type cluster
     #Get slurm job ID
-    slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+    currslurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
 
-    if(nchar(slurmjobid) < 3){
+    if(nchar(currslurmjobid) < 3){
        #Define appropriate functions for non-slurm system
        detectBatchCPUs <- function() {
             ncores <- detectCores()
@@ -31,7 +31,7 @@ detectHardwareResources <- function(){
         }
 
         detectAvailRAM <- function(){
-            totmembytes <- as.numeric(get_ram())
+            totmembytes<-as.numeric(get_ram())
 
             return(totmembytes)
         }
@@ -59,7 +59,7 @@ detectHardwareResources <- function(){
                 totmem <- mempercpu * cpuspertask
             }
 
-            totmembytes<-totmem * 1000000
+            totmembytes <- totmem * 1000000
 
             return(totmembytes)
         }
