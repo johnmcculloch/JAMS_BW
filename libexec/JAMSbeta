@@ -203,67 +203,6 @@ suppressPackageStartupMessages(library(JAMS))
 ## They may be missing due to ##
 ##  workspace being reloaded  ##
 ################################
-detectHardwareResources <- function(){
-    #First off, detect if on Slurm type cluster
-    #Get slurm job ID
-    currslurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
-
-    if(nchar(currslurmjobid) < 3){
-       #Define appropriate functions for non-slurm system
-       detectBatchCPUs <- function() {
-            ncores <- detectCores()
-            if (is.na(ncores)) {
-                stop("Could not determine how many CPUs you have. Aborting.")
-            }
-            return(ncores)
-        }
-
-        detectAvailRAM <- function(){
-            totmembytes<-as.numeric(get_ram())
-
-            return(totmembytes)
-        }
-
-    } else {
-        #Define appropriate functions for slurm system
-        detectBatchCPUs <- function() {
-            jobinforaw <- system2("sacct", args = c("-j", currslurmjobid, "-X"), stdout = TRUE)[3]
-            jobinfo <- unlist(strsplit(jobinforaw, split=" "))[which(unlist(strsplit(jobinforaw, split=" ")) != "")]
-            ncores <- as.integer(jobinfo[5])
-            if (is.na(ncores)) {
-                stop("Could not determine how many CPUs you have. Aborting.")
-            }
-            return(ncores)
-        }
-
-        detectAvailRAM <- function(){
-            mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
-            mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
-            cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
-
-            if(!(is.na(mempernode))){
-                totmem <- mempernode
-            } else {
-                totmem <- mempercpu * cpuspertask
-            }
-
-            totmembytes <- totmem * 1000000
-
-            return(totmembytes)
-        }
-    }
-    hardwareRes <- NULL
-    hardwareRes[1] <- detectBatchCPUs()
-    hardwareRes[2] <- detectAvailRAM()
-    names(hardwareRes) <- c("threads", "memory")
-
-    return(hardwareRes)
-}
-
-whoopsieplot <- function(msg = "trying to do this."){
-    flog.info(paste("Whoops, something went wrong while", msg))
-    dev.off()
-}
 
 exporttabletsv <- function(dataobj = NULL, project = NULL, basename = NULL, row.names = TRUE, col.names = TRUE, path = NULL){
     flname <- paste(paste("JAMS", project, basename, sep = "_"), "tsv", sep = ".")
@@ -320,17 +259,17 @@ if (!(exists("phenotable")) || (nrow(phenotable) < 1)){
     flog.info(paste("Metadata has", ncol(phenotable), "columns."))
 }
 
-#Check for and eliminate duplicates
-Dupes <- phenotable$Sample[duplicated(phenotable$Sample)]
-if (length(Dupes) > 0){
-    phenotable <- subset(phenotable, !(Sample %in% Dupes))
-    flog.warn(paste("There are duplicated sample prefixes in the metadata. Samples", paste0(Dupes, collapse = ", "), "have been excluded from metadata. Will continue with building experiments. If you still want these samples, fix metadata and relaunch JAMSbeta."))
+#Check for and eliminate duplicatesq
+opt$dupes <- phenotable$Sample[duplicated(phenotable$Sample)]
+if (length(opt$dupes) > 0){
+    phenotable <- subset(phenotable, !(Sample %in% opt$dupes))
+    flog.warn(paste("There are duplicated sample prefixes in the metadata. Samples", paste0(opt$dupes, collapse = ", "), "have been excluded from metadata. Will continue with building experiments. If you still want these samples, fix metadata and relaunch JAMSbeta."))
 }
 
 ##########
 ## Will keep this running in all cases. Not sure of the consequences for when loading a workspace and NOT changing metadata.
 opt$metadatavetting <- TRUE
-if (!is.null(opt$load_workspace)){
+if (!is.null(opt$replaced)){
     if (!any((c("excel_metadata", "phenotable") %in% opt$replaced))) {
         opt$metadatavetting <- FALSE
     }
@@ -397,9 +336,8 @@ if (!(exists("list.data"))) {
     flog.info("Saving R workspace image. Please be patient.")
     save.image(opt$projimage)
 }
-
-if (exists("Dupes")){
-    list.data[grep(paste0(Dupes, "_"), names(list.data))] <- NULL
+if (length(opt$dupes) > 0){
+    list.data[grep(paste0(opt$dupes, "_"), names(list.data))] <- NULL
     list.data <- list.data[sapply(list.data, function(x){ !(is.null(x)) } )]
 }
 

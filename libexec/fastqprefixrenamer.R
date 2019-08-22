@@ -39,10 +39,9 @@ detectHardwareResources <- function(){
     } else {
         #Define appropriate functions for slurm system
         detectBatchCPUs <- function() {
-            ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
-            if (is.na(ncores)) {
-                ncores <- as.integer(Sys.getenv("SLURM_JOB_CPUS_PER_NODE"))
-            }
+            jobinforaw <- system2("sacct", args = c("-j", currslurmjobid, "-X"), stdout = TRUE)[3]
+            jobinfo <- unlist(strsplit(jobinforaw, split=" "))[which(unlist(strsplit(jobinforaw, split=" ")) != "")]
+            ncores <- as.integer(jobinfo[5])
             if (is.na(ncores)) {
                 stop("Could not determine how many CPUs you have. Aborting.")
             }

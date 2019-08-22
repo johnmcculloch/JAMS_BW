@@ -21,3 +21,74 @@ Pct2log2PPM <- function(Pct){
 
     return(log2PPM)
 }
+
+
+#' detectHardwareResources()
+#' Generic function for getting number of CPUs and total memory on Biowulf or otherwise
+#' Returns a named vector with available CPUs and Memory in bytes
+#' @export
+
+detectHardwareResources <- function(){
+    #First off, detect if on Slurm type cluster
+    #Get slurm job ID
+    currslurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+
+    if(nchar(currslurmjobid) < 3){
+       #Define appropriate functions for non-slurm system
+       detectBatchCPUs <- function() {
+            ncores <- detectCores()
+            if (is.na(ncores)) {
+                stop("Could not determine how many CPUs you have. Aborting.")
+            }
+            return(ncores)
+        }
+
+        detectAvailRAM <- function(){
+            totmembytes<-as.numeric(get_ram())
+
+            return(totmembytes)
+        }
+
+    } else {
+        #Define appropriate functions for slurm system
+        detectBatchCPUs <- function() {
+            jobinforaw <- system2("sacct", args = c("-j", currslurmjobid, "-X"), stdout = TRUE)[3]
+            jobinfo <- unlist(strsplit(jobinforaw, split=" "))[which(unlist(strsplit(jobinforaw, split=" ")) != "")]
+            ncores <- as.integer(jobinfo[5])
+            if (is.na(ncores)) {
+                stop("Could not determine how many CPUs you have. Aborting.")
+            }
+            return(ncores)
+        }
+
+        detectAvailRAM <- function(){
+            mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
+            mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
+            cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+
+            if(!(is.na(mempernode))){
+                totmem <- mempernode
+            } else {
+                totmem <- mempercpu * cpuspertask
+            }
+
+            totmembytes <- totmem * 1000000
+
+            return(totmembytes)
+        }
+    }
+    hardwareRes <- NULL
+    hardwareRes[1] <- detectBatchCPUs()
+    hardwareRes[2] <- detectAvailRAM()
+    names(hardwareRes) <- c("threads", "memory")
+
+    return(hardwareRes)
+}
+
+#' whoopsieplot(msg = NULL)
+#' Shuts down the device and gives a message on error, useful for when making reports.
+#' @export
+whoopsieplot <- function(msg = "trying to do this."){
+    flog.info(paste("Whoops, something went wrong while", msg))
+    dev.off()
+}
