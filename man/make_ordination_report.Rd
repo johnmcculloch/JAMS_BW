@@ -2,14 +2,14 @@
 % Please edit documentation in R/make_ordination_report.R
 \name{make_ordination_report}
 \alias{make_ordination_report}
-\title{make_ordination_report(project = NULL, expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", samplesToKeep = NULL, featuresToKeep=NULL, appendtofilename = NULL, ...)}
+\title{make_ordination_report(project = NULL, algorithm = "PCA", expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified=TRUE, appendtofilename = NULL, ...)}
 \usage{
-make_ordination_report(project = NULL, expvec = NULL,
-  usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL,
-  variable_list = NULL, list.data = NULL, doreads = NULL,
-  cdict = NULL, ellipse = "auto", samplesToKeep = NULL,
-  featuresToKeep = NULL, ignoreunclassified = TRUE,
-  appendtofilename = NULL, ...)
+make_ordination_report(project = NULL, algorithm = "PCA",
+  expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE,
+  genomecompleteness = NULL, variable_list = NULL, list.data = NULL,
+  doreads = NULL, cdict = NULL, ellipse = "auto",
+  samplesToKeep = NULL, featuresToKeep = NULL,
+  ignoreunclassified = TRUE, appendtofilename = NULL, ...)
 }
 \description{
 Generates standard ordination plots for analyses named in expobjects.
