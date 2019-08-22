@@ -44,10 +44,10 @@ if (length(args) > 0){
 #Decide what to install and where
 if (("--onlybeta") %in% (as.character(args))){
     installalpha <- FALSE
-    binexecs <- c("JAMSbeta", "JAMSjoinlanes", "JAMSmakeswarm")
+    binexecs <- c("JAMSbeta", "JAMSjoinlanes", "JAMSmakeswarm", "JAMSbankit", "JAMSfastqprefixrenamer")
 } else {
     installalpha <- TRUE
-    binexecs <- c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db", "JAMSjoinlanes", "JAMSmakeswarm")
+    binexecs <- c("JAMSalpha", "JAMSbeta", "JAMSbuildk2db", "JAMSjoinlanes", "JAMSmakeswarm", "JAMSbankit", "JAMSfastqprefixrenamer")
 }
 
 homefolder <- as.character(Sys.getenv("HOME"))

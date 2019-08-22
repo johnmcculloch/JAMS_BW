@@ -1,0 +1,369 @@
+#!/usr/bin/env Rscript
+suppressWarnings(suppressPackageStartupMessages(library(optparse)))
+suppressWarnings(suppressPackageStartupMessages(library(futile.logger)))
+suppressWarnings(suppressPackageStartupMessages(library(benchmarkme)))
+suppressWarnings(suppressPackageStartupMessages(library(tidyverse)))
+suppressWarnings(suppressPackageStartupMessages(library(RCurl)))
+suppressWarnings(suppressPackageStartupMessages(library(parallel)))
+suppressWarnings(suppressPackageStartupMessages(library(openxlsx)))
+
+#####################################
+# Define System-specific Functions ##
+#####################################
+if ((.Platform$OS.type) != "unix"){
+    stop("This script only works on UNIX. Install Linux and try again.")
+}
+
+#Decide which kind of system you are on.
+detectHardwareResources <- function(){
+    #First off, detect if on Slurm type cluster
+    #Get slurm job ID
+    currslurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+
+    if(nchar(currslurmjobid) < 3){
+       #Define appropriate functions for non-slurm system
+       detectBatchCPUs <- function() {
+            ncores <- detectCores()
+            if (is.na(ncores)) {
+                stop("Could not determine how many CPUs you have. Aborting.")
+            }
+            return(ncores)
+        }
+
+        detectAvailRAM <- function(){
+            totmembytes<-as.numeric(get_ram())
+
+            return(totmembytes)
+        }
+
+    } else {
+        #Define appropriate functions for slurm system
+        detectBatchCPUs <- function() {
+            jobinforaw <- system2("sacct", args = c("-j", currslurmjobid, "-X"), stdout = TRUE)[3]
+            jobinfo <- unlist(strsplit(jobinforaw, split=" "))[which(unlist(strsplit(jobinforaw, split=" ")) != "")]
+            ncores <- as.integer(jobinfo[5])
+            if (is.na(ncores)) {
+                stop("Could not determine how many CPUs you have. Aborting.")
+            }
+            return(ncores)
+        }
+
+        detectAvailRAM <- function(){
+            mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
+            mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
+            cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+
+            if(!(is.na(mempernode))){
+                totmem <- mempernode
+            } else {
+                totmem <- mempercpu * cpuspertask
+            }
+
+            totmembytes <- totmem * 1000000
+
+            return(totmembytes)
+        }
+    }
+    hardwareRes <- NULL
+    hardwareRes[1] <- detectBatchCPUs()
+    hardwareRes[2] <- detectAvailRAM()
+    names(hardwareRes) <- c("threads", "memory")
+
+    return(hardwareRes)
+}
+
+############################
+## Define other functions ##
+############################
+filetype <- function(path){
+    f = file(path)
+    ext = summary(f)$class
+    close.connection(f)
+    ext
+}
+
+# get path of running script
+getScriptPath <- function() {
+    cmdArgs <- commandArgs(trailingOnly = FALSE)
+    needle <- "--file="
+    match <- grep(needle, cmdArgs)
+    if (length(match) > 0) {
+        return(dirname(normalizePath(sub(needle, "", cmdArgs[match]))))
+    } else {
+        return(dirname(normalizePath(sys.frames()[[1]]$ofile)))
+    }
+}
+
+#Define useful functions
+is.redundant <- function(vec){
+    propunique <- length(unique(vec))/length(vec)
+    if (propunique < 1){
+        redundant = TRUE
+    } else {
+        redundant = FALSE
+    }
+
+    return(redundant)
+}
+
+report2log <- function(message = NULL, opt = NULL, warn = FALSE){
+    #Disclaimer: not efficient, but works.
+    banker <- paste("Banker:", opt$user)
+    if (opt$simulate == FALSE){
+        logfile <- opt$logfile
+        if (warn == FALSE){
+            cat(paste(banker, flog.info(message), sep="->"), append = TRUE, file = opt$logfile)
+        } else {
+            cat(paste(banker, flog.warn(message), sep="->"), append = TRUE, file = opt$logfile)
+        }
+    } else {
+        if (warn == FALSE){
+            flog.info(message)
+        } else {
+            flog.warn(message)
+        }
+    }
+}
+
+test_writeability <- function(dirpath){
+    touchfile <- file.path(dirpath, "writetestJAMS")
+    testresult <- suppressWarnings(system2('touch', args = touchfile, stderr = TRUE, stdout = FALSE))
+    if (file.exists(touchfile)){
+        dmp <- file.remove(touchfile)
+    }
+
+    if (length(testresult) > 0){
+        writeability <- FALSE
+    } else {
+        writeability <- TRUE
+    }
+
+    return(writeability)
+}
+
+#########################
+# Get options from args #
+#########################
+#Define defaults
+defopt <- list()
+defopt$verstr <- paste0("JAMSbankit v", "1.0")
+defopt$origin <- getwd()
+defopt$destination <- NULL
+defopt$move <- FALSE
+defopt$simulate <- FALSE
+
+option_list <- list(
+    make_option(c("-o", "--origin"), default = defopt$origin, action="store",
+                help = str_c("path to where JAMSalpha outputs are to be searched for (default: ", defopt$origin, ")")),
+
+    make_option(c("-d", "--destination"), default = defopt$destination, action="store",
+                help = str_c("path where you want to bank JAMSalpha outputs to")),
+
+    make_option(c("-p", "--prefixlist"), default = NULL, action="store",
+                help = str_c("Text file with list of JAMSalpha prefixes to bank. If not supplied, will bank all JAMSalpha files found in the folder")),
+
+    make_option(c("-f", "--forcebanking"), default = FALSE, action="store_true",
+                help = str_c("Overwrite JAMS files at destination, if files bearing the same prefix already exist.")),
+
+    make_option(c("-n", "--ignorereads"), default = FALSE,
+                action="store_true", help = str_c("Do not bank reads generated by JAMSalpha, even if they exist. This is useful for banking JAMSalpha runs of reads downloaded from SRA")),
+
+    make_option(c("-m", "--move"), default = defopt$move, action="store_true",
+                help = str_c("Move to destination rather than copy. If ommited will only copy.")),
+
+    make_option(c("-c", "--chmod"), default = NULL, action="store",
+                help = str_c("Change permissions of banked files to this. Example: 755 or ug+rwx")),
+
+    make_option(c("-x", "--deleteJAMSfolder"), default = FALSE,
+                action="store_true", help = str_c("Delete the JAMSalpha folder (Sample_JAMS) for that prefix at the origin.")),
+
+    make_option(c("-s", "--simulate"), default = defopt$simulate, action="store_true",
+                help = str_c("Simulate and print commands for banking, do not actually bank.")),
+
+    make_option(c("-v", "--version"), action="store_true",
+                help ="report version")
+)
+
+# parse the options
+args <- commandArgs(trailingOnly = TRUE)
+opt <- parse_args(OptionParser(option_list = option_list), args)
+opt <- merge.list(opt, defopt)
+
+#####################
+## Set environment ##
+#####################
+
+# print version & exit if -v
+if (!is.null(opt$version)) {
+    print(opt$verstr)
+    quit()
+}
+
+#Get Script path
+opt$bindir <- getScriptPath()
+
+#Fix path relativity
+fixrelpath <- function(JAMSpath = NULL){
+    require(R.utils)
+    if (!(isAbsolutePath(JAMSpath))){
+        fixedpath <- getAbsolutePath(JAMSpath)
+    } else {
+        fixedpath <- JAMSpath
+    }
+
+    return(fixedpath)
+}
+
+for (pathtofix in c("origin", "destination", "prefixlist")){
+    if (!is.null(opt[[pathtofix]])){
+        opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
+    }
+}
+
+# give help if needed input option not provided
+if (is.null(opt$destination)) {
+    cat("You must inform a destination folder for banking JAMSalpha runs.\n")
+    #parse_args(OptionParser(option_list = option_list), c("-h"))
+    q()
+}
+
+###################
+## Main Function ##
+###################
+
+if (!(file.exists(opt$destination))){
+    flog.info("Creating folder to bank JAMSalpha files.")
+    dir.create(opt$destination, recursive = TRUE)
+} else {
+    flog.info("Found destination folder for banking JAMSalpha files.")
+}
+
+#Assess if a banked directory structure already exists
+opt$jamsfiles <- file.path(opt$destination, "jamsfiles")
+opt$JAMStarballs <- file.path(opt$destination, "JAMStarballs")
+opt$reads <- file.path(opt$destination, "reads")
+opt$reports <- file.path(opt$destination, "reports")
+opt$logfile <- file.path(opt$destination, "bankit_log.txt")
+opt$user <- as.character(Sys.info()["user"])
+
+JAMSsubfolders <- c("jamsfiles", "JAMStarballs", "reads", "reports")
+for (subfolder in JAMSsubfolders){
+    if (file.exists(opt[[subfolder]])){
+        flog.info(paste("Found", subfolder, "folder"))
+        if(!test_writeability(opt[[subfolder]])) {
+            flog.info(paste0("You have no writing permissions to ", opt[[subfolder]], ". Aborting now."))
+            q()
+        }
+    } else {
+        flog.info(paste("Creating", subfolder, "folder"))
+        dir.create(opt[[subfolder]])
+    }
+}
+
+## Find out what is available at the origin
+tarballs <- list.files(path = opt$origin, pattern = "_JAMS\\.tar\\.gz", full.names = FALSE, recursive = FALSE)
+prefixes <- sapply(1:length(tarballs), function(x) { unlist(strsplit(tarballs[x], split = "_"))[1] } )
+
+JAMSalphaorigindf <- data.frame(Prefix = prefixes, JAMStarball = tarballs, stringsAsFactors = FALSE)
+JAMSalphaorigindf$Report <- paste(JAMSalphaorigindf$Prefix, "JAMSalpha_report.pdf", sep = "_")
+JAMSalphaorigindf$JAMSfile <- paste(JAMSalphaorigindf$Prefix, "jams", sep = ".")
+#Load prefix list if present
+if (!(is.null(opt$prefixlist))){
+    wantedprefixes <- read.table(opt$prefixlist, header = FALSE, sep = " ", stringsAsFactors = FALSE)
+    wantedprefixes <- as.character(wantedprefixes[, 1])
+    if (!(all(wantedprefixes %in% JAMSalphaorigindf$Prefix))){
+        cat("WARNING: Not all JAMSalpha sample prefixes were found.\nUnable to find files for the following prefixes:\n")
+        cat(paste(paste0(wantedprefixes[!(wantedprefixes %in% JAMSalphaorigindf$Prefix)], collapse = ", "), "\n"))
+    }
+
+    JAMSalphaorigindf <- subset(JAMSalphaorigindf, Prefix %in% wantedprefixes)
+}
+
+if (nrow(JAMSalphaorigindf) < 1){
+    flog.info("No JAMSalpha sample prefixes were found. Aborting now.")
+    q()
+} else {
+    #start logging
+    report2log(message = paste("Banking JAMSalpha runs of samples with the following prefixes:", paste0(JAMSalphaorigindf$Prefix, collapse = ", ")), opt = opt)
+}
+
+#Copy or move the files
+if (opt$move == TRUE){
+    manipcmd <- "mv"
+} else {
+    manipcmd <- "cp"
+}
+
+NOGO <- NULL
+#Loop through prefixes and act accordingly.
+for (currPrefix in JAMSalphaorigindf$Prefix){
+    currbankcmds <- NULL
+    abortprefix <- FALSE
+    sampledf <- subset(JAMSalphaorigindf, Prefix == currPrefix)
+    #Bank jams, report and tarball file
+    for (jf in c("JAMSfile", "Report", "JAMStarball")){
+        target <- switch(jf, "JAMSfile" = opt$jamsfiles, "Report" = opt$reports, "JAMStarball" = opt$JAMStarballs)
+        if(file.exists(file.path(opt$origin, sampledf[, jf]))){
+            #Check if file with same name has already been banked.
+            if (file.exists(file.path(target, sampledf[, jf]))){
+                report2log(message = paste("Target file", (file.path(target, sampledf[, jf])), "already exists." ), warn = TRUE, opt = opt)
+                abortprefix <- TRUE
+            } else {
+                currbankcmds <- append(paste(manipcmd, (file.path(opt$origin, sampledf[, jf])), (file.path(target, sampledf[, jf]))), currbankcmds)
+                if (!is.null(opt$chmod)){
+                    currbankcmds <- append(paste("chmod", as.character(opt$chmod), file.path(target, sampledf[, jf])), currbankcmds)
+                }
+            }
+        } else {
+            report2log(message = paste("Could not find", sampledf[, jf]), warn = TRUE, opt = opt)
+            abortprefix <- TRUE
+        }
+    }
+    #Bank reads
+    if (opt$ignorereads != TRUE){
+        readsfilenames <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", sep="_"), "tar", "gz", sep=".")
+        readsfilenameswithpaths <- file.path(opt$origin, readsfilenames)
+        if (any(file.exists(readsfilenameswithpaths))){
+            currreadsfile <- readsfilenameswithpaths[which(file.exists(readsfilenameswithpaths) == TRUE)][1]
+            currreadsfilename <- readsfilenames[which(file.exists(readsfilenameswithpaths) == TRUE)][1]
+            destreadsfn <- file.path(opt$destination, currreadsfilename)
+            if (!file.exists(destreadsfn)){
+                currbankcmds <- append(paste(manipcmd, currreadsfile, destreadsfn), currbankcmds)
+                if (!is.null(opt$chmod)){
+                    currbankcmds <- append(paste("chmod", as.character(opt$chmod), destreadsfn), currbankcmds)
+                }
+            }
+        } else {
+            report2log(message = paste("Unable to find any reads for sample", currPrefix))
+        }
+    } else {
+        report2log(message = paste("Omitting banking of reads for sample", currPrefix, "as requested."))
+    }
+    #Delte project folder if requested
+    if (opt$deleteJAMSfolder == TRUE){
+        currprojfolder <- file.path(opt$origin, paste(currPrefix, "JAMS", sep = "_"))
+        currbankcmds <- append(paste("rm -rf", currprojfolder), currbankcmds)
+    }
+    if (abortprefix != TRUE){
+        report2log(message = paste("Sample", currPrefix, "is GO for banking."), opt = opt)
+        for (cmd in rev(currbankcmds)){
+            if (opt$simulate != TRUE){
+                #Actually execute the commands
+                report2log(message = paste("Executing:", cmd), opt = opt)
+                system(cmd)
+            } else {
+                #Show what would be done
+                report2log(message = paste("Simulating:", cmd), opt = opt)
+            }
+        }
+    } else {
+        report2log(message = paste("Sample", currPrefix, "is NO-GO for banking."), opt = opt)
+        NOGO <- append(NOGO, currPrefix)
+    }
+}
+
+if (length(NOGO) > 0){
+    report2log(message = paste("Samples", paste0(NOGO, collapse = ", "), "were NO-GO for banking, and thus skipped."), opt = opt)
+} else {
+    report2log(message = "All requested JAMSalpha prefixes were banked.", opt = opt)
+}
