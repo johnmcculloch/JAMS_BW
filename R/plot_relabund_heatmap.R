@@ -213,7 +213,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                 cl = pData(currobj)[ , which(colnames(pData(currobj)) == compareby)]
                 discretenames <- sort(unique(cl))
 
-                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = TRUE, statsonlog = statsonlog, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, nperm = nperm)
+                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = !(asPA), statsonlog = statsonlog, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, nperm = nperm)
 
                 #Bank raw stats
                 matstatsbank <- as.data.frame(matstats)
