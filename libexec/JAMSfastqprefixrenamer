@@ -301,7 +301,7 @@ if (!is.null(opt$checkprefixexists)){
         alreadyusedprexixes <- prefixestouse[(prefixestouse %in% usedprefixes)]
         if (length(alreadyusedprexixes) > 0){
             flog.warn(paste("WARNING: THE FOLLOWING PREFIXES HAVE BEEN FOUND IN", as.character(opt$checkprefixexists)))
-            flog.warn(paste0(alreadyusedprexixes, collapse = ", "))
+            flog.warn(paste0(alreadyusedprexixes, collapse = "\n"))
             flog.warn("Check your filenames and substitution table. ABORTING NOW.")
             q()
         } else {
