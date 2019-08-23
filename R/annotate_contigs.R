@@ -64,7 +64,7 @@ annotate_contigs <- function(opt = NULL){
     if (opt$workdir != opt$sampledir){
         flog.info("Banking annotation to sample directory.")
         copyargs <- c("-R", file.path(opt$workdir, annotationfolder), opt$sampledir)
-        system2('cp', args = copyargs)
+        system(paste0("cp", copyargs, collapse = " "))
     }
 
     return(opt)
