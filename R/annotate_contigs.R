@@ -22,7 +22,8 @@ annotate_contigs <- function(opt = NULL){
         prokkaargs <- c(prokkaargs, prokkajams)
     }
 
-    system2(prokkacmd, args = prokkaargs, stdout = TRUE, stderr = TRUE)
+    #system2(prokkacmd, args = prokkaargs, stdout = TRUE, stderr = TRUE)
+    system(paste(prokkacmd, paste0(prokkaargs, collapse = " ")))
     flog.info("Contigs have been annotated.")
     file.remove("contigstoannot.fa")
 
