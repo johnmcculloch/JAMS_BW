@@ -37,9 +37,13 @@ if (nchar(slurmjobid) < 3){
     print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
     #Define appropriate functions for slurm system
     detectBatchCPUs <- function() {
-        jobinforaw <- system2("sacct", args = c("-j", slurmjobid, "-X"), stdout = TRUE)[3]
+        sacctraw <- system2("sacct", args = c("-j", slurmjobid, "-X"), stdout = TRUE)
+        jobinforaw <- sacctraw[3]
+        jobinfoheaders <- sacctraw[1]
         jobinfo <- unlist(strsplit(jobinforaw, split=" "))[which(unlist(strsplit(jobinforaw, split=" ")) != "")]
-        ncores <- as.integer(jobinfo[5])
+        names(jobinfo) <- unlist(strsplit(jobinfoheaders, split=" "))[which(unlist(strsplit(jobinfoheaders, split=" ")) != "")]
+        ncores <- as.integer(jobinfo["AllocCPUS"])
+        print(jobinfo)
         if (is.na(ncores)) {
             stop("Could not determine how many CPUs you have. Aborting.")
         }
