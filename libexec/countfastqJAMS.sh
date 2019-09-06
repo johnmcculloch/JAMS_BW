@@ -20,7 +20,7 @@ version="1.0"
 
 message_ver="
 
-fastannotate_JAMS.sh ver $version
+countfastqJAMS.sh ver $version
 by John McCulloch OCT-2018
 
 "
@@ -43,7 +43,7 @@ while getopts $options option
 do
     case $option in
         d  ) fastqfolder="$OPTARG" ;;
-        t  ) threads="$OPTARG" ;;        
+        t  ) threads="$OPTARG" ;;
         v  ) version; exit;;
         h  ) usage; exit;;
         \? ) echo "Unknown option: -$OPTARG" >&2; exit 1;;
@@ -57,12 +57,12 @@ shift $(($OPTIND - 1))
 countfastq(){
     stats=`cat $1 | awk '((NR-2)%4==0){read=$1;total++;count[read]++;sum+=length($1)}END{print total"§"sum}'`
     fn="$1"
-    echo -e $fn'§'$stats | sed $'s/§/\t/g' 
+    echo -e $fn'§'$stats | sed $'s/§/\t/g'
 }
 export -f countfastq
 
 countfasta(){
-    cat $1 | awk '$0 ~ ">" {print c; c=0;printf substr($0,2,100) "\t"; } $0 !~ ">" {c+=length($0);} END { print c; }' 
+    cat $1 | awk '$0 ~ ">" {print c; c=0;printf substr($0,2,100) "\t"; } $0 !~ ">" {c+=length($0);} END { print c; }'
 }
 
 cd "$fastqfolder"

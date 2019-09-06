@@ -454,35 +454,36 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     } else if (heatpalette == "diverging"){
                         heatmapCols <- colorRampPalette(rev(brewer.pal(9, "RdYlBu")))(50)
                     } else {
-                        #This is the colour spectrum we are aiming to span
-                        PctHmColours <- c("blue4", "blue", "slategray1", "khaki", "orange", "tomato", "red", "magenta2", "magenta4")
-
-                        if (analysis == "LKT"){
-                            PctBreakPts <- c(0.0001, 0.001, 0.1, 1, 2.5, 5, 10, 50, 100)
-                            RelabundBreakPts <- signif(PctBreakPts, digits = 3)
-                            relabundscalename <- "Relative Abundance (%)"
-                            RelabundBreakPtsLbls <- as.character(paste0(RelabundBreakPts, "%"))
-                            HMrelabundBreaks <- Pct2log2PPM(PctBreakPts)
-                        } else {
-                            #Let us see what the distribution looks like to fit it to the colour spectrum
-                            #Transform to PPM
-                            quantprobs <- round(((2:(length(PctHmColours) - 1)) * (1 / length(PctHmColours))), 1)
-                            #quantprobs <- c(0.10, 0.20, 0.35, 0.50, 0.85, 0.95, 0.99)
-                            nonlogmat <- round(((2 ^ (mathm)) - 1), 0)
-                            #Transform tget quantiles
-                            countmatdistrib <- apply(nonlogmat, function (x) {quantile(x, probs = quantprobs) }, MARGIN = 2)
-                            #take median values of these
-                            medpoints <- rowMedians(countmatdistrib)
-                            PPMrelabundBreaks <- c(0, medpoints, max(nonlogmat))
-                            HMrelabundBreaks <- log2(PPMrelabundBreaks + 1)
-                            RelabundBreakPts <- PPMrelabundBreaks
-                            relabundscalename <- "Parts Per Million"
-                            RelabundBreakPtsLbls <- as.character(paste(RelabundBreakPts, "PPM"))
-                        }
                         if ( hmasPA == FALSE ) {
+                            #This is the colour spectrum we are aiming to span
+                            PctHmColours <- c("blue4", "blue", "slategray1", "khaki", "orange", "tomato", "red", "magenta2", "magenta4")
+
+                            if (analysis == "LKT"){
+                                PctBreakPts <- c(0.0001, 0.001, 0.1, 1, 2.5, 5, 10, 50, 100)
+                                RelabundBreakPts <- signif(PctBreakPts, digits = 3)
+                                relabundscalename <- "Relative Abundance (%)"
+                                RelabundBreakPtsLbls <- as.character(paste0(RelabundBreakPts, "%"))
+                                HMrelabundBreaks <- Pct2log2PPM(PctBreakPts)
+                            } else {
+                                #Let us see what the distribution looks like to fit it to the colour spectrum
+                                #Transform to PPM
+                                quantprobs <- round(((2:(length(PctHmColours) - 1)) * (1 / length(PctHmColours))), 1)
+                                #quantprobs <- c(0.10, 0.20, 0.35, 0.50, 0.85, 0.95, 0.99)
+                                nonlogmat <- round(((2 ^ (mathm)) - 1), 0)
+                                #Transform tget quantiles
+                                countmatdistrib <- apply(nonlogmat, function (x) {quantile(x, probs = quantprobs) }, MARGIN = 2)
+                                #take median values of these
+                                medpoints <- rowMedians(countmatdistrib)
+                                PPMrelabundBreaks <- c(0, medpoints, max(nonlogmat))
+                                HMrelabundBreaks <- log2(PPMrelabundBreaks + 1)
+                                RelabundBreakPts <- PPMrelabundBreaks
+                                relabundscalename <- "Parts Per Million"
+                                RelabundBreakPtsLbls <- as.character(paste(RelabundBreakPts, "PPM"))
+                            }
                             heatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
                         } else {
                             heatmapCols <- colorRamp2(c(0, 1), c("blue4", "red"))
+                            relabundscalename <- "Pres/Abs"
                         }
                     }
 
@@ -525,13 +526,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
 
                     if (scaled == TRUE) {
                         countmat2 <- t(apply(countmat2, 1, scale))
-                        lname <- "scaling"
-                    } else {
-                        if(asPA == TRUE){
-                            lname = "P/A"
-                        } else {
-                            lname = "log2(PPM)"
-                        }
+                        relabundscalename <- "scaling"
                     }
 
                     #Include row annotations for pvalues and l2fc if required.
@@ -606,9 +601,9 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                             gord <- hcmat$order
                             co <- append(co, colnames(gmat)[gord], after = length(co))
                         }
-                        ht1 <- Heatmap(mathm, name = lname, cluster_columns = FALSE, column_order = co, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                        ht1 <- Heatmap(mathm, name = relabundscalename, cluster_columns = FALSE, column_order = co, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
                     } else {
-                        ht1 <- Heatmap(mathm, name = "Relative_Abundance", column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                        ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
                     }
                     #Make a genome completeness heatmap if in taxonomic space
                     if (analysis == "LKT"){

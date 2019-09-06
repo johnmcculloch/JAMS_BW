@@ -325,12 +325,12 @@ for (currPrefix in JAMSalphaorigindf$Prefix){
     }
     #Bank reads
     if (opt$ignorereads != TRUE){
-        readsfilenames <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", sep="_"), "tar", "gz", sep=".")
+        readsfilenames <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", sep = "_"), "tar", "gz", sep = ".")
         readsfilenameswithpaths <- file.path(opt$origin, readsfilenames)
         if (any(file.exists(readsfilenameswithpaths))){
             currreadsfile <- readsfilenameswithpaths[which(file.exists(readsfilenameswithpaths) == TRUE)][1]
             currreadsfilename <- readsfilenames[which(file.exists(readsfilenameswithpaths) == TRUE)][1]
-            destreadsfn <- file.path(opt$destination, currreadsfilename)
+            destreadsfn <- file.path(opt$reads, currreadsfilename)
             if (!file.exists(destreadsfn)){
                 currbankcmds <- append(paste(manipcmd, currreadsfile, destreadsfn), currbankcmds)
                 if (!is.null(opt$chmod)){

@@ -15,7 +15,7 @@ export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL
     pt <- as.data.frame(pData(expvec2[[1]]))
 
     countvec <- NULL
-    countvec <- vector("list", length=1000)
+    countvec <- vector("list", length = 1000)
     cvn <- 1
     if (includemetadata == TRUE){
         print("Exporting metadata.")
