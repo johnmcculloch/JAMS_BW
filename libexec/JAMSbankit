@@ -181,7 +181,7 @@ option_list <- list(
     make_option(c("-x", "--deleteJAMSfolder"), default = FALSE,
                 action="store_true", help = str_c("Delete the JAMSalpha folder (Sample_JAMS) for that prefix at the origin.")),
 
-    make_option(c("-s", "--simulate"), default = defopt$simulate, action="store_true",
+    make_option(c("-s", "--simulate"), default = FALSE, action="store_true",
                 help = str_c("Simulate and print commands for banking, do not actually bank.")),
 
     make_option(c("-v", "--version"), action="store_true",
