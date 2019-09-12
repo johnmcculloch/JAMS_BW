@@ -154,7 +154,7 @@ defopt$verstr <- paste0("JAMSbankit v", "1.0")
 defopt$origin <- getwd()
 defopt$destination <- NULL
 defopt$move <- FALSE
-defopt$simulate <- FALSE
+#defopt$simulate <- FALSE
 
 option_list <- list(
     make_option(c("-o", "--origin"), default = defopt$origin, action="store",
@@ -338,10 +338,10 @@ for (currPrefix in JAMSalphaorigindf$Prefix){
                 }
             }
         } else {
-            report2log(message = paste("Unable to find any reads for sample", currPrefix))
+            report2log(message = paste("Unable to find any reads for sample", currPrefix), opt = opt)
         }
     } else {
-        report2log(message = paste("Omitting banking of reads for sample", currPrefix, "as requested."))
+        report2log(message = paste("Omitting banking of reads for sample", currPrefix, "as requested."), opt = opt)
     }
     #Delte project folder if requested
     if (opt$deleteJAMSfolder == TRUE){
