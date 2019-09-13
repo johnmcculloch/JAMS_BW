@@ -68,8 +68,8 @@ jamsdir <- getScriptPath()
 rlibs <- .libPaths()[1]
 
 #Decide which kind of system you are on.
-slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
-if (nchar(slurmjobid) > 3){
+currslurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+if (nchar(currslurmjobid) > 3){
     onbiowulf <- TRUE
     #Define appropriate functions for slurm system
     detectBatchCPUs <- function() {
