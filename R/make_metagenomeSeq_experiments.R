@@ -129,7 +129,7 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlya
         cts <- spread(featureall, Sample, NumBases, fill = 0, drop = TRUE)
         #Just double check that there are no dupes
         if (length(which(duplicated(cts$Accession) == TRUE)) > 0){
-            print(paste("Found", length(which(duplicated(cts$Accession) == TRUE)), "duplicated accessions. Keeping the first on in each case."))
+            print(paste("Found", length(which(duplicated(cts$Accession) == TRUE)), "duplicated accessions. Keeping the first one in each case."))
             cts <- cts[!(duplicated(cts$Accession)), ]
         }
         rownames(cts) <- cts$Accession
