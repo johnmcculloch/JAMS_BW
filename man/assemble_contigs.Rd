@@ -4,7 +4,7 @@
 \alias{assemble_contigs}
 \title{assemble_contigs}
 \usage{
-assemble_contigs(opt = NULL)
+assemble_contigs(opt = NULL, maxbases_input = 2e+10)
 }
 \description{
 JAMSalpha function
