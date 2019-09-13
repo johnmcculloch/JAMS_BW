@@ -3,15 +3,15 @@
 #' JAMSalpha function
 #' @export
 
-assemble_contigs <- function(opt=NULL){
+assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
     #Obtain reads to use for assembly
-    opt <- get_reads(opt=opt)
+    opt <- get_reads(opt = opt)
     save.image(file = opt$projimage)
     #Filter reads if necessary
-    opt <- trim_reads(opt=opt)
+    opt <- trim_reads(opt = opt)
     save.image(file = opt$projimage)
     #Eliminate host reads if applicable
-    opt <- filter_host(opt=opt)
+    opt <- filter_host(opt = opt)
     #Check if reads are in tmpdir
     if (opt$workdir != opt$sampledir){
         readsworkdir <- file.path(opt$workdir, "reads")
@@ -48,13 +48,30 @@ assemble_contigs <- function(opt=NULL){
     }
 
     #Estimate number of reads to tag as deep sequencing
-    numreadsarg <- c("-c", "^@", inputreads[1])
-    estnumreads <- as.numeric(system2('grep', args=numreadsarg, stdout=TRUE))
+    #numreadsarg <- c("-c", "^@", inputreads[1])
+    numreadsarg <- c("\'/^@/{a++}END{print", "a}\'", inputreads[1])
+    estnumreads <- as.numeric(system2('awk', args = numreadsarg, stdout = TRUE))
     numreads <- estnumreads * min(length(inputreads), 2)
     readchars <- as.numeric(system2('cat', args=c(inputreads[1], "|", "head", "-100000", "|", "grep", "-v", "^@", "|", "grep", "-v", "^+", "|", "wc", "-c"), stdout=TRUE))
     readlines <- as.numeric(system2('cat', args=c(inputreads[1], "|", "head", "-100000", "|", "grep", "-v", "^@", "|", "grep", "-v", "^+", "|", "wc", "-l"), stdout=TRUE))
-    estreadlength <- round ((readchars/readlines),0)
+    estreadlength <- round ((readchars / readlines),0)
     estnumbases <- estnumreads * estreadlength
+
+    #Cap input fastq size to maximum number of bases to use as input
+    if (estnumbases > maxbases_input){
+        #Inform the user of the situation
+        flog.warn(paste("The estimated number of bases to be used as input for assembly is larger than", maxbases_input, "bases. Will subsample each input read available in order to cap the number of bases to", maxbases_input))
+        #Calculate number of reads per fastq file that will yield the maximum number of bases allowed
+        maxnumreads <- round((maxbases_input / estreadlength), 0)
+        maxnumreadsperfile <- round((maxnumreads / length(inputreads)), 0)
+        #Subsample fastqs to max number of reads
+        for (subread in 1:length(inputreads)){
+            flog.info(paste("Subsampling", inputreads[subread], "to", maxnumreadsperfile, "reads."))
+            subsampleargs <- c("sample", "-s100", inputreads[subread], maxnumreadsperfile, ">", "sub.fq")
+            system2('seqtk', args = subsampleargs)
+            file.rename("sub.fq", inputreads[subread])
+        }
+    }
 
     #If estimated coverage is over 40x consider deep. This is a total guesstimate, but will guide the settings for the assemblers. Assuming most of the microbiota are bacteria and that the median genome size of a bacterium is 4 Mbp.
     if (opt$analysis %in% c("isolate", "isolaternaseq")){

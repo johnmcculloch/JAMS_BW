@@ -3,27 +3,27 @@
 #' JAMSalpha function
 #' @export
 
-get_reads<-function(opt=NULL){
+get_reads <- function(opt = NULL){
 
     setwd(opt$workdir)
 
     #Make final readsdir
-    opt$readsdir<-file.path(opt$sampledir, paste0(opt$prefix, "_reads"))
+    opt$readsdir <- file.path(opt$sampledir, paste0(opt$prefix, "_reads"))
     flog.info("Creating directory to hold reads.")
     dir.create(opt$readsdir, showWarnings = FALSE, recursive = TRUE)
 
     #Make readsdir in tempfile if applicable
     if(opt$workdir != opt$sampledir){
-        readsworkdir<-file.path(opt$workdir, "reads")
+        readsworkdir <- file.path(opt$workdir, "reads")
         flog.info("Creating temporary directory to hold reads.")
         dir.create(readsworkdir, showWarnings = FALSE, recursive = TRUE)
     } else {
-        readsworkdir<-opt$readsdir
+        readsworkdir <- opt$readsdir
     }
 
     setwd(readsworkdir)
     #If there is an accession number supplied, get reads from there
-    if(!(is.null(opt$sraaccession))){
+    if (!(is.null(opt$sraaccession))){
 
         #If in Biowulf, module load sra-toolkit
         slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
@@ -33,15 +33,15 @@ get_reads<-function(opt=NULL){
         }
 
         #Download reads from accession
-        opt$readorigin<-"sraaccession"
+        opt$readorigin <- "sraaccession"
         flog.info(paste("Downloading from NCBI SRA reads pertaining to run", opt$sraaccession))
-        commandtorun<-paste("fastq-dump --readids --split-files --accession", opt$sraaccession, collapse=" ")
+        commandtorun <- paste("fastq-dump --readids --split-files --accession", opt$sraaccession, collapse = " ")
         system(commandtorun)
 
     } else {
-        opt$readorigin<-"supplied"
+        opt$readorigin <- "supplied"
         #Copy supplied reads into readsdir
-        if(!(is.null(opt$readstarball))){
+        if (!(is.null(opt$readstarball))){
             #Copy tarball
             if((summary(file(opt$readstarball))$class) != "gzfile" ){
                 flog.info("You chose a tarball as input but it does not look like a tar.gz file. Aborting now.")
@@ -62,11 +62,11 @@ get_reads<-function(opt=NULL){
                 flog.info("You must supply either reads to assemble or contigs or a GenBank SRA accession number as input. None of these were found. Check arguments passed JAMSalpha. Aborting now.")
                 q()
             }
-            flog.info(paste("You supplied", paste(fastqsinopt, collapse=", "), "reads."))
+            flog.info(paste("You supplied", paste(fastqsinopt, collapse = ", "), "reads."))
             myfastqs <- opt[fastqsinopt]
 
             #Check if files actually exist
-            if(!(all(file.exists(as.character(myfastqs))))){
+            if (!(all(file.exists(as.character(myfastqs))))){
                 flog.info("At least one of the input files is missing. Aborting now.")
                 q()
             }
@@ -74,8 +74,10 @@ get_reads<-function(opt=NULL){
             #Copy reads
             for (f in 1:length(myfastqs)){
                 rtype <- names(myfastqs)[f]
-                if (filetype(myfastqs[[f]])=="gzfile"){
+                if (filetype(myfastqs[[f]]) == "gzfile"){
                     suffix <- "fastq.gz"
+                } else if (filetype(myfastqs[[f]]) == "bzfile"){
+                    suffix <- "fastq.bz2"
                 } else {
                     suffix <- "fastq"
                 }
@@ -86,7 +88,11 @@ get_reads<-function(opt=NULL){
                 #In case files are gzipped, ungzip them
                 if (suffix == "fastq.gz"){
                     flog.info(paste("Decompressing gzipped file", rtype))
-                    commandtorun <- paste("pigz -d", targetfilename, collapse=" ")
+                    commandtorun <- paste("pigz -d", targetfilename, collapse = " ")
+                    system(commandtorun)
+                } else if (suffix == "fastq.bz2"){
+                    flog.info(paste("Decompressing bzipped file", rtype))
+                    commandtorun <- paste("bzip2 -d", targetfilename, collapse = " ")
                     system(commandtorun)
                 }
             }
