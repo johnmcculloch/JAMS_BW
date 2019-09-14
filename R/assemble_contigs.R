@@ -53,6 +53,7 @@ assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
     inputreadstats <- inputreadstats[order(inputreadstats$Count, decreasing = TRUE), ]
     inputreads <- inputreadstats$Reads
     totbasesinput <- sum(inputreadstats$Bases)
+    estreadlength <- inputreadstats$Readlength[1]
 
     #Cap input fastq size to maximum number of bases to use as input
     if (totbasesinput > maxbases_input){
