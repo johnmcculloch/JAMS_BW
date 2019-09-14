@@ -32,7 +32,7 @@ make_metadata_from_taxtable <- function(taxlvlinterest = NULL, taxainterest = NU
     data(JAMStaxtable)
     cinterest <- c("assembly_accession", "species_taxid", "organism_name", "infraspecific_name", "seq_rel_date", "refseq_category", "excluded_from_refseq")
     if ((taxlvlinterest %in% colnames(JAMStaxtable)) == FALSE){
-        stop("The taxon level of interest could not be found. Try something such as Genus. You genious.")
+        stop("The taxon level of interest could not be found. Try something such as Genus.")
 	  } else {
         if (all(taxainterest %in% JAMStaxtable[, taxlvlinterest]) == FALSE){
             stop("Unable to find your taxon of interest. Try something such as g__Blautia.")

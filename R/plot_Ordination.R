@@ -116,7 +116,8 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
         } else {
             #Not tSNE, so use PCA
             distfun <- stats::dist
-            d <- distfun(mat, method = "euclidian")
+            #d <- distfun(mat, method = "euclidian")
+            d <- vegdist(mat, method="jaccard", na.rm = TRUE)
             pcaRes <- prcomp(d)
             ord <- pcaRes$x
             vars <- pcaRes$sdev^2
