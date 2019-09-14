@@ -138,7 +138,15 @@ countfastq_files <- function(fastqfiles = NULL, threads = NULL){
     fastqstatslist <- mclapply(1:length(fastqfiles), function (x) { countfastq(fastqfiles[x]) }, mc.cores = threads)
     readcounts <- sapply(1:length(fastqstatslist), function (x) { fastqstatslist[[x]][1] })
     basecounts <- sapply(1:length(fastqstatslist), function (x) { fastqstatslist[[x]][2] })
-    fastqstatsdf <- data.frame(Reads = fastqfiles, Count = format(readcounts, scientific = FALSE), Bases = format(basecounts, scientific = FALSE))
+    fastqstatsdf <- data.frame(Reads = fastqfiles, Count = readcounts, Bases = basecounts, stringsAsFactors = FALSE)
+    fastqstatsdf$Readlength <- round((fastqstatsdf$Bases / fastqstatsdf$Count), 0)
+    fastqstatsdf$Bases <- format(fastqstatsdf$Bases, scientific = FALSE)
+    fastqstatsdf$Count <- format(fastqstatsdf$Count, scientific = FALSE)
+    fastqstatsdf$Readlength <- format(fastqstatsdf$Readlength, scientific = FALSE)
+    fastqstatsdf$Reads <- as.character(fastqstatsdf$Reads)
+    fastqstatsdf$Count <- as.numeric(fastqstatsdf$Count)
+    fastqstatsdf$Bases <- as.numeric(fastqstatsdf$Bases)
+    fastqstatsdf$Readlength <- as.numeric(fastqstatsdf$Readlength)
 
     return(fastqstatsdf)
 }

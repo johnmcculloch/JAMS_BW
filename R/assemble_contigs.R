@@ -48,24 +48,21 @@ assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
     }
 
     #Estimate number of reads to tag as deep sequencing
-    #numreadsarg <- c("-c", "^@", inputreads[1])
-    numreadsarg <- c("\'/^@/{a++}END{print", "a}\'", inputreads[1])
-    estnumreads <- as.numeric(system2('awk', args = numreadsarg, stdout = TRUE))
-    numreads <- estnumreads * min(length(inputreads), 2)
-    readchars <- as.numeric(system2('cat', args=c(inputreads[1], "|", "head", "-100000", "|", "grep", "-v", "^@", "|", "grep", "-v", "^+", "|", "wc", "-c"), stdout=TRUE))
-    readlines <- as.numeric(system2('cat', args=c(inputreads[1], "|", "head", "-100000", "|", "grep", "-v", "^@", "|", "grep", "-v", "^+", "|", "wc", "-l"), stdout=TRUE))
-    estreadlength <- round ((readchars / readlines),0)
-    estnumbases <- estnumreads * estreadlength
+    inputreadstats <- countfastq_files(fastqfiles = inputreads, threads = opt$threads)
+    #Just make sure that the first reads are the largest
+    inputreadstats <- inputreadstats[order(inputreadstats$Count, decreasing = TRUE), ]
+    inputreads <- inputreadstats$Reads
+    totbasesinput <- sum(inputreadstats$Bases)
 
     #Cap input fastq size to maximum number of bases to use as input
-    if (estnumbases > maxbases_input){
+    if (totbasesinput > maxbases_input){
         #Inform the user of the situation
         flog.warn(paste("The estimated number of bases to be used as input for assembly is larger than", maxbases_input, "bases. Will subsample each input read available in order to cap the number of bases to", maxbases_input))
         #Calculate number of reads per fastq file that will yield the maximum number of bases allowed
-        maxnumreads <- round((maxbases_input / estreadlength), 0)
-        maxnumreadsperfile <- round((maxnumreads / length(inputreads)), 0)
+        maxnumreads <- round((maxbases_input / sum(inputreadstats$Readlength[1:(min(length(inputreads), 2))])), 0)
+        maxnumreadsperfile <- round((maxnumreads / (min(length(inputreads), 2))), 0)
         #Subsample fastqs to max number of reads
-        for (subread in 1:length(inputreads)){
+        for (subread in 1:(min(length(inputreads), 2))) {
             flog.info(paste("Subsampling", inputreads[subread], "to", maxnumreadsperfile, "reads."))
             subsampleargs <- c("sample", "-s100", inputreads[subread], maxnumreadsperfile, ">", "sub.fq")
             system2('seqtk', args = subsampleargs)
@@ -81,7 +78,7 @@ assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
         estnumgenomes <- 50
     }
 
-    opt$estcoverage <- round((estnumbases / (estnumgenomes * 4000000)), 0)
+    opt$estcoverage <- round((totbasesinput / (estnumgenomes * 4000000)), 0)
 
     if (opt$estcoverage > 40){
         opt$deepseq <- TRUE
@@ -141,7 +138,7 @@ assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
         asscontigs <- file.path(paste(opt$prefix, "assembly", sep="_"), "final.contigs.fa")
         asslog <- file.path(paste(opt$prefix, "assembly", sep="_"), "log")
 
-    } else if(opt$assembler=="spades"){
+    } else if (opt$assembler == "spades"){
         #Build arguments for SPAdes
 
         commonargs <- c("-t", opt$threads, "-m", (as.integer(opt$totmembytes/1000000000)), "-o", paste(opt$prefix, "assembly", sep="_"))
