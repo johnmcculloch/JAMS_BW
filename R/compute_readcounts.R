@@ -61,7 +61,7 @@ compute_readcounts <- function(opt = opt){
             trimbasestats <- round(100 * (c((trimbases / rawbases), 1 - (trimbases / rawbases))), 1)
             assbases <- subsampledbases - NAssbases
             assbasestats <- round(100 * (c((assbases / subsampledbases), 1 - (assbases / subsampledbases))), 1)
-            subsampledstats <- round(100 * (c((subsampledbases / NAHSbases), 1 - (subsampledbases / NAHSbases))), 1)
+            subsampledstats <- round(100 * (c((subsampledbases / trimbases), 1 - (subsampledbases / trimbases))), 1)
             readsdf <- data.frame(Condition = c("Surviving", "Not-surviving"), QC = trimbasestats, Subsampled = subsampledstats, Ass = assbasestats)
             opt$readstats <- data.frame(Read_type = c("Raw", "Trimmed", "Subsampled", "Assembled"), Base_counts = c(rawbases, trimbases, subsampledbases, assbases), stringsAsFactors = FALSE)
 
@@ -71,6 +71,7 @@ compute_readcounts <- function(opt = opt){
             trimbases <- sum(subset(opt$fastqstats, Reads %in% opt$trimreads)[]$Bases)
             NAHScount <- sum(opt$totbasesbeforesubsampling$Count)
             NAHSbases <- sum(opt$totbasesbeforesubsampling$Bases)
+            NAHSbasestats <- round(100 * (c((NAHSbases / trimbases), 1 - (NAHSbases / trimbases))), 1)
             subsampledcount <- sum(subset(opt$fastqstats, Reads %in% opt$nahsreads)[]$Count)
             subsampledbases <- sum(subset(opt$fastqstats, Reads %in% opt$nahsreads)[]$Bases)
 
