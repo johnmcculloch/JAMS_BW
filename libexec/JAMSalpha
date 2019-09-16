@@ -112,47 +112,77 @@ option_list <- list(
     make_option(c("-f", "--R1"), action="store", default=NULL,
                 type="character",
                 help="forward (R1) reads"),
+
     make_option(c("-r", "--R2"), action="store", default=NULL,
                 type="character",
                 help="reverse (R2) reads"),
+
     make_option(c("-U", "--SE"), action="store", default=NULL,
                 type="character",
                 help="unpaired reads"),
+
     make_option(c("-g", "--sraaccession"), action="store", default=NULL,
                 type="character",
                 help="SRA accession to get reads from"),
+
     make_option(c("-c", "--contigs"), action="store", default=NULL,
                 type="character",
                 help="Use these contigs in multifasta format as input"),
+
     make_option(c("-a", "--assemblyaccession"), action="store", default=NULL,
                 type="character",
                 help="GenBank assembly accession to get contigs from (example: GCA_000969225.1). Any reads input will be ignored."),
+
     make_option(c("-t", "--readstarball"), action="store", default=NULL,
                 type="character",
-                help="Tarball (.tar.gz) containing reads file(s) in fastq format."),
+                help = "Tarball (.tar.gz) containing reads file(s) in fastq format."),
+
     make_option(c("-d", "--dbdir"), default=NULL, action="store",
                 type="character",
                 help = str_c("path to JAMS database directory")),
-    make_option(c("-k", "--krakenconfidencescore"), default=defopt$krakenconfidencescore, type="numeric", action="store",
+
+    make_option(c("-k", "--krakenconfidencescore"), default=defopt$krakenconfidencescore,
+                type = "numeric", action = "store",
                 help = str_c("confidence score threshold for kraken2 classificaiton (default: ", defopt$krakenconfidencescore, "). Only change this if you really know what you are doing.")),
+
     make_option(c("-o", "--outdir"), default=defopt$outdir, action="store",
+                type="character",
                 help = str_c("output directory (default: ", defopt$outdir, ")")),
+
     make_option(c("-p", "--prefix"), default=NULL, action="store",
+                type="character",
                 help = str_c("output prefix (default: ", defopt$prefix, ")")),
+
     make_option(c("-H", "--host"), default=defopt$host, action="store",
+                type="character",
                 help = str_c("host species (human, mouse, none, taxid, species_name or /path/to/index default: ", defopt$host, ")")),
+
     make_option(c("-S", "--seqtype"), default=defopt$seqtype, action="store",
+                type="character",
                 help = str_c("choose sequence type (illuminape, illuminamp, pacbio, iontorrent, default: ", defopt$seqtype, ")")),
+
     make_option(c("-A", "--analysis"), default=defopt$analysis, action="store",
+                type="character",
                 help = str_c("choose analysis type (metagenome, metatranscriptome, isolate, isolaternaseq, default: ", defopt$analysis, ")")),
-    make_option(c("-w","--assembler"), default=defopt$assembler, action="store",
+
+    make_option(c("-w", "--assembler"), default=defopt$assembler, action="store",
+                type="character",
                 help = str_c("choose assembler (megahit, spades, default: ", defopt$assembler, ")")),
+
+    make_option(c("-b", "--maxbases_input"), default=NULL, action="store",
+                type="numeric",
+                help = str_c("cap the number of bases used for assembly to this value. If the number of bases for assembly is larger than this value, input reads will be subset to contain this amount. Default: no subsetting.")),
+
     make_option(c("-x", "--threads"), default=defopt$threads, action="store",
+                type="numeric",
                 help = str_c("number of threads (default: ", defopt$threads, ")")),
+
     make_option(c("-n", "--skipipro"), default=defopt$skipipro, action="store_true",
                 help = str_c("skip Interproscan, even if it is available, default: ", defopt$skipipro, ")")),
+
     make_option(c("-z", "--testdependencies"), default=defopt$testdependencies, action="store_true",
                 help = str_c("test dependencies only and leave, default: ", defopt$testdependencies, ")")),
+
     make_option(c("-v", "--version"), action="store_true",
                 help ="report version")
 )
@@ -300,7 +330,7 @@ if (nchar(slurmjobid) < 3){
     flog.info("Skipping Interproscan. Interproscan in computationally very intensive and is best run on a computer cluster.")
 } else {
     if (opt$skipipro == FALSE){
-        opt <- launch_interpro(opt=opt)
+        opt <- launch_interpro(opt = opt)
     } else {
         flog.info("Skipping Interproscan as requested in options.")
     }

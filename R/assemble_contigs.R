@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
+assemble_contigs <- function(opt = NULL){
     #Obtain reads to use for assembly
     opt <- get_reads(opt = opt)
     save.image(file = opt$projimage)
@@ -41,7 +41,7 @@ assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
     #Adjust input reads to absolute path
     inputreads <- file.path(readsworkdir, inputreads)
 
-    #Check the files exist or die.
+    #Check if the files exist or die.
     if (!(all(file.exists(inputreads)))){
         flog.info("Could not find input reads to assemble. Aborting now.")
         q()
@@ -53,22 +53,39 @@ assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
     inputreadstats <- inputreadstats[order(inputreadstats$Count, decreasing = TRUE), ]
     inputreads <- inputreadstats$Reads
     totbasesinput <- sum(inputreadstats$Bases)
-    estreadlength <- inputreadstats$Readlength[1]
+    estreadlength <- round(mean(inputreadstats$Readlength[1:(min(length(inputreadstats$Readlength), 2))]), 0)
+    flog.info(paste("The number of bases available for assembly is", totbasesinput, "bases."))
+    flog.info(paste("The mean read length for use in assembly is", estreadlength, "bases."))
 
     #Cap input fastq size to maximum number of bases to use as input
-    if (totbasesinput > maxbases_input){
-        #Inform the user of the situation
-        flog.warn(paste("The estimated number of bases to be used as input for assembly is larger than", maxbases_input, "bases. Will subsample each input read available in order to cap the number of bases to", maxbases_input))
-        #Calculate number of reads per fastq file that will yield the maximum number of bases allowed
-        maxnumreads <- round((maxbases_input / sum(inputreadstats$Readlength[1:(min(length(inputreads), 2))])), 0)
-        maxnumreadsperfile <- round((maxnumreads / (min(length(inputreads), 2))), 0)
-        #Subsample fastqs to max number of reads
-        for (subread in 1:(min(length(inputreads), 2))) {
-            flog.info(paste("Subsampling", inputreads[subread], "to", maxnumreadsperfile, "reads."))
-            subsampleargs <- c("sample", "-s100", inputreads[subread], maxnumreadsperfile, ">", "sub.fq")
-            system2('seqtk', args = subsampleargs)
-            file.rename("sub.fq", inputreads[subread])
+    if (!(is.null(opt$maxbases_input))){
+        if (totbasesinput > opt$maxbases_input){
+            #Inform the user of the situation
+            flog.warn(paste("The estimated number of bases to be used as input for assembly is larger than", opt$maxbases_input, "bases. Will subsample each input read available in order to cap the number of bases to", opt$maxbases_input))
+            #Calculate number of reads per fastq file that will yield the maximum number of bases allowed
+            inputreadstats$BaseRatio <- inputreadstats$Bases / (sum(inputreadstats$Bases))
+            inputreadstats$MaxBasesAllowed <- inputreadstats$BaseRatio * opt$maxbases_input
+            inputreadstats$MaxReadsAllowed <- round((inputreadstats$MaxBasesAllowed / inputreadstats$Readlength), 0)
+            #Adjust read counts to approximate desired base counts appropriately
+            #Input reads may be anything from 1 to 3 files.
+            if (nrow(inputreadstats) > 1){
+                #Treat reads 1 and 2 as paired and 3 as single.
+                inputreadstats$MaxReadsAllowed[1:2] <- round(mean(inputreadstats$MaxReadsAllowed[1:2]), 0)
+            }
+
+            #Subsample fastqs to max number of reads
+            for (subread in 1:nrow(inputreadstats)) {
+                flog.info(paste("Subsampling", inputreadstats$Reads[subread], "to", inputreadstats$MaxReadsAllowed[subread], "reads."))
+                subsampleargs <- c("sample", "-s100", inputreadstats$Reads[subread], inputreadstats$MaxReadsAllowed[subread], ">", "sub.fq")
+                system2('seqtk', args = subsampleargs)
+                file.rename("sub.fq", inputreadstats$Reads[subread])
+            }
         }
+
+        #Now, redefine totbasesinput as the sum of bases that were subsampled
+        totbasesinput <- sum(inputreadstats$MaxBasesAllowed)
+        #Bequeath information to opt that reads were subsampled so that read stats can be done accurately by compute_readcounts
+        opt$totbasesbeforesubsampling <- inputreadstats
     }
 
     #If estimated coverage is over 40x consider deep. This is a total guesstimate, but will guide the settings for the assemblers. Assuming most of the microbiota are bacteria and that the median genome size of a bacterium is 4 Mbp.
@@ -142,7 +159,7 @@ assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
     } else if (opt$assembler == "spades"){
         #Build arguments for SPAdes
 
-        commonargs <- c("-t", opt$threads, "-m", (as.integer(opt$totmembytes/1000000000)), "-o", paste(opt$prefix, "assembly", sep="_"))
+        commonargs <- c("-t", opt$threads, "-m", (as.integer(opt$totmembytes / 1000000000)), "-o", paste(opt$prefix, "assembly", sep="_"))
         if (opt$seqtype == "illuminamp"){
             readargs <- list("-s", c("--hqmp1-1", "--hqmp1-2"), c("--hqmp1-1", "--hqmp1-2", "--hqmp1-s"))
         } else {
@@ -150,7 +167,7 @@ assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
         }
 
         readinput <- as.vector(rbind(readargs[[length(inputreads)]], inputreads))
-        if (length(inputreads)>1){
+        if (length(inputreads) > 1){
             if(opt$seqtype == "illuminamp"){
                 flog.info("Sequence read input is Illumina High Quality Mate-Pair type.")
                 readinput <- c("--hqmp1-rf", readinput)
@@ -166,14 +183,14 @@ assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
         }
 
         if(opt$analysis == "metagenome"){
-            moltypeargs<-c("--meta")
-            SPAdescontigsname<-"contigs.fasta"
+            moltypeargs <- c("--meta")
+            SPAdescontigsname <- "contigs.fasta"
         } else if(opt$analysis %in% c("metatranscriptome", "isolaternaseq")){
-            moltypeargs<-c("--rna")
-            SPAdescontigsname<-"transcripts.fasta"
+            moltypeargs <- c("--rna")
+            SPAdescontigsname <- "transcripts.fasta"
          } else {
-            moltypeargs<-NULL
-            SPAdescontigsname<-"contigs.fasta"
+            moltypeargs <- NULL
+            SPAdescontigsname <- "contigs.fasta"
         }
 
         if (opt$seqtype == "iontorrent"){
@@ -183,7 +200,6 @@ assemble_contigs <- function(opt = NULL, maxbases_input = 20000000000){
         }
 
         assemblerargs <- c(commonargs, otherargs, moltypeargs, platformargs, readinput)
-
         asscontigs <- file.path(paste(opt$prefix, "assembly", sep = "_"), SPAdescontigsname)
         asslog <- file.path(paste(opt$prefix, "assembly", sep = "_"), "spades.log")
     }
