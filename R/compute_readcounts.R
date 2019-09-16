@@ -131,8 +131,8 @@ compute_readcounts <- function(opt = opt){
     }
 
     if ("Subsampled" %in% colnames(readsdf)){
-         readsdf$Subsampling <- paste(paste(c("Eliminated", "Kept"), readsdf$Subsampled, sep = "="), "%", sep = "")
-         p <- ggplot(readsdf, aes(x = "", y = Subsampled, fill = Subsampling)) + geom_bar(width = 1, stat = "identity") + scale_fill_manual(values = c("red", "green"))  + coord_polar("y") + labs(title = paste(opt$prefix, "% Bases Kept after Subsampling due to Assembly Input Cap", sep = " - "))
+         readsdf$Subsampling <- paste(paste(c("Kept", "Eliminated"), readsdf$Subsampled, sep = "="), "%", sep = "")
+         p <- ggplot(readsdf, aes(x = "", y = Subsampled, fill = Subsampling)) + geom_bar(width = 1, stat = "identity") + scale_fill_manual(values = c("green", "red"))  + coord_polar("y") + labs(title = paste(opt$prefix, "% Bases Kept after Subsampling due to Assembly Input Cap", sep = " - "))
          p <- p + theme( axis.title.x = element_blank(), axis.title.y = element_blank(), panel.border = element_blank(), panel.grid = element_blank(), axis.ticks = element_blank(), plot.title = element_text(size = 14, face = "bold"))
          pieSubsampling <- p
          flog.info(paste("After subsampling ", subset(readsdf, Condition == "Not-surviving")[]$Subsampled, "%"))
