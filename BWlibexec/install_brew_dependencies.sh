@@ -1,9 +1,9 @@
 #!/bin/bash
 #Install JAMS dependencies
-module load gcc/9.1.0
-module load java
-module load python
-module load perl
+#module load gcc/9.1.0
+#module load java
+#module load python
+#module load perl
 cd $HOME
 brew update
 brew tap brewsci/bio
@@ -17,5 +17,5 @@ do
     brew install --ignore-dependencies "$JAMSassem"
 done
 
-module unload gcc
-module load R
+#module unload gcc
+#module load R
