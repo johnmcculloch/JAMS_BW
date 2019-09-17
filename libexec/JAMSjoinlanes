@@ -156,7 +156,7 @@ fixrelpath <- function(JAMSpath = NULL){
     return(fixedpath)
 }
 
-for (pathtofix in c("origin", "destination", "substitutionmap")){
+for (pathtofix in c("origin", "destination", "substitutionmap", "prefixlist")){
     if (!is.null(opt[[pathtofix]])){
         opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
     }
