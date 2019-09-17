@@ -80,12 +80,14 @@ assemble_contigs <- function(opt = NULL){
                 system2('seqtk', args = subsampleargs)
                 file.rename("sub.fq", inputreadstats$Reads[subread])
             }
+            #Bequeath information to opt that reads were subsampled so that read stats can be done accurately by compute_readcounts
+            opt$totbasesbeforesubsampling <- inputreadstats
+        } else {
+            opt$totbasesbeforesubsampling <- NULL
         }
 
         #Now, redefine totbasesinput as the sum of bases that were subsampled
         totbasesinput <- sum(inputreadstats$MaxBasesAllowed)
-        #Bequeath information to opt that reads were subsampled so that read stats can be done accurately by compute_readcounts
-        opt$totbasesbeforesubsampling <- inputreadstats
     }
 
     #If estimated coverage is over 40x consider deep. This is a total guesstimate, but will guide the settings for the assemblers. Assuming most of the microbiota are bacteria and that the median genome size of a bacterium is 4 Mbp.
