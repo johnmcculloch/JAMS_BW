@@ -7,10 +7,11 @@
 cd $HOME
 brew update
 brew tap brewsci/bio
-for JAMSdep in git wget pigz seqtk sratoolkit samtools trimmomatic bowtie2 kraken2 bedtools bedops prokka
-do
-    brew ls --versions "$JAMSdep" && brew upgrade "$JAMSdep" || brew install "$JAMSdep"
-done
+#for JAMSdep in git wget pigz seqtk sratoolkit samtools trimmomatic bowtie2 kraken2 bedtools bedops prokka
+#do
+#    brew ls --versions "$JAMSdep" && brew upgrade "$JAMSdep" || brew install "$JAMSdep"
+#done
+brew install wget pigz seqtk sratoolkit samtools trimmomatic bowtie2 kraken2 bedtools bedops prokka
 
 for JAMSassem in megahit spades
 do
