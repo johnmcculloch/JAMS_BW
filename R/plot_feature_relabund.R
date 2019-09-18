@@ -3,39 +3,34 @@
 #' Plots the relative abundance of an entity present in a sample or group of samples and subsets by taxonomy.
 #' @export
 
-plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, glomby=NULL, accession=NULL, groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, uselog=TRUE, statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel="p.format", plottitle=NULL, asPA=FALSE, subsetbytaxlevel=NULL, taxtable=NULL, list.data=NULL, cdict=NULL, max_categories = 3, ...){
+plot_feature_relabund <- function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, glomby=NULL, accession=NULL, groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, uselog=TRUE, statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel="p.format", plottitle=NULL, asPA=FALSE, subsetbytaxlevel=NULL, taxtable=NULL, list.data=NULL, cdict=NULL, max_categories = 3, ...){
 
     require(reshape2)
-    obj<-mgseqobj
+    obj <- mgseqobj
 
     #Exclude samples and features if specified
-    if(!(is.null(samplesToKeep))){
-        obj<-obj[, samplesToKeep]
+    if (!(is.null(samplesToKeep))){
+        obj <- obj[, samplesToKeep]
     }
 
-    if(!(is.null(featuresToKeep))){
-        obj<-obj[featuresToKeep, ]
+    if (!(is.null(featuresToKeep))){
+        obj <- obj[featuresToKeep, ]
     }
 
-    analysis<-attr(obj, "analysis")
+    analysis <- attr(obj, "analysis")
 
-    if(!(missing(glomby))){
+    if (!(is.null(glomby))){
         obj <- aggTax(obj, lvl = glomby, out = 'MRexperiment', norm = FALSE)
     }
 
-    if((analysis == "LKT") && (!(is.null(subsetbytaxlevel)))){
+    if ((analysis == "LKT") && (!(is.null(subsetbytaxlevel)))){
         stop("Plot taxa is only for functional (not taxonomic) analyses. It will additionally plot which taxa bear which of the funcitons of interest. If you are trying to plot only a certain taxon itself, then use the feature argument with a taxonomical metagenomeSeq experiment.")
     }
 
-    #Set asPA as FALSE if it is missing
-    if(missing(asPA)){
-        asPA=FALSE
-    }
-
-    if (!(missing(subsetby))){
-        subset_points<-sort(unique((pData(obj)[, which(colnames(pData(obj))==subsetby)])))
+    if (!(is.null(subsetby))){
+        subset_points <- sort(unique((pData(obj)[, which(colnames(pData(obj))==subsetby)])))
     }else{
-        subset_points<-"none"
+        subset_points <- "none"
     }
 
     if (is.null(feature) && is.null(accession)){
@@ -43,7 +38,7 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
     }
 
     if (!is.null(accession)){
-        feature<-accession
+        feature <- accession
     }
 
     if (is.null(plottitle)){
@@ -56,7 +51,7 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
     }
 
     gvec <- NULL
-    gvec <- vector("list",length=1000)
+    gvec <- vector("list", length = 1000)
     plotcount = 1
 
     for (sp in 1:length(subset_points)){
@@ -72,7 +67,7 @@ plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, gl
 
         currobj <- filter_experiment(mgseqobj = currobj, asPA = asPA, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
 
-        if (is.factor(pData(currobj)[,groupby])) { # use order if factor
+        if (is.factor(pData(currobj)[, groupby])) { # use order if factor
           discretenames <- levels(pData(currobj)[,groupby])
         } else {
           discretenames <- sort(unique(as.character(pData(currobj)[, which(colnames(pData(currobj)) == groupby)])))

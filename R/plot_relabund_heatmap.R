@@ -55,9 +55,6 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                 genomecompleteness <- NULL
                 minl2fc <- 2
             }
-        } else {
-          featcutoff <- c(0, 0)
-          genomecompleteness <- NULL
         }
     }
 

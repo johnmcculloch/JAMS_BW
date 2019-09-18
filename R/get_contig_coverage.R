@@ -94,12 +94,12 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, classifyunas
             #Split taxidlist into chunks for speedier de-duplication of repeated node taxids
             chunksize = 5000
             chunk2 <- function(x,n){ split(x, cut(seq_along(x), n, labels = FALSE)) }
-            chunkcoords <- chunk2(1:length(kraken2taxid), (length(kraken2taxid)/chunksize))
+            chunkcoords <- chunk2(1:length(kraken2taxid), (length(kraken2taxid) / chunksize))
             numchunks <- length(chunkcoords)
             flog.info(paste("Spliting reads taxonomic table into", numchunks, "chunks of", chunksize, "reads each for parallel processing. Depending on the number of reads this may take a while."))
 
             split_to_df <- function(kraken2taxid = NULL){
-                kraken2taxid <- strsplit(kraken2taxid, split="[\t]", fixed = FALSE)
+                kraken2taxid <- strsplit(kraken2taxid, split = "[\t]", fixed = FALSE)
                 k2out <- plyr::ldply(kraken2taxid, rbind)
                 colnames(k2out) <- c("ClassFlag", "Sequence", "Taxid", "Length", "kmers")
                 k2out[] <- lapply(k2out, as.character)

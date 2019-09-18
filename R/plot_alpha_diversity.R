@@ -1,9 +1,9 @@
-#' plot_alpha_diversity(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, measures=c("Observed", "Chao1", "ACE", "Shannon", "Simpson", "InvSimpson"), ignoresamples=NULL, signiflabel=c("p.signif", "p.format"), plottitle=NULL, cdict=NULL, ...)
+#' plot_alpha_diversity(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, measures=c("Observed", "Chao1", "ACE", "Shannon", "Simpson", "InvSimpson"), statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel="p.format", plottitle=NULL, cdict=NULL, max_categories = 3, ...)
 #'
 #' Plots the alpha diversity in a sample or group of samples.
 #' @export
 
-plot_alpha_diversity<-function(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, measures=c("Observed", "Chao1", "ACE", "Shannon", "Simpson", "InvSimpson"), statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel="p.format", plottitle=NULL, cdict=NULL, max_categories = 3,...){
+plot_alpha_diversity<-function(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, measures=c("Observed", "Chao1", "ACE", "Shannon", "Simpson", "InvSimpson"), statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel="p.format", plottitle=NULL, cdict=NULL, max_categories = 3, ...){
 
     require(vegan)
 
@@ -42,7 +42,7 @@ plot_alpha_diversity<-function(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colour
     maintit<-paste("Alpha diversity of", analysisname, "by", groupby)
 
     for (sp in 1:length(subset_points)){
-        if (!(is.null(subsetby))){ 
+        if (!(is.null(subsetby))){
             samplesToKeep = which((pData(obj)[,which(colnames(pData(obj))==subsetby)])==subset_points[sp])
             currobj=obj[ , samplesToKeep]
             subsetmaintit<-paste(maintit, paste("Subset:", subset_points[sp]), sep="\n")
@@ -65,7 +65,7 @@ plot_alpha_diversity<-function(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colour
         par(cex.axis=0.5, cex.main=1, cex.sub=0.5, las=2)
 
         mat = MRcounts(currobj, norm = FALSE, log = FALSE)
-        #calculate alpha diversity measures 
+        #calculate alpha diversity measures
         tmat<-t(mat)
         alphadiv<-estimateR(tmat)
         for(meas in c("invsimpson", "simpson", "shannon")){
@@ -79,7 +79,7 @@ plot_alpha_diversity<-function(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colour
         #Loop by measure
         for(measurename in measures){
             wantedmeasure<-switch(measurename, "Observed"="S.obs", "Chao1"="S.chao1", "ACE"="S.ACE", "Shannon"="shannon", "Simpson"="simpson", "InvSimpson"="invsimpson")
-        
+
             l = lapply(classIndex, function(j) { alphadiv[wantedmeasure, j] })
             y = unlist(l)
             x = rep(seq(along = l), sapply(l, length))
@@ -96,7 +96,7 @@ plot_alpha_diversity<-function(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colour
                 shapeindex = lapply(classIndex, function(j) { pData(currobj)[j, which(colnames(pData(currobj))==shapeby)] })
                 shp=unlist(shapeindex)
                 dat$shape<-shp
-            }           
+            }
 
             if(!(is.null(colourby))){
                 colourindex = lapply(classIndex, function(j) { pData(currobj)[j, which(colnames(pData(currobj))==colourby)] })
@@ -111,7 +111,7 @@ plot_alpha_diversity<-function(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colour
 
             #I know, I know, call me inelegant, but it works.
             if(!(is.null(colourby))){
-                if(!(is.null(shapeby))){                
+                if(!(is.null(shapeby))){
                     p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0),  aes(shape=shape, colour=colours))
                 } else {
                     p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0),  aes(colour=colours))
@@ -152,11 +152,11 @@ plot_alpha_diversity<-function(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colour
             plottit<-paste(subsetmaintit, paste("Measure:", measureexpl), sep="\n")
             p <- p + ggtitle(plottit)
 
-            if(!(is.null(colourby))){ 
+            if(!(is.null(colourby))){
                 p <- p + labs(colour = colourby)
             }
 
-            if(!(is.null(shapeby))){ 
+            if(!(is.null(shapeby))){
                 p <- p + labs(shape = shapeby)
             }
 
