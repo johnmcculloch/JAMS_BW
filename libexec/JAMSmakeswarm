@@ -109,7 +109,7 @@ fixrelpath <- function(JAMSpath = NULL){
 defopt <- list()
 defopt$verstr <- paste0("JAMSmakeswarm v", "1.0")
 defopt$outputfolder <- getwd()
-defopt$readsfolder <- file.path(defopt$outputfolder, "rawreads")
+defopt$readsfolder <- NULL
 defopt$hostspecies <- "human"
 defopt$analysis <- "metagenome"
 defopt$skipinterpro <- FALSE
