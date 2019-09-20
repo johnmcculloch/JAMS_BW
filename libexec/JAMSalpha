@@ -174,8 +174,9 @@ option_list <- list(
                 type="numeric",
                 help = str_c("cap the number of bases used for assembly to this value. If the number of bases for assembly is larger than this value, input reads will be subset to contain this amount. Default: no subsetting.")),
 
-    make_option(c("-q", "--classifyunassembled"), default=defopt$classifyunassembled, action="store_true",
-                help = str_c("classify unassembled reads by kraken2 and include counts in taxonomic abundance, default: ", defopt$classifyunassembled, ")")),
+    make_option(c("-q", "--classifyunassembled"), default=defopt$classifyunassembled,
+                action="store_true",
+                help = str_c("classify unassembled reads by kraken2 and include counts in taxonomic abundance. Irrelevant for isolates. default: ", defopt$classifyunassembled, ")")),
 
     make_option(c("-x", "--threads"), default=defopt$threads, action="store",
                 type="numeric",
@@ -350,11 +351,9 @@ save.image(file = opt$projimage)
 
 #Get dose of each taxon and function
 if (opt$analysis %in% c("isolate", "isolaternaseq")){
-    classifyunassembled <- FALSE
-} else {
-    classifyunassembled <- TRUE
+    opt$classifyunassembled <- FALSE
 }
-opt <- get_contig_coverage(opt = opt, markduplicates = FALSE, classifyunassembled = classifyunassembled)
+opt <- get_contig_coverage(opt = opt, markduplicates = FALSE)
 
 #Bank information gathered
 objectstoexport <- names(opt)[names(opt) %in% c("contigsdata", "assemblystats", "contigperbasecoverage", "LKTdose")]
