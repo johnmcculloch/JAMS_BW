@@ -107,6 +107,7 @@ defopt$skipipro <- FALSE
 defopt$testdependencies <- FALSE
 defopt$threads <- detectBatchCPUs()
 defopt$krakenconfidencescore <- 0.000005
+defopt$classifyunassembled <- FALSE
 
 option_list <- list(
     make_option(c("-f", "--R1"), action="store", default=NULL,
@@ -172,6 +173,9 @@ option_list <- list(
     make_option(c("-b", "--maxbases_input"), default=NULL, action="store",
                 type="numeric",
                 help = str_c("cap the number of bases used for assembly to this value. If the number of bases for assembly is larger than this value, input reads will be subset to contain this amount. Default: no subsetting.")),
+
+    make_option(c("-q", "--classifyunassembled"), default=defopt$classifyunassembled, action="store_true",
+                help = str_c("classify unassembled reads by kraken2 and include counts in taxonomuic abundance, default: ", defopt$classifyunassembled, ")")),
 
     make_option(c("-x", "--threads"), default=defopt$threads, action="store",
                 type="numeric",
@@ -246,7 +250,7 @@ if (is.null(opt$dbdir)) {
         suppressPackageStartupMessages(library(JAMS))
         #detect resources
         opt$totmembytes <- detectAvailRAM()
-        flog.info(paste("You have", round((opt$totmembytes)/1000000000, 1), "Gigabytes of RAM memory"))
+        flog.info(paste("You have ~", round((opt$totmembytes)/1000000000, 1), "Gigabytes of RAM memory"))
         flog.info(paste("You have", opt$threads, "CPUs to run on"))
         opt <- check_resources(opt = opt)
     }

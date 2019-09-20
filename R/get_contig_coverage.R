@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, classifyunassembled = TRUE){
+get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
     setwd(opt$workdir)
 
     flog.info("Using kraken2 with JAMStaxtable")
@@ -133,7 +133,9 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, classifyunas
             NAssdose[which(is.na(NAssdose$Domain == TRUE)), colnames(unclassdf)] <- unname(unclassdf)
             opt$NAssdose <- as.data.frame(NAssdose)
 
-        } #End conditional for classifying unassembled reads
+        } else {
+            flog.info("Unassembled reads will not be classified and will be discarded.")
+        }#End conditional for classifying unassembled reads
 
         #index
         flog.info("Indexing and sorting alignment.")
