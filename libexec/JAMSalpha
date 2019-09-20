@@ -175,7 +175,7 @@ option_list <- list(
                 help = str_c("cap the number of bases used for assembly to this value. If the number of bases for assembly is larger than this value, input reads will be subset to contain this amount. Default: no subsetting.")),
 
     make_option(c("-q", "--classifyunassembled"), default=defopt$classifyunassembled, action="store_true",
-                help = str_c("classify unassembled reads by kraken2 and include counts in taxonomuic abundance, default: ", defopt$classifyunassembled, ")")),
+                help = str_c("classify unassembled reads by kraken2 and include counts in taxonomic abundance, default: ", defopt$classifyunassembled, ")")),
 
     make_option(c("-x", "--threads"), default=defopt$threads, action="store",
                 type="numeric",
