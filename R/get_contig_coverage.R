@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
+get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, classifyunassembled = TRUE){
     setwd(opt$workdir)
 
     flog.info("Using kraken2 with JAMStaxtable")
