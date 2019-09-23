@@ -3,7 +3,7 @@
 #' Creates ordination plots based on tSNE or PCA
 #' @export
 
-plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified =TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, ...){
+plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, ...){
 
     #Get appropriate object to work with
     obj <- mgseqobj
@@ -72,7 +72,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
 
         currobj <- filter_experiment(mgseqobj = currobj, featmaxatleastPPM = featmaxatleastPPM, featcutoff = featcutoff, samplesToKeep = samplesToKeep, asPA = FALSE, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
 
-        mat = MRcounts(currobj)
+        mat <- MRcounts(currobj)
 
         if (ignoreunclassified == TRUE){
             dunno <- c(paste(analysis, "none", sep="_"), "LKT__d__Unclassified")
@@ -90,9 +90,9 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
         n <- nrow(mat)
         comp <- 1:3
         rowsToKeep <- which(rowSums(mat) > 0)
-        rowVars <- rowSds(mat[rowsToKeep, ])
-        rowIndices <- rowsToKeep[order(rowVars, decreasing = TRUE)[seq_len(n)]]
-        mat <- mat[rowIndices, ]
+        mat <- mat[rowsToKeep, ]
+        rowVars <- rowSds(mat)
+        mat <- mat[order(rowVars, decreasing = TRUE), ]
         if (transp == TRUE) {
             mat <- t(mat)
         }
@@ -113,11 +113,21 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             yl <- "tSNE 2"
             zl <- "tSNE 3"
 
+        } else if (algorithm == "tUMAP"){
+            set.seed(4140)
+            tumap_out <- tumap(mat, n_components = 2, n_neighbors = 15, verbose = TRUE)
+            dford <- as.data.frame(tumap_out)
+            rownames(dford) <- rownames(pData(currobj))
+            colnames(dford)[1:2] <- c("PC1", "PC2")
+            xl <- "tUMAP 1"
+            yl <- "tUMAP 2"
+            #zl <- "tSNE 3"
+
         } else {
             #Not tSNE, so use PCA
             distfun <- stats::dist
             #d <- distfun(mat, method = "euclidian")
-            d <- vegdist(mat, method="jaccard", na.rm = TRUE)
+            d <- vegdist(mat, method = "jaccard", na.rm = TRUE)
             pcaRes <- prcomp(d)
             ord <- pcaRes$x
             vars <- pcaRes$sdev^2
