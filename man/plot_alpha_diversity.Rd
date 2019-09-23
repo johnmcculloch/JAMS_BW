@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_alpha_diversity.R
 \name{plot_alpha_diversity}
 \alias{plot_alpha_diversity}
-\title{plot_alpha_diversity(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, measures=c("Observed", "Chao1", "ACE", "Shannon", "Simpson", "InvSimpson"), ignoresamples=NULL, signiflabel=c("p.signif", "p.format"), plottitle=NULL, cdict=NULL, ...)}
+\title{plot_alpha_diversity(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, measures=c("Observed", "Chao1", "ACE", "Shannon", "Simpson", "InvSimpson"), statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel="p.format", plottitle=NULL, cdict=NULL, max_categories = 3, ...)}
 \usage{
 plot_alpha_diversity(mgseqobj = NULL, glomby = NULL, groupby = NULL,
   colourby = NULL, shapeby = NULL, subsetby = NULL,
