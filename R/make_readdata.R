@@ -11,7 +11,7 @@ make_readdata <- function(Samples = NULL, list.data = NULL){
 
     #Create empty data frame to hold all read data
     readdata <- as.data.frame(matrix(data = 0, nrow = (length(Samples)), ncol = 6))
-    colnames(readdata) <- c("Sample", "Raw_bases", "Trim_bases", "NonHost_bases", "Assembled_bases", "Proj_type")
+    colnames(readdata) <- c("Sample", "Raw_bases", "Trim_bases", "NonHost_bases", "Subsampled_bases", "Assembled_bases", "Proj_type")
     readdata$Sample <- Samples
 
     #Fetch data pertaining to each sample
@@ -21,7 +21,7 @@ make_readdata <- function(Samples = NULL, list.data = NULL){
         #Try and find reads stats for that sample.
         readstats <- list.data[[paste(Samples[s], "readstats", sep="_")]]
         if (is.null(readstats)){
-            readstats <- data.frame(Read_type=c("Raw", "Trimmed", "NonHost", "Assembled"), Base_counts=c(0,0,0,0))
+            readstats <- data.frame(Read_type=c("Raw", "Trimmed", "NonHost", "Subsampled", "Assembled"), Base_counts=c(0,0,0,0), stringsAsFactors = FALSE)
         }
         rownames(readstats) <- readstats$Read_type
         readstats$Read_type <- NULL
@@ -33,6 +33,7 @@ make_readdata <- function(Samples = NULL, list.data = NULL){
         readdata[which(readdata$Sample == Samples[s]), which(colnames(readdata) == "Raw_bases")] <- readstats["Raw", "Base_counts"]
         readdata[which(readdata$Sample == Samples[s]), which(colnames(readdata) == "Trim_bases")] <- readstats["Trimmed", "Base_counts"]
         readdata[which(readdata$Sample == Samples[s]), which(colnames(readdata) == "NonHost_bases")] <- readstats["NonHost", "Base_counts"]
+        readdata[which(readdata$Sample == Samples[s]), which(colnames(readdata) == "Subsampled")] <- readstats["Subsampled", "Base_counts"]
         readdata[which(readdata$Sample == Samples[s]), which(colnames(readdata) == "Assembled_bases")] <- readstats["Assembled", "Base_counts"]
         readdata[which(readdata$Sample == Samples[s]), which(colnames(readdata) == "Proj_type")] <- as.character(projstats["Process", "Run_value"])
     }

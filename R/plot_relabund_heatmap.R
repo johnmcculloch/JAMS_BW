@@ -287,6 +287,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                         }
                     }
 
+                    l2fcmeaning <- paste("Positive l2fc means increased in", discretenames[1])
                     countmat2 <- as.matrix(countmat[rownames(matstats), ])
 
                     #If adjustpval is set to auto, then find out which is best and re-set it to either TRUE or FALSE
@@ -491,7 +492,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
 
                     if (all(c((any(!(c(is.null(minl2fc), is.null(maxl2fc))))), ("l2fc" %in% colnames(stathm))))){
                         l2fcmsg <- paste(minl2fcmsg, maxl2fcmsg, sep = " | ")
-                        plotit <- paste(plotit, l2fcmsg, sep = "\n")
+                        plotit <- paste(plotit, l2fcmsg, l2fcmeaning, sep = "\n")
                     }
 
                     if (!(is.null(genomecompleteness))){
@@ -677,11 +678,11 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
 
         } else {
 
-            if(length(samplesToKeep) < 2){
+            if (length(samplesToKeep) < 2){
                 #There is only one sample in subset, so nothing was done.
                 print(paste(as.character(colnames(pData(obj))[samplesToKeep]), "was the only sample within", subsetname, "subset. Must have at least two samples for a heatmap."))
             }
-            if(numfeats < 2){
+            if (numfeats < 2){
                 #There is only one sample in subset, so nothing was done.
                 print(paste(as.character(rownames(MRcounts(obj))), "was the only feature within", subsetname, "subset. Must have at least two features for a heatmap."))
             }
@@ -693,7 +694,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
     #Redefine stats list as ones only containing data
     svec <- svec[sapply(svec, function(x){ !(is.null(x)) } )]
 
-    if(returnstats == TRUE){
+    if (returnstats == TRUE){
         return(svec)
     } else {
         return(print("Heatmaps generated."))
