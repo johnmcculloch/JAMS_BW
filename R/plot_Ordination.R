@@ -3,7 +3,7 @@
 #' Creates ordination plots based on tSNE or PCA
 #' @export
 
-plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, ...){
+plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, ...){
 
     #Get appropriate object to work with
     obj <- mgseqobj
@@ -42,10 +42,10 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
                 featcutoff <- c(10, 5)
                 genomecompleteness <- NULL
             }
-        } else {
-          featcutoff <- c(0, 0)
-          genomecompleteness <- NULL
         }
+    } else {
+        featcutoff <- c(0, 0)
+        genomecompleteness <- NULL
     }
 
     if (!(is.null(subsetby))){
@@ -57,11 +57,11 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
     #Create list vector to hold plots
     gvec <- NULL
     gvec <- vector("list", length = length(subset_points))
-    pcatitbase<-paste(algorithm, "of", analysis)
+    pcatitbase <- paste(algorithm, "of", analysis)
 
     for (sp in 1:length(subset_points)){
         if (!(is.null(subsetby))){
-            samplesToKeep <- rownames(pData(obj))[which((pData(obj)[,which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])]
+            samplesToKeep <- rownames(pData(obj))[which((pData(obj)[, which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])]
             pcatit <- paste(pcatitbase, "within", subset_points[sp])
             currobj <- obj[, samplesToKeep]
         } else {
@@ -75,7 +75,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
         mat <- MRcounts(currobj)
 
         if (ignoreunclassified == TRUE){
-            dunno <- c(paste(analysis, "none", sep="_"), "LKT__d__Unclassified")
+            dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified")
             rowsToKeep <- which(!(rownames(mat) %in% dunno))
             mat <- mat[rowsToKeep, ]
         }
@@ -89,7 +89,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
 
         n <- nrow(mat)
         comp <- 1:3
-        rowsToKeep <- which(rowSums(mat) > 0)
+        rowsToKeep <- names(which(rowSums(mat) > 0))
         mat <- mat[rowsToKeep, ]
         rowVars <- rowSds(mat)
         mat <- mat[order(rowVars, decreasing = TRUE), ]
@@ -114,8 +114,9 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             zl <- "tSNE 3"
 
         } else if (algorithm == "tUMAP"){
+            permanova <- FALSE
             set.seed(4140)
-            tumap_out <- tumap(mat, n_components = 2, n_neighbors = 15, verbose = TRUE)
+            tumap_out <- tumap(mat, n_components = 2, n_neighbors = 15, verbose = FALSE, n_threads = threads)
             dford <- as.data.frame(tumap_out)
             rownames(dford) <- rownames(pData(currobj))
             colnames(dford)[1:2] <- c("PC1", "PC2")
@@ -191,13 +192,19 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             }
         }
 
-        if ( (!isFALSE(ellipse)) ) {
-            if (ellipse == "auto" && algorithm != "tSNE"){
-                if (permanovap < 0.05){
-                    p <- p + stat_ellipse(type="norm")
+        if (ellipse != FALSE) {
+            if (algorithm == "PCA"){
+                if (ellipse == "auto"){
+                    if (permanovap < 0.05){
+                        p <- p + stat_ellipse(type = "norm")
+                    }
+                } else if (ellipse == TRUE) {
+                    p <- p + stat_ellipse(type = "norm")
                 }
-            } else if (ellipse == TRUE) {
-                p <- p + stat_ellipse(type="norm")
+            } else {
+                if (ellipse == TRUE) {
+                    p <- p + stat_ellipse(type = "norm")
+                }
             }
         }
 
@@ -205,7 +212,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             pcatit <- plottit
         }
 
-        if ((permanova != FALSE) && (algorithm != "tSNE")) {
+        if ((permanova != FALSE) && (algorithm == "PCA")) {
             pcatit <- paste(pcatit, paste("p <", permanovap))
         }
 
@@ -232,7 +239,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
         } else {
             p <- p + geom_point(size = dotsize) + labs(x = xl, y = yl)
             if (!(is.null(forceaspectratio))){
-                p <- p + theme(aspect.ratio=(1/forceaspectratio))
+                p <- p + theme(aspect.ratio = (1 / forceaspectratio))
             }
         }
 
@@ -241,6 +248,8 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
         }
         gvec[[sp]] <- p
     }
+
+    gvec <- gvec[sapply(gvec, function(x){ !(is.null(x)) } )]
 
     return(gvec)
 }
