@@ -12,7 +12,8 @@ plot_Ordination(mgseqobj = NULL, glomby = NULL, subsetby = NULL,
   sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,
   transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE,
   plottit = NULL, plot3D = FALSE, theta = 130, phi = 60,
-  cdict = NULL, grid = TRUE, forceaspectratio = NULL, ...)
+  cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1,
+  ...)
 }
 \description{
 Creates ordination plots based on tSNE or PCA

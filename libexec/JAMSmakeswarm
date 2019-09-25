@@ -184,7 +184,7 @@ find_container <- function(x) {
     return(container)
 }
 
-find_read<-function(x) {
+find_read <- function(x) {
     prefsuff <- unlist(strsplit(rawfastqsdf$Filenames[x], split = "\\."))
     read <- tail(unlist(strsplit(prefsuff[1], split = "_")), n=1)
 
