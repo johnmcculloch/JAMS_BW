@@ -301,7 +301,7 @@ if (opt$metadatavetting == TRUE){
         flog.info("Adjusting metadata to contain only these columns.")
 
         #Stop if the classes you want in phenolabels do not exist in phenotable.
-        if(all(validcols %in% colnames(phenotable))){
+        if (all(validcols %in% colnames(phenotable))){
             phenotable <- phenotable[ , validcols]
         } else {
             stop("One or more classes specified in phenolabels is missing as (a) column(s) in phenotable. Please check files.")
@@ -381,7 +381,7 @@ if (adjustmetadata == TRUE){
     }
 
     rownames(phenotable) <- phenotable$Sample
-    phenotable <- phenotable[Samples_have, ]
+    phenotable <- phenotable[(rownames(phenotable)[rownames(phenotable) %in% Samples_have]), ]
 
     ## Evaluate reads, if required ##
     if(doreads == TRUE){
@@ -459,8 +459,8 @@ if (!exists("expvec")){
     flog.info(paste("Found a list of metagenomeSeq experiments for the following analyses:", paste0(names(expvec), collapse = ", ")))
     #Check structure and integrity of experiments and see if they match the metadata.
     Samples_have <- rownames(pData(expvec[["LKT"]]))
-    pheno <- pheno[Samples_have, ]
-    #do this later
+    pheno <- pheno[(rownames(pheno)[rownames(pheno) %in% Samples_have]), ]
+
     #Replace metadata in expvec if required
     if (any(c("excel_metadata", "phenotable") %in% opt$replaced)) {
         if ("excel_metadata" %in% opt$replaced){
@@ -478,8 +478,33 @@ if (!exists("expvec")){
             readdata2 <- NULL
         }
         flog.info("Replacing metadata in current metagenomeSeq experiments.")
-        expvec <- update_metadata(metadataXL = mdXL, phenotable = phenotableFN, phenolabels = phenolabelsFN, expvec = expvec, maxclass = maxclass, minGbNAHS = as.numeric(opt$minGbNAHS), minPctAssembly = as.numeric(opt$minPctAssembly), readdata = readdata2)
-    }
+        readdata2 <- readdata2
+
+        #expvec <- update_metadata(phenotable = phenotableFN, phenolabels = phenolabelsFN, expvec = expvec, maxclass = maxclass, minGbNAHS = as.numeric(opt$minGbNAHS), minPctAssembly = as.numeric(opt$minPctAssembly), readdata = readdata2)
+
+        for (e in 1:length(expvec)){
+            analysis <- names(expvec)[e]
+            oldmetadata <- pData(expvec[[e]])
+            wantedsamples <- rownames(pheno)
+            #If there is discrepancy between exising metadata in expvec and metadata available, use intersection
+            Samples_intersect <- intersect(oldmetadata[, ptsampcol], wantedsamples)
+            pheno2 <- pheno[Samples_intersect, ]
+            cts2 <- MRcounts(expvec[[e]])
+            cts2 <- cts2[ , Samples_intersect]
+            #Protect against rows with empty data
+            rowsToKeep <- names(which(rowSums(cts2) > 0 & rownames(cts2) != ""))
+            cts2 <- cts2[rowsToKeep, ]
+            ft2 <- fData(expvec[[e]])
+            ft2 <- ft2[rowsToKeep, ]
+
+            ##Create metagenomeSeq MRexperiment
+            phenotypeData <- AnnotatedDataFrame(pheno2)
+            ttdata <- AnnotatedDataFrame(ft2)
+            mgseq <- newMRexperiment(cts2, phenoData = phenotypeData, featureData = ttdata)
+            attr(mgseq, "analysis") <- analysis
+            expvec[[e]] <- mgseq
+        }
+    } #End conditional for replacing metadata
 }
 
 ###################
@@ -511,7 +536,7 @@ if (opt$export_tables == TRUE){
         exporttabletsv(dataobj = tt, project = project, basename = paste(analysis, "FeatTable", sep = "_"), row.names = FALSE, col.names = TRUE, path = tablespath)
     }
     #Export as spreadsheet
-    export_expvec_to_XL(expvec=expvec, filename=paste(paste(project, "counts", "PPM", sep="_"), "xlsx", sep="."))
+    export_expvec_to_XL(expvec = expvec, filename = paste(paste(project, "counts", "PPM", sep="_"), "xlsx", sep="."))
 }
 
 ########################################
