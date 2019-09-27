@@ -3,10 +3,15 @@
 #' Returns a list vector of MetagenomeSeq MRexperiments for every analysis that is possible to make.
 #' @export
 
-make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1){
+make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, minPctFromCtg = NULL, minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL){
 
     #Get data for features
-    Samples <- rownames(pheno)
+    if (!is.null(onlysamples)){
+        pheno2 <- pheno[rownames(pheno) %in% onlysamples, ]
+    } else {
+        pheno2 <- pheno
+    }
+    Samples <- rownames(pheno2)
     featureobjects <- paste(Samples, "featuredose", sep="_")
     featuredoses <- list.data[featureobjects]
     names(featuredoses) <- Samples
@@ -49,61 +54,73 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlya
     expvec <- vector("list",length = (length(possibleanalyses) + 1))
     e <- 1
 
-    #Start by making LKT experiment
-    print("Making LKT MRexperiment")
-    LKTobjects <- paste(Samples, "LKTdose", sep="_")
-    LKTdoses <- list.data[LKTobjects]
-    names(LKTdoses) <- Samples
+    if (is.null(restricttoLKTs)){
+        #Start by making LKT experiment
+        print("Making LKT MRexperiment")
+        LKTobjects <- paste(Samples, "LKTdose", sep="_")
+        LKTdoses <- list.data[LKTobjects]
+        names(LKTdoses) <- Samples
 
-    #Data should be non-redundant. But if for some reason it is, make LKTs unique in a safe manner.
-    for (s in 1:length(Samples)){
-        #get rid of bogus LKT dupes due to faulty NCBI taxonomy.
-        LKTdoses[[s]] <- LKTdoses[[s]][!(duplicated(LKTdoses[[s]][]$LKT)), ]
-        LKTdoses[[s]][]$LKT <- as.character(LKTdoses[[s]][]$LKT)
+        #Data should be non-redundant. But if for some reason it is, make LKTs unique in a safe manner.
+        for (s in 1:length(Samples)){
+            #get rid of bogus LKT dupes due to faulty NCBI taxonomy.
+            LKTdoses[[s]] <- LKTdoses[[s]][!(duplicated(LKTdoses[[s]][]$LKT)), ]
+            LKTdoses[[s]][]$LKT <- as.character(LKTdoses[[s]][]$LKT)
+        }
+        LKTdosesall <- bind_rows(LKTdoses, .id = "id")
+        colnames(LKTdosesall)[which(colnames(LKTdosesall) == "id")] <- "Sample"
+
+        #Apply filters if applicable
+        if (!is.null(minPctFromCtg)){
+            LKTdosesall <- subset(LKTdosesall, PctFromCtg >= minPctFromCtg)
+        }
+
+        #Apply filters if applicable
+        if (!is.null(minProbNumGenomes)){
+            LKTdosesall <- subset(LKTdosesall, ProbNumGenomes >= minProbNumGenomes)
+        }
+
+        #Make tax table
+        taxlvlspresent <- colnames(LKTdosesall)[colnames(LKTdosesall) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
+
+        tt <- LKTdosesall[ , taxlvlspresent]
+        tt <- tt[!(duplicated(tt)), ]
+        #get rid of LKT dupes due to NCBI taxonomy names at species level including subspecies nomenclature. Sigh. These are usually unclassified species.
+        tt <- tt[!(duplicated(tt$LKT)), ]
+        rownames(tt) <- tt$LKT
+        ttm <- as.matrix(tt)
+
+        #bind them up again
+        LKTdosesall <- bind_rows(LKTdoses, .id = "id")
+        colnames(LKTdosesall)[which(colnames(LKTdosesall) == "id")] <- "Sample"
+
+        #Make counts table
+        LKTallcounts <- LKTdosesall[, c("Sample", "LKT", "NumBases")]
+        #Be sure that data is not empty or redundant
+        LKTallcounts[is.na(LKTallcounts)] <- 0
+
+        cts <- spread(LKTallcounts, Sample, NumBases, fill = 0, drop = FALSE)
+        rownames(cts) <- cts$LKT
+        cts$LKT <- NULL
+
+        sampleorder <- rownames(pheno2)
+        tt <- tt[rownames(cts), ]
+        cts <- cts[, sampleorder]
+
+        ##Create metagenomeSeq MRexperiment
+        phenotypeData <- AnnotatedDataFrame(pheno2)
+        ttdata <- AnnotatedDataFrame(tt)
+        mgseq <- newMRexperiment(cts, phenoData = phenotypeData, featureData = ttdata)
+
+        attr(mgseq, "analysis") <- "LKT"
+
+        #Register the total number of NAHS bases sequenced for each sample
+        TotBasesSamples <- colSums(cts)
+
+        expvec[[e]] <- mgseq
+        names(expvec)[e] <- "LKT"
+        e <- e + 1
     }
-    LKTdosesall <- bind_rows(LKTdoses, .id = "id")
-    colnames(LKTdosesall)[which(colnames(LKTdosesall) == "id")] <- "Sample"
-
-    #Make tax table
-    taxlvlspresent <- colnames(LKTdosesall)[colnames(LKTdosesall) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
-
-    tt <- LKTdosesall[ , taxlvlspresent]
-    tt <- tt[!(duplicated(tt)), ]
-    #get rid of LKT dupes due to NCBI taxonomy names at species level including subspecies nomenclature. Sigh. These are usually unclassified species.
-    tt <- tt[!(duplicated(tt$LKT)), ]
-    rownames(tt) <- tt$LKT
-    ttm <- as.matrix(tt)
-
-    #bind them up again
-    LKTdosesall <- bind_rows(LKTdoses, .id = "id")
-    colnames(LKTdosesall)[which(colnames(LKTdosesall) == "id")] <- "Sample"
-
-    #Make counts table
-    LKTallcounts <- LKTdosesall[, c("Sample", "LKT", "NumBases")]
-    #Be sure that data is not empty or redundant
-    LKTallcounts[is.na(LKTallcounts)] <- 0
-
-    cts <- spread(LKTallcounts, Sample, NumBases, fill = 0, drop = FALSE)
-    rownames(cts) <- cts$LKT
-    cts$LKT <- NULL
-
-    sampleorder <- rownames(pheno)
-    tt <- tt[rownames(cts), ]
-    cts <- cts[, sampleorder]
-
-    ##Create metagenomeSeq MRexperiment
-    phenotypeData <- AnnotatedDataFrame(pheno)
-    ttdata <- AnnotatedDataFrame(tt)
-    mgseq <- newMRexperiment(cts, phenoData = phenotypeData, featureData = ttdata)
-
-    attr(mgseq, "analysis") <- "LKT"
-
-    #Register the total number of NAHS bases sequenced for each sample
-    TotBasesSamples <- colSums(cts)
-
-    expvec[[e]] <- mgseq
-    names(expvec)[e] <- "LKT"
-    e <- e + 1
 
     #Now, for the functional analyses
     for (a in 1:length(possibleanalyses)) {
@@ -116,11 +133,41 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, list.data = NULL, onlya
 
         #Get names of Samples which have data for the analysis
         SamplesofInterest <- names(anallist)[which(sapply(1:length(anallist), function(x) { (analysis %in% anallist[[x]]) } ) == TRUE)]
-        for (ad in SamplesofInterest){
-            analysisdoses[[ad]] <- subset(featuredoses[[ad]], Analysis == analysis)[, c("Accession", "NumBases", "Description")]
+
+        if (is.null(restricttoLKTs)){
+            #Dose of each analysis is total number of bases attributed to it
+            for (ad in SamplesofInterest){
+                tempanaldose <- subset(featuredoses[[ad]], Analysis == analysis)[, c("Accession", "NumBases", "Description")]
+                tempanaldose$Accession <- as.character(tempanaldose$Accession)
+                tempanaldose$Description <- as.character(tempanaldose$Description)
+                tempanaldose$NumBases <- as.numeric(tempanaldose$NumBases)
+                analysisdoses[[ad]] <- tempanaldose
+            }
+        } else {
+            print(paste("Making counts table restricted to the", length(restricttoLKTs),"LKTs specified."))
+            #Dose of each analysis is sum of bases present in LKTs to restrict to
+            for (ad in SamplesofInterest){
+                #First, find out if taxa exist. If so, get numbers, else, write down 0.
+                tempanaldose <- subset(featuredoses[[ad]], Analysis == analysis)
+                taxapresent <- restricttoLKTs[restricttoLKTs %in% colnames(tempanaldose)]
+                if (length(taxapresent) > 1){
+                    numbavec <- as.numeric(rowSums(tempanaldose[ , taxapresent]))
+                } else if (length(taxapresent) == 1) {
+                    numbavec <- as.numeric(tempanaldose[ , taxapresent])
+                } else {
+                    numbavec <- rep(0,  nrow(tempanaldose))
+                }
+                tempanaldose <- tempanaldose[ , c("Accession", "Description")]
+                tempanaldose$Accession <- as.character(tempanaldose$Accession)
+                tempanaldose$Description <- as.character(tempanaldose$Description)
+                tempanaldose$NumBases <- numbavec
+
+                analysisdoses[[ad]] <- tempanaldose[, c("Accession", "NumBases", "Description")]
+            }
         }
+
         #Take into account that the phenotable might contain less samples
-        phenoanal <- pheno[SamplesofInterest, ]
+        phenoanal <- pheno2[SamplesofInterest, ]
 
         featureall <- bind_rows(analysisdoses, .id = "id")
         featureall[is.na(featureall)] <- 0
