@@ -119,6 +119,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
             } else {
                 hmtypemsg <- "Relative Abundance Heatmap"
                 asPA <- FALSE
+                hmasPA <- FALSE
                 if (hmtype != "comparative"){
                     stattype <- "variance"
                     if(is.null(ntop)){
