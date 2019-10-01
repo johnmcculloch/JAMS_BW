@@ -1,6 +1,6 @@
-#' make_metagenomeSeq_experiments(pheno=NULL, list.data=NULL, onlyanalyses=NULL, )
+#' make_metagenomeSeq_experiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, minPctFromCtg = NULL, minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL)
 #'
-#' Returns a list vector of MetagenomeSeq MRexperiments for every analysis that is possible to make.
+#' Makes MetagenomeSeq MRexperiments for every analysis that is possible to make given loaded jams files in list.data.
 #' @export
 
 make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, minPctFromCtg = NULL, minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL){

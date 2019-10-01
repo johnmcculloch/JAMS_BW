@@ -2,7 +2,7 @@
 % Please edit documentation in R/make_metagenomeSeq_experiments.R
 \name{make_metagenomeSeq_experiments}
 \alias{make_metagenomeSeq_experiments}
-\title{make_metagenomeSeq_experiments(pheno=NULL, list.data=NULL, onlyanalyses=NULL, )}
+\title{make_metagenomeSeq_experiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, minPctFromCtg = NULL, minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL)}
 \usage{
 make_metagenomeSeq_experiments(pheno = NULL, onlysamples = NULL,
   onlyanalyses = NULL, minnumsampanalysis = NULL,
@@ -10,5 +10,5 @@ make_metagenomeSeq_experiments(pheno = NULL, onlysamples = NULL,
   minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL)
 }
 \description{
-Returns a list vector of MetagenomeSeq MRexperiments for every analysis that is possible to make.
+Makes MetagenomeSeq MRexperiments for every analysis that is possible to make given loaded jams files in list.data.
 }
