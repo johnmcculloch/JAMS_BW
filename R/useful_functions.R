@@ -157,3 +157,21 @@ countfastq_files <- function(fastqfiles = NULL, threads = NULL){
 
     return(fastqstatsdf)
 }
+
+
+#' trim_whitespace_from_df(df)
+#' Trims leading and trailing whitespace from a dataframe
+#' @export
+
+trim_whitespace_from_df <- function(df = NULL){
+    #check if input is reasonable
+    if (class(df) != "data.frame"){
+        stop("Input must be a data.frame")
+    }
+
+    for (colm in 1:ncol(df)){
+        df[ , colm] <- trimws(df[ , colm])
+    }
+
+    return(df)
+}
