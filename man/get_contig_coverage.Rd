@@ -4,8 +4,7 @@
 \alias{get_contig_coverage}
 \title{get_contig_coverage}
 \usage{
-get_contig_coverage(opt = NULL, markduplicates = FALSE,
-  classifyunassembled = TRUE)
+get_contig_coverage(opt = NULL, markduplicates = FALSE)
 }
 \description{
 JAMSalpha function
