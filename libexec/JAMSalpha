@@ -28,7 +28,7 @@ if (nchar(slurmjobid) < 3){
     }
 
     detectAvailRAM <- function(){
-        totmembytes<-as.numeric(get_ram())
+        totmembytes <- as.numeric(get_ram())
 
         return(totmembytes)
     }

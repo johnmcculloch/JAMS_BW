@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, classifyunassembled = TRUE){
+get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
     setwd(opt$workdir)
 
     flog.info("Using kraken2 with JAMStaxtable")
@@ -56,11 +56,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, classifyunas
         file.copy(opt$bedfile, opt$covdir)
 
         #Set general options
-        if(nchar(as.character(Sys.getenv("SLURM_JOB_ID"))) > 3){
-            bowtiethreads <- (opt$threads - 2) #Two threads must be free on Biowulf
-        } else {
-            bowtiethreads <- pt$threads
-        }
+        bowtiethreads <- (opt$threads - 2) #Two CPUs must be free on Biowulf
 
         #build index
         flog.info("Building index.")
@@ -83,7 +79,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, classifyunas
         flog.info(paste("Alignment of reads to contigs is complete with", opt$bowtie_cov_output[length(opt$bowtie_cov_output)]))
         NAssfastqs <- list.files(pattern = "*fastq")
 
-        if (classifyunassembled == TRUE){
+        if (opt$classifyunassembled == TRUE){
             flog.info("Classifying taxonomy of non assembled reads.")
             makefastacmd <- paste(file.path(opt$bindir, "fastq2fasta4kraken.sh"), paste(NAssfastqs, collapse = " "))
             system(makefastacmd)
@@ -107,7 +103,10 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, classifyunas
                 return(k2out)
             }
 
-            k2outlist <- mclapply(1:numchunks, function (x) { split_to_df(kraken2taxid[chunkcoords[[x]]]) }, mc.cores = (opt$threads - 2))
+            #Cap the number of CPUs to 24 because of memory issues
+            appropriatenumcores <-  min((opt$threads - 2), 24)
+
+            k2outlist <- mclapply(1:numchunks, function (x) { split_to_df(kraken2taxid[chunkcoords[[x]]]) }, mc.cores = appropriatenumcores)
             k2out <- plyr::ldply(k2outlist, rbind)
             k2out <- as.data.frame(k2out)
 
@@ -198,7 +197,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, classifyunas
         #Shrink contig perbase coverage for future use.
         opt$contigperbasecoverage <- shrink_perbasecoverage(perbasecoverage = contigcoverage, percentage = 2)
         #Consolidate LKT dose
-        if (classifyunassembled == TRUE){
+        if (opt$classifyunassembled == TRUE){
             #Eliminate redundancy and get the dose
             tmpcontigsdata <- opt$contigsdata[ , (!(colnames(opt$contigsdata) %in% c("Length", "GC")))]
             colnames(tmpcontigsdata)[which(colnames(tmpcontigsdata) == "Contig")] <- "Sequence"
