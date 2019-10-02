@@ -24,8 +24,10 @@ randomize_experiment <- function (mgseqobj = NULL, newname = "Noise", shufflecla
         return(shuffvec)
     }
 
+    flog.info(paste("Randomizing", analysis, "MRexperiment"))
+
     for (itn in 1:iterations){
-        print(paste0("Shuffling matrix horizontally and vertically ", itn, "/", iterations, " times."))
+        flog.info(paste0("Shuffling matrix horizontally and vertically ", itn, "/", iterations, " times."))
 
         #Start by shuffling sample values by row
         for (feat in 1:nrow(cts)){
