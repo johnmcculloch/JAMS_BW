@@ -44,7 +44,7 @@ randomize_experiment <- function (mgseqobj = NULL, newname = "Noise", shufflecla
             cts <- cts[classifiedrows, ]
         }
 
-        for (colm in 1:numsamples){
+        for (colm in 1:ncol(cts)){
             cts[ , colm] <- shuff_colm(x = colm, matr = cts)
         }
 
