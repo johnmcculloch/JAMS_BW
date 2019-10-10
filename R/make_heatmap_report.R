@@ -29,20 +29,29 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
     colcategories <- append(variables_all, readscols, after = length(variables_all))
 
     if (report == "comparative"){
+        plot_category_message <- "Relative Abundance Heatmaps"
         plotname <- "Feature_Heatmaps_Comparative"
         statname <- "Feature_Stats_Comparative"
         comparisons <- variables_discont
         plotmsg <- c("Difference in features", "between discrete categories")
     } else if (report == "exploratory"){
+        plot_category_message <- "Relative Abundance Heatmaps"
         plotname <- "Feature_Heatmaps_Variance"
         statname <- "Feature_Stats_Variance"
         comparisons <- "bRobDingnag"
         plotmsg <- c("Features most variant", "across samples")
     } else if (report == "PA"){
+        plot_category_message <- "Relative Abundance Heatmaps"
         plotname <- "Feature_Heatmaps_PA_Fisher"
         statname <- "Feature_Stats_PA_Fisher"
         comparisons <- variables_bin
         plotmsg <- c("Features present or absent", "between binary categories")
+    } else if (report == "correlation"){
+        plot_category_message <- "Feature Correlation Heatmaps"
+        plotname <- "Feature_Heatmaps_Pairwise_Correlation"
+        statname <- "Feature_Heatmaps_Stats_Correlation"
+        comparisons <- "bRobDingnag"
+        plotmsg <- "Pairwise correlation of features"
     }
 
     #Set counters
@@ -71,7 +80,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
         plot.new()
         grid.table(intromessage, rows = NULL, cols = NULL, theme = ttheme_default(base_size = 15))
         plot.new()
-        grid.table(c("JAMS", "Relative Abundance Heatmaps", project, plotmsg), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
+        grid.table(c("JAMS", plot_category_message, project, plotmsg), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
     }
 
     #Generate XL files with comparisons throughout samples
@@ -127,14 +136,21 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                     mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]],  heatpalette=heatpalette, hmtype=report, hmasPA=FALSE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
                     compvec <- append(compvec, mycomp, after=length(compvec))
+                } else if (report == "correlation"){
+                    plot.new()
+                    grid.table(c(names(expvec2)[a], "Pairwise Correlation of Features", "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
+
+                    plot_correlation_heatmap(mgseqobj = expvec2[[a]], stattype = "spearman", subsetby = NULL, list.data = list.data, ignoreunclassified = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, returnstats = FALSE)
+
+                    compvec <- NULL
                 }
             }
             HMn <- HMn + 1
 
             if (length(variables_subs) > 0){
                 #If there is any subsettable data, then do that.
-                validsubs<-NULL
-                validsubs<-variables_subs[!(variables_subs %in% cmp)]
+                validsubs <- NULL
+                validsubs <- variables_subs[!(variables_subs %in% cmp)]
                 for (vs in validsubs){
                     XLn <- XLn + 1
 
@@ -164,6 +180,13 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
 
                             compvec <- append(compvec, mycomp, after=length(compvec))
 
+                        } else if (report == "correlation"){
+                            plot.new()
+                            grid.table(c(names(expvec2)[a], "Pairwise Correlation of Features", paste("Subset by", vs)), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
+
+                            plot_correlation_heatmap(mgseqobj = expvec2[[a]], stattype = "spearman", subsetby = vs, list.data = list.data, ignoreunclassified = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, returnstats = FALSE)
+
+                            compvec <- NULL
                         } #Type of report conditional
                     } #If heatmaps are to be made conditional
                     HMn <- HMn + 1
@@ -181,30 +204,32 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
         dev.off()
     }
 
-     if (makespreadsheets == TRUE){
+    if (makespreadsheets == TRUE){
         #Output statistics to system as spreadsheet.
         #flush out any null dfs in list
-        compvec<-compvec[sapply(compvec, function(x){!(is.null(x))})]
-        #Truncate names to 31 chars. Excel does not accept more. Sigh.
-        compvecXL<-compvec
-        names(compvecXL)<-sapply(1:length(compvecXL), function(x){ stringr::str_trunc(names(compvecXL)[x], 30) })
+        compvec <- compvec[sapply(compvec, function(x){!(is.null(x))})]
 
-        baseXLfn <- paste("JAMS", project, statname, sep="_")
-        if (!(is.null(appendtofilename))){
-            baseXLfn <- paste(baseXLfn, appendtofilename, sep = "_")
-        }
-        XLfn <- paste(baseXLfn, "xlsx", sep=".")
-        #Ensure no overwriting.
-        xfn <- 1
-        while (file.exists(XLfn)){
-            XLfn <- paste(paste0(baseXLfn, xfn), "xlsx", sep=".")
-            xfn <- xfn + 1
-            if(xfn > 100){
-                stop("I think you have enough tables already. May I suggest you try looking through them.")
+        if (length(compvec) > 1){
+            #Truncate names to 31 chars. Excel does not accept more. Sigh.
+            compvecXL <- compvec
+            names(compvecXL) <- sapply(1:length(compvecXL), function(x){ stringr::str_trunc(names(compvecXL)[x], 30) })
+
+            baseXLfn <- paste("JAMS", project, statname, sep="_")
+            if (!(is.null(appendtofilename))){
+                baseXLfn <- paste(baseXLfn, appendtofilename, sep = "_")
             }
+            XLfn <- paste(baseXLfn, "xlsx", sep=".")
+            #Ensure no overwriting.
+            xfn <- 1
+            while (file.exists(XLfn)){
+                XLfn <- paste(paste0(baseXLfn, xfn), "xlsx", sep=".")
+                xfn <- xfn + 1
+                if(xfn > 100){
+                    stop("I think you have enough tables already. May I suggest you try looking through them.")
+                }
+            }
+            write.xlsx(compvecXL, file = XLfn, asTable = TRUE, rowNames = TRUE, colNames = TRUE, borders = "surrounding", colWidths="auto")
         }
-
-        write.xlsx(compvecXL, file = XLfn, asTable = TRUE, rowNames = TRUE, colNames = TRUE, borders = "surrounding", colWidths="auto")
     }
 
     return(flog.info(paste("Comparative report complete with", XLn, "spreadsheet comparisons and", HMn, "heatmap comparisons")))
