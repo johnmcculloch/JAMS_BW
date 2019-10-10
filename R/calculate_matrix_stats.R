@@ -1,6 +1,7 @@
 #' calculate_matrix_stats(countmatrix=NULL, uselog=NULL, statsonlog=TRUE, stattype=c("variance", "binary", "permanova", "PA", "auto"), classesvector=NULL, invertbinaryorder=FALSE, numthreads=4, nperm=99)
 #'
 #' Returns a data frame with the statistics for a feature count matrix ordered by highest variance or lowest Mann-Whitney-Wilcoxon test between binary categories.
+#'
 #' @export
 
 calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, numthreads = 4, nperm = 99){
@@ -10,10 +11,17 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         stop("If rows are to be selected by highest significant difference between classes in a discrete category, you must determine the category using the argument *classesvector*")
     }
 
+    #Decide if we are comparing anything
     if (!(is.null(classesvector))){
-        #Determine if there are two or more classes
-        numclass <- length(unique(classesvector))
+        #Decide if variable is continuous or discrete
+        if (is.numeric(classesvector)){
+            numclass <- "continuous"
+        } else {
+            #Determine if there are two or more classes
+            numclass <- length(unique(classesvector))
+        }
     } else {
+        #No comparing, use variance
         numclass <- 0
     }
 
@@ -67,8 +75,9 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         }
 
         discretenames <- sort(unique(classesvector))
-        mwstat <- lapply(1:nrow(countmatrix), function(x) wilcox.test(countmatrix[x,] ~ classesvector)$statistic)
-        mwpval <- lapply(1:nrow(countmatrix), function(x) wilcox.test(countmatrix[x,] ~ classesvector)$p.value)
+        comparisons <- lapply(1:nrow(countmatrix), function(x) { wilcox.test(countmatrix[x, ] ~ classesvector) })
+        mwstat <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$statistic) } )
+        mwpval <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$p.value) } )
 
         #Get Log2 Fold Change (l2fc)
         getl2fc <- function(countsvec = NULL, classesvector = NULL, discretenames= NULL, method = "median", countsinlog = NULL){
@@ -119,9 +128,9 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
             mwpval <- sapply(1:nrow(countmatrix), function(x) { summary(aov(countmatrix[x,] ~ classesvector))[[1]]$`Pr(>F)`[1] } )
         }
 
-        mwpval[is.na(mwpval)]<-1
+        mwpval[is.na(mwpval)] <- 1
 
-        matstats <- data.frame(Feature=rownames(countmatrix), pval=mwpval)
+        matstats <- data.frame(Feature = rownames(countmatrix), pval=mwpval)
         rownames(matstats) <- rownames(countmatrix)
         #Adjust p-values
         adjlist <- lapply(p.adjust.methods, function(x){ p.adjust(matstats$pval, method = x, n = length(matstats$pval)) })
@@ -131,6 +140,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         matstats$Feature <- NULL
         matstats <- matstats[order(matstats$pval, decreasing = FALSE), ]
         matstats$Method <- rep(stattype, nrow(matstats))
+
     } else if (stattype == "PA"){
         require(parallel)
         if (numclass == 2){
@@ -154,6 +164,31 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
             matstats$upper <- 1 / matstats$upper
         }
         matstats$Method <- rep("fisher", nrow(matstats))
+
+    } else if (stattype %in% c("spearman", "pearson")){
+
+        corstat <- stattype
+        #Either correlate to variable or do pairwise feature comparison
+        if (is.null(classesvector)){
+            print("Calculating pairwise correlation coefficients of all features")
+            tcountmatrix <- t(countmatrix)
+            matstats <- stats::cor(tcountmatrix, method = corstat)
+        } else {
+            comparisons <- lapply(1:nrow(countmatrix), function(x) { cor.test(countmatrix[x, ], classesvector, method = corstat) })
+            mwstat <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$estimate) } )
+            mwpval <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$p.value) } )
+
+            matstats <- data.frame(correl = mwstat, pval = mwpval)
+            matstats$abscorrel <- abs(matstats$correl)
+            rownames(matstats) <- rownames(countmatrix)
+            #Adjust p-values
+            adjlist <- lapply(p.adjust.methods, function(x){ p.adjust(matstats$pval, method = x, n = length(matstats$pval)) })
+            names(adjlist) <- paste("padj", p.adjust.methods, sep = "_")
+            adjdf <- as.data.frame(adjlist)
+            matstats <- cbind(matstats, adjdf)
+            matstats <- matstats[order(matstats$pval, decreasing = FALSE), ]
+            matstats$Method <- rep(corstat, nrow(matstats))
+        }
     }
 
     return(matstats)
