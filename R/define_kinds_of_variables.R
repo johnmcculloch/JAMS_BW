@@ -12,11 +12,11 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
         phenolabels <- metadata[[2]]
     }
 
-    validcols <-as.character(phenolabels$Var_label)
+    validcols <- as.character(phenolabels$Var_label)
     print(paste("Phenolabels contains", length(validcols), "categories."))
 
     #Stop if you are asking for more than you have.
-    if(length(validcols) > ncol(phenotable)){
+    if (length(validcols) > ncol(phenotable)){
         stop("Phenolabels has more categories than the metadata in phenotable. Review and try again.")
     }
 
