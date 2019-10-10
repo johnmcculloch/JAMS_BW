@@ -139,6 +139,8 @@ option_list <- list(
                 help = str_c("Text file with a list of read prefixes to restrict swarm to.")),
     make_option(c("-g", "--sralist"),
                 default = NULL, action="store", help = str_c("List of SRA accessions to get reads for assembly.")),
+    make_option(c("-g", "--gcalist"),
+                default = NULL, action="store", help = str_c("List of GCA accessions to get assembly contigs from GenBank (example: GCA_000969225.1).")),
     make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
                 help = str_c("Use -n option in swarm file, for skipping InterproScan, even if available.)")),
     make_option(c("-s", "--swarmfile"), default = defopt$swarmfile, action="store",
@@ -148,6 +150,7 @@ option_list <- list(
     make_option(c("-v", "--version"), action="store_true",
                 help ="report version")
 )
+
 
 # parse the options
 args <- commandArgs(trailingOnly = TRUE)
@@ -231,11 +234,13 @@ if (opt$skipinterpro == TRUE) {
     commonoptions <- paste(commonoptions, "-n", collapse = " ")
 }
 
+finalswarm <- NULL
+
 if (!is.null(opt$checkprefixexists)){
     cat("Checking if prefixes in swarm file coincide with prefixes in:\n")
     cat(paste(as.character(opt$checkprefixexists), "\n"))
-    jamsfns <- list.files(path = opt$checkprefixexists, pattern=".jams$")
-    opt$usedprefixes <- sapply(1:length(jamsfns), function(x) { unlist(strsplit(jamsfns[x], split="\\."))[1] } )
+    jamsfns <- list.files(path = opt$checkprefixexists, pattern = ".jams$")
+    opt$usedprefixes <- sapply(1:length(jamsfns), function(x) { unlist(strsplit(jamsfns[x], split = "\\."))[1] } )
 }
 
 if (!(is.null(opt$readsfolder))){
@@ -261,7 +266,6 @@ if (!(is.null(opt$readsfolder))){
     opt$prefixestouse <- unique(rawfastqsdf$Prefix)
     opt <- check_prefixes(opt = opt)
 
-    swarm <- NULL
     for (p in 1:length(opt$prefixestouse)){
         prefix <- opt$prefixestouse[p]
         relevantfiles <- subset(rawfastqsdf, Prefix == prefix)
@@ -278,20 +282,29 @@ if (!(is.null(opt$readsfolder))){
         }
         swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", prefix, collapse = " ")
     }
+    finalswarm <- append(swarm, finalswarm)
+}
 
-} else if (!is.null(opt$sralist)){
-    wantedaccessions <- read.table(opt$sralist, header = FALSE, sep = " ", stringsAsFactors = FALSE)
-    wantedaccessions <- as.character(wantedaccessions[, 1])
-    opt$prefixestouse <- wantedaccessions
-    opt <- check_prefixes(opt = opt)
 
-    swarm <- NULL
-    for (p in 1:length(opt$prefixestouse)){
-        prefix <- opt$prefixestouse[p]
-        readsinput <- paste("-g", prefix)
-        swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", prefix, collapse = " ")
+if (any(c((!is.null(opt$sralist)), (!is.null(opt$gcalist))))) {
+    for(lst in c("sralist", "gcalist")){
+        if(!is.null(opt[[lst]])){
+            swarm <- NULL
+            flag <- switch(lst, "sralist" = "-g", "gcalist" = "-a")
+            wantedaccessions <- read.table(opt[[lst]], header = FALSE, sep = " ", stringsAsFactors = FALSE)
+            wantedaccessions <- as.character(wantedaccessions[, 1])
+            opt$prefixestouse <- wantedaccessions
+            opt <- check_prefixes(opt = opt)
+
+            for (p in 1:length(opt$prefixestouse)){
+                prefix <- opt$prefixestouse[p]
+                readsinput <- paste(flag, prefix)
+                swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", prefix, collapse = " ")
+            }
+            finalswarm <- append(swarm, finalswarm)
+        }
     }
 }
 
 #Write swarm file to system
-write.table(swarm, file = opt$swarmfile, sep = "\n", row.names = FALSE, col.names = FALSE, quote = FALSE)
+write.table(finalswarm, file = opt$swarmfile, sep = "\n", row.names = FALSE, col.names = FALSE, quote = FALSE)
