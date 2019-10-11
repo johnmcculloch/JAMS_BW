@@ -302,7 +302,8 @@ if (any(c((!is.null(opt$sralist)), (!is.null(opt$gcalist))))) {
 
             for (p in 1:length(opt$prefixestouse)){
                 prefix <- opt$prefixestouse[p]
-                readsinput <- paste(flag, prefix)
+                accession <- opt$wantedaccessions[p]
+                readsinput <- paste(flag, accession)
                 swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", prefix, collapse = " ")
             }
             finalswarm <- append(swarm, finalswarm)
