@@ -39,18 +39,17 @@ if(nchar(slurmjobid) < 3){
     #Define appropriate functions for slurm system
     detectBatchCPUs <- function() {
         slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
-        sacctraw <- system2("sacct", args = c("-j", slurmjobid, "-X", "-P"), stdout = TRUE)
-        jobinforaw <- sacctraw[2]
-        jobinfoheaders <- sacctraw[1]
-        #jobinfo <- unlist(strsplit(jobinforaw, split=" "))[which(unlist(strsplit(jobinforaw, split=" ")) != "")]
-        jobinfo <- unlist(strsplit(jobinforaw, split="\\|"))
-        #names(jobinfo) <- unlist(strsplit(jobinfoheaders, split=" "))[which(unlist(strsplit(jobinfoheaders, split=" ")) != "")]
-        names(jobinfo) <- unlist(strsplit(jobinfoheaders, split="\\|"))
-        ncores <- as.integer(jobinfo["AllocCPUS"])
-        print(jobinfo)
+        ncores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+
         if (is.na(ncores)) {
             #Try plan B
-            ncores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+            sacctraw <- system2("sacct", args = c("-j", slurmjobid, "-X", "-P"), stdout = TRUE)
+            jobinforaw <- sacctraw[2]
+            jobinfoheaders <- sacctraw[1]
+            jobinfo <- unlist(strsplit(jobinforaw, split="\\|"))
+            names(jobinfo) <- unlist(strsplit(jobinfoheaders, split="\\|"))
+            ncores <- as.integer(jobinfo["AllocCPUS"])
+            print(jobinfo)
             if (is.na(ncores)) {
                 stop("Could not determine how many CPUs you have. Aborting.")
             }
@@ -58,6 +57,7 @@ if(nchar(slurmjobid) < 3){
 
         return(ncores)
     }
+
 
     detectAvailRAM <- function(){
         mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
