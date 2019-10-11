@@ -212,6 +212,9 @@ check_prefixes <- function(opt = NULL){
                 cat(paste(paste0(opt$alreadyusedprexixes, collapse = ", "), "\n"))
                 cat("THESE PREFIXES HAVE BEEN ELIMINATED FROM THE SWARM FILE GENERATED.\n")
                 opt$prefixestouse <- opt$prefixestouse[!(opt$prefixestouse %in% opt$usedprefixes)]
+                if (!is.null(opt$wantedaccessions)){
+                    opt$wantedaccessions <- opt$wantedaccessions[!(opt$prefixestouse %in% opt$usedprefixes)]
+                }
             }
         }
     }
@@ -292,8 +295,8 @@ if (any(c((!is.null(opt$sralist)), (!is.null(opt$gcalist))))) {
             swarm <- NULL
             flag <- switch(lst, "sralist" = "-g", "gcalist" = "-a")
             wantedaccessions <- read.table(opt[[lst]], header = FALSE, sep = " ", stringsAsFactors = FALSE)
-            wantedaccessions <- as.character(wantedaccessions[, 1])
-            cleanprefixes <- unname(sapply(wantedaccessions, function(x) { gsub("_", "", x) }))
+            opt$wantedaccessions <- as.character(wantedaccessions[, 1])
+            cleanprefixes <- unname(sapply(opt$wantedaccessions, function(x) { gsub("_", "", x) }))
             opt$prefixestouse <- unname(sapply(cleanprefixes, function (x) { unlist(strsplit(x, split = "\\."))[1] } ))
             opt <- check_prefixes(opt = opt)
 
