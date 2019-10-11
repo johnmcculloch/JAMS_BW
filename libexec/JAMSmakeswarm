@@ -293,7 +293,8 @@ if (any(c((!is.null(opt$sralist)), (!is.null(opt$gcalist))))) {
             flag <- switch(lst, "sralist" = "-g", "gcalist" = "-a")
             wantedaccessions <- read.table(opt[[lst]], header = FALSE, sep = " ", stringsAsFactors = FALSE)
             wantedaccessions <- as.character(wantedaccessions[, 1])
-            opt$prefixestouse <- wantedaccessions
+            cleanprefixes <- unname(sapply(wantedaccessions, function(x) { gsub("_", "", x) }))
+            opt$prefixestouse <- unname(sapply(cleanprefixes, function (x) { unlist(strsplit(x, split = "\\."))[1] } ))
             opt <- check_prefixes(opt = opt)
 
             for (p in 1:length(opt$prefixestouse)){
