@@ -51,6 +51,8 @@ annotate_contigs <- function(opt = NULL){
         colnames(CDS2EC) <- c("Feature", "ECNumber")
         opt$featuredata <- left_join(opt$featuredata, CDS2EC)
         opt$featuredata$ECNumber[is.na(opt$featuredata$ECNumber)] <- "none"
+    } else {
+        opt$featuredata$ECNumber <- "none"
     }
 
     #Add taxonomy information
