@@ -139,7 +139,7 @@ option_list <- list(
                 help = str_c("Text file with a list of read prefixes to restrict swarm to.")),
     make_option(c("-g", "--sralist"),
                 default = NULL, action="store", help = str_c("List of SRA accessions to get reads for assembly.")),
-    make_option(c("-g", "--gcalist"),
+    make_option(c("-a", "--gcalist"),
                 default = NULL, action="store", help = str_c("List of GCA accessions to get assembly contigs from GenBank (example: GCA_000969225.1).")),
     make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
                 help = str_c("Use -n option in swarm file, for skipping InterproScan, even if available.)")),
@@ -154,7 +154,7 @@ option_list <- list(
 
 # parse the options
 args <- commandArgs(trailingOnly = TRUE)
-opt <- parse_args(OptionParser(option_list=option_list), args)
+opt <- parse_args(OptionParser(option_list = option_list), args)
 opt <- merge.list(opt, defopt)
 
 #####################
