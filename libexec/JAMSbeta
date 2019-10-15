@@ -180,6 +180,15 @@ if (all(c((is.null(opt$load_workspace)), (is.null(opt$jamsfiles_path))))) {
                 #flog.info(paste("Option", resetopt, "is set to FALSE."))
                 opt[[resetopt]] <- FALSE
             }
+            #May be missing in some old JAMS beta images
+            if (is.null(opt[["outdir"]])){
+                opt[["outdir"]] <- getwd()
+            }
+            missingopts <- optstosub[which(optstosub %in% names(opt) == FALSE)]
+            for (missingopt in missingopts){
+                opt[[missingopt]] <- FALSE
+            }
+
             for (nametosub in optstosub){
                 if (opt[[nametosub]] != preloadopt[[nametosub]]){
                     flog.info(paste0("For ", nametosub, ", ", opt[[nametosub]], " has been replaced with ", preloadopt[[nametosub]]))
