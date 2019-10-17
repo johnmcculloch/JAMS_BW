@@ -1,9 +1,9 @@
-#' plot_correlation_heatmap()
+#' plot_correlation_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", stattype = "spearman", cluster_rows = FALSE, subsetby = NULL, maxnumfeatallowed = 500, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL, samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL, showGram = FALSE, showphylum = FALSE, addtit = NULL, mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE, returnstats = FALSE, ...)
 #'
 #' Plots correlation heatmaps annotated by the metadata or a correlelogram of features
 #' @export
 
-plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", stattype = "spearman", cluster_rows = FALSE, subsetby = NULL, maxnumfeatallowed = 500, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL, samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL, mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE, returnstats = FALSE, ...) {
+plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", stattype = "spearman", cluster_rows = FALSE, subsetby = NULL, maxnumfeatallowed = 500, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL, samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL, showGram = FALSE, showphylum = FALSE, addtit = NULL, mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE, returnstats = FALSE, ...) {
 
     #Get appropriate object to work with
     obj <- mgseqobj
@@ -81,7 +81,6 @@ plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette
         if (!(is.null(subsetby))){
             samplesToKeep <- which((pData(obj)[, which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])
             print(paste("Plotting within", subset_points[sp]))
-            colcategories <- colcategories[!(colcategories %in% subsetby)]
             subsetname <- subset_points[sp]
         } else {
             samplesToKeep = rownames(pData(obj))
@@ -170,20 +169,43 @@ plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette
                 CorrHmColours <- c("blue4", "lightgoldenrodyellow", "red1")
                 heatmapCols <- colorRamp2(c(-1, 0, 1), CorrHmColours)
 
-                fontsizey <- min(6, round((((-1 / 150) * (nrow(matstats))) + 1) * 6, 0))
+                fontsizey <- min(6, round((((-1 / 250) * (nrow(matstats))) + 1) * 6, 0))
 
                 #Add genome completeness info if LKT
                 if (analysis == "LKT"){
                     genomecompletenessstats <- as.matrix(genomecompletenessdf[rownames(matstats), ])
                     gcl <- lapply(1:nrow(genomecompletenessstats), function (x){ (as.numeric(genomecompletenessstats[x, ][which(genomecompletenessstats[x, ] != 0)])) * 100 })
-                    ha1 <- rowAnnotation(Pct_Genome_Compl = anno_boxplot(gcl, width = unit(4, "cm"), pch = 20, size = unit(1, "mm"),  axis_param = list(labels_rot = 90)), annotation_name_gp = gpar(fontsize = 6, col = "black"))
+
+                    data(Gram)
+                    #Get Phyla
+                    if (analysisname %in% c("LKT", "Species", "Genus", "Family", "Order", "Class")){
+                        tt <- fData(currobj)
+                        tt <- tt[rownames(matstats), c(analysisname, "Phylum")]
+                        Gram$Kingdom <- NULL
+                        tt <- left_join(tt, Gram)
+                        tt$Gram[which(!(tt$Gram %in% c("positive", "negative")))] <- "not_sure"
+                        phcol <- colorRampPalette((brewer.pal(9, "Set1")))(length(unique(tt$Phylum)))
+                        names(phcol) <- unique(tt$Phylum)
+                        phcol[which(names(phcol) == "p__Unclassified")] <- "#000000"
+                        phcol <- phcol[!duplicated(phcol)]
+                    }
+
+                    ha1 <- rowAnnotation(Pct_Genome_Compl = anno_boxplot(gcl, width = unit(4, "cm"), pch = 20, size = unit(1, "mm"),  axis_param = list(labels_rot = 90)), Gram = tt$Gram, Phylum = tt$Phylum, col = list(Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8"), Phylum = phcol),  annotation_name_gp = gpar(fontsize = 6, col = "black"))
+
+                    ha2 <- HeatmapAnnotation(Phylum = tt$Phylum, Gram = tt$Gram, col = list(Phylum = phcol, Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8")),  annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = FALSE)
+
                 } else {
                     ha1 <- NULL
+                    ha2 <- NULL
                 }
 
-                ht1 <- Heatmap(matstats, name = paste(stattype, "correlation coefficient"), column_title = maintit, col = heatmapCols, column_dend_height = unit(5, "mm"), cluster_rows = TRUE, show_row_dend = FALSE, row_names_gp = gpar(fontsize = fontsizey), column_names_gp = gpar(fontsize = fontsizey), heatmap_legend_param = list(direction = "horizontal", legend_width = unit(6, "cm"), title = paste(stattype, "correlation coefficient"), labels = c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1), at = c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1), title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), left_annotation = ha1)
+                #Build plot title
+                stattit <- paste("Correlation measure =", stattype)
+                plotit <- paste(maintit, stattit, cutoffmsg, minPPMmsg, sep = "\n")
 
-                draw(ht1 , heatmap_legend_side = "bottom", annotation_legend_side = "left", padding = unit(c(2, 2, 2, 2), "mm"))
+                ht1 <- Heatmap(matstats, name = paste(stattype, "correlation coefficient"), column_title = plotit, column_title_gp = gpar(fontsize = 10), col = heatmapCols, column_dend_height = unit(5, "mm"), cluster_rows = TRUE, show_row_dend = FALSE, row_names_gp = gpar(fontsize = fontsizey), column_names_gp = gpar(fontsize = fontsizey), heatmap_legend_param = list(direction = "horizontal", legend_width = unit(6, "cm"), title = paste(stattype, "correlation coefficient"), labels = c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1), at = c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1), title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), left_annotation = ha1, bottom_annotation = ha2)
+
+                draw(ht1, heatmap_legend_side = "bottom", annotation_legend_side = "left", padding = unit(c(2, 20, 2, 2), "mm"))
             } #End conditional of going ahead and doing correlations if there arent too many features
         } #End conditional if there are any features left over after filtering
     } #End for loop for plotting within each subset point
