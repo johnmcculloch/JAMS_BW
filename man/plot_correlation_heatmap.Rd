@@ -2,15 +2,16 @@
 % Please edit documentation in R/plot_correlation_heatmap.R
 \name{plot_correlation_heatmap}
 \alias{plot_correlation_heatmap}
-\title{plot_correlation_heatmap()}
+\title{plot_correlation_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", stattype = "spearman", cluster_rows = FALSE, subsetby = NULL, maxnumfeatallowed = 500, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL, samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL, showGram = FALSE, showphylum = FALSE, addtit = NULL, mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE, returnstats = FALSE, ...)}
 \usage{
 plot_correlation_heatmap(mgseqobj = NULL, glomby = NULL,
   heatpalette = "smart", stattype = "spearman", cluster_rows = FALSE,
   subsetby = NULL, maxnumfeatallowed = 500, featmaxatleastPPM = 0,
   featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL,
   samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL,
-  addtit = NULL, mgSeqnorm = FALSE, cdict = NULL,
-  ignoreunclassified = TRUE, returnstats = FALSE, ...)
+  showGram = FALSE, showphylum = FALSE, addtit = NULL,
+  mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE,
+  returnstats = FALSE, ...)
 }
 \description{
 Plots correlation heatmaps annotated by the metadata or a correlelogram of features
