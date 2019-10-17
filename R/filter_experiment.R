@@ -10,12 +10,12 @@ filter_experiment <- function(mgseqobj = NULL, featmaxatleastPPM = 0, featcutoff
         totbases <- colSums(rawcts)
 
         #Get only samples you asked for
-        if(!(is.null(samplesToKeep))){
-            mgseqobj=mgseqobj[ , samplesToKeep]
+        if (!(is.null(samplesToKeep))){
+            mgseqobj <- mgseqobj[ , samplesToKeep]
         }
 
         #If setting featmaxatleastPPM or featcutoff to anything other than the defaults, then return as PPM.
-        if((featmaxatleastPPM != 0) || featcutoff != c(0, 0)){
+        if ((featmaxatleastPPM != 0) || featcutoff != c(0, 0)){
             asPPM <- TRUE
         }
 
@@ -30,7 +30,7 @@ filter_experiment <- function(mgseqobj = NULL, featmaxatleastPPM = 0, featcutoff
         }
 
         #Transform to PPM if applicable
-        if(asPPM == TRUE){
+        if (asPPM == TRUE){
             countmat <- MRcounts(mgseqobj, norm = mgSeqnorm, log = FALSE)
             countmat <- countmat[!is.na(row.names(countmat)),]
             #transform into PPM
@@ -42,13 +42,13 @@ filter_experiment <- function(mgseqobj = NULL, featmaxatleastPPM = 0, featcutoff
             countmat2 <- sapply(1:ncol(countmat), function(x){ getPPM(colnames(countmat)[x])} )
             colnames(countmat2) <- colnames(countmat)
             #Round to integer
-            for(c in 1:ncol(countmat2)){
-                countmat2[, c]<-round(countmat2[, c], 0)
+            for (c in 1:ncol(countmat2)){
+                countmat2[, c] <- round(countmat2[, c], 0)
             }
             countmatrix <- countmat2
             pheno2 <- pData(mgseqobj)
             #just make sure
-            pheno2<-pheno2[colnames(countmatrix), ]
+            pheno2 <- pheno2[colnames(countmatrix), ]
             ftt <- fData(mgseqobj)
             ##Create a non-normalised class object in metagenomeseq (mgseq)
             phenotypeData = AnnotatedDataFrame(pheno2)
