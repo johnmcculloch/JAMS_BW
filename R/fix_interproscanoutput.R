@@ -3,9 +3,9 @@
 #' JAMSalpha function
 #' @export
 
-fix_interproscanoutput<-function(opt = NULL){
+fix_interproscanoutput <- function(opt = NULL){
 
-    if("iprodir" %in% names(opt)){
+    if ("iprodir" %in% names(opt)){
         #Get interprojob
         opt$iprojob <- system2('cat', args=file.path(opt$iprodir, "ipro.job"), stdout = TRUE, stderr = FALSE)
         #See if job finished
