@@ -238,6 +238,7 @@ if (opt$skipinterpro == TRUE) {
 }
 
 finalswarm <- NULL
+swarm <- NULL
 
 if (!is.null(opt$checkprefixexists)){
     cat("Checking if prefixes in swarm file coincide with prefixes in:\n")
