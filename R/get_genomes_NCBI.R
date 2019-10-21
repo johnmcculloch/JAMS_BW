@@ -3,25 +3,31 @@
 #' Downloads Genomes from NCBI GenBank based on matching criteria
 #' @export
 
-get_genomes_NCBI<-function(organisms="bacteria", assembly_summary=NULL, outputdir=NULL, assembly_accession=NULL, organism_name=NULL, infraspecific_name=NULL, taxid=NULL, species_taxid=NULL, asm_name=NULL, as_general_expression=FALSE, assembly_level=NULL, assembly_upto=NULL, bioproject=NULL, biosample=NULL, refseq_category_upto=NULL, ntop=NULL, nobs=TRUE, fileformat="fasta", simulate=TRUE){
+get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, outputdir = NULL, assembly_accession = NULL, organism_name = NULL, infraspecific_name = NULL, taxid = NULL, species_taxid = NULL, asm_name = NULL, as_general_expression = FALSE, assembly_level = NULL, assembly_upto = NULL, bioproject = NULL, biosample = NULL, refseq_category_upto = NULL, ntop = NULL, nobs = TRUE, fileformat = "fasta", simulate = TRUE){
 
     require(data.table)
-    if(is.null(outputdir)){
-        outputdir=getwd()
+    if (is.null(outputdir)){
+        outputdir = getwd()
     }
 
-    if(all(c(is.null(organisms), is.null(taxid), is.null(species_taxid), is.null(assembly_accession), is.null(bioproject), is.null(biosample), is.null(organism_name), is.null(infraspecific_name), is.null(refseq_category_upto), is.null(asm_name), is.null(assembly_level), is.null(assembly_upto)))){
+    if (all(c(is.null(organisms), is.null(taxid), is.null(species_taxid), is.null(assembly_accession), is.null(bioproject), is.null(biosample), is.null(organism_name), is.null(infraspecific_name), is.null(refseq_category_upto), is.null(asm_name), is.null(assembly_level), is.null(assembly_upto)))){
         stop("You must provide at least one criterion as input.")
     }
 
-    if(is.null(assembly_summary)){
+    if (is.null(assembly_summary)){
         print("Downloading assembly_summary.txt from GenBank")
-        GBURL<-"https://ftp.ncbi.nlm.nih.gov/genomes/genbank"
-        ASURL<-paste(GBURL, organisms, "assembly_summary.txt", sep="/")
-        assembly_summary<-fread(ASURL, stringsAsFactors=FALSE, sep="\t", header=TRUE, quote="")
-        assembly_summary<-as.data.frame(assembly_summary)
+        GBURL <- "https://ftp.ncbi.nlm.nih.gov/genomes/genbank"
+        if (!is.null(organisms)){
+            ASURL <- paste(GBURL, organisms, "assembly_summary.txt", sep = "/")
+        } else {
+            ASURL <- paste(GBURL, "assembly_summary_genbank.txt", sep = "/")
+        }
+
+        assembly_summary <- fread(ASURL, stringsAsFactors = FALSE, sep = "\t", header = TRUE, quote = "")
+
+        assembly_summary <- as.data.frame(assembly_summary)
         #Fix column names
-        colnames(assembly_summary)<-gsub(" ", "", gsub("#", "", colnames(assembly_summary)))
+        colnames(assembly_summary) <- gsub(" ", "", gsub("#", "", colnames(assembly_summary)))
         #Correct table to make consistent with JAMS taxtable
         assembly_summary$taxid<-as.character(assembly_summary$taxid)
         assembly_summary$species_taxid<-as.character(assembly_summary$species_taxid)
@@ -45,12 +51,12 @@ get_genomes_NCBI<-function(organisms="bacteria", assembly_summary=NULL, outputdi
     }
 
     print(paste("There are", nrow(assembly_summary), "entries for", organisms, "genomes in NCBI GenBank."))
-    wanted_assembly_summary<-assembly_summary
+    wanted_assembly_summary <- assembly_summary
 
-    if(!is.null(assembly_accession)){
+    if (!is.null(assembly_accession)){
         print(paste("Subsetting to entries only with assembly accession(s)", paste0(assembly_accession, collapse=", ")))
-        wanted_assembly_accession<-assembly_accession
-        wanted_assembly_summary<-subset(wanted_assembly_summary, (assembly_accession %in% wanted_assembly_accession))
+        wanted_assembly_accession <- assembly_accession
+        wanted_assembly_summary <- subset(wanted_assembly_summary, (assembly_accession %in% wanted_assembly_accession))
         print(paste("There are", nrow(wanted_assembly_summary), "entries matching the assembly accession criteria."))
     }
 

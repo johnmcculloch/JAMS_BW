@@ -113,11 +113,11 @@ check_resources <- function(opt = opt){
         } else {
             flog.info("Host species genome has been supplied as an NCBI species taxid or organism name. Checking Tax ID and best genome to download.")
             flog.info("Trying as Tax ID first.")
-            host_assemblies <- get_genomes_NCBI(organisms = "vertebrate_mammalian", outputdir = NULL, species_taxid = opt$host, nobs = TRUE, fileformat = "fasta", simulate = TRUE)
+            host_assemblies <- get_genomes_NCBI(organisms = NULL, outputdir = NULL, species_taxid = opt$host, nobs = TRUE, fileformat = "fasta", simulate = TRUE)
             host_assemblies <- subset(host_assemblies, genome_rep == "Full")
             if(nrow(host_assemblies) == 0){
                 flog.info("Not Tax ID. Trying as organism_name.")
-                host_assemblies <- get_genomes_NCBI(organisms = "vertebrate_mammalian", outputdir = NULL, organism_name = opt$host, nobs = TRUE, fileformat = "fasta", simulate = TRUE)
+                host_assemblies <- get_genomes_NCBI(organisms = NULL, outputdir = NULL, organism_name = opt$host, nobs = TRUE, fileformat = "fasta", simulate = TRUE)
             }
             #Only consider full genomes
             host_assemblies <- subset(host_assemblies, genome_rep == "Full")

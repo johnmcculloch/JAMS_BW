@@ -3,37 +3,39 @@
 #' JAMSalpha function
 #' @export
 
-filter_host<-function(opt=NULL){
+filter_host <- function(opt = NULL){
     if(opt$host != "none"){
 
         #Check if reads are in tmpdir
-        if(opt$workdir != opt$sampledir){
-            readsworkdir<-file.path(opt$workdir, "reads")
+        if (opt$workdir != opt$sampledir){
+            readsworkdir <- file.path(opt$workdir, "reads")
         } else {
-            readsworkdir<-opt$readsdir
+            readsworkdir <- opt$readsdir
         }
         setwd(readsworkdir)
 
-        if(!(all(file.exists(file.path(readsworkdir, opt$trimreads))))){
+        if (!(all(file.exists(file.path(readsworkdir, opt$trimreads))))){
             flog.info("Could not find trimmed reads to align to host. Aborting now")
             q()
         }
 
         #Build an index if explicit species specified
-        if(!(is.null(opt$host_accession_number))){
+        if (!(is.null(opt$host_accession_number))){
             dir.create("hostindex")
-            opt$indexpath<-file.path(readsworkdir, "hostindex")
+            opt$indexpath <- file.path(readsworkdir, "hostindex")
             setwd(opt$indexpath)
             #Download host genome
             flog.info(paste("Downloading", opt$host, "genome."))
-            opt$host_assembly<-get_genomes_NCBI(organisms = "vertebrate_mammalian", assembly_accession=opt$host_accession_number, outputdir = opt$indexpath, ntop=1, fileformat = "fasta", simulate = FALSE)
+            #Trying
+            opt$host_assembly <- get_genomes_NCBI(organisms = NULL, assembly_accession = opt$host_accession_number, outputdir = opt$indexpath, ntop = 1, fileformat = "fasta", simulate = FALSE)
+
             #Gunzip it
             flog.info("Decompressing downloaded host genome.")
             system(paste("pigz -d", opt$host_assembly$destfn))
-            hostfasta<-list.files(pattern="fna")
+            hostfasta <- list.files(pattern="fna")
             flog.info("Building host genome index. Please be patient.")
-            buildlog<-system2("bowtie2-build", args=c("-f", hostfasta, "--threads", opt$threads, opt$hostspecies), stderr=FALSE, stdout=TRUE)
-            index<-file.path(opt$indexpath, opt$hostspecies)
+            buildlog <- system2("bowtie2-build", args=c("-f", hostfasta, "--threads", opt$threads, opt$hostspecies), stderr=FALSE, stdout=TRUE)
+            index <- file.path(opt$indexpath, opt$hostspecies)
             setwd(readsworkdir)
         } else {
             #Index is supplied
@@ -53,7 +55,7 @@ filter_host<-function(opt=NULL){
         } else {
             bowtiethreads<-opt$threads
         }
- 
+
         myfastqs<-opt$trimreads
 
         flog.info(paste("Aligning trimmed reads to the", opt$host, "genome."))
