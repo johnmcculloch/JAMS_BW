@@ -57,7 +57,7 @@ plot_feature_relabund <- function(mgseqobj = NULL, mgSeqnorm = FALSE, feature = 
     for (sp in 1:length(subset_points)){
 
         if (!(is.null(subsetby))){
-            samplesToKeep = which((pData(obj)[,which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])
+            samplesToKeep = which((pData(obj)[ , which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])
             currobj = obj[ , samplesToKeep]
             maintit <- paste(plottitle, paste("Subset:", subset_points[sp]), sep = "\n")
         } else {
@@ -68,9 +68,9 @@ plot_feature_relabund <- function(mgseqobj = NULL, mgSeqnorm = FALSE, feature = 
         currobj <- filter_experiment(mgseqobj = currobj, asPA = asPA, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
 
         if (is.factor(pData(currobj)[, groupby])) { # use order if factor
-          discretenames <- levels(pData(currobj)[,groupby])
+          discretenames <- levels(pData(currobj)[ , groupby])
         } else {
-          discretenames <- sort(unique(as.character(pData(currobj)[, which(colnames(pData(currobj)) == groupby)])))
+          discretenames <- sort(unique(as.character(pData(currobj)[ , which(colnames(pData(currobj)) == groupby)])))
         }
         classIndex <- NULL
         classIndex <- list()
