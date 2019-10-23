@@ -200,7 +200,7 @@ if (missing) {
 ###################
 ## Main Function ##
 ###################
-print(opt)
+
 suppressPackageStartupMessages(library(JAMS))
 flog.info("Creating directory to hold kraken2 database.")
 opt$k2db <- file.path(opt$outdir, opt$dbname)
