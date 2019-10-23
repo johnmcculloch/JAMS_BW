@@ -127,26 +127,43 @@ defopt$swarmfile <- fixrelpath(JAMSpath = "JAMS.swarm")
 option_list <- list(
     make_option(c("-r", "--readsfolder"), default = defopt$readsfolder, action="store",
                 help = str_c("path to root directory where reads are (default: ", defopt$readsfolder, ")")),
+
     make_option(c("-o", "--outputfolder"), default = defopt$outputfolder, action="store",
                 help = str_c("path to where you want the JAMSalpha outputs (default: ", defopt$outputfolder, ")")),
+
     make_option(c("-H", "--hostspecies"), default = defopt$hostspecies, action="store",
                 help = str_c("Name or taxid of host species (default: ", defopt$hostspecies, ")")),
+
     make_option(c("-A", "--analysis"), default = defopt$analysis, action="store",
                 help = str_c("Project type. Choose between metagenome, metatranscriptome, isolate or isolaternaseq. (default: ", defopt$analysis, ")")),
+
     make_option(c("-d", "--jamsdb"), default = defopt$jamsdb, action="store",
                 help = str_c("Path to JAMS database (default: ", defopt$jamsdb, ")")),
+
     make_option(c("-p", "--prefixlist"), default = NULL, action="store",
                 help = str_c("Text file with a list of read prefixes to restrict swarm to.")),
+
     make_option(c("-g", "--sralist"),
                 default = NULL, action="store", help = str_c("List of SRA accessions to get reads for assembly.")),
+
     make_option(c("-a", "--gcalist"),
                 default = NULL, action="store", help = str_c("List of GCA accessions to get assembly contigs from GenBank (example: GCA_000969225.1).")),
+
+    make_option(c("-e", "--appendtoprefix"),
+                default = NULL, action="store", help = str_c("Append this string to prefix. Example: -e Bis would generate a prefix in the form of PrefixBis")),
+
     make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
                 help = str_c("Use -n option in swarm file, for skipping InterproScan, even if available.)")),
+
+    make_option(c("-q", "--classifyunassembled"), default = FALSE, action="store_true",
+                help = str_c("Use -q option in swarm file, for classifying unassembled reads.)")),
+
     make_option(c("-s", "--swarmfile"), default = defopt$swarmfile, action="store",
                 help = str_c("File name for swarm file to be created (default: ", defopt$swarmfile, ")")),
+
     make_option(c("-c", "--checkprefixexists"), default = NULL,
                 action="store", help = str_c("Optional path to folder with banked .jams files. If prefix already exists a warning is issued.")),
+
     make_option(c("-v", "--version"), action="store_true",
                 help ="report version")
 )
@@ -237,6 +254,10 @@ if (opt$skipinterpro == TRUE) {
     commonoptions <- paste(commonoptions, "-n", collapse = " ")
 }
 
+if (opt$classifyunassembled == TRUE) {
+    commonoptions <- paste(commonoptions, "-q", collapse = " ")
+}
+
 finalswarm <- NULL
 swarm <- NULL
 
@@ -284,7 +305,7 @@ if (!(is.null(opt$readsfolder))){
                 readsinput <- paste("-U", relevantfiles$Filepaths[1])
             }
         }
-        swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", prefix, collapse = " ")
+        swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", paste0(prefix, opt$appendtoprefix), collapse = " ")
     }
     finalswarm <- append(swarm, finalswarm)
 }
@@ -305,7 +326,7 @@ if (any(c((!is.null(opt$sralist)), (!is.null(opt$gcalist))))) {
                 prefix <- opt$prefixestouse[p]
                 accession <- opt$wantedaccessions[p]
                 readsinput <- paste(flag, accession)
-                swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", prefix, collapse = " ")
+                swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", paste0(prefix, opt$appendtoprefix), collapse = " ")
             }
             finalswarm <- append(swarm, finalswarm)
         }
