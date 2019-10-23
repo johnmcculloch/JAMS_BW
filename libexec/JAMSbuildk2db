@@ -123,7 +123,7 @@ option_list <- list(
                 help = str_c("output Maximum size of kraken2 database to be built, in Gb (default: ", defopt$maxsizeGB, ")")),
     make_option(c("-t", "--threads"), default=defopt$threads, action="store",
                 help = str_c("number of threads (default: ", defopt$threads, ")")),
-    make_option(c("-i", "--invertebrates"), action="store_true",
+    make_option(c("-i", "--invertebrates"), default=defopt$invertebrates, action="store_true",
                 help = "include invertebrate genomes when building kraken2 database"),
     make_option(c("-v", "--version"), action="store_true",
                 help = "report version")
