@@ -110,6 +110,7 @@ defopt$dbname <- "JAMSk2db32"
 defopt$dbqual <- "all"
 defopt$maxsizeGB <- 32
 defopt$threads <- detectBatchCPUs()
+defopt$invertebrates <- FALSE
 
 option_list <- list(
     make_option(c("-o", "--outdir"), default=defopt$outdir, action="store",
@@ -122,13 +123,15 @@ option_list <- list(
                 help = str_c("output Maximum size of kraken2 database to be built, in Gb (default: ", defopt$maxsizeGB, ")")),
     make_option(c("-t", "--threads"), default=defopt$threads, action="store",
                 help = str_c("number of threads (default: ", defopt$threads, ")")),
+    make_option(c("-i", "--invertebrates"), action="store_true",
+                help = "include invertebrate genomes when building kraken2 database"),
     make_option(c("-v", "--version"), action="store_true",
-                help ="report version")
+                help = "report version")
 )
 
 # parse the options
 args <- commandArgs(trailingOnly = TRUE)
-opt <- parse_args(OptionParser(option_list=option_list), args)
+opt <- parse_args(OptionParser(option_list = option_list), args)
 opt <- merge.list(opt, defopt)
 
 #####################
@@ -219,6 +222,14 @@ dir.create(opt$taxonomydb, recursive = TRUE)
 setwd(opt$taxonomydb)
 
 opt$ncbiftp <- "ftp.ncbi.nlm.nih.gov"
+if (opt$invertebrates == TRUE){
+    opt$wantedorganisms <- c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebrate_mammalian")
+    taxdivisionsorder <- c("Bacteria", "Phages", "Viruses", "Plants and Fungi")
+} else {
+    opt$wantedorganisms <- c("bacteria", "archaea", "fungi", "viral", "protozoa", "invertebrate", "vertebrate_mammalian")
+    taxdivisionsorder <- c("Bacteria", "Phages", "Viruses", "Plants and Fungi", "Invertebrates")
+}
+flog.info(paste("Kraken2 database will include", paste0(opt$wantedorganisms, collapse = ", "), "genomes"))
 taxdumpfile <- "taxdump.tar.gz"
 taxdumpurl <- paste0("https://", opt$ncbiftp, "/pub/taxonomy/", taxdumpfile)
 
@@ -363,23 +374,22 @@ save.image(opt$projimage)
 # derive a valid taxid to taxonomy table
 flog.info("Will now derive a valid taxonomy table to Tax ID mapping for use by JAMS.")
 
-validtaxlvls<-c("superkingdom", "superkingdom1", "superkingdom2", "superkingdom3", "superkingdom4", "kingdom", "kingdom1", "kingdom2", "kingdom3", "kingdom4", "phylum", "phylum1", "phylum2", "phylum3", "phylum4", "class", "class1", "class2", "class3", "class4", "order", "order1", "order2", "order3",  "order4", "family", "family1", "family2", "family3", "family4", "genus", "genus1", "genus2", "genus3", "genus4",  "species", "is1", "is2", "is3", "is4", "is5", "is6")
-validtaxtags<-c("d__", "d1__", "d2__", "d3__", "d4__", "k__", "k1__", "k2__", "k3__", "k4__", "p__", "p1__", "p2__", "p3__", "p4__", "c__", "c1__", "c2__", "c3__", "c4__", "o__", "o1__", "o2__", "o3__", "o4__", "f__", "f1__", "f2__", "f3__", "f4__", "g__", "g1__", "g2__", "g3__", "g4__", "s__", "is1__", "is2__", "is3__", "is4__", "is5__", "is6__")
+validtaxlvls <- c("superkingdom", "superkingdom1", "superkingdom2", "superkingdom3", "superkingdom4", "kingdom", "kingdom1", "kingdom2", "kingdom3", "kingdom4", "phylum", "phylum1", "phylum2", "phylum3", "phylum4", "class", "class1", "class2", "class3", "class4", "order", "order1", "order2", "order3",  "order4", "family", "family1", "family2", "family3", "family4", "genus", "genus1", "genus2", "genus3", "genus4",  "species", "is1", "is2", "is3", "is4", "is5", "is6")
+validtaxtags <- c("d__", "d1__", "d2__", "d3__", "d4__", "k__", "k1__", "k2__", "k3__", "k4__", "p__", "p1__", "p2__", "p3__", "p4__", "c__", "c1__", "c2__", "c3__", "c4__", "o__", "o1__", "o2__", "o3__", "o4__", "f__", "f1__", "f2__", "f3__", "f4__", "g__", "g1__", "g2__", "g3__", "g4__", "s__", "is1__", "is2__", "is3__", "is4__", "is5__", "is6__")
 
-namesfile<-file.path(opt$taxonomydb, "names.dmp")
-nodesfile<-file.path(opt$taxonomydb, "nodes.dmp")
-divisionsfile<-file.path(opt$taxonomydb, "division.dmp")
-mergedfile<-file.path(opt$taxonomydb, "merged.dmp")
-delnodesfile<-file.path(opt$taxonomydb, "delnodes.dmp")
+namesfile <- file.path(opt$taxonomydb, "names.dmp")
+nodesfile <- file.path(opt$taxonomydb, "nodes.dmp")
+divisionsfile <- file.path(opt$taxonomydb, "division.dmp")
+mergedfile <- file.path(opt$taxonomydb, "merged.dmp")
+delnodesfile <- file.path(opt$taxonomydb, "delnodes.dmp")
 
-if(!all((file.exists(list=c(namesfile, nodesfile, divisionsfile, mergedfile))))){
+if (!all((file.exists(list = c(namesfile, nodesfile, divisionsfile, mergedfile))))){
     flog.info("Cannot find NCBI taxonomy names.dmp and nodes.dmp files. Aborting now.")
     q()
 }
 
-taxdivisionsorder<-c("Bacteria", "Phages", "Viruses", "Plants and Fungi")
-taxdivisions<-read.table(file=divisionsfile, sep="|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
-taxdivisions<-taxdivisions[ , 1:3]
+taxdivisions <- read.table(file = divisionsfile, sep = "|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
+taxdivisions <- taxdivisions[ , 1:3]
 colnames(taxdivisions)<-c("division_id", "division_cde", "division_name")
 #clean up this mess
 taxdivisions[] <- lapply(taxdivisions, as.character)
@@ -391,16 +401,16 @@ taxdivisionsIwant <- taxdivisions[match(taxdivisionsorder, taxdivisions$division
 save.image(opt$projimage)
 
 #Get list of taxids
-taxid2size<-opt$master_assembly_summary[,c("taxid", "gensize")]
-colnames(taxid2size)<-c("taxid", "Size")
-taxid2size$taxid<-as.character(taxid2size$taxid)
-taxid2size$Size<-as.numeric(taxid2size$Size)
-taxidpresent<-as.character(unique(opt$master_assembly_summary$taxid))
+taxid2size <- opt$master_assembly_summary[, c("taxid", "gensize")]
+colnames(taxid2size) <- c("taxid", "Size")
+taxid2size$taxid <- as.character(taxid2size$taxid)
+taxid2size$Size <- as.numeric(taxid2size$Size)
+taxidpresent <- as.character(unique(opt$master_assembly_summary$taxid))
 
 #Get names
-taxnames<-read.table(file=namesfile, sep="|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
-taxnames<-taxnames[ , 1:4]
-colnames(taxnames)<-c("tax_id", "name_txt", "unique_name", "name_class")
+taxnames <- read.table(file=namesfile, sep="|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
+taxnames <- taxnames[ , 1:4]
+colnames(taxnames) <- c("tax_id", "name_txt", "unique_name", "name_class")
 #clean up this mess
 taxnames[] <- lapply(taxnames, as.character)
 taxnames[] <- lapply(taxnames, gsub, pattern='\t', replacement='')
@@ -417,90 +427,90 @@ taxnames$name_txt<-gsub("_sp_", "_Unclassified_", taxnames$name_txt)
 taxnames$name_txt<-gsub("_$", "", taxnames$name_txt)
 
 #Only keep Scientific names info
-taxnames<-subset(taxnames, name_class == "scientific name")
-rownames(taxnames)<-taxnames$tax_id
+taxnames <- subset(taxnames, name_class == "scientific name")
+rownames(taxnames) <- taxnames$tax_id
 
 #Get nodes
-taxnodes<-read.table(file=nodesfile, sep="|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
-taxnodes<-taxnodes[ ,1:13]
-colnames(taxnodes)<-c("tax_id", "parent_tax_id", "rank", "embl_code", "division_id", "inherited_div_flag", "genetic_code_id", "inherited_GC_flag", "mitochondrial_genetic_code_id", "inherited_MGC_flag", "GenBank_hidden_flag","hidden_subtree_root_flag", "comments")
+taxnodes <- read.table(file = nodesfile, sep = "|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
+taxnodes<-taxnodes[ , 1:13]
+colnames(taxnodes) <- c("tax_id", "parent_tax_id", "rank", "embl_code", "division_id", "inherited_div_flag", "genetic_code_id", "inherited_GC_flag", "mitochondrial_genetic_code_id", "inherited_MGC_flag", "GenBank_hidden_flag","hidden_subtree_root_flag", "comments")
 
 #clean up this mess
-taxnodes<-taxnodes[ , c("tax_id", "parent_tax_id", "rank", "division_id")]
+taxnodes <- taxnodes[ , c("tax_id", "parent_tax_id", "rank", "division_id")]
 taxnodes[] <- lapply(taxnodes, as.character)
-taxnodes[] <- lapply(taxnodes, gsub, pattern='\t', replacement='')
+taxnodes[] <- lapply(taxnodes, gsub, pattern = '\t', replacement = '')
 taxnodes[] <- lapply(taxnodes, trimws)
-rownames(taxnodes)<-taxnodes$tax_id
+rownames(taxnodes) <- taxnodes$tax_id
 
 save.image(opt$projimage)
 
 #Get merged taxids file
-mergednodes<-read.table(file=mergedfile, sep="|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
-mergednodes<-mergednodes[ , 1:2]
-colnames(mergednodes)<-c("old_tax_id", "new_tax_id")
+mergednodes <- read.table(file = mergedfile, sep = "|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
+mergednodes <- mergednodes[ , 1:2]
+colnames(mergednodes) <- c("old_tax_id", "new_tax_id")
 mergednodes[] <- lapply(mergednodes, as.character)
 mergednodes[] <- lapply(mergednodes, gsub, pattern='\t', replacement='')
 mergednodes[] <- lapply(mergednodes, trimws)
-rownames(mergednodes)<-mergednodes$old_tax_id
+rownames(mergednodes) <- mergednodes$old_tax_id
 
 #Join the info into a single dataframe
-taxnodeswithnames<-left_join(taxnodes, taxnames, by="tax_id")
-taxnodeswithnames$name_txt[is.na(taxnodeswithnames$name_txt)]<-"Unclassified"
+taxnodeswithnames <- left_join(taxnodes, taxnames, by = "tax_id")
+taxnodeswithnames$name_txt[is.na(taxnodeswithnames$name_txt)] <- "Unclassified"
 for(taxlvl in validtaxlvls){
     taxnodeswithnames[which(taxnodeswithnames$rank == taxlvl) , "name_txt"] <- paste0(validtaxtags[which(validtaxlvls==taxlvl)], taxnodeswithnames[which(taxnodeswithnames$rank == taxlvl) , "name_txt"])
 }
 save.image(opt$projimage)
 
-tmptaxnodeswithnames<-subset(taxnodeswithnames, division_id %in% taxdivisionsIwant)
-taxidsfromdmp<-unique(subset(tmptaxnodeswithnames, !(rank %in% c("superkingdom", "kingdom", "phylum", "class", "order", "family")))[]$tax_id)
-alltaxids<-unique(c(taxidsfromdmp, taxidpresent))
+tmptaxnodeswithnames <- subset(taxnodeswithnames, division_id %in% taxdivisionsIwant)
+taxidsfromdmp <- unique(subset(tmptaxnodeswithnames, !(rank %in% c("superkingdom", "kingdom", "phylum", "class", "order", "family")))[]$tax_id)
+alltaxids <- unique(c(taxidsfromdmp, taxidpresent))
 save.image(opt$projimage)
 
 ######################
 ## Define functions ##
 ######################
-find_parent<-function(taxid){
-    parent<-taxnodes[taxid, "parent_tax_id"]
+find_parent <- function(taxid){
+    parent <- taxnodes[taxid, "parent_tax_id"]
 
     return(parent)
 }
 
-find_name<-function(taxid){
-    taxonname<-taxnames[taxid, "name_txt"]
+find_name <- function(taxid){
+    taxonname <- taxnames[taxid, "name_txt"]
 
     return(taxonname)
 }
 
-find_rank<-function(taxid){
-    taxonrank<-taxnodes[taxid, "rank"]
+find_rank <- function(taxid){
+    taxonrank <- taxnodes[taxid, "rank"]
 
     return(taxonrank)
 }
 
-find_new_taxid<-function(taxid){
-    newtaxid<-mergednodes[taxid, "new_tax_id"]
+find_new_taxid <- function(taxid){
+    newtaxid <- mergednodes[taxid, "new_tax_id"]
 
     return(newtaxid)
 }
 
-find_lineage<-function(taxidint){
-    taxidint<-as.character(taxidint)
+find_lineage <- function(taxidint){
+    taxidint <- as.character(taxidint)
     #Protect against non existent tax IDs
-    if(!(taxidint %in% taxnames$tax_id)){
+    if (!(taxidint %in% taxnames$tax_id)){
         print(paste("Tax ID", taxidint, "not found within NCBI taxonomy dump. Looking up merged.dmp to see if it was merged to another Tax ID."))
-        taxidint<-find_new_taxid(taxidint)
+        taxidint <- find_new_taxid(taxidint)
         #Try again. If not found this time, ignore.
-        if((is.na(taxidint)) && (!(taxidint %in% taxnames$tax_id))){
+        if ((is.na(taxidint)) && (!(taxidint %in% taxnames$tax_id))){
             print("Tax ID still not found within NCBI taxonomy dump. Omitting.")
             return(NULL)
         }
     }
 
-    lineagevec<-NULL
-    taxidvec<-NULL
-    linnum<-1
-    currtaxid<-taxidint
-    while(currtaxid != "1"){
+    lineagevec <- NULL
+    taxidvec <- NULL
+    linnum <- 1
+    currtaxid <- taxidint
+    while (currtaxid != "1"){
         rank <- find_rank(currtaxid)
         taxonname <- find_name(currtaxid)
         lineagevec[linnum] <- taxonname
@@ -510,110 +520,118 @@ find_lineage<-function(taxidint){
         linnum <- linnum + 1
         currtaxid <- find_parent(currtaxid)
     }
-    lineage<-rev(lineagevec)
-    lineagetaxids<-rev(taxidvec)
+    lineage <- rev(lineagevec)
+    lineagetaxids <- rev(taxidvec)
 
-    lineagedf<-data.frame(taxid=lineagetaxids, taxon=lineage, rank=names(lineagetaxids), stringsAsFactors = FALSE)
+    lineagedf <- data.frame(taxid = lineagetaxids, taxon = lineage, rank = names(lineagetaxids), stringsAsFactors = FALSE)
 
     #Prune stuff below superkingdom
-    superkingdompos<-which(lineagedf$rank == "superkingdom")
-    lineagedf<-lineagedf[superkingdompos: nrow(lineagedf), ]
+    superkingdompos <- which(lineagedf$rank == "superkingdom")
+    lineagedf <- lineagedf[superkingdompos: nrow(lineagedf), ]
 
     #Preserve info lower than species
     #define which taxa are infraspecies
-    speciespos<-which(lineagedf$rank == "species")
-    if(length(speciespos) == 0){
+    speciespos <- which(lineagedf$rank == "species")
+    if (length(speciespos) == 0){
         #If there is no species (why on Earth not, it beats me, but whatever, NCBI...), consider it being one below genus if present.
-        genuspos<-which(lineagedf$rank == "genus")
-        if(!is.na(genuspos) & (nrow(lineagedf) > genuspos)){
-            lineagedf$rank[genuspos + 1]<-"species"
+        genuspos <- which(lineagedf$rank == "genus")
+        if (!is.na(genuspos) & (nrow(lineagedf) > genuspos)){
+            lineagedf$rank[genuspos + 1] <- "species"
         } else {
             #Assume the last row is of species. This is unreasonable, but extremely rare in NCBI taxonomy, so probably will not affect taxonomic classification much. Lamentably, there are terminal NCBI taxonomic lineages without species or genus.
             lineagedf$rank[length(lineagedf$rank)] <- "species"
         }
 
-        speciespos<-which(lineagedf$rank == "species")
+        speciespos <- which(lineagedf$rank == "species")
     }
 
-    if(length(speciespos) > 0){
-        if(nrow(lineagedf) > speciespos){
-            numinfs<-(nrow(lineagedf) - speciespos)
+    if (length(speciespos) > 0){
+        if (nrow(lineagedf) > speciespos){
+            numinfs <- (nrow(lineagedf) - speciespos)
             #tag infraspecies levels as is
-            for(infs in 1:numinfs){
-                lineagedf[(speciespos + infs), "rank"]<-paste0("is", infs)
+            for (infs in 1:numinfs){
+                lineagedf[(speciespos + infs), "rank"] <- paste0("is", infs)
             }
         }
     }
 
     #Add exception: if it is a vertebrate, just coerce it to known taxonomy levels. There are too many intermediate taxonomy levels to deal with. Classic human exceptionalism, sigh.
-    if("7711" %in% lineagedf$taxid){
-        lineagedf<-lineagedf[which(lineagedf$rank %in% validtaxlvls == TRUE), ]
+    if ("7711" %in% lineagedf$taxid){
+        lineagedf <- lineagedf[which(lineagedf$rank %in% validtaxlvls == TRUE), ]
     }
 
     #Correct rank names which have no rank in NCBI taxonomy #frustrating
-    norankpos<-which(!(lineagedf$rank %in% validtaxlvls))
-    if(length(norankpos) > 0){
-        for(nr in norankpos){
+    norankpos <- which(!(lineagedf$rank %in% validtaxlvls))
+    if (length(norankpos) > 0){
+        for (nr in norankpos){
             #find highest position within taxlevels
-            highestknown<-which(lineagedf$rank %in% validtaxlvls)[max(which((which(lineagedf$rank %in%   validtaxlvls)) < nr))]
+            highestknown <- which(lineagedf$rank %in% validtaxlvls)[max(which((which(lineagedf$rank %in%   validtaxlvls)) < nr))]
              #find lowest position within taxlevels
-            lowesttknown<-which(lineagedf$rank %in% validtaxlvls)[min(which((which(lineagedf$rank %in% validtaxlvls)) > nr))]
-            if(!is.na(lowesttknown) && !is.na(highestknown)){
-                highestknowntaxlvl<-lineagedf$rank[highestknown]
-                lowestknowntaxlvl<-lineagedf$rank[lowesttknown]
-                numpositionstocorrect<-(which(lineagedf$rank == lowestknowntaxlvl) - which(lineagedf$rank == highestknowntaxlvl)) - 1
+            lowesttknown <- which(lineagedf$rank %in% validtaxlvls)[min(which((which(lineagedf$rank %in% validtaxlvls)) > nr))]
+            if (!is.na(lowesttknown) && !is.na(highestknown)){
+                highestknowntaxlvl <- lineagedf$rank[highestknown]
+                lowestknowntaxlvl <- lineagedf$rank[lowesttknown]
+                numpositionstocorrect <- (which(lineagedf$rank == lowestknowntaxlvl) - which(lineagedf$rank == highestknowntaxlvl)) - 1
                 #get names of these positions
-                namestosub<-validtaxlvls[(1:numpositionstocorrect)+(which(validtaxlvls == highestknowntaxlvl))]
-                lineagedf$rank[nr+((1:numpositionstocorrect)-1)]<-namestosub
+                namestosub <- validtaxlvls[(1:numpositionstocorrect)+(which(validtaxlvls == highestknowntaxlvl))]
+                lineagedf$rank[nr+((1:numpositionstocorrect)-1)] <- namestosub
             }
         }
     }
 
-    taxlvlspresent<-validtaxlvls[which(validtaxlvls %in% lineagedf$rank)]
-    taxlvlsabsent<-validtaxlvls[which(!(validtaxlvls %in% lineagedf$rank))]
+    taxlvlspresent <- validtaxlvls[which(validtaxlvls %in% lineagedf$rank)]
+    taxlvlsabsent <- validtaxlvls[which(!(validtaxlvls %in% lineagedf$rank))]
 
-    classifiedtaxa<-subset(lineagedf, rank %in% taxlvlspresent)
-    if(length(taxlvlsabsent) > 0){
-        unclassifiedtaxa<-data.frame(taxid=rep("none", length(taxlvlsabsent)), taxon=rep("Missing", length(taxlvlsabsent)), rank=taxlvlsabsent, stringsAsFactors = FALSE)
+    classifiedtaxa <- subset(lineagedf, rank %in% taxlvlspresent)
+    if (length(taxlvlsabsent) > 0){
+        unclassifiedtaxa <- data.frame(taxid = rep("none", length(taxlvlsabsent)), taxon = rep("Missing", length(taxlvlsabsent)), rank = taxlvlsabsent, stringsAsFactors = FALSE)
     } else {
-        unclassifiedtaxa<-NULL
+        unclassifiedtaxa <- NULL
     }
-    lineagedf<-rbind(classifiedtaxa, unclassifiedtaxa)
-    lineagedf<-lineagedf[match(validtaxlvls[1:nrow(lineagedf)], lineagedf$rank), ]
-    lineagedf$taxon<-paste0(validtaxtags[1:nrow(lineagedf)], lineagedf$taxon)
+    lineagedf <- rbind(classifiedtaxa, unclassifiedtaxa)
+    lineagedf <- lineagedf[match(validtaxlvls[1:nrow(lineagedf)], lineagedf$rank), ]
+    lineagedf$taxon <- paste0(validtaxtags[1:nrow(lineagedf)], lineagedf$taxon)
 
     #Get a dataframe with leaves AND nodes
-    rnklist<-list()
-    for(rnk in 1:nrow(lineagedf)){
-        rnklist[[rnk]]<-c(lineagedf$taxid[rnk], lineagedf$taxon[1:rnk])
+    rnklist <- list()
+    for (rnk in 1:nrow(lineagedf)){
+        rnklist[[rnk]] <- c(lineagedf$taxid[rnk], lineagedf$taxon[1:rnk])
     }
-    fulllineage<-plyr::ldply(rnklist, rbind)
+    fulllineage <- plyr::ldply(rnklist, rbind)
     fulllineage[] <- lapply(fulllineage, as.character)
-    colnames(fulllineage)<-c("taxid", validtaxlvls)
+    colnames(fulllineage) <- c("taxid", validtaxlvls)
 
-    for(colm in validtaxlvls){
-        fulllineage[,colm][is.na(fulllineage[,colm])] <- paste0(validtaxtags[which(validtaxlvls == colm)], "Unclassified")
+    for (colm in validtaxlvls){
+        fulllineage[,colm][is.na(fulllineage[, colm])] <- paste0(validtaxtags[which(validtaxlvls == colm)], "Unclassified")
     }
 
-    fulllineage<-subset(fulllineage, taxid != "none")
+    fulllineage <- subset(fulllineage, taxid != "none")
 
     return(fulllineage)
 }
 
 #Include Mus musculus and Homo sapiens to the list
-HsMm<-subset(taxnames, name_txt %in% c("Homo_sapiens", "Mus_musculus"))[]$tax_id
-taxidpresent<-unique(c(taxidpresent, HsMm))
+HsMm <- subset(taxnames, name_txt %in% c("Homo_sapiens", "Mus_musculus"))[]$tax_id
+taxidpresent <- unique(c(taxidpresent, HsMm))
 
 #Split taxidlist into chunks for speedier de-duplication of repeated node taxids
-chunksize=1000
-chunk2 <- function(x,n){ split(x, cut(seq_along(x), n, labels = FALSE)) }
-chunkcoords<-chunk2(1:length(taxidpresent), (length(taxidpresent)/chunksize))
-numchunks<-length(chunkcoords)
+chunksize <- 1000
+chunk2 <- function(x, n){ split(x, cut(seq_along(x), n, labels = FALSE)) }
+chunkcoords <- chunk2(1:length(taxidpresent), (length(taxidpresent)/chunksize))
+numchunks <- length(chunkcoords)
 flog.info(paste("The list of non-redundant Tax IDs present was split into", numchunks, "chunks of",  chunksize, "Tax IDs each."))
 
 taxtable <- NULL
 for (cnk in 1:numchunks){
-    flog.info(paste0("Processing chunk ", cnk,"/", numchunks, " using ", (opt$threads - 2), " threads ..."))
+    #Educatedly estimate the appropriate number of cores as so not to run into memory issues. Using mc.cores will increase RAM usage, as a mirror image of all objects is replicated into each core being used in parallel.
+    projimagesize <- file.size(opt$projimage)
+    flog.info(paste("Current project image size is", projimagesize, "bytes"))
+    numberofimagesthatfitinmem <- round((opt$totmembytes / projimagesize), 0)
+    theoreticalnumberofcores <- min(numberofimagesthatfitinmem, (opt$threads - 2))
+    #cap to 36 cores, just to be safe
+    appropriatenumberofcores <- min(theoreticalnumberofcores, 36)
+
+    flog.info(paste0("Processing chunk ", cnk, "/", numchunks, " using ", appropriatenumberofcores, " threads ..."))
     currchunk <- taxidpresent[chunkcoords[[cnk]]]
     currchunk <- currchunk[which(!(is.na(currchunk)))]
     #Deconvolute
@@ -622,7 +640,7 @@ for (cnk in 1:numchunks){
             print(paste("Unable to process lineage for taxid", currchunk[x]))
             return(NULL)
         } )
-    }, mc.cores = (opt$threads - 2))
+    }, mc.cores = appropriatenumberofcores)
 
     currtaxlist <- currtaxlist[sapply(currtaxlist, function(x){ !(is.null(x)) })]
     currtaxtable <- plyr::ldply(currtaxlist, rbind)
@@ -642,6 +660,7 @@ for (cnk in 1:numchunks){
     taxtable <- rbind(taxtable, currtaxtable)
     taxtable <- taxtable[!duplicated(taxtable),]
     flog.info(paste("Current taxtable has", length(unique(taxtable$taxid)), "unique Tax IDs"))
+
     save.image(opt$projimage)
 }
 
