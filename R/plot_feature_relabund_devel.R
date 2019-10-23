@@ -3,18 +3,14 @@
 #' Plots correlation heatmaps annotated by the metadata or a correlelogram of features
 #' @export
 
-plot_feature_relabund_devel <- function(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", stattype = "spearman", hmasPA = FALSE, compareby = NULL, ntop = NULL, cluster_rows = FALSE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showcorrcoeff = TRUE, minabscorrcoeff = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  mgSeqnorm = FALSE, cdict = NULL, numthreads = 4, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, ...) {
+plot_feature_relabund_devel <- function(mgseqobj = NULL, glomby = NULL, mgSeqnorm = FALSE, features = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, subsetby = NULL, uselog = TRUE, statmeth = NULL, samplesToKeep = NULL, signiflabel = "p.signif", plottitle = NULL, asPA = FALSE, subsetbytaxlevel = NULL, taxtable = NULL, list.data = NULL, cdict = NULL, max_categories = 3, ...) {
 
     #Get appropriate object to work with
     obj <- mgseqobj
 
     #Exclude samples and features if specified
     if (!(is.null(samplesToKeep))){
-        obj <- obj[, samplesToKeep]
-    }
-
-    if (!(is.null(featuresToKeep))){
-        obj <- obj[featuresToKeep, ]
+        obj <- obj[ , samplesToKeep]
     }
 
     analysis <- attr(obj, "analysis")
@@ -62,6 +58,10 @@ plot_feature_relabund_devel <- function(mgseqobj = NULL, glomby = NULL, heatpale
         stop("Genome completeness can only be obtained by supplying a list.data object.")
     }
 
+    if ((analysis == "LKT") && (!(is.null(subsetbytaxlevel)))){
+        stop("Plot taxa is only for functional (not taxonomic) analyses. It will additionally plot which taxa bear which of the funcitons of interest. If you are trying to plot only a certain taxon itself, then use the feature argument with a taxonomical metagenomeSeq experiment.")
+    }
+
     if (!(is.null(subsetby))){
         subset_points <- sort(unique((pData(obj)[, which(colnames(pData(obj)) == subsetby)])))
     } else {
@@ -82,7 +82,7 @@ plot_feature_relabund_devel <- function(mgseqobj = NULL, glomby = NULL, heatpale
     #subset by metadata column
     for (sp in 1:length(subset_points)) {
         if (!(is.null(subsetby))){
-            samplesToKeep <- which((pData(obj)[,which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])
+            samplesToKeep <- which((pData(obj)[, which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])
             print(paste("Plotting within", subset_points[sp]))
             colcategories <- colcategories[!(colcategories %in% subsetby)]
             subsetname <- subset_points[sp]
@@ -110,22 +110,11 @@ plot_feature_relabund_devel <- function(mgseqobj = NULL, glomby = NULL, heatpale
                 featmaxatleastPPM <- 0
             }
 
-            if (is.null(compareby)){
-                hmtypemsg <- "Feature Correlation Heatmap"
-            } else {
-                hmtypemsg <- "Continuous Variable Correlation Plot"
-            }
-
             currobj <- filter_experiment(mgseqobj = obj, featmaxatleastPPM = featmaxatleastPPM, featcutoff = featcutoff, samplesToKeep = samplesToKeep, asPA = FALSE, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
 
-            #Compose an appropriate title for the plot
-            if (length(unique(subset_points)) > 1){
-                maintit <- paste(hmtypemsg, analysisname, paste("within", subset_points[sp]), sep = " | ")
-            } else {
-                maintit <- paste(hmtypemsg, analysisname, sep = " | ")
-            }
-            if (!is.null(addtit)) {
-                maintit <- paste(addtit, maintit, sep = "\n")
+            #Cull features to ones desired
+            if (!is.null(features)) {
+                currobj <- currobj[features, ]
             }
 
             #Get counts matrix
@@ -161,13 +150,21 @@ plot_feature_relabund_devel <- function(mgseqobj = NULL, glomby = NULL, heatpale
                 completenessmsg <- paste("Genome completeness >", genomecompleteness)
             }
 
-            topcats <- nrow(countmat)
-            if (!(is.null(ntop))) {
-                topcats <- min(topcats, ntop)
+            #Find out what kind of a thing we're comparing by.
+            if (!is.null(compareby)){
+                lookslike <- class(pData(currobj)[ , compareby])
+                if (lookslike == "numeric"){
+                    stattype <- "spearman"
+                } else {
+                    stattype <- "auto"
+                }
             }
 
-            #Calculate matrix stats and get new matrix.
-            if (!is.null(compareby)){
+            #Coerce stattype to what the user wants, if not NULL. User has to know what (s)he is doing.
+            if (!is.null(stattype)){
+
+            }
+
                 #Get correlation to a continuous variable in the metadata.
                 #Check if variable is really numeric
                 continuousvec <- pData(currobj)[ , which(colnames(pData(currobj)) == compareby)]
