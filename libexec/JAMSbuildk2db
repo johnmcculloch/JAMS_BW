@@ -223,7 +223,7 @@ dir.create(opt$taxonomydb, recursive = TRUE)
 setwd(opt$taxonomydb)
 
 opt$ncbiftp <- "ftp.ncbi.nlm.nih.gov"
-if (opt$invertebrates == TRUE){
+if (opt$invertebrates != TRUE){
     opt$wantedorganisms <- c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebrate_mammalian")
     taxdivisionsorder <- c("Bacteria", "Phages", "Viruses", "Plants and Fungi")
 } else {
