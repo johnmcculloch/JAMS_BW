@@ -140,7 +140,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                     plot.new()
                     grid.table(c(names(expvec2)[a], "Pairwise Correlation of Features", "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                    plot_correlation_heatmap(mgseqobj = expvec2[[a]], glomby = glomby, stattype = "spearman", subsetby = NULL, list.data = list.data, ignoreunclassified = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, returnstats = FALSE)
+                    plot_correlation_heatmap(mgseqobj = expvec2[[a]], glomby = glomby, stattype = "spearman", subsetby = NULL, list.data = list.data, ignoreunclassified = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ntopvar = 250)
 
                     compvec <- NULL
                 }
@@ -168,7 +168,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                             plot.new()
                             grid.table(c("Features with highest variance", names(expvec2)[a], "Subsetting by group"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                            mycomp<-plot_relabund_heatmap(mgseqobj=expvec2[[a]], glomby = glomby, subsetby=vs, heatpalette=heatpalette, hmtype=report, ntop=topcats, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters,minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
+                            mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]], glomby = glomby, subsetby=vs, heatpalette=heatpalette, hmtype=report, ntop=topcats, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters,minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
                             compvec <- append(compvec, mycomp, after=length(compvec))
 
@@ -184,7 +184,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                             plot.new()
                             grid.table(c(names(expvec2)[a], "Pairwise Correlation of Features", paste("Subset by", vs)), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                            plot_correlation_heatmap(mgseqobj = expvec2[[a]], glomby = glomby, stattype = "spearman", subsetby = vs, list.data = list.data, ignoreunclassified = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, returnstats = FALSE)
+                            plot_correlation_heatmap(mgseqobj = expvec2[[a]], glomby = glomby, stattype = "spearman", subsetby = vs, list.data = list.data, ignoreunclassified = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ntopvar = 250)
 
                             compvec <- NULL
                         } #Type of report conditional

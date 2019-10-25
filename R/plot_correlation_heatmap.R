@@ -3,7 +3,36 @@
 #' Plots correlation heatmaps annotated by the metadata or a correlelogram of features
 #' @export
 
-plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", stattype = "spearman", cluster_rows = FALSE, subsetby = NULL, maxnumfeatallowed = 500, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL, samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL, showGram = FALSE, showphylum = FALSE, addtit = NULL, mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE, returnstats = FALSE, ...) {
+plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL, samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL, showGram = TRUE, showphylum = TRUE, addtit = NULL, mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE) {
+
+    #Define other functions
+    filter_correlations <- function(corrmat = NULL, mincorrelcoeff = NULL){
+
+        if(nrow(corrmat) != ncol(corrmat)){
+            stop("Correlation matrix must have equal numbers of rows and columns.")
+        }
+
+        featsIwant <- NULL
+
+        for (rw in 1:nrow(corrmat)){
+            featint <- rownames(corrmat)[rw]
+            #print(paste("Checking:", featint))
+            correlations <- corrmat[which(rownames(corrmat) != featint), featint]
+
+            if(max(abs(correlations)) >= mincorrelcoeff){
+                feat <- featint
+            } else {
+                feat <- NULL
+            }
+
+            featsIwant <- append(featsIwant, feat)
+
+        }
+
+        corrmat <- corrmat[featsIwant, featsIwant]
+
+        return(corrmat)
+    }
 
     #Get appropriate object to work with
     obj <- mgseqobj
@@ -34,21 +63,21 @@ plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette
             if (analysis == "LKT"){
                 featcutoff <- c(2000, 15)
                 genomecompleteness <- 0.3
-                minabscorrcoeff <- 0.8
+                #minabscorrcoeff <- 0.8
             } else {
                 featcutoff <- c(50, 15)
                 genomecompleteness <- NULL
-                minabscorrcoeff <- 0.8
+                #minabscorrcoeff <- 0.8
             }
         } else if (applyfilters == "moderate"){
             if (analysis == "LKT"){
                 featcutoff <- c(500, 10)
                 genomecompleteness <- 0.1
-                minabscorrcoeff <- 0.5
+                #minabscorrcoeff <- 0.5
             } else {
                 featcutoff <- c(10, 5)
                 genomecompleteness <- NULL
-                minabscorrcoeff <- 0.5
+                #minabscorrcoeff <- 0.5
             }
         }
     }
@@ -102,7 +131,7 @@ plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette
             if (all(c((!(is.null(featmaxatleastPPM))), (featmaxatleastPPM > 0)))) {
                 minPPMmsg <- paste("Highest feature must be >", featmaxatleastPPM, "PPM", sep = " ")
             } else {
-                minPPMmsg <- "Highest feature must be > 0 PPM"
+                minPPMmsg <- NULL
                 featmaxatleastPPM <- 0
             }
 
@@ -126,9 +155,19 @@ plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette
             countmat <- countmat[rowsToKeep, ]
 
             if (ignoreunclassified == TRUE){
-               dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")
-               rowsToKeep <- which(!(rownames(countmat) %in% dunno))
-               countmat <- countmat[rowsToKeep, ]
+                dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")
+                rowsToKeep <- which(!(rownames(countmat) %in% dunno))
+                countmat <- countmat[rowsToKeep, ]
+            }
+
+            if (!is.null(ntopvar)){
+                ntop <- min(ntopvar, nrow(countmat))
+                featsds <- rowSds(countmat)
+                featIndices <- names(featsds[order(featsds, decreasing = TRUE)[1:ntop]])
+                countmat <- countmat[featIndices, ]
+                ntopvarmsg <- paste("Top", ntop, "most variant features across samples")
+            } else {
+                ntopvarmsg <- NULL
             }
 
             #Rename rows to include description if not taxonomic data
@@ -163,13 +202,21 @@ plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette
                 #Calculate matrix stats and get new matrix with correlations.
                 matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = FALSE, stattype = stattype, classesvector = NULL)
 
+                if (!is.null(minabscorrcoeff)){
+                    print(paste("Eliminating features which do not correlate with other features with a coefficient of at least", minabscorrcoeff))
+                    matstats <- filter_correlations(corrmat= matstats, mincorrelcoeff = minabscorrcoeff)
+                    minabscorrcoeffmsg <- paste("Largest correlation coefficient at least", minabscorrcoeff)
+                } else {
+                    minabscorrcoeffmsg <- NULL
+                }
+
                 #Plot heatmap
                 #Set scale
                 #This is the colour spectrum we are aiming to span
                 CorrHmColours <- c("blue4", "lightgoldenrodyellow", "red1")
                 heatmapCols <- colorRamp2(c(-1, 0, 1), CorrHmColours)
 
-                fontsizey <- min(6, round((((-1 / 250) * (nrow(matstats))) + 1) * 6, 0))
+                fontsizey <- min(6, round((((-1 / 300) * (nrow(matstats))) + 1) * 4, 0))
 
                 #Add genome completeness info if LKT
                 if (analysis == "LKT"){
@@ -201,7 +248,7 @@ plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette
 
                 #Build plot title
                 stattit <- paste("Correlation measure =", stattype)
-                plotit <- paste(maintit, stattit, cutoffmsg, minPPMmsg, sep = "\n")
+                plotit <- paste(maintit, stattit, cutoffmsg, minPPMmsg, ntopvarmsg, minabscorrcoeffmsg, sep = "\n")
 
                 ht1 <- Heatmap(matstats, name = paste(stattype, "correlation coefficient"), column_title = plotit, column_title_gp = gpar(fontsize = 10), col = heatmapCols, column_dend_height = unit(5, "mm"), cluster_rows = TRUE, show_row_dend = FALSE, row_names_gp = gpar(fontsize = fontsizey), column_names_gp = gpar(fontsize = fontsizey), heatmap_legend_param = list(direction = "horizontal", legend_width = unit(6, "cm"), title = paste(stattype, "correlation coefficient"), labels = c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1), at = c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1), title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), left_annotation = ha1, bottom_annotation = ha2)
 
