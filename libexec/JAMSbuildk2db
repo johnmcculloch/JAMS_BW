@@ -556,8 +556,8 @@ find_lineage <- function(taxidint){
         }
     }
 
-    #Add exception: if it is a vertebrate, just coerce it to known taxonomy levels. There are too many intermediate taxonomy levels to deal with. Classic human exceptionalism, sigh.
-    if ("7711" %in% lineagedf$taxid){
+    #Add exception: if it is a vertebrate or metazoa, just coerce it to known taxonomy levels. There are too many intermediate taxonomy levels to deal with. Classic human exceptionalism, sigh.
+    if (any(c("7711", "33208") %in% lineagedf$taxid)){
         lineagedf <- lineagedf[which(lineagedf$rank %in% validtaxlvls == TRUE), ]
     }
 
@@ -629,8 +629,8 @@ for (cnk in 1:numchunks){
     flog.info(paste("Current project image size is", projimagesize, "bytes"))
     numberofimagesthatfitinmem <- round((opt$totmembytes / projimagesize), 0)
     theoreticalnumberofcores <- min(numberofimagesthatfitinmem, (opt$threads - 2))
-    #cap to 36 cores, just to be safe
-    appropriatenumberofcores <- min(theoreticalnumberofcores, 36)
+    #appropriatenumberofcores <- min(theoreticalnumberofcores, 36)
+    appropriatenumberofcores <- theoreticalnumberofcores
 
     flog.info(paste0("Processing chunk ", cnk, "/", numchunks, " using ", appropriatenumberofcores, " threads ..."))
     currchunk <- taxidpresent[chunkcoords[[cnk]]]
