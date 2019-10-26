@@ -5,13 +5,12 @@
 \title{plot_correlation_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", stattype = "spearman", cluster_rows = FALSE, subsetby = NULL, maxnumfeatallowed = 500, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL, samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL, showGram = FALSE, showphylum = FALSE, addtit = NULL, mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE, returnstats = FALSE, ...)}
 \usage{
 plot_correlation_heatmap(mgseqobj = NULL, glomby = NULL,
-  heatpalette = "smart", stattype = "spearman", cluster_rows = FALSE,
-  subsetby = NULL, maxnumfeatallowed = 500, featmaxatleastPPM = 0,
+  stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000,
+  minabscorrcoeff = NULL, ntopvar = NULL, featmaxatleastPPM = 0,
   featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL,
   samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL,
-  showGram = FALSE, showphylum = FALSE, addtit = NULL,
-  mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE,
-  returnstats = FALSE, ...)
+  showGram = TRUE, showphylum = TRUE, addtit = NULL,
+  mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE)
 }
 \description{
 Plots correlation heatmaps annotated by the metadata or a correlelogram of features
