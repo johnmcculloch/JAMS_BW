@@ -148,6 +148,9 @@ for (pathtofix in c("outdir", "excel_metadata", "phenotable", "phenolabels", "ja
 
 # Determine output directory
 if (!is.null(opt$outdir)) {
+    if (!file.exists(opt$outdir)){
+        dir.create(opt$outdir, recursive = TRUE)
+    }
     setwd(opt$outdir)
 } else {
     opt$outdir <- getwd()
