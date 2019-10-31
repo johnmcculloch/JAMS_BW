@@ -1,9 +1,9 @@
-#' make_heatmap_report(report=c("comparative", "exploratory", "PA"), project=NULL, expvec=NULL, usefulexp=NULL, featcutofftaxa=NULL, featcutofffunct=NULL, l2fchmtaxa=NULL, l2fchmfunc=NULL, applyfilters=c("stringent", "moderate", "none"), absolutemaxfeats=NULL, genomecompleteness=NULL, variable_list=NULL, adjustpval=TRUE, list.data=NULL, asPA=FALSE, mgSeqnorm=FALSE, cdict=NULL, showonlypbelow=NULL, makespreadsheets=FALSE, makeheatmaps=TRUE, maxnumheatmaps=NULL, ...)
+#' make_heatmap_report(report = c("comparative", "exploratory", "PA", "correlation"), project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, genomecompleteness = NULL, heatpalette = "smart", variable_list = NULL, max_annot_legends = 4,  includereaddata = TRUE, adjustpval = NULL, list.data = NULL, hmasPA = FALSE, mgSeqnorm = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, ...)
 #'
-#' Generates standard comparative heatmaps and spreadsheet based on relative abundance difference between binary categories for analyses named in expvectors.
+#' Generates standard comparative heatmaps and spreadsheet based on relative abundance difference between categories for analyses named in expvectors.
 #' @export
 
-make_heatmap_report <- function(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, genomecompleteness = NULL, heatpalette = "smart", variable_list = NULL, adjustpval = NULL, list.data = NULL, hmasPA = FALSE, mgSeqnorm = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, ...){
+make_heatmap_report <- function(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, genomecompleteness = NULL, heatpalette = "smart", variable_list = NULL, max_annot_legends = 4,  includereaddata = TRUE, adjustpval = NULL, list.data = NULL, hmasPA = FALSE, mgSeqnorm = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, ...){
 
     if (is.null(usefulexp)){
         usefulexp <- names(expvec)[!(names(expvec) %in% c("FeatType", "vfdb", "SFLD", "Coils", "Gene3D", "Phobius", "ProSitePatterns", "SMART", "resfinder", "ProDom"))]
@@ -25,8 +25,21 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
     variables_discont <- variables_all[!(variables_all %in% variables_cont)]
 
     pt <- as.data.frame(pData(expvec2[[1]]))
-    readscols <- (colnames(pt)[(colnames(pt) %in% c("GbNAHS", "PctAss"))])
-    colcategories <- append(variables_all, readscols, after = length(variables_all))
+
+    colcategories_list <- split(variables_all, ceiling(seq_along(variables_all) / max_annot_legends))
+
+    if (includereaddata == TRUE){
+        readscols <- (colnames(pt)[(colnames(pt) %in% c("GbNAHS", "PctAss"))])
+        if (length(readscols) > 0){
+            #Squeeze in reads into last list position if there is space, else do them separately
+            lastpos <- colcategories_list[[length(colcategories_list)]]
+            if (length(lastpos) < max_annot_legends){
+                colcategories_list[[length(colcategories_list)]] <- append(lastpos, readscols)
+            } else {
+                colcategories_list[[length(colcategories_list) + 1]] <- readscols
+            }
+        }
+    }
 
     if (report == "comparative"){
         plot_category_message <- "Relative Abundance Heatmaps"
@@ -107,10 +120,16 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                 minl2fc = l2fchmfunc
             }
 
-            if (makeheatmaps == TRUE){
+            for (annotcnk in 1:length(colcategories_list)){
+                colcategories <- colcategories_list[[annotcnk]]
                 #Plot heatmap in tandem
                 if (report == "comparative"){
                     flog.info(paste("Plotting", names(expvec2)[a], "relabund heatmaps of features most different between", cmp))
+                    #check if the comparison is already in colcategories
+                    if (!(cmp %in% colcategories)){
+                        colcategories <- c(colcategories, cmp)
+                    }
+                    flog.info(paste("Using legend annotations:", paste0(colcategories, collapse = ", ")))
                     plot.new()
                     grid.table(c(names(expvec2)[a], "Features most different", paste("between", cmp), "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
@@ -118,16 +137,21 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
 
                     mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]], glomby = glomby, heatpalette=heatpalette, hmtype=report, hmasPA=FALSE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
-                    compvec <- append(compvec, mycomp, after=length(compvec))
+                    if (annotcnk < 2){
+                        compvec <- append(compvec, mycomp, after=length(compvec))
+                    }
 
                 } else if (report == "exploratory"){
                     flog.info(paste("Plotting", names(expvec2)[a], "relabund heatmaps of features with higest variance."))
+                    flog.info(paste("Using legend annotations:", paste0(colcategories, collapse = ", ")))
                     plot.new()
                     grid.table(c("Features with highest variance", names(expvec2)[a], "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
                     mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]], glomby = glomby, heatpalette=heatpalette, hmtype=report, ntop=topcats, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
-                    compvec <- append(compvec, mycomp, after=length(compvec))
+                    if (annotcnk < 2){
+                        compvec <- append(compvec, mycomp, after=length(compvec))
+                    }
 
                 } else if (report == "PA"){
                     plot.new()
@@ -135,7 +159,10 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
 
                     mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]], glomby = glomby, heatpalette=heatpalette, hmtype=report, hmasPA=FALSE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
-                    compvec <- append(compvec, mycomp, after=length(compvec))
+                    if (annotcnk < 2){
+                        compvec <- append(compvec, mycomp, after=length(compvec))
+                    }
+
                 } else if (report == "correlation"){
                     plot.new()
                     grid.table(c(names(expvec2)[a], "Pairwise Correlation of Features", "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
@@ -144,8 +171,9 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
 
                     compvec <- NULL
                 }
+                HMn <- HMn + 1
             }
-            HMn <- HMn + 1
+
 
             if (length(variables_subs) > 0){
                 #If there is any subsettable data, then do that.
@@ -154,23 +182,37 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                 for (vs in validsubs){
                     XLn <- XLn + 1
 
-                    if (makeheatmaps == TRUE){
+                    for (annotcnk in 1:length(colcategories_list)){
+                        colcategories <- colcategories_list[[annotcnk]]
                         if (report == "comparative"){
+                            flog.info(paste("Plotting", names(expvec2)[a], "relabund heatmaps of features most different between", cmp, "within", vs))
+                            #check if the comparison is already in colcategories
+                            if (!(cmp %in% colcategories)){
+                                colcategories <- c(colcategories, cmp)
+                            }
+                            flog.info(paste("Using legend annotations:", paste0(colcategories, collapse = ", ")))
+
                             plot.new()
                             grid.table(c(names(expvec2)[a], "Features most different", paste("between", cmp), paste("Subset by", vs)), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
                             mycomp <- plot_relabund_heatmap(mgseqobj = expvec2[[a]], glomby = glomby, subsetby = vs, heatpalette = heatpalette, hmtype = report, hmasPA = FALSE, compareby = cmp, ntop = topcats, invertbinaryorder = FALSE, colcategories = colcategories, cluster_rows = TRUE, applyfilters = applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, adjustpval = adjustpval, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ignoreunclassified = TRUE, showonlypbelow = showonlypbelow, showpval = TRUE, showl2fc = TRUE, list.data = list.data, cdict = cdict, maxnumheatmaps = maxnumheatmaps, numthreads = numthreads, nperm = nperm, statsonlog = TRUE, returnstats = makespreadsheets)
 
-                            compvec <- append(compvec, mycomp, after=length(compvec))
+                            if (annotcnk < 2){
+                                compvec <- append(compvec, mycomp, after=length(compvec))
+                            }
 
                         } else if (report == "exploratory"){
                             #Explain what we are doing
+                            flog.info(paste("Plotting", names(expvec2)[a], "relabund heatmaps of features with higest variance within", vs))
+                            flog.info(paste("Using legend annotations:", paste0(colcategories, collapse = ", ")))
                             plot.new()
                             grid.table(c("Features with highest variance", names(expvec2)[a], "Subsetting by group"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
                             mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]], glomby = glomby, subsetby=vs, heatpalette=heatpalette, hmtype=report, ntop=topcats, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters,minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
-                            compvec <- append(compvec, mycomp, after=length(compvec))
+                            if (annotcnk < 2){
+                                compvec <- append(compvec, mycomp, after=length(compvec))
+                            }
 
                         } else if (report == "PA"){
                             plot.new()
@@ -178,7 +220,9 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
 
                             mycomp <- plot_relabund_heatmap(mgseqobj=expvec2[[a]], glomby = glomby, subsetby=vs, heatpalette=heatpalette, hmtype=report, hmasPA=FALSE, compareby=cmp, ntop=topcats, invertbinaryorder=FALSE, colcategories=colcategories, cluster_rows=TRUE, applyfilters=applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep=samplesToKeep, featuresToKeep=featuresToKeep, ignoreunclassified=TRUE, adjustpval=adjustpval, showonlypbelow=showonlypbelow, showpval=TRUE, showl2fc=TRUE, list.data=list.data, cdict=cdict, maxnumheatmaps=maxnumheatmaps, numthreads=numthreads, nperm=nperm, statsonlog=TRUE, returnstats=makespreadsheets)
 
-                            compvec <- append(compvec, mycomp, after=length(compvec))
+                            if (annotcnk < 2){
+                                compvec <- append(compvec, mycomp, after=length(compvec))
+                            }
 
                         } else if (report == "correlation"){
                             plot.new()
@@ -188,8 +232,8 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
 
                             compvec <- NULL
                         } #Type of report conditional
-                    } #If heatmaps are to be made conditional
-                    HMn <- HMn + 1
+                        HMn <- HMn + 1
+                    } #End loop for colcategories chunks
                 } #End of for each valid subset loop
             } #If there are any subsets conditional
         } #End of for each experiment loop
