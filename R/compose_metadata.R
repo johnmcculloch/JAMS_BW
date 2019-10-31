@@ -27,9 +27,8 @@ compose_metadata <- function(medatadafolder = NULL, prefixsubstitutiontable = NU
     }
 
     phenotable <- allmetadata
-    phenolabels <- data.frame(Var_label=colnames(phenotable), Var_type=rep("Unknown", ncol(phenotable)), stringsAsFactors = FALSE)
+    phenolabels <- data.frame(Var_label = colnames(phenotable), Var_type = rep("Unknown", ncol(phenotable)), stringsAsFactors = FALSE)
     phenolabels$Var_type[which(phenolabels$Var_label == "Sample")] <- "Sample"
-
 
     varstoguess <- which(phenolabels$Var_label != "Sample")
 
