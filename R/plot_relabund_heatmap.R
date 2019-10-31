@@ -89,7 +89,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
             colcategories <- colcategories[!(colcategories %in% subsetby)]
             subsetname <- subset_points[sp]
         } else {
-            samplesToKeep = rownames(pData(obj))
+            samplesToKeep <- rownames(pData(obj))
             subsetname <- "no_sub"
         }
 
