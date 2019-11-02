@@ -368,7 +368,7 @@ if (adjustmetadata == TRUE){
     if (opt$doreads == TRUE){
         flog.info("Evaluating sequencing.")
         opt$readdata <- make_readdata(Samples = Samples_have, list.data = list.data)
-        opt$readplots <- plot_readdata(readdata = readdata)
+        opt$readplots <- plot_readdata(readdata = opt$readdata)
     }
 
     #Adjust phenotable

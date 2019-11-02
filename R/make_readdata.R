@@ -21,7 +21,7 @@ make_readdata <- function(Samples = NULL, list.data = NULL){
         #Try and find reads stats for that sample.
         readstats <- list.data[[paste(Samples[s], "readstats", sep="_")]]
         if (is.null(readstats)){
-            readstats <- data.frame(Read_type=c("Raw", "Trimmed", "NonHost", "Assembled"), Base_counts=c(0,0,0,0))
+            readstats <- data.frame(Read_type = c("Raw", "Trimmed", "NonHost", "Assembled"), Base_counts = c(0,0,0,0))
         }
         rownames(readstats) <- readstats$Read_type
         readstats$Read_type <- NULL

@@ -69,12 +69,15 @@ adjust_phenotable <- function(opt = NULL, list.data = NULL, addtaxlevelstoisolat
 
     #Add data from readdata if desired
     if (!(is.null(opt$readdata))){
-        opt$readdata$GbNAHS <- round((opt$readdata$NonHost_bases / 1000000000), 2)
-        opt$readdata$GbTrim <- round((opt$readdata$Trim_bases / 1000000000), 2)
-        opt$readdata$GbNAHS <- rep(0, nrow(opt$phenotable)) #Account for the fact that pheno Samples may be missing in readdata
+        dfr <- opt$readdata
+        rownames(dfr) <- dfr$Sample
+        dfr <- dfr[opt$phenotableQ$Sample, ]
+        dfr$GbNAHS <- round((dfr$NonHost_bases / 1000000000), 2)
+        dfr$GbTrim <- round((dfr$Trim_bases / 1000000000), 2)
+        dfr$GbNAHS <- rep(0, nrow(opt$phenotable)) #Account for the fact that pheno Samples may be missing in readdata
         opt$phenotable$PctAss <- rep(0, nrow(opt$phenotable)) #Account for the fact that pheno Samples may be missing in readdata
-        opt$phenotable$GbNAHS <- opt$readdata$GbNAHS[match(opt$phenotable$Sample, opt$readdata$Sample)]
-        opt$phenotable$PctAss <- opt$readdata$PctAss[match(opt$phenotable$Sample, opt$readdata$Sample)]
+        opt$phenotable$GbNAHS <- dfr$GbNAHS[match(opt$phenotable$Sample, dfr$Sample)]
+        opt$phenotable$PctAss <- dfr$PctAss[match(opt$phenotable$Sample, dfr$Sample)]
     }
 
     return(opt)
