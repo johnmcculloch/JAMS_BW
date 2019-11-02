@@ -2,10 +2,10 @@
 % Please edit documentation in R/adjust_phenotable.R
 \name{adjust_phenotable}
 \alias{adjust_phenotable}
-\title{adjust_phenotable(phenotable=NULL, phenolabels=NULL, readdata=NULL, list.data=list.data)}
+\title{adjust_phenotable(opt = NULL, list.data = NULL, addtaxlevelstoisolates = NULL)}
 \usage{
-adjust_phenotable(phenotable = NULL, phenolabels = NULL,
-  readdata = NULL, list.data = NULL, addtaxlevelstoisolates = NULL)
+adjust_phenotable(opt = NULL, list.data = NULL,
+  addtaxlevelstoisolates = NULL, class_to_ignore = "N_A")
 }
 \description{
 Adjusts the metadata table into a format which can be used by the MetagenomeSeq package.

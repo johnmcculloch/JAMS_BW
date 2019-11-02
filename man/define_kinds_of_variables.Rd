@@ -2,10 +2,11 @@
 % Please edit documentation in R/define_kinds_of_variables.R
 \name{define_kinds_of_variables}
 \alias{define_kinds_of_variables}
-\title{define_kinds_of_variables(phenolabels=NULL, phenotable=NULL, maxclass=10, maxsubclass=4)}
+\title{define_kinds_of_variables(metadataXL = NULL, phenolabels = NULL, phenotable = NULL, maxclass = 10, maxsubclass = 4)}
 \usage{
 define_kinds_of_variables(metadataXL = NULL, phenolabels = NULL,
-  phenotable = NULL, maxclass = 10, maxsubclass = 4)
+  phenotable = NULL, maxclass = 15, maxsubclass = 4,
+  class_to_ignore = "N_A", verbose = TRUE)
 }
 \description{
 From the metadata returns a list of variable names with the desired number of classes belonging to "sample", "discrete", "continuous", "binary" and "subsettable" types.
