@@ -176,3 +176,15 @@ trim_whitespace_from_df <- function(df = NULL){
 
     return(df)
 }
+
+#' exporttabletsv(dataobj = NULL, project = NULL, basename = NULL, row.names = TRUE, col.names = TRUE, path = NULL)
+#' Generic function to export a dataframe to tsv format
+#' @export
+
+exporttabletsv <- function(dataobj = NULL, project = NULL, basename = NULL, row.names = TRUE, col.names = TRUE, path = NULL){
+    flname <- paste(paste("JAMS", project, basename, sep = "_"), "tsv", sep = ".")
+    if (!is.null(path)){
+        flname <- paste(path, flname, sep = "/")
+    }
+    write.table(dataobj, file = flname, quote = FALSE, sep = "\t", eol = "\n", na = "NA", dec = ".", row.names = row.names, col.names = col.names)
+}

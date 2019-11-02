@@ -1,19 +1,21 @@
-#' define_kinds_of_variables(phenolabels=NULL, phenotable=NULL, maxclass=10, maxsubclass=4)
+#' define_kinds_of_variables(metadataXL = NULL, phenolabels = NULL, phenotable = NULL, maxclass = 10, maxsubclass = 4)
 #'
 #' From the metadata returns a list of variable names with the desired number of classes belonging to "sample", "discrete", "continuous", "binary" and "subsettable" types.
 #' @export
 
 #returns a list of variable names
-define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phenotable = NULL, maxclass = 10, maxsubclass = 4){
+define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phenotable = NULL, maxclass = 15, maxsubclass = 4, class_to_ignore = "N_A", verbose = TRUE){
 
     if (!(is.null(metadataXL))){
-        metadata <- load_metadata_from_xl(xlsxFile = metadataXL)
+        metadata <- load_metadata_from_file(xlsxFile = metadataXL)
         phenotable <- metadata[[1]]
         phenolabels <- metadata[[2]]
     }
 
     validcols <- as.character(phenolabels$Var_label)
-    print(paste("Phenolabels contains", length(validcols), "categories."))
+    if (verbose){
+        flog.info(paste("Phenolabels contains", length(validcols), "categories."))
+    }
 
     #Stop if you are asking for more than you have.
     if (length(validcols) > ncol(phenotable)){
@@ -24,11 +26,15 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
     if (length(ptsampcol) != 1){
         stop("You must define exactly one column as being the Sample column in your metadata. Please see documenation.")
     } else {
-        print(paste("Samples are in the", ptsampcol, "column in the metadata."))
+        if (verbose){
+            flog.info(paste("Samples are in the", ptsampcol, "column in the metadata."))
+        }
     }
 
-    print(paste("Metadata classes specified in phenolabels are:", paste0(validcols, collapse = ", ")))
-    print("Adjusting metadata to contain only these columns.")
+    if (verbose){
+        flog.info(paste("Metadata classes specified in phenolabels are:", paste0(validcols, collapse = ", ")))
+        flog.info("Adjusting metadata to contain only these columns.")
+    }
 
     #Stop if the classes you want in phenolabels do not exist in phenotable.
     if (all(validcols %in% colnames(phenotable))){
@@ -45,18 +51,26 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
     #Find the sample variable
     variable_list$sample <- as.character(phenolabels$Var_label[which((phenolabels$Var_type == "Sample"))])
 
+    if (verbose) {
+        flog.info(paste("Ignoring cells containing", class_to_ignore))
+    }
+
     #Find and validate subsettable variables
     variables_subs <- as.character(phenolabels$Var_label[which((phenolabels$Var_type == "subsettable"))])
     if (length(variables_subs) > 0){
         numcl <- NULL
         for(v in 1:length(variables_subs)){
-            numcl[v] <- length(unique(phenotable[ , (variables_subs[v])]))
+            numcl[v] <- length(unique(phenotable[ , (variables_subs[v])][which(phenotable[ , (variables_subs[v])] != class_to_ignore)]))
         }
-        print(paste("Found subsettable variables", paste0(variables_subs, collapse=", "), "with", paste0(numcl, collapse=", "),  "classes, respectively."))
-        variables_subs <- variables_subs[which((numcl > 1) & (numcl < (maxsubclass + 1)))]
-        print(paste("Keeping subsettable variables", paste0(variables_subs, collapse=", ")))
+        if (verbose){
+            flog.info(paste("Found subsettable variables", paste0(variables_subs, collapse=", "), "with", paste0(numcl, collapse=", "), "classes, respectively."))
+        }
+            variables_subs <- variables_subs[which((numcl > 1) & (numcl < (maxsubclass + 1)))]
+        if (verbose){
+            flog.info(paste("Keeping subsettable variables", paste0(variables_subs, collapse=", ")))
+        }
     } else {
-        print("Found no subsettable variables.")
+        flog.info("Found no subsettable variables.")
     }
     variable_list$subsettable <- as.character(variables_subs)
 
@@ -65,22 +79,45 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
     if (length(variables_disc) > 0){
         numcl <- NULL
         for(v in 1:length(variables_disc)){
-            numcl[v] <- length(unique(phenotable[ , (variables_disc[v])]))
+            numcl[v] <- length(unique(phenotable[ , (variables_disc[v])][which(phenotable[ , (variables_disc[v])] != class_to_ignore)]))
         }
-        print(paste("Found discrete variables", paste0(variables_disc, collapse=", "), "with", paste0(numcl, collapse=", "),  "classes, respectively."))
+        if (verbose){
+            flog.info(paste("Found discrete variables", paste0(variables_disc, collapse = ", "), "with", paste0(numcl, collapse = ", "),  "classes, respectively."))
+        }
         variables_disc <- variables_disc[which((numcl > 1) & (numcl < (maxclass + 1)))]
-        print(paste("Keeping discrete variables", variables_disc))
+        if (verbose){
+            flog.info(paste("Keeping discrete variables", variables_disc))
+        }
     } else {
-        print("Found no discrete variables.")
+        if (verbose){
+            flog.info("Found no discrete variables.")
+        }
     }
     variable_list$discrete <- as.character(variables_disc)
 
     #Find and validate continuous variables
     variables_cont <- phenolabels$Var_label[which((phenolabels$Var_type == "continuous"))]
     if (length(variables_cont) > 0){
-        print(paste("Found continuous variables", paste0(variables_cont, collapse=", ")))
+        #Check that valid (non-ignore values can be made numeric)
+        is_numeric <- NULL
+        for (v in 1:length(variables_cont)){
+            is_numeric[v] <- length(which(is.na(phenotable[ , (variables_cont[v])][which(phenotable[ , (variables_cont[v])] != class_to_ignore)]) == FALSE))
+            if (is_numeric[v] == 0){
+                if (verbose){
+                    flog.info(paste("No values which are numeric can be found in", variables_cont[v]))
+                }
+            }
+        }
+        variables_cont <- variables_cont[which(is_numeric > 0)]
+        if (length(variables_cont) > 0){
+            if (verbose){
+                flog.info(paste("Found continuous variables", paste0(variables_cont, collapse = ", ")))
+            }
+        }
     } else {
-        print("Found no continuous variables.")
+        if (verbose){
+            flog.info("Found no continuous variables.")
+        }
     }
     variable_list$continuous <- as.character(variables_cont)
 
@@ -89,11 +126,13 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
     if (length(variables_bin) > 0){
         numcl <- NULL
         for(v in 1:length(variables_bin)){
-            numcl[v] <- length(unique(phenotable[ , (variables_bin[v])]))
+            numcl[v] <- length(unique(phenotable[ , (variables_bin[v])][which(phenotable[ , (variables_bin[v])] != class_to_ignore)]))
         }
         variables_bin <- variables_bin[which(numcl == 2)]
         if (length(variables_bin) > 0){
-            print(paste("Found binary variables", variables_bin))
+            if (verbose){
+                flog.info(paste("Found binary variables", variables_bin))
+            }
         }
     }
     variable_list$binary <- as.character(variables_bin)

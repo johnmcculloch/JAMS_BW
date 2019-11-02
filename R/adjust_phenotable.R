@@ -1,29 +1,26 @@
 #Prepare pheno object for metagenomeSeq package
-#' adjust_phenotable(phenotable=NULL, phenolabels=NULL, readdata=NULL, list.data=list.data)
+#' adjust_phenotable(opt = NULL, list.data = NULL, addtaxlevelstoisolates = NULL)
 #'
 #' Adjusts the metadata table into a format which can be used by the MetagenomeSeq package.
 #' @export
 
-adjust_phenotable <- function(phenotable = NULL, phenolabels = NULL, readdata = NULL, list.data = NULL, addtaxlevelstoisolates = NULL){
+adjust_phenotable <- function(opt = NULL, list.data = NULL, addtaxlevelstoisolates = NULL, class_to_ignore = "N_A"){
 
-    print("Adjusting phenotable classes by type of variable.")
-    varlist <- define_kinds_of_variables(phenolabels = phenolabels, phenotable = phenotable, maxclass = 10000, maxsubclass = 10000)
+    #flog.info("Adjusting phenotable classes by type of variable.")
+    varlist <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenotable = opt$phenotable, maxclass = 10000, maxsubclass = 10000, class_to_ignore = class_to_ignore, verbose = FALSE)
 
-    pheno <- phenotable
-    #Adjust discrete and subsettable variables as class character
-    charvar <- unique(c(varlist$sample, varlist$discrete, varlist$subsettable))
-    for(cv in 1: length(charvar)){
-        pheno[, charvar[cv]] <- as.character(pheno[, charvar[cv]])
+    #Rename column to Sample, if it isn't already
+    colmtosub <- which(colnames(opt$phenotable) == varlist$sample)
+    colnames(opt$phenotable)[colmtosub] <- "Sample"
+    #make unique if there was already another column called Sample
+    if (length(which(colnames(opt$phenotable) == "Sample")) > 1){
+        colnames(opt$phenotable) <- make.unique(colnames(opt$phenotable), sep = "_")
+        colnames(opt$phenotable)[colmtosub] <- "Sample"
+        opt$phenotable$Var_label <- colnames(phenotable)
     }
-    #Adjust continuous variables as class numeric
-    numvar <- unique(varlist$continuous)
-    if (length(numvar) > 0){
-        for (n in 1:length(numvar)){
-            pheno[, numvar[n]] <- as.numeric(pheno[, numvar[n]])
-        }
-    }
-    rownames(pheno) <- pheno[, varlist$sample]
-    Samples <- rownames(pheno)
+    rownames(opt$phenotable) <- opt$phenotable$Sample
+
+    Samples <- rownames(opt$phenotable)
 
     #add information regarding sample type
     if (!is.null(list.data)){
@@ -43,9 +40,9 @@ adjust_phenotable <- function(phenotable = NULL, phenolabels = NULL, readdata = 
             projdata[which(projdata$Sample == Samples[s]), which(colnames(projdata) == "JAMS_Process")] <- projstats["Process", "Run_value"]
         }
 
-        pheno <- left_join(pheno, projdata, by = "Sample")
+        opt$phenotable <- left_join(opt$phenotable, projdata, by = "Sample")
         phenolabels_projinfo <- data.frame(Var_label = c("JAMS_Run_type", "JAMS_Process"), Var_type = c("discrete", "discrete"), stringsAsFactors = FALSE)
-        phenolabels <- rbind(phenolabels, phenolabels_projinfo)
+        opt$phenolabels <- rbind(opt$phenolabels, phenolabels_projinfo)
 
         #add taxonomic information to isolates, if there are any
         if ((!is.null(addtaxlevelstoisolates)) && length(which(projdata$JAMS_Run_type == "isolate") > 0)){
@@ -64,30 +61,21 @@ adjust_phenotable <- function(phenotable = NULL, phenolabels = NULL, readdata = 
                 taxdata[which(taxdata$Sample == isolatesamples[i]), newtaxlvlnames] <- as.character(as.matrix(unname(taxstats[which(taxstats$NumBases == max(taxstats$NumBases)), addtaxlevelstoisolates])))
             }
 
-            pheno <- left_join(pheno, taxdata, by = "Sample")
+            opt$phenotable <- left_join(opt$phenotable, taxdata, by = "Sample")
             phenolabels_taxon <- data.frame(Var_label = newtaxlvlnames, Var_type = rep("discrete", length(newtaxlvlnames)), stringsAsFactors = FALSE)
-            phenolabels <- rbind(phenolabels, phenolabels_taxon)
+            opt$phenolabels <- rbind(opt$phenolabels, phenolabels_taxon)
         }
     }
 
     #Add data from readdata if desired
-    if (!(is.null(readdata))){
-        dfr <- readdata
-        dfr$GbNAHS <- round((dfr$NonHost_bases / 1000000000),2)
-        dfr$GbTrim <- round((dfr$Trim_bases / 1000000000),2)
-        pheno$GbNAHS <- rep(0, nrow(pheno)) #Account for the fact that pheno Samples may be missing in readdata
-        pheno$PctAss <- rep(0, nrow(pheno)) #Account for the fact that pheno Samples may be missing in readdata
-        pheno$GbNAHS <- dfr$GbNAHS[match(pheno[,varlist$sample], dfr$Sample)]
-        pheno$PctAss <- dfr$PctAss[match(pheno[,varlist$sample], dfr$Sample)]
-        #phenolabels_reads<-data.frame(Var_label=c("GbNAHS", "PctAss"), Var_type=c("continuous","continuous"), stringsAsFactors =FALSE)
-        #phenolabels<-rbind(phenolabels, phenolabels_reads)
+    if (!(is.null(opt$readdata))){
+        opt$readdata$GbNAHS <- round((opt$readdata$NonHost_bases / 1000000000), 2)
+        opt$readdata$GbTrim <- round((opt$readdata$Trim_bases / 1000000000), 2)
+        opt$readdata$GbNAHS <- rep(0, nrow(opt$phenotable)) #Account for the fact that pheno Samples may be missing in readdata
+        opt$phenotable$PctAss <- rep(0, nrow(opt$phenotable)) #Account for the fact that pheno Samples may be missing in readdata
+        opt$phenotable$GbNAHS <- opt$readdata$GbNAHS[match(opt$phenotable$Sample, opt$readdata$Sample)]
+        opt$phenotable$PctAss <- opt$readdata$PctAss[match(opt$phenotable$Sample, opt$readdata$Sample)]
     }
 
-    metadata <- list()
-    rownames(pheno) <- pheno[, varlist$sample]
-    metadata[[1]] <- pheno
-    metadata[[2]] <- phenolabels
-    names(metadata) <- c("phenotable", "phenolabels")
-
-    return(metadata)
+    return(opt)
 }
