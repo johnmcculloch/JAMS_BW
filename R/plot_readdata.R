@@ -4,7 +4,7 @@
 #' @export
 
 plot_readdata<-function(readdata=NULL){
- 
+
     #Make a copy of readdata, excluding samples with input as contigs
     if("Proj_type" %in% colnames(readdata)){
         dfr<-subset(readdata, Proj_type == "Assemble_from_reads")
@@ -62,4 +62,3 @@ plot_readdata<-function(readdata=NULL){
 
     return(gvec)
 }
-

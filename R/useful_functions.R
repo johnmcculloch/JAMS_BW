@@ -188,3 +188,16 @@ exporttabletsv <- function(dataobj = NULL, project = NULL, basename = NULL, row.
     }
     write.table(dataobj, file = flname, quote = FALSE, sep = "\t", eol = "\n", na = "NA", dec = ".", row.names = row.names, col.names = col.names)
 }
+
+#' quiet(function(x))
+#' Suppresses output messages
+#' By Hadley Wickham
+#' http://r.789695.n4.nabble.com/Suppressing-output-e-g-from-cat-td859876.html
+#'
+#' @export
+
+quiet <- function(x) {
+    sink(tempfile())
+    on.exit(sink())
+    invisible(force(x))
+}

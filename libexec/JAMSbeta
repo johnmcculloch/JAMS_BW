@@ -54,10 +54,20 @@ option_list <- list(
                 type="numeric",
                 help="Maximum number of classes for a discrete variable to be kept. Default=10"),
 
+    make_option(c("-i", "--class_to_ignore"),
+                action="store", default = "N_A",
+                type="character",
+                help="Ignore cells containing this text in the metadata. Samples bearing this class of text when comparing within a variable will be omitted from an analysis."),
+
     make_option(c("-y", "--jamsfiles_path"),
                 action="store", default = NULL,
                 type="character",
                 help ="path to where all .jams files are"),
+
+    make_option(c("-w", "--load_workspace"),
+                action="store", default = NULL,
+                type="character",
+                help ="/path/to/.RData  -  Continue or change the JAMSbeta pipeline from a previous workspace with an .RData file"),
 
     make_option(c("-g", "--minGbNAHS"),
                 action="store", default = 0,
@@ -74,7 +84,7 @@ option_list <- list(
                 type="logical",
                 help ="Export relative abundance tables and feature data tables in tsv format."),
 
-    make_option(c("-d", "--ordination"),
+    make_option(c("-d", "--make_ordination_reports"),
                 action="store_true", default = FALSE,
                 type="logical",
                 help ="Generate ordination plots."),
@@ -104,11 +114,6 @@ option_list <- list(
                 type="logical",
                 help ="Generate alpha diversity plots."),
 
-    make_option(c("-w", "--load_workspace"),
-                action="store", default = NULL,
-                type="character",
-                help ="/path/to/.RData  -  Continue or change the JAMSbeta pipeline from a previous workspace with an .RData file"),
-
     make_option(c("-v", "--version"),
                 action="store_true", help = "report version")
  )
@@ -127,8 +132,6 @@ if (!is.null(opt$version)) {
     print(opt$verstr)
     quit()
 }
-
-opt$class_to_ignore <- "N_A"
 
 #Fix path relativity
 fixrelpath <- function(JAMSpath = NULL){
@@ -177,14 +180,21 @@ if (all(c((is.null(opt$load_workspace)), (is.null(opt$jamsfiles_path))))) {
             flog.info("Loading saved workspace image. Please be patient...")
             load(opt$load_workspace)
             preloadopt <- readRDS("preloadopt.rds")
+            #change name of ordination report option, for backwards compatibility. This patch will be phased out by July2020.
+            if ("ordination" %in% names(opt)){
+                names(opt)[which(names(opt) == "ordination")] <- "make_ordination_report"
+            }
+            rm(list=c("phenotable", "phenolabels")[c("phenotable", "phenolabels") %in% ls()])
             #Replace old options with new ones
             opt$replaced <- NULL
             optstosub <- names(preloadopt)[!(names(preloadopt) %in% c("jamsfiles_path", "load_workspace", "projimage", "projimagesize"))]
-            optstoreset <- c("excel_metadata", "make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "make_correlation_reports", "ordination", "export_tables")[(!(c("excel_metadata", "make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "make_correlation_reports", "ordination", "export_tables") %in% opt$replaced))]
+            optstoreset <- c("excel_metadata", "make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "make_correlation_reports", "make_ordination_report", "export_tables")[(!(c("excel_metadata", "make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "make_correlation_reports", "make_ordination_report", "export_tables") %in% opt$replaced))]
             for (resetopt in optstoreset){
                 #flog.info(paste("Option", resetopt, "is set to FALSE."))
                 opt[[resetopt]] <- FALSE
             }
+            #Reset dupes
+            opt$dupes <- NULL
             #May be missing in some old JAMS beta images
             if (is.null(opt[["outdir"]])){
                 opt[["outdir"]] <- getwd()
@@ -378,30 +388,26 @@ if (adjustmetadata == TRUE){
     opt$phenotable <- subset(opt$phenotable, GbNAHS >= opt$minGbNAHS)
     opt$phenotable <- subset(opt$phenotable, PctAss >= opt$minPctAssembly)
 
-    pheno <- opt$phenotable
-    phenolabels <- opt$phenolabels
-
     #Define kinds of variables
     variable_list <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenotable = opt$phenotable, maxclass = opt$maxnumclasses, maxsubclass = 6, class_to_ignore = opt$class_to_ignore)
 
     #Now that variables have been defined, plot original assembly and read status to pdf
     if (doreads == TRUE){
-        assvecplot <- NULL
         if (length(variable_list$discrete) > 0){
-            assvecplot <- vector("list", length = length(variable_list$discrete))
-            for (p in 1:length(variable_list$discrete)){
-                assvecplot[[p]] <- plot_readscatter(readdata = readdata, phenotable = opt$phenotable, discrete = variable_list$discrete[p])
-            }
+            opt$assvecplot <- plot_readscatter(opt = opt)
         }
 
         #Dump to pdf
         pdffn = paste("JAMS_Reads_Stats_", opt$projectname, ".pdf", sep = "")
         pdf(pdffn, paper = "a4r")
-        print(opt$readplots)
-        print(assvecplot)
+        quiet(print(opt$readplots))
+        quiet(print(opt$assvecplot))
         dev.off()
     }
 }
+
+pheno <- opt$phenotable
+phenolabels <- opt$phenolabels
 
 #If there are no metagenomeSeq experiments, then build some.
 if (!exists("expvec")){
@@ -428,21 +434,7 @@ if (!exists("expvec")){
     pheno <- pheno[(rownames(pheno)[rownames(pheno) %in% Samples_have]), ]
 
     #Replace metadata in expvec if required
-    if (any(c("excel_metadata", "phenotable") %in% opt$replaced)) {
-        if ("excel_metadata" %in% opt$replaced){
-            mdXL <- opt$excel_metadata
-            phenotableFN <- NULL
-            phenolabelsFN <- NULL
-        } else {
-            mdXL <- NULL
-            phenotableFN <- opt$phenotable_tsv
-            phenolabelsFN <- opt$phenolabels_tsv
-        }
-        if (!is.null(opt$readdata)){
-            readdata2 <- opt$readdata
-        } else {
-            readdata2 <- NULL
-        }
+    if (any(c("excel_metadata", "phenotable_tsv") %in% opt$replaced)) {
         flog.info("Replacing metadata in current metagenomeSeq experiments.")
 
         for (e in 1:length(expvec)){
@@ -513,16 +505,16 @@ basicexp <- c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO")[c("LKT", "
 specialexp <- c("vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM")[c("vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM") %in% allexp]
 
 if ("isolate" %in% pheno$JAMS_Run_type){
-    applyfilters = "none"
+    applyfilters <- "none"
 } else {
-    applyfilters = "moderate"
+    applyfilters <- "moderate"
 }
 
 #######################
 ## Do optional tasks ##
 #######################
 
-if (opt$ordination == TRUE){
+if (opt$make_ordination_reports == TRUE){
     flog.info("Will now try to generate ordination plots based on Metadata which looks meaningful.")
     flog.info(paste0("Generating ordination plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
     tryCatch((make_ordination_report(project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict)), error = function(e) whoopsieplot("generating ordination plots for basic analyses"))
