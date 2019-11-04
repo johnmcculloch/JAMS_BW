@@ -2,9 +2,9 @@
 % Please edit documentation in R/plot_readscatter.R
 \name{plot_readscatter}
 \alias{plot_readscatter}
-\title{plot_readscatter(readdata=NULL, phenotable=NULL, discrete=NULL)}
+\title{plot_readscatter(opt = NULL)}
 \usage{
-plot_readscatter(readdata = NULL, phenotable = NULL, discrete = NULL)
+plot_readscatter(opt = NULL)
 }
 \description{
 Makes a scatterplot of percentage of reads assembled into contigs by sequencing depth.
