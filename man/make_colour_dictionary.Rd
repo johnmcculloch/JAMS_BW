@@ -4,7 +4,8 @@
 \alias{make_colour_dictionary}
 \title{make_colour_dictionary(variable_list=NULL, pheno=NULL)}
 \usage{
-make_colour_dictionary(variable_list = NULL, pheno = NULL)
+make_colour_dictionary(variable_list = NULL, pheno = NULL,
+  class_to_ignore = NULL, shuffle = FALSE)
 }
 \description{
 Returns a dictionary of colours for each class within each variable_list
