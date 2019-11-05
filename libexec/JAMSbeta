@@ -498,7 +498,7 @@ if (opt$export_tables == TRUE){
 ## Make a colour dictionary for plots ##
 ########################################
 flog.info("Making a dictionary of colours for consistency throughout plots.")
-cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno)
+cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, class_to_ignore = opt$class_to_ignore, shuffle = FALSE)
 
 allexp <- names(expvec)
 basicexp <- c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO")[c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO") %in% allexp]
