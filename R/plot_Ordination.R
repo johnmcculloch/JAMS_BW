@@ -1,9 +1,9 @@
-#' plot_Ordination(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, ...)
+#' plot_Ordination(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, class_to_ignore = "N_A", ...)
 #'
 #' Creates ordination plots based on tSNE or PCA
 #' @export
 
-plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, ...){
+plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, class_to_ignore = "N_A", ...){
 
     #Get appropriate object to work with
     obj <- mgseqobj
@@ -18,9 +18,13 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
     }
 
     #Aggregate if required
-    if(!(is.null(glomby))){
-        obj <- aggTax(obj, lvl = glomby, out = 'MRexperiment', norm = FALSE)
+    if (!(is.null(glomby))){
+        obj <- agglomerate_features(mgseqobj = obj, glomby = glomby)
     }
+
+    #Remove samples bearing categories within class_to_ignore
+    valid_vars <- c(colourby, shapeby, sizeby, susbetby)[which(!is.na(c(colourby, shapeby, sizeby, susbetby)))]
+    obj <- filter_sample_by_class_to_ignore(mgseqobj = obj, variables = valid_vars, class_to_ignore = class_to_ignore)
 
     #Define analysis type
     analysis <- attr(obj, "analysis")
@@ -72,29 +76,29 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
 
         currobj <- filter_experiment(mgseqobj = currobj, featmaxatleastPPM = featmaxatleastPPM, featcutoff = featcutoff, samplesToKeep = samplesToKeep, asPA = FALSE, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
 
-        mat <- MRcounts(currobj)
+        countmat <- MRcounts(currobj)
 
         if (ignoreunclassified == TRUE){
             dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified")
-            rowsToKeep <- which(!(rownames(mat) %in% dunno))
-            mat <- mat[rowsToKeep, ]
+            rowsToKeep <- which(!(rownames(countmat) %in% dunno))
+            countmat <- countmat[rowsToKeep, ]
         }
 
         #log2 transform if applicable
-        if(log2tran == TRUE){
-            mat2 <- sapply(1:ncol(mat), function(x){ mat[, x] <- (log2(mat[, x] + 1)) })
-            colnames(mat2) <- colnames(mat)
-            mat <- mat2
+        if (log2tran == TRUE){
+            countmat2 <- sapply(1:ncol(countmat), function(x){ countmat[, x] <- (log2(countmat[, x] + 1)) })
+            colnames(countmat2) <- colnames(countmat)
+            countmat <- countmat2
         }
 
-        n <- nrow(mat)
+        n <- nrow(countmat)
         comp <- 1:3
-        rowsToKeep <- names(which(rowSums(mat) > 0))
-        mat <- mat[rowsToKeep, ]
-        rowVars <- rowSds(mat)
-        mat <- mat[order(rowVars, decreasing = TRUE), ]
+        rowsToKeep <- names(which(rowSums(countmat) > 0))
+        countmat <- countmat[rowsToKeep, ]
+        rowVars <- rowSds(countmat)
+        countmat <- countmat[order(rowVars, decreasing = TRUE), ]
         if (transp == TRUE) {
-            mat <- t(mat)
+            countmat <- t(countmat)
         }
 
         if (algorithm == "tSNE"){
@@ -105,7 +109,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             }
 
             set.seed(4140)
-            tsne_out <- Rtsne(mat, dims = 3, initial_dims = 500, perplexity = perplx, theta = 0.5, check_duplicates = FALSE, pca = TRUE, max_iter = 1000)
+            tsne_out <- Rtsne(countmat, dims = 3, initial_dims = 500, perplexity = perplx, theta = 0.5, check_duplicates = FALSE, pca = TRUE, max_iter = 1000)
             dford <- as.data.frame(tsne_out$Y)
             rownames(dford) <- rownames(pData(currobj))
             colnames(dford)[1:3] <- c("PC1", "PC2", "PC3")
@@ -116,7 +120,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
         } else if (algorithm == "tUMAP"){
             permanova <- FALSE
             set.seed(4140)
-            tumap_out <- tumap(mat, n_components = 2, n_neighbors = 15, verbose = FALSE, n_threads = threads)
+            tumap_out <- tumap(countmat, n_components = 2, n_neighbors = 15, verbose = FALSE, n_threads = threads)
             dford <- as.data.frame(tumap_out)
             rownames(dford) <- rownames(pData(currobj))
             colnames(dford)[1:2] <- c("PC1", "PC2")
@@ -128,7 +132,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             #Not tSNE, so use PCA
             distfun <- stats::dist
             #d <- distfun(mat, method = "euclidian")
-            d <- vegdist(mat, method = "jaccard", na.rm = TRUE)
+            d <- vegdist(countmat, method = "jaccard", na.rm = TRUE)
             pcaRes <- prcomp(d)
             ord <- pcaRes$x
             vars <- pcaRes$sdev^2
@@ -169,7 +173,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
         if (!(is.null(shapeby))){
             p <- p + aes(shape = Shape)
             numshapes <- length(unique(dford$Shape))
-            p <- p + scale_shape_manual(values = 0:numshapes)
+            p <- p + scale_shape_manual(values = 15:(numshapes + 15))
         }
 
         if (!(is.null(sizeby))){
@@ -231,10 +235,10 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             p <- p + labs(size = sizeby)
         }
 
-        p <- p + theme(plot.title = element_text(size=12), plot.subtitle = element_text(size=10))
+        p <- p + theme(plot.title = element_text(size = 12), plot.subtitle = element_text(size = 10))
         if (plot3D == TRUE) {
-            p <- p + axes_3D(theta=theta, phi=phi) + stat_3D()
-            p <- p + labs_3D(labs=c(xl,yl,zl), hjust=c(-0.25, 1,0.25)) + labs(x="", y="")
+            p <- p + axes_3D(theta = theta, phi = phi) + stat_3D()
+            p <- p + labs_3D(labs = c(xl,yl,zl), hjust = c(-0.25, 1,0.25)) + labs(x = "", y = "")
             p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), axis.text.x = element_blank(), axis.text.y = element_blank())
         } else {
             p <- p + geom_point(size = dotsize) + labs(x = xl, y = yl)
