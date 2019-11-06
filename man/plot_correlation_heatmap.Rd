@@ -10,7 +10,8 @@ plot_correlation_heatmap(mgseqobj = NULL, glomby = NULL,
   featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL,
   samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL,
   showGram = TRUE, showphylum = TRUE, addtit = NULL,
-  mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE)
+  mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE,
+  class_to_ignore = NULL)
 }
 \description{
 Plots correlation heatmaps annotated by the metadata or a correlelogram of features
