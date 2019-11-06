@@ -6,7 +6,10 @@
 make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_ignore = NULL, shuffle = FALSE){
 
     #Build a palette
-    atoms <- c("07437A", "96CABB", "FBEBA8", "FAB370", "ED7E65", "41303E", "486746", "203C51", "AC1629", "4E4346", "2D734E", "D6D77C", "2AD1BF", "FBFAF4", "1E1A11", "C48556", "38433F", "06FBFA", "E15631")
+    #atoms <- c("07437A", "96CABB", "FBEBA8", "FAB370", "ED7E65", "41303E", "486746", "203C51", "AC1629", "4E4346", "2D734E", "D6D77C", "2AD1BF", "FBFAF4", "1E1A11", "C48556", "38433F", "06FBFA", "E15631")
+
+    atoms <- c("ce4bd6", "23b6cc", "308ceb", "f7bf59", "491544", "cc9e00", "ff5575", "005086",  "277647",  "7a83ff", "818181", "42d98f",  "676a78", "9f5c19")
+
     JAMSpalette <- paste0("#", atoms)
 
     offsets <- c(48, -71)
