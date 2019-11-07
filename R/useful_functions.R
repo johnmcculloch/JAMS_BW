@@ -201,3 +201,24 @@ quiet <- function(x) {
     on.exit(sink())
     invisible(force(x))
 }
+
+
+#' can_be_made_numeric(x, cats_to_ignore = NULL)
+#' Returns logical for if a vector can be coerced into numeric.
+#'
+#' @export
+
+can_be_made_numeric <- function(x, cats_to_ignore = NULL){
+
+    if (!is.null(cats_to_ignore)){
+        x <- x[which(!(x %in% cats_to_ignore))]
+    }
+    numtest <- length(which(is.na(suppressWarnings(as.numeric(x))) == TRUE))
+    if (numtest == 0){
+        testresult <- TRUE
+    } else {
+        testresult <- FALSE
+    }
+
+    return(testresult)
+}

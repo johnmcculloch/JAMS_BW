@@ -5,7 +5,8 @@
 \title{make_colour_dictionary(variable_list=NULL, pheno=NULL)}
 \usage{
 make_colour_dictionary(variable_list = NULL, pheno = NULL,
-  class_to_ignore = NULL, shuffle = FALSE)
+  class_to_ignore = NULL, colour_of_class_to_ignore = "#bcc2c2",
+  shuffle = FALSE)
 }
 \description{
 Returns a dictionary of colours for each class within each variable_list

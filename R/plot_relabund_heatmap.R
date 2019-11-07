@@ -1,4 +1,4 @@
-#' plot_relabund_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "diverging", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, colcategories = NULL, cluster_rows = FALSE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, ...)
+#' plot_relabund_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, colcategories = NULL, cluster_rows = FALSE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...)
 #'
 #' Plots relative abundance heatmaps annotated by the metadata
 #' @export
@@ -87,8 +87,6 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
     s <- 1
     n <- 1
 
-    numfeats <- nrow(MRcounts(obj))
-
     #subset by metadata column
     for (sp in 1:length(subset_points)){
         if (!(is.null(subsetby))){
@@ -100,6 +98,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
             samplesToKeep <- rownames(pData(obj))
             subsetname <- "no_sub"
         }
+        numfeats <- nrow(MRcounts(obj))
 
         #There must be at least two samples for a heatmap and at least two features
         if ((length(samplesToKeep) > 1) && (numfeats > 1)){
@@ -116,7 +115,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
             if (all(c((!(is.null(featmaxatleastPPM))), (featmaxatleastPPM > 0)))) {
                 minPPMmsg <- paste("Highest feature must be >", featmaxatleastPPM, "PPM", sep = " ")
             } else {
-                minPPMmsg <- "Highest feature must be > 0 PPM"
+                minPPMmsg <- NULL
                 featmaxatleastPPM <- 0
             }
 
@@ -181,6 +180,8 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                 featuresToKeep2 <- rownames(genomecompletenessdf)[which(rowMax(as.matrix(genomecompletenessdf)) >= genomecompleteness)]
                 countmat <- countmat[(rownames(countmat)[(rownames(countmat) %in% featuresToKeep2)]), ]
                 completenessmsg <- paste("Genome completeness >", genomecompleteness)
+            } else {
+                completenessmsg <- NULL
             }
 
             topcats <- nrow(countmat)
@@ -435,20 +436,27 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     for (g in 1:length(colcategories)){
                         hmdf[ , g] <- pData(currobj)[ , which(colnames(pData(currobj)) == colcategories[g])]
                         colnames(hmdf)[g] <- colcategories[g]
-                        if (!(is.numeric(hmdf[ ,g]))){
+
+                        #Test if variable can be coerced to numeric
+                        if (!(can_be_made_numeric(hmdf[ , g], cats_to_ignore = class_to_ignore))){
                             if (is.null(cdict)){
                                 cores[[g]] <- as.vector(rainbow(length(unique(hmdf[ ,g]))))
                                 names(cores[[g]]) <- sort(unique(hmdf[ ,g]))
                             } else {
                                 ct <- cdict[[colcategories[g]]]
+                                ct <- subset(ct, Name %in% hmdf[ , g])
                                 cores[[g]] <- as.vector(ct$Hex)
                                 names(cores[[g]]) <- as.vector(ct$Name)
                             }
                         } else {
-                            #Variable is numeric, but check for variance in the numbers
-                            if ((max(hmdf[, g]) - min(hmdf[, g])) > 0 ){
-                                cores[[g]] <- colorRamp2(c(0, max(hmdf[, g])), c("white", "midnightblue"))
+                            #Variable is (or can be made) numeric, but check for variance in the numbers
+                            numvals <- as.numeric(hmdf[, g][which(!(hmdf[, g] %in% class_to_ignore))])
+                            hmdf[, g] <- as.numeric(hmdf[, g])
+                            if ((max(numvals) - min(numvals)) > 0 ){
+                                #If values contain class to ignore, make them black else, only span whicte and dark blue
+                                cores[[g]] <- colorRamp2(c(min(numvals), max(numvals)), c("#3a8aa7", "#780078"), space = "HSV")
                             } else {
+                                #Not enough variance, so make them discrete
                                 cores[[g]] <- as.vector(rainbow(length(unique(hmdf[, g]))))
                                 names(cores[[g]]) <- sort(unique(hmdf[, g]))
                             }
@@ -497,15 +505,13 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     ha_column <- HeatmapAnnotation(df = hmdf, col = cores, annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"))
 
                     #Build plot title
-                    plotit <- paste(maintit, stattit, cutoffmsg, minPPMmsg, sep = "\n")
+                    nsampmsg <- paste0("Number of samples in heatmap = ", ncol(mathm))
+                    msgs <- c(maintit, stattit, cutoffmsg, minPPMmsg, completenessmsg, nsampmsg)
+                    plotit <- paste0(msgs, collapse = "\n")
 
                     if (all(c((any(!(c(is.null(minl2fc), is.null(maxl2fc))))), ("l2fc" %in% colnames(stathm))))){
                         l2fcmsg <- paste(minl2fcmsg, maxl2fcmsg, sep = " | ")
                         plotit <- paste(plotit, l2fcmsg, l2fcmeaning, sep = "\n")
-                    }
-
-                    if (!(is.null(genomecompleteness))){
-                        plotit <- paste(plotit, completenessmsg, sep = "\n")
                     }
 
                     #Add plot number if there is more than one heatmap matrix.
