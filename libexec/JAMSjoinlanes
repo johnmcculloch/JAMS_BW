@@ -16,8 +16,8 @@ if ((.Platform$OS.type) != "unix"){
 slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
 
 #Decide which kind of system you are on.
-if(nchar(slurmjobid) < 3){
-   print("You are not on a Slurm Workload Cluster")
+if (nchar(slurmjobid) < 3){
+   message("You are not on a Slurm Workload Cluster")
    #Define appropriate functions for non-slurm system
    detectBatchCPUs <- function() {
         ncores <- detectCores()
@@ -34,7 +34,7 @@ if(nchar(slurmjobid) < 3){
     }
 
 } else {
-    print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
+    message(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
     #Define appropriate functions for slurm system
     detectBatchCPUs <- function() {
         slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
@@ -48,7 +48,7 @@ if(nchar(slurmjobid) < 3){
             jobinfo <- unlist(strsplit(jobinforaw, split="\\|"))
             names(jobinfo) <- unlist(strsplit(jobinfoheaders, split="\\|"))
             ncores <- as.integer(jobinfo["AllocCPUS"])
-            print(jobinfo)
+            message(jobinfo)
             if (is.na(ncores)) {
                 stop("Could not determine how many CPUs you have. Aborting.")
             }
@@ -119,6 +119,8 @@ option_list <- list(
                 help = str_c("Path of directory where you want the merged reads (default: ", defopt$destination, ")")),
     make_option(c("-s", "--substitutionmap"), default = NULL, action="store",
                 help = str_c("Optional tab limited text file for sample name substitution in the format: oldname[TAB]newname")),
+    make_option(c("-b", "--basespace_projectID"), default = NULL, action="store",
+                help = str_c("Project ID for downloading reads from Illumina BaseSpace. If using the -b option, any reads from the -o input will be ignored. BaseSpace CLI must be installed. To install, see this: https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview")),
     make_option(c("-z", "--tarup"), default = defopt$tarup, action="store_true",
                 help = str_c("Output joined lanes as a tarball (reads.tar.gz) rather than two separate fastq files.")),
 #    make_option(c("-c", "--checkcount"), default = defopt$checkcount, action="store_true",
@@ -142,7 +144,7 @@ opt <- merge.list(opt, defopt)
 
 # print version & exit if -v
 if (!is.null(opt$version)) {
-    print(opt$verstr)
+    message(opt$verstr)
     quit()
 }
 
@@ -164,18 +166,19 @@ fixrelpath <- function(JAMSpath = NULL){
     return(fixedpath)
 }
 
+# give help if needed input option not provided
+if (all(c(is.null(opt$origin), is.null(opt$basespace_projectID)))) {
+    message("You must supply a folder with reads to join or a BaseSpace project ID from which to download files, with either the -o or -b options.")
+    parse_args(OptionParser(option_list = option_list), c("-h"))
+    q()
+}
+
 for (pathtofix in c("origin", "destination", "substitutionmap", "prefixlist")){
     if (!is.null(opt[[pathtofix]])){
         opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
     }
 }
 
-# give help if needed input option not provided
-if (is.null(opt$origin)) {
-    print("You must supply a folder with reads to join.")
-    parse_args(OptionParser(option_list = option_list), c("-h"))
-    q()
-}
 
 ###################
 ## Main Function ##
@@ -188,6 +191,17 @@ setwd(opt$destination)
 opt$projimage <- file.path(opt$destination, ".RData")
 save.image(opt$projimage)
 
+#Download BaseSpace reads, if required
+if (!is.null(opt$basespace_projectID)){
+    flog.info(paste("Downloading reads from BasesSpace under project ID", as.character(opt$basespace_projectID)))
+    opt$origin <- file.path(opt$destination, "BaseSpaceReads")
+    dir.create(opt$origin, recursive = TRUE)
+    setwd(opt$origin)
+    cmd <- paste("bs", "download", "project", "-i", as.character(opt$basespace_projectID), "-o", paste0("BS", as.character(opt$basespace_projectID)))
+    system(cmd)
+}
+
+setwd(opt$destination)
 #Get a list of fastq files
 rawfastqpaths <- list.files(path = opt$origin, pattern = "fastq.gz", full.names = TRUE, recursive = TRUE)
 rawfastqnames <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 1) })
