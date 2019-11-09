@@ -3,7 +3,7 @@
 #' Makes MetagenomeSeq MRexperiments for every analysis that is possible to make given loaded jams files in list.data.
 #' @export
 
-make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, minPctFromCtg = NULL, minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL){
+make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, minPctFromCtg = 20, minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL){
 
     #Get data for features
     if (!is.null(onlysamples)){
@@ -56,7 +56,7 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
 
     if (is.null(restricttoLKTs)){
         #Start by making LKT experiment
-        print("Making LKT MRexperiment")
+        flog.info("Making LKT MRexperiment")
         LKTobjects <- paste(Samples, "LKTdose", sep="_")
         LKTdoses <- list.data[LKTobjects]
         names(LKTdoses) <- Samples
@@ -72,7 +72,15 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
 
         #Apply filters if applicable
         if (!is.null(minPctFromCtg)){
+            flog.info(paste0("For taxonomy, only taxa identified from reads at least ", minPctFromCtg, "% of which were assembled into contigs will be kept."))
+            SumAllBasesB4 <- sum(LKTdosesall$NumBases)
+            NTaxaB4 <- length(unique(LKTdosesall$LKT))
             LKTdosesall <- subset(LKTdosesall, PctFromCtg >= minPctFromCtg)
+            SumAllBasesAftr <- sum(LKTdosesall$NumBases)
+            NTaxaAftr <- length(unique(LKTdosesall$LKT))
+            NTaxaDiscarded <- NTaxaB4 - NTaxaAftr
+            PctBasesDiscarded <- round((((SumAllBasesB4 - SumAllBasesAftr) / SumAllBasesB4) * 100), 2)
+            flog.info(paste0("A total of ", NTaxaDiscarded, " taxa were discarded, representing ", PctBasesDiscarded, "% of the total number of bases sequenced across all samples."))
         }
 
         #Apply filters if applicable
@@ -89,10 +97,6 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
         tt <- tt[!(duplicated(tt$LKT)), ]
         rownames(tt) <- tt$LKT
         ttm <- as.matrix(tt)
-
-        #bind them up again
-        LKTdosesall <- bind_rows(LKTdoses, .id = "id")
-        colnames(LKTdosesall)[which(colnames(LKTdosesall) == "id")] <- "Sample"
 
         #Make counts table
         LKTallcounts <- LKTdosesall[, c("Sample", "LKT", "NumBases")]
@@ -125,7 +129,7 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
     #Now, for the functional analyses
     for (a in 1:length(possibleanalyses)) {
         analysis <- possibleanalyses[a]
-        print(paste("Making", analysis, "MRexperiment"))
+        flog.info(paste("Making", analysis, "MRexperiment"))
 
         #subset doses to contain only the analysis wanted
         analysisdoses <- NULL
@@ -144,7 +148,7 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
                 analysisdoses[[ad]] <- tempanaldose
             }
         } else {
-            print(paste("Making counts table restricted to the", length(restricttoLKTs),"LKTs specified."))
+            flog.info(paste("Making counts table restricted to the", length(restricttoLKTs),"LKTs specified."))
             #Dose of each analysis is sum of bases present in LKTs to restrict to
             for (ad in SamplesofInterest){
                 #First, find out if taxa exist. If so, get numbers, else, write down 0.
@@ -167,7 +171,8 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
         }
 
         #Take into account that the phenotable might contain less samples
-        phenoanal <- pheno2[SamplesofInterest, ]
+        #phenoanal <- pheno2[SamplesofInterest, ]
+        phenoanal <- pheno2
 
         featureall <- bind_rows(analysisdoses, .id = "id")
         featureall[is.na(featureall)] <- 0
@@ -176,12 +181,22 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
         cts <- spread(featureall, Sample, NumBases, fill = 0, drop = TRUE)
         #Just double check that there are no dupes
         if (length(which(duplicated(cts$Accession) == TRUE)) > 0){
-            print(paste("Found", length(which(duplicated(cts$Accession) == TRUE)), "duplicated accessions. Keeping the first one in each case."))
+            flog.info(paste("Found", length(which(duplicated(cts$Accession) == TRUE)), "duplicated accessions. Keeping the first one in each case."))
             cts <- cts[!(duplicated(cts$Accession)), ]
         }
         rownames(cts) <- cts$Accession
         cts$Accession <- NULL
         cts$Description <- NULL
+
+        #Deal with samples with NO results for this analysis
+        emptySamples <- rownames(phenoanal)[!(rownames(phenoanal) %in% colnames(cts))]
+        if (length(emptySamples) > 0){
+            complementarycts <- matrix(ncol = length(emptySamples), nrow = nrow(cts), data = 0)
+            complementarycts <- as.data.frame(complementarycts, stringsAsFactors = FALSE)
+            colnames(complementarycts) <- emptySamples
+            rownames(complementarycts) <- rownames(cts)
+            cts <- cbind(cts, complementarycts)
+        }
 
         ftt <- featureall[, c("Accession", "Description")]
         ftt <- ftt[!(duplicated(ftt$Accession)), ]
@@ -217,7 +232,7 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
 
         #Add an extra one if converting resfinder to antibiogram
         if (analysis == "resfinder"){
-            print("Converting resfinder to antibiogram")
+            flog.info("Converting resfinder to antibiogram")
             expvec[[e]] <- make_antibiogram_experiment(expvec[["resfinder"]])
             names(expvec)[e] <- "antibiogram"
             e <- e + 1
