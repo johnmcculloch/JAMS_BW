@@ -8,9 +8,12 @@ filter_sample_by_class_to_ignore <- function(mgseqobj = NULL, variables = NULL, 
     if (!is.null(class_to_ignore)){
         #Start off with all of them
         valid_samples <- rownames(pData(mgseqobj))
-        #Keep omitting samples which do not fit the criteria
-        for (v in 1:length(variables)){
-            valid_samples <-  valid_samples[valid_samples %in% (rownames(pData(obj))[!(pData(mgseqobj)[ , variables[v]] %in% class_to_ignore)])]
+        variables <- colnames(pData(mgseqobj))[colnames(pData(mgseqobj)) %in% variables]
+        #Keep omitting samples which do not fit the criteria, as long as variables are contained in current metadata
+        if (all(c((!is.null(variables)), (length(variables) > 0)))){
+            for (v in 1:length(variables)){
+                valid_samples <-  valid_samples[valid_samples %in% (rownames(pData(mgseqobj))[!(pData(mgseqobj)[ , variables[v]] %in% class_to_ignore)])]
+            }
         }
         if (length(valid_samples) < 1){
             flog.warn("There are no samples matching the criteria. Returning original object with all samples")
