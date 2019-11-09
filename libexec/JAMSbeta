@@ -517,42 +517,42 @@ if ("isolate" %in% pheno$JAMS_Run_type){
 if (opt$make_ordination_reports == TRUE){
     flog.info("Will now try to generate ordination plots based on Metadata which looks meaningful.")
     flog.info(paste0("Generating ordination plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-    tryCatch((make_ordination_report(project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict)), error = function(e) whoopsieplot("generating ordination plots for basic analyses"))
+    tryCatch((make_ordination_report(project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for basic analyses"))
 
     if (length(specialexp) > 0){
         flog.info(paste0("Generating ordination plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
-        tryCatch((make_ordination_report(project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict)), error = function(e) whoopsieplot("generating ordination plots for special analyses"))
+        tryCatch((make_ordination_report(project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for special analyses"))
     }
 }
 
 if (opt$make_exploratory_reports == TRUE){
     flog.info(paste0("Generating exploratory heatmap plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-    tryCatch((make_heatmap_report(report = "exploratory", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating exploratory heatmaps for basic analyses"))
+    tryCatch((make_heatmap_report(report = "exploratory", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 2, numthreads = opt$threads, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating exploratory heatmaps for basic analyses"))
 
     if (length(specialexp) > 0){
         flog.info(paste0("Generating exploratory heatmap plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
-        tryCatch((make_heatmap_report(report = "exploratory", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating exploratory heatmaps for special analyses"))
+        tryCatch((make_heatmap_report(report = "exploratory", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating exploratory heatmaps for special analyses"))
     }
 }
 
 if (opt$make_comparative_reports == TRUE){
     flog.info(paste0("Generating comparative heatmap plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-    tryCatch((make_heatmap_report(report = "comparative", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating comparative heatmaps for basic analyses"))
+    tryCatch((make_heatmap_report(report = "comparative", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating comparative heatmaps for basic analyses"))
 
     if (length(specialexp) > 0){
         flog.info(paste0("Generating comparative heatmap plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
-        tryCatch((make_heatmap_report(report = "comparative", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating comparative heatmaps for special analyses"))
+        tryCatch((make_heatmap_report(report = "comparative", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating comparative heatmaps for special analyses"))
     }
 }
 
 if (opt$make_PA_reports == TRUE){
     if (length(variable_list$binary) > 0){
         flog.info(paste0("Generating presence/absence heatmap plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-        tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating presence/absence heatmaps for basic analyses"))
+        tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating presence/absence heatmaps for basic analyses"))
 
         if (length(specialexp) > 0){
             flog.info(paste0("Generating presence/absence heatmap plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
-            tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating presence/absence heatmaps for special analyses"))
+            tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating presence/absence heatmaps for special analyses"))
         }
     } else {
         flog.info("There are no binary variables in the metadata supplied. PA testing can only be carried out with variables with exactly two classes.")
