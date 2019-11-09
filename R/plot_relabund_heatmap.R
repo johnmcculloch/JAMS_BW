@@ -90,18 +90,32 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
     #subset by metadata column
     for (sp in 1:length(subset_points)){
         if (!(is.null(subsetby))){
-            samplesToKeep <- which((pData(obj)[,which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])
-            print(paste("Plotting within", subset_points[sp]))
+            samplesToKeep <- which((pData(obj)[ , which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])
+            flog.info(paste("Plotting within", subset_points[sp]))
             colcategories <- colcategories[!(colcategories %in% subsetby)]
             subsetname <- subset_points[sp]
         } else {
             samplesToKeep <- rownames(pData(obj))
             subsetname <- "no_sub"
         }
-        numfeats <- nrow(MRcounts(obj))
 
-        #There must be at least two samples for a heatmap and at least two features
-        if ((length(samplesToKeep) > 1) && (numfeats > 1)){
+        #See if there are enough samples and features to go ahead
+        proceed <- TRUE
+        curr_pt <- pData(obj)[samplesToKeep, ]
+
+        if ((dim(curr_pt)[1] * dim(curr_pt)[2]) < 4){
+            #There are less than 4 cells, a heatmap is meaningless.
+            proceed <- FALSE
+        }
+
+        if (all(c(!is.null(compareby), (hmtype != "exploratory")))) {
+            #investigate if there are at least two of each class of things to compare to go ahead
+            if ((min(table(curr_pt[ , compareby]))) < 2){
+                proceed <- FALSE
+            }
+        }
+
+        if (proceed){
             #Discard features which do not match certain criteria
             if (!(is.null(featcutoff))){
                 thresholdPPM <- featcutoff[1]
@@ -129,15 +143,18 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                 hmasPA <- FALSE
                 if (hmtype != "comparative"){
                     stattype <- "variance"
-                    if(is.null(ntop)){
+                    if (is.null(ntop)){
                         ntop <- 50
                     }
                 } else {
                     stattype <- "auto"
                 }
             }
-
             currobj <- filter_experiment(mgseqobj = obj, featmaxatleastPPM = featmaxatleastPPM, featcutoff = featcutoff, samplesToKeep = samplesToKeep, asPA = asPA, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
+        }
+
+        #There must be at least two samples for a heatmap and at least two features
+        if (((dim(pData(currobj))[1] * dim(pData(currobj))[2]) >= 4)){
 
             #Compose an appropriate title for the plot
             if (length(unique(subset_points)) > 1){
@@ -176,7 +193,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
 
             #Discard taxa below required level of completeness
             if (!(is.null(genomecompleteness))){
-                print(paste("Genome completeness must be", genomecompleteness, "in at least one sample"))
+                flog.info(paste("Genome completeness must be", genomecompleteness, "in at least one sample"))
                 featuresToKeep2 <- rownames(genomecompletenessdf)[which(rowMax(as.matrix(genomecompletenessdf)) >= genomecompleteness)]
                 countmat <- countmat[(rownames(countmat)[(rownames(countmat) %in% featuresToKeep2)]), ]
                 completenessmsg <- paste("Genome completeness >", genomecompleteness)
@@ -254,10 +271,10 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     if (all(c((!(is.null(minl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
                         #Check if there is enough leftover after filter.
                         if (length(which(matstats$absl2fc > minl2fc)) < 2){
-                            print(paste("There are less than 2 features which have >", minl2fc, "l2fc."))
+                            flog.info(paste("There are less than 2 features which have >", minl2fc, "l2fc."))
                             #Redefine min l2fc to whatever is the lowest available keeping between 2 and 40 features to plot.
                             minl2fc <- matstats[order(matstats$absl2fc, decreasing = TRUE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
-                            print(paste("Resetting minimum l2fc to", round(minl2fc, 2)))
+                            flog.info(paste("Resetting minimum l2fc to", round(minl2fc, 2)))
                         }
                         minl2fcmsg <- paste("log2foldchange >", round(minl2fc, 2))
                         matstats <- subset(matstats, absl2fc > minl2fc)
@@ -268,10 +285,10 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     if (all(c((!(is.null(maxl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
                         #Check if there is enough leftover after filter.
                         if (length(which(matstats$absl2fc < maxl2fc)) < 2){
-                            print(paste("There are less than 2 features which have <", maxl2fc, "l2fc."))
+                            flog.info(paste("There are less than 2 features which have <", maxl2fc, "l2fc."))
                             #Redefine max l2fc to whatever is the lowest available keeping between 2 and 40 features to plot.
                             maxl2fc <- matstats[order(matstats$absl2fc, decreasing = FALSE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
-                            print(paste("Resetting maximum l2fc to", round(maxl2fc, 2)))
+                            flog.info(paste("Resetting maximum l2fc to", round(maxl2fc, 2)))
                         }
                         maxl2fcmsg <- paste("log2foldchange <", round(maxl2fc, 2))
                         matstats <- subset(matstats, absl2fc < maxl2fc)
@@ -321,8 +338,8 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     if (is.null(showonlypbelow)){
                         if (nrow(countmat2) < topcats){
                             topcats <- nrow(countmat2)
-                            print("There are not enough features matching the criteria imposed.")
-                            print(paste("Showing top", topcats, "features."))
+                            flog.info("There are not enough features matching the criteria imposed.")
+                            flog.info(paste("Showing top", topcats, "features."))
                         }
                         countmat2 <- countmat2[1:topcats, ]
                         #Create a list of matrices each of maximum ~50 rows
@@ -693,19 +710,17 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
             } #End conditional if there are heatmaps to plot from stats matrix
 
         } else {
-
-            if (length(samplesToKeep) < 2){
+            if (ncol(pData(currobj)) < 2){
                 #There is only one sample in subset, so nothing was done.
-                print(paste(as.character(colnames(pData(obj))[samplesToKeep]), "was the only sample within", subsetname, "subset. Must have at least two samples for a heatmap."))
+                flog.info(paste(as.character(colnames(pData(obj))[samplesToKeep]), "was the only sample within", subsetname, "subset. Must have at least two samples for a heatmap."))
             }
-            if (numfeats < 2){
+            if (nrow(pData(currobj)) < 2){
                 #There is only one sample in subset, so nothing was done.
-                print(paste(as.character(rownames(MRcounts(obj))), "was the only feature within", subsetname, "subset. Must have at least two features for a heatmap."))
+                flog.info(paste(as.character(rownames(MRcounts(currobj))), "was the only feature within", subsetname, "subset. Must have at least two features for a heatmap."))
             }
+        } #End conditional if there is more than a two samples and or two features in subset
 
-        } #End conditional if there is more than a single sample and or single feature in subset
-
-    } #End subset by loop
+    } #End subsetby loop
 
     #Redefine stats list as ones only containing data
     svec <- svec[sapply(svec, function(x){ !(is.null(x)) } )]
@@ -713,6 +728,6 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
     if (returnstats == TRUE){
         return(svec)
     } else {
-        return(print("Heatmaps generated."))
+        flog.info("Heatmaps generated.")
     }
 }
