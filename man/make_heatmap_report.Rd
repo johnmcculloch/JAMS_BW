@@ -2,7 +2,7 @@
 % Please edit documentation in R/make_heatmap_report.R
 \name{make_heatmap_report}
 \alias{make_heatmap_report}
-\title{make_heatmap_report(report = c("comparative", "exploratory", "PA", "correlation"), project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, genomecompleteness = NULL, heatpalette = "smart", variable_list = NULL, max_annot_legends = 4,  includereaddata = TRUE, adjustpval = NULL, list.data = NULL, hmasPA = FALSE, mgSeqnorm = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, ...)}
+\title{make_heatmap_report(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, genomecompleteness = NULL, heatpalette = "smart", variable_list = NULL, max_annot_legends = 4,  includereaddata = TRUE, adjustpval = NULL, list.data = NULL, hmasPA = FALSE, mgSeqnorm = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, class_to_ignore = NULL, ...)}
 \usage{
 make_heatmap_report(report = "comparative", project = NULL,
   expvec = NULL, usefulexp = NULL, appendtofilename = NULL,
@@ -15,7 +15,7 @@ make_heatmap_report(report = "comparative", project = NULL,
   hmasPA = FALSE, mgSeqnorm = FALSE, cdict = NULL,
   showonlypbelow = 0.05, makespreadsheets = FALSE,
   makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4,
-  nperm = 99, ...)
+  nperm = 99, class_to_ignore = NULL, ...)
 }
 \description{
 Generates standard comparative heatmaps and spreadsheet based on relative abundance difference between categories for analyses named in expvectors.

@@ -6,7 +6,7 @@
 \usage{
 make_metagenomeSeq_experiments(pheno = NULL, onlysamples = NULL,
   onlyanalyses = NULL, minnumsampanalysis = NULL,
-  minpropsampanalysis = 0.1, minPctFromCtg = NULL,
+  minpropsampanalysis = 0.1, minPctFromCtg = 20,
   minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL)
 }
 \description{
