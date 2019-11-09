@@ -23,8 +23,8 @@ filter_experiment <- function(mgseqobj = NULL, featmaxatleastPPM = 0, featcutoff
         mgseqobj <- mgseqobj[(rowSums(MRcounts(mgseqobj)) > 0), ]
         #Flush out empty Samples
         emptysamples <- names(which(colSums(MRcounts(mgseqobj)) == 0) == TRUE)
-        if(length(emptysamples) > 0){
-            print(paste("Samples", paste0(emptysamples, collapse=", "), "are empty and will be discarded."))
+        if (length(emptysamples) > 0){
+            flog.info(paste("Samples", paste0(emptysamples, collapse=", "), "are empty and will be discarded."))
             validsamples <- names(which(colSums(MRcounts(mgseqobj)) > 0) == TRUE)
             mgseqobj <- mgseqobj[ , validsamples]
         }
@@ -67,31 +67,30 @@ filter_experiment <- function(mgseqobj = NULL, featmaxatleastPPM = 0, featcutoff
             featuresToKeep2 <- which((lapply(1:nrow(MRcounts(mgseqobj, norm = FALSE, log = FALSE)), function(x) length(which(MRcounts(mgseqobj, norm = FALSE, log = FALSE)[x,] >= thresholdPPM))/ncol(MRcounts(mgseqobj, norm = FALSE, log = FALSE)))) > (sampcutoffpct/100))
             mgseqobj=mgseqobj[featuresToKeep2, ]
             cutoffmsg<-paste("Feature must be >", thresholdPPM, "PPM in at least", sampcutoffpct, "% of samples", sep=" ")
-            print(cutoffmsg)
+            flog.info(cutoffmsg)
         }
 
-        if(!(missing(featmaxatleastPPM))){
+        if (featmaxatleastPPM > 0){
             featuresToKeep2 <- which(rowMax(MRcounts(mgseqobj)) >= featmaxatleastPPM)
             mgseqobj <- mgseqobj[featuresToKeep2 ]
             minPPMmsg <- paste("Highest feature must be >", featmaxatleastPPM, "PPM", sep=" ")
-            print(minPPMmsg)
+            flog.info(minPPMmsg)
         }
 
-        if(asPA==TRUE){
-            countmatrix<-MRcounts(mgseqobj)
-            countmatrix[which(countmatrix != 0)]<-1
-            pheno2<-pData(mgseqobj)
+        if (asPA == TRUE){
+            countmatrix <- MRcounts(mgseqobj)
+            countmatrix[which(countmatrix != 0)] <- 1
+            pheno2 < -pData(mgseqobj)
             #just make sure
-            pheno2<-pheno2[colnames(countmatrix), ]
-            ftt<-fData(mgseqobj)
+            pheno2 <- pheno2[colnames(countmatrix), ]
+            ftt <- fData(mgseqobj)
             ##Create a non-normalised class object in metagenomeseq (mgseq)
-            phenotypeData = AnnotatedDataFrame(pheno2)
-            ttdata = AnnotatedDataFrame(ftt)
-            mgseqobj = newMRexperiment(countmatrix, phenoData=phenotypeData, featureData=ttdata)
+            phenotypeData <- AnnotatedDataFrame(pheno2)
+            ttdata <- AnnotatedDataFrame(ftt)
+            mgseqobj <- newMRexperiment(countmatrix, phenoData=phenotypeData, featureData=ttdata)
         }
         #Get only samples you asked for
-
-        if(!(is.null(featuresToKeep))){
+        if (!(is.null(featuresToKeep))){
             featurespresent <- rownames(MRcounts(mgseqobj))
             featuresToKeep <- featuresToKeep[featuresToKeep %in% featurespresent]
             mgseqobj <- mgseqobj[featuresToKeep, ]
