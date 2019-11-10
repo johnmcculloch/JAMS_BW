@@ -55,7 +55,7 @@ option_list <- list(
                 help="Maximum number of classes for a discrete variable to be kept. Default=10"),
 
     make_option(c("-i", "--class_to_ignore"),
-                action="store", default = NULL,
+                action="store", default = "N_A",
                 type="character",
                 help="Ignore cells containing this text in the metadata. Samples bearing this class of text when comparing within a variable will be omitted from an analysis."),
 
