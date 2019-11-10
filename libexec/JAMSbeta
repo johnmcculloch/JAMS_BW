@@ -86,7 +86,7 @@ option_list <- list(
 
     make_option(c("-d", "--make_ordination_reports"),
                 action="store", default = NULL,
-                type="logical",
+                type="character",
                 help ="Generate ordination plots with this algorithm. Choose between PCA, tSNE or tUMAP, or more than one separated by a comma. Example: -d PCA,tUMAP"),
 
     make_option(c("-f", "--make_exploratory_reports"),
