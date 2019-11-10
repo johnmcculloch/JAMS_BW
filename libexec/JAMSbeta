@@ -55,7 +55,7 @@ option_list <- list(
                 help="Maximum number of classes for a discrete variable to be kept. Default=10"),
 
     make_option(c("-i", "--class_to_ignore"),
-                action="store", default = "N_A",
+                action="store", default = NULL,
                 type="character",
                 help="Ignore cells containing this text in the metadata. Samples bearing this class of text when comparing within a variable will be omitted from an analysis."),
 
@@ -85,9 +85,9 @@ option_list <- list(
                 help ="Export relative abundance tables and feature data tables in tsv format."),
 
     make_option(c("-d", "--make_ordination_reports"),
-                action="store_true", default = FALSE,
+                action="store", default = NULL,
                 type="logical",
-                help ="Generate ordination plots."),
+                help ="Generate ordination plots with this algorithm. Choose between PCA, tSNE or tUMAP, or more than one separated by a comma. Example: -d PCA,tUMAP"),
 
     make_option(c("-f", "--make_exploratory_reports"),
                 action="store_true", default = FALSE,
@@ -514,14 +514,19 @@ if ("isolate" %in% pheno$JAMS_Run_type){
 ## Do optional tasks ##
 #######################
 
-if (opt$make_ordination_reports == TRUE){
-    flog.info("Will now try to generate ordination plots based on Metadata which looks meaningful.")
-    flog.info(paste0("Generating ordination plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-    tryCatch((make_ordination_report(project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for basic analyses"))
+if (!is.null(opt$make_ordination_reports)){
+    flog.info(paste("Will now try to generate ordination plots based on Metadata which looks meaningful using", opt$make_ordination_reports))
+    #Get algorithms requested
+    ordalgs <- unlist(strsplit(opt$make_ordination_reports, split = ","))
+    #Make an ordination plot report for each algorithm
+    for (ordalg in ordalgs){
+        flog.info(paste0("Generating ordination plots with ", ordalg, " for basic analyses (", paste(basicexp, collapse= ", "), ")."))
+        tryCatch((make_ordination_report(algorithm = ordalg, project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = paste("Basic", ordalg, sep = "_"), mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for basic analyses"))
 
-    if (length(specialexp) > 0){
-        flog.info(paste0("Generating ordination plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
-        tryCatch((make_ordination_report(project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for special analyses"))
+        if (length(specialexp) > 0){
+            flog.info(paste0("Generating ordination plots with ", ordalg, " for special analyses (", paste(specialexp, collapse= ", "), ")."))
+            tryCatch((make_ordination_report(algorithm = ordalg, project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = paste("Special", ordalg, sep = "_"), mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = doreads, cdict = cdict, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for special analyses"))
+        }
     }
 }
 
