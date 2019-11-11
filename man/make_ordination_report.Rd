@@ -9,7 +9,8 @@ make_ordination_report(project = NULL, algorithm = "PCA",
   genomecompleteness = NULL, variable_list = NULL, list.data = NULL,
   doreads = NULL, cdict = NULL, ellipse = "auto",
   samplesToKeep = NULL, featuresToKeep = NULL,
-  ignoreunclassified = TRUE, appendtofilename = NULL, ...)
+  ignoreunclassified = TRUE, appendtofilename = NULL, threads = 8,
+  ...)
 }
 \description{
 Generates standard ordination plots for analyses named in expobjects.
