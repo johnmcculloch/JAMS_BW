@@ -23,7 +23,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
     }
 
     #Remove samples bearing categories within class_to_ignore
-    valid_vars <- c(colourby, shapeby, sizeby, susbetby)[which(!is.na(c(colourby, shapeby, sizeby, susbetby)))]
+    valid_vars <- c(colourby, shapeby, sizeby, subsetby)[which(!is.na(c(colourby, shapeby, sizeby, subsetby)))]
     obj <- filter_sample_by_class_to_ignore(mgseqobj = obj, variables = valid_vars, class_to_ignore = class_to_ignore)
 
     #Define analysis type
