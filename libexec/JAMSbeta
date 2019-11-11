@@ -521,11 +521,11 @@ if (!is.null(opt$make_ordination_reports)){
     #Make an ordination plot report for each algorithm
     for (ordalg in ordalgs){
         flog.info(paste0("Generating ordination plots with ", ordalg, " for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-        tryCatch((make_ordination_report(algorithm = ordalg, project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = paste("Basic", ordalg, sep = "_"), mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = opt$doreads, cdict = cdict, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for basic analyses"))
+        tryCatch((make_ordination_report(algorithm = ordalg, project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = paste("Basic", ordalg, sep = "_"), mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = opt$doreads, cdict = cdict, threads = opt$threads, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for basic analyses"))
 
         if (length(specialexp) > 0){
             flog.info(paste0("Generating ordination plots with ", ordalg, " for special analyses (", paste(specialexp, collapse= ", "), ")."))
-            tryCatch((make_ordination_report(algorithm = ordalg, project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = paste("Special", ordalg, sep = "_"), mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = opt$doreads, cdict = cdict, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for special analyses"))
+            tryCatch((make_ordination_report(algorithm = ordalg, project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = paste("Special", ordalg, sep = "_"), mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = opt$doreads, cdict = cdict, threads = opt$threads, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for special analyses"))
         }
     }
 }
