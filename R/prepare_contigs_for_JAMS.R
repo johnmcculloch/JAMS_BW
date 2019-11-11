@@ -24,12 +24,12 @@ prepare_contigs_for_JAMS <- function(opt = NULL, fastafile = NULL){
     file.remove("tempcontigs.fa")
 
     #Filter out any vertebrate DNA if existant
-    opt$contigsdata <- subset(krakendf, Phylum != "p__Chordata")
+    opt$contigsdata <- subset(krakendf, Kingdom != "k__Metazoa")
     nonhostcontigs <- opt$contigsdata$Sequence
     #Report host contigs in opt, if applicable
     hostcontigs <- krakendf$Sequence[(!(krakendf$Sequence %in% opt$contigsdata$Sequence))]
     if(length(hostcontigs)>0){
-        flog.info(paste("A total of",length(hostcontigs), "contigs out of", nrow(krakendf), "were eliminated for being classified as vertebrate (host) DNA."))
+        flog.info(paste("A total of", length(hostcontigs), "contigs out of", nrow(krakendf), "were eliminated for being classified as metazoa (host) DNA."))
         opt$hostcontigs <- hostcontigs
     }
 

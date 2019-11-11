@@ -116,14 +116,14 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
             unclassdf <- JAMStaxtable[which(JAMStaxtable$Taxid == 0), 2:ncol(JAMStaxtable)]
             NAssdata[which(is.na(NAssdata$Domain == TRUE)), colnames(unclassdf)] <- unname(unclassdf)
             oriNAsslength <- sum(NAssdata$Length)
-            hostlength <- sum(subset(NAssdata, Phylum == "p__Chordata")[]$Length)
+            hostlength <- sum(subset(NAssdata, Kingdom != "k__Metazoa")[]$Length)
             #Filter out any vertebrate DNA if existant
-            NAssdata <- subset(NAssdata, Phylum != "p__Chordata")
+            NAssdata <- subset(NAssdata, Kingdom != "k__Metazoa")
 
             #Report host reads were found, if applicable
             if(hostlength > 0){
                 hostpct <- round((hostlength / oriNAsslength) * 100, 2)
-                flog.info(paste("Of the non-assebmled reads", hostpct, "% were classified as vertebrate (host) DNA and were discarded."))
+                flog.info(paste("Of the non-assebmled reads", hostpct, "% were classified as k__Metazoa (host) DNA and were discarded."))
             }
 
             #Eliminate redundancy and get the dose
