@@ -4,8 +4,8 @@
 \alias{compose_metadata}
 \title{compose_metadata}
 \usage{
-compose_metadata(medatadafolder = NULL, prefixsubstitutiontable = NULL,
-  restraintoprefixes = NULL)
+compose_metadata(medatadafolder = NULL, recursive = FALSE,
+  prefixsubstitutiontable = NULL, restraintoprefixes = NULL)
 }
 \description{
 Returns JAMS-style metadata for a vector of prefixes based on data available in a metadata farm (folder with one or several metadata files)

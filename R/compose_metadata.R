@@ -5,13 +5,13 @@
 #' @export
 
 
-compose_metadata <- function(medatadafolder = NULL, prefixsubstitutiontable = NULL, restraintoprefixes = NULL){
+compose_metadata <- function(medatadafolder = NULL, recursive = FALSE, prefixsubstitutiontable = NULL, restraintoprefixes = NULL){
 
     require(plyr)
     require(openxlsx)
 
     #load all xlsx from folder
-    metadatafns <- list.files(path = medatadafolder, pattern=".xlsx$")
+    metadatafns <- list.files(path = medatadafolder, pattern = ".xlsx$", recursive = recursive)
     list.metadata <- lapply(metadatafns, function (x) { read.xlsx(x) } )
 
     #Bind metadata and leave missing data with NA
