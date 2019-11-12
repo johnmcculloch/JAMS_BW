@@ -26,25 +26,35 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         }
     }
 
+    #Make a dataframe with jamsfiles whereabouts
+    extract_prefix <- function(fullpath){
+        prefix <- tail(unlist(strsplit(fullpath, split = "/")), n = 1)
+        prefix <- gsub(".jams", "", prefix)
+
+        return(prefix)
+    }
+    jamsfilesdf <- data.frame(Prefix = sapply(1:length(fljams), function(x) { extract_prefix(fljams[x]) }), FullPath = fljams, stringsAsFactors = FALSE)
+
     #Restrict loading to only certain samples if required.
     if (!is.null(onlysamples)){
         flog.info(paste("Will only load .jams files for samples", paste0(onlysamples, collapse = ", ")))
-        samplesIhavejams <- unique(gsub(".jams$", "", fljams))
+        jamsfilesdfwant <- subset(jamsfilesdf, Prefix %in% onlysamples)
+        samplesIhavejams <- jamsfilesdfwant$Prefix
         if (length(onlysamples %in% samplesIhavejams) < length (onlysamples)){
             missingjamsfiles <- paste0(onlysamples[which(!(onlysamples %in% samplesIhavejams))], collapse = ", ")
             stop(paste("Could not find .jams files for samples", missingjamsfiles))
         }
-        fljams <- paste(onlysamples, "jams", sep = ".")
     }
 
+    fpfljams <- jamsfilesdfwant$FullPath
+
     #If there are .jams files, expand them.
-    if (length(fljams) > 0){
+    if (length(fpfljams) > 0){
         flog.info("Please be patient. Depending on how much data you have this might take a while.")
-        flog.info(paste("There are", length(fljams), "objects to expand."))
-        fljamswp <- file.path(path, fljams)
-        for (f in 1:length(fljams)){
-            flog.info(paste("Expanding ", fljams[f], ", file ", f, "/", length(fljams), "...", sep = ""))
-            untar(fljamswp[f], list = FALSE, exdir = jamstempfilespath, compressed = TRUE, verbose = TRUE)
+        flog.info(paste("There are", length(fpfljams), "objects to expand."))
+        for (f in 1:nrow(jamsfilesdfwant)){
+            flog.info(paste("Expanding ", jamsfilesdfwant$Prefix[f], ", file ", f, "/", nrow(jamsfilesdfwant), "...", sep = ""))
+            untar(jamsfilesdfwant$FullPath[f], list = FALSE, exdir = jamstempfilespath, compressed = TRUE, verbose = TRUE)
         }
     }
 
@@ -63,8 +73,8 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     flog.info(paste("There are", length(fl), "objects to load."))
     for (i in 1:length(fl)){
         flog.info(paste("Loading ", fl[i], ", file ", i, "/", length(fl), "...", sep = ""))
-        #list.data[[i+lastpos]] <- read.table(file = flwp[i], sep = "\t", header = TRUE, quote = "", skipNul = FALSE, fill = TRUE)
-        list.data[[i+lastpos]] <- fread(file = flwp[i], sep = "\t", header = TRUE, quote = "", fill = TRUE, stringsAsFactors = FALSE, nThread = threads)
+        list.data[[i+lastpos]] <- read.table(file = flwp[i], sep = "\t", header = TRUE, quote = "", skipNul = FALSE, fill = TRUE)
+        #list.data[[i+lastpos]] <- fread(file = flwp[i], sep = "\t", header = TRUE, quote = "", fill = TRUE, stringsAsFactors = FALSE, nThread = threads)
         names(list.data)[i + lastpos] <- on[i]
     }
 
