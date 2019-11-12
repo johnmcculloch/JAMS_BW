@@ -2,11 +2,12 @@
 % Please edit documentation in R/load_jamsfiles_from_system.R
 \name{load_jamsfiles_from_system}
 \alias{load_jamsfiles_from_system}
-\title{load_jamsfiles_from_system(path = ".", onlysamples=NULL, loadfromscratch = TRUE, list.data = NULL))
+\title{load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, loadfromscratch = TRUE, list.data = NULL, threads = 8))
 JAMSbeta function}
 \usage{
-load_jamsfiles_from_system(path = ".", onlysamples = NULL,
-  loadfromscratch = TRUE, list.data = NULL)
+load_jamsfiles_from_system(path = ".", recursive = TRUE,
+  onlysamples = NULL, loadfromscratch = TRUE, list.data = NULL,
+  threads = 8)
 }
 \description{
 Loads all JAMS files from system
