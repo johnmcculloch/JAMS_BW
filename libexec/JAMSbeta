@@ -114,6 +114,11 @@ option_list <- list(
                 type="logical",
                 help ="Generate alpha diversity plots."),
 
+    make_option(c("-s", "--run_script"),
+                action="store", default = NULL,
+                type="character",
+                help ="Path to an R script to run after all other options have been executed. Example: -s /path/to/make_these_specific_plots.R will execute the commands in this script at the end of JAMSbeta."),
+
     make_option(c("-v", "--version"),
                 action="store_true", help = "report version")
  )
@@ -145,9 +150,17 @@ fixrelpath <- function(JAMSpath = NULL){
     return(fixedpath)
 }
 
-for (pathtofix in c("outdir", "excel_metadata", "phenotable_tsv", "phenolabels_tsv", "jamsfiles_path", "load_workspace")){
+for (pathtofix in c("outdir", "excel_metadata", "phenotable_tsv", "phenolabels_tsv", "jamsfiles_path", "load_workspace", "run_script")){
     if (!is.null(opt[[pathtofix]])){
         opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
+    }
+}
+
+if (!is.null(opt$run_script)){
+    #Check that file exists
+    if (!file.exists(opt$run_script)){
+        flog.info(paste("Unable to find file", opt$run_script))
+        q()
     }
 }
 
@@ -581,3 +594,9 @@ if (opt$make_alpha_reports == TRUE){
 #Save image
 flog.info("Saving R session image. Please be patient.")
 save.image(opt$projimage)
+
+#Running extra script if required
+if (!is.null(opt$run_script)){
+    flog.warn(paste("The contents of file", opt$run_script, "will now be run on this session."))
+    source(opt$run_script)
+}
