@@ -337,7 +337,7 @@ if (!(exists("list.data"))) {
     if (length(Samples_want) > 200){
         flog.info("Crikey! There are over 200 samples to load. Go grab a coffee, this will take some time.")
     }
-    list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = Samples_want)
+    list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = Samples_want, threads = opt$threads)
     #Save session
     flog.info("Saving R workspace image. Please be patient.")
     save.image(opt$projimage)
