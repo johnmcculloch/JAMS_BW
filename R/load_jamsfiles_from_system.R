@@ -73,7 +73,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     flog.info(paste("There are", length(fl), "objects to load."))
     for (i in 1:length(fl)){
         flog.info(paste("Loading ", fl[i], ", file ", i, "/", length(fl), "...", sep = ""))
-        list.data[[i+lastpos]] <- read.table(file = flwp[i], sep = "\t", header = TRUE, quote = "", skipNul = FALSE, fill = TRUE)
+        list.data[[i+lastpos]] <- read.table(file = flwp[i], sep = "\t", header = TRUE, quote = "", skipNul = FALSE, fill = TRUE, stringsAsFactors = FALSE)
         #list.data[[i+lastpos]] <- fread(file = flwp[i], sep = "\t", header = TRUE, quote = "", fill = TRUE, stringsAsFactors = FALSE, nThread = threads)
         names(list.data)[i + lastpos] <- on[i]
     }
