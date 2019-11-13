@@ -4,7 +4,7 @@
 \alias{compose_metadata}
 \title{compose_metadata}
 \usage{
-compose_metadata(medatadafolder = NULL, recursive = FALSE,
+compose_metadata(metadatafolder = NULL, recursive = FALSE,
   prefixsubstitutiontable = NULL, restraintoprefixes = NULL)
 }
 \description{
