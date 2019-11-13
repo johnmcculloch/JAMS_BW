@@ -216,7 +216,7 @@ plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, stattype = 
                 CorrHmColours <- c("blue4", "lightgoldenrodyellow", "red1")
                 heatmapCols <- colorRamp2(c(-1, 0, 1), CorrHmColours)
 
-                fontsizey <- min(6, round((((-1 / 300) * (nrow(matstats))) + 1) * 4, 0))
+                fontsizey <- min(5, round((((-1 / 300) * (nrow(matstats))) + 1) * 3, 0))
 
                 #Add genome completeness info if LKT
                 if (analysis == "LKT"){
