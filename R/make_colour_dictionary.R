@@ -10,7 +10,7 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_
 
     #atoms <- c("ce4bd6", "23b6cc", "308ceb", "f7bf59", "491544", "cc9e00", "ff5575", "005086",  "277647",  "7a83ff", "818181", "42d98f",  "676a78", "9f5c19")
 
-    atoms <- c("0075f2", "096b72", "dd1c1a", "716a5c", "e0d12b", "00f2f2", "073b4c", "613f75", "777da7", "ef476f", "000000")
+    atoms <- c("0075f2", "096b72", "ff7300", "00f2f2",  "fc03f0", "e0d12b", "fc0303", "0df505", "000000")
 
     JAMSpalette <- paste0("#", atoms)
 
