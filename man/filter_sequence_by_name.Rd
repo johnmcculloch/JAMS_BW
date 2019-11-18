@@ -4,8 +4,11 @@
 \alias{filter_sequence_by_name}
 \title{filter_sequence_by_name(input_sequences=NULL, sequencenames=NULL, keep=TRUE)}
 \usage{
-filter_sequence_by_name(input_sequences = NULL, sequencenames = NULL,
-  keep = TRUE)
+filter_sequence_by_name(
+  input_sequences = NULL,
+  sequencenames = NULL,
+  keep = TRUE
+)
 }
 \description{
 Filters sequinr sequences by name either keeping or discarding specified sequence names

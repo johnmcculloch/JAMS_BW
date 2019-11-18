@@ -4,9 +4,14 @@
 \alias{make_alpha_report}
 \title{make_alpha_report(project=NULL, expvec=NULL, usefulexp=NULL, variable_list=NULL, measures=c("Observed", "InvSimpson"), cdict=NULL)}
 \usage{
-make_alpha_report(project = NULL, expvec = NULL, usefulexp = NULL,
-  variable_list = NULL, measures = c("Observed", "InvSimpson"),
-  cdict = NULL)
+make_alpha_report(
+  project = NULL,
+  expvec = NULL,
+  usefulexp = NULL,
+  variable_list = NULL,
+  measures = c("Observed", "InvSimpson"),
+  cdict = NULL
+)
 }
 \description{
 Generates standard comparative plots for alpha diversity measures.

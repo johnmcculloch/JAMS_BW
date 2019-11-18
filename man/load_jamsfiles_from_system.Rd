@@ -5,9 +5,14 @@
 \title{load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, loadfromscratch = TRUE, list.data = NULL, threads = 8))
 JAMSbeta function}
 \usage{
-load_jamsfiles_from_system(path = ".", recursive = TRUE,
-  onlysamples = NULL, loadfromscratch = TRUE, list.data = NULL,
-  threads = 8)
+load_jamsfiles_from_system(
+  path = ".",
+  recursive = TRUE,
+  onlysamples = NULL,
+  loadfromscratch = TRUE,
+  list.data = NULL,
+  threads = 8
+)
 }
 \description{
 Loads all JAMS files from system

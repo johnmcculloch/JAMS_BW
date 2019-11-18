@@ -4,10 +4,22 @@
 \alias{plot_Venn}
 \title{Creates Venn Diagram (2, 3, or 4 way) from metagenomeSeq object and returns list of features broken down from diagram}
 \usage{
-plot_Venn(mgseqobj = NULL, category = NULL, glomby = NULL,
-  samplesToKeep = NULL, featuresToKeep = NULL, mgSeqnorm = FALSE,
-  featmaxatleastPPM = 0, featcutoff = c(0, 0), aggFun = rowMeans,
-  title = "", colours = NULL, labels = NULL, pdf = NULL, ...)
+plot_Venn(
+  mgseqobj = NULL,
+  category = NULL,
+  glomby = NULL,
+  samplesToKeep = NULL,
+  featuresToKeep = NULL,
+  mgSeqnorm = FALSE,
+  featmaxatleastPPM = 0,
+  featcutoff = c(0, 0),
+  aggFun = rowMeans,
+  title = "",
+  colours = NULL,
+  labels = NULL,
+  pdf = NULL,
+  ...
+)
 }
 \arguments{
 \item{mgseqobj}{a metagenomeSeq object.}

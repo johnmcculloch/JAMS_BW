@@ -6,8 +6,12 @@
 This function is experimental.
 Function to deconvolute contaminated isolates.}
 \usage{
-deconvolute_contaminated_isolates(opt = NULL, contigsdata = NULL,
-  assemblystats = NULL, outputdir = NULL)
+deconvolute_contaminated_isolates(
+  opt = NULL,
+  contigsdata = NULL,
+  assemblystats = NULL,
+  outputdir = NULL
+)
 }
 \description{
 JAMSalpha function

@@ -4,12 +4,23 @@
 \alias{plot_alpha_diversity}
 \title{plot_alpha_diversity(mgseqobj=NULL, glomby=NULL,  groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, measures=c("Observed", "Chao1", "ACE", "Shannon", "Simpson", "InvSimpson"), statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel="p.format", plottitle=NULL, cdict=NULL, max_categories = 3, ...)}
 \usage{
-plot_alpha_diversity(mgseqobj = NULL, glomby = NULL, groupby = NULL,
-  colourby = NULL, shapeby = NULL, subsetby = NULL,
-  measures = c("Observed", "Chao1", "ACE", "Shannon", "Simpson",
-  "InvSimpson"), statmeth = "wilcox.test", samplesToKeep = NULL,
-  featuresToKeep = NULL, signiflabel = "p.format", plottitle = NULL,
-  cdict = NULL, max_categories = 3, ...)
+plot_alpha_diversity(
+  mgseqobj = NULL,
+  glomby = NULL,
+  groupby = NULL,
+  colourby = NULL,
+  shapeby = NULL,
+  subsetby = NULL,
+  measures = c("Observed", "Chao1", "ACE", "Shannon", "Simpson", "InvSimpson"),
+  statmeth = "wilcox.test",
+  samplesToKeep = NULL,
+  featuresToKeep = NULL,
+  signiflabel = "p.format",
+  plottitle = NULL,
+  cdict = NULL,
+  max_categories = 3,
+  ...
+)
 }
 \description{
 Plots the alpha diversity in a sample or group of samples.

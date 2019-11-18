@@ -5,35 +5,6 @@
 
 plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL, samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL, showGram = TRUE, showphylum = TRUE, addtit = NULL, mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL) {
 
-    #Define other functions
-    filter_correlations <- function(corrmat = NULL, mincorrelcoeff = NULL){
-
-        if(nrow(corrmat) != ncol(corrmat)){
-            stop("Correlation matrix must have equal numbers of rows and columns.")
-        }
-
-        featsIwant <- NULL
-
-        for (rw in 1:nrow(corrmat)){
-            featint <- rownames(corrmat)[rw]
-            #print(paste("Checking:", featint))
-            correlations <- corrmat[which(rownames(corrmat) != featint), featint]
-
-            if(max(abs(correlations)) >= mincorrelcoeff){
-                feat <- featint
-            } else {
-                feat <- NULL
-            }
-
-            featsIwant <- append(featsIwant, feat)
-
-        }
-
-        corrmat <- corrmat[featsIwant, featsIwant]
-
-        return(corrmat)
-    }
-
     #Get appropriate object to work with
     obj <- mgseqobj
 
@@ -216,7 +187,7 @@ plot_correlation_heatmap <- function(mgseqobj = NULL, glomby = NULL, stattype = 
                 CorrHmColours <- c("blue4", "lightgoldenrodyellow", "red1")
                 heatmapCols <- colorRamp2(c(-1, 0, 1), CorrHmColours)
 
-                fontsizey <- min(5, round((((-1 / 300) * (nrow(matstats))) + 1) * 3, 0))
+                fontsizey <- max(1, (min(5, round((((-1 / 300) * (nrow(matstats))) + 1) * 3.5, 0))))
 
                 #Add genome completeness info if LKT
                 if (analysis == "LKT"){

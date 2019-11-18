@@ -5,8 +5,14 @@
 \title{exporttabletsv(dataobj = NULL, project = NULL, basename = NULL, row.names = TRUE, col.names = TRUE, path = NULL)
 Generic function to export a dataframe to tsv format}
 \usage{
-exporttabletsv(dataobj = NULL, project = NULL, basename = NULL,
-  row.names = TRUE, col.names = TRUE, path = NULL)
+exporttabletsv(
+  dataobj = NULL,
+  project = NULL,
+  basename = NULL,
+  row.names = TRUE,
+  col.names = TRUE,
+  path = NULL
+)
 }
 \description{
 exporttabletsv(dataobj = NULL, project = NULL, basename = NULL, row.names = TRUE, col.names = TRUE, path = NULL)

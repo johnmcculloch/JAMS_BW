@@ -4,9 +4,13 @@
 \alias{print_jams_report}
 \title{print_jams_report(opt=opt)}
 \usage{
-print_jams_report(opt = opt, outputdir = NULL,
-  elements = c("readplots", "taxonomy", "SixteenSid", "resfinder",
-  "plasmidfinder", "vfdb", "func"), plotucobias = FALSE)
+print_jams_report(
+  opt = opt,
+  outputdir = NULL,
+  elements = c("readplots", "taxonomy", "SixteenSid", "resfinder", "plasmidfinder",
+    "vfdb", "func"),
+  plotucobias = FALSE
+)
 }
 \description{
 JAMSalpha function

@@ -4,9 +4,15 @@
 \alias{compare_ucobias}
 \title{compare_ucobias}
 \usage{
-compare_ucobias(featuredata = NULL, contigsdata = NULL,
-  taxlevel = "LKT", taxaofinterest = NULL, ucobias = NULL,
-  method = "tSNE", frac = 0.25)
+compare_ucobias(
+  featuredata = NULL,
+  contigsdata = NULL,
+  taxlevel = "LKT",
+  taxaofinterest = NULL,
+  ucobias = NULL,
+  method = "tSNE",
+  frac = 0.25
+)
 }
 \description{
 Compares taxa by codon usage bias.

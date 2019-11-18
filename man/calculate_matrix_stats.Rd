@@ -4,9 +4,16 @@
 \alias{calculate_matrix_stats}
 \title{calculate_matrix_stats(countmatrix=NULL, uselog=NULL, statsonlog=TRUE, stattype=c("variance", "binary", "permanova", "PA", "auto"), classesvector=NULL, invertbinaryorder=FALSE, numthreads=4, nperm=99)}
 \usage{
-calculate_matrix_stats(countmatrix = NULL, uselog = NULL,
-  statsonlog = TRUE, stattype = NULL, classesvector = NULL,
-  invertbinaryorder = FALSE, numthreads = 4, nperm = 99)
+calculate_matrix_stats(
+  countmatrix = NULL,
+  uselog = NULL,
+  statsonlog = TRUE,
+  stattype = NULL,
+  classesvector = NULL,
+  invertbinaryorder = FALSE,
+  numthreads = 4,
+  nperm = 99
+)
 }
 \description{
 Returns a data frame with the statistics for a feature count matrix ordered by highest variance or lowest Mann-Whitney-Wilcoxon test between binary categories.

@@ -3,7 +3,7 @@
 #' Generates standard comparative heatmaps and spreadsheet based on relative abundance difference between categories for analyses named in expvectors.
 #' @export
 
-make_heatmap_report <- function(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, genomecompleteness = NULL, heatpalette = "smart", variable_list = NULL, max_annot_legends = 4,  includereaddata = TRUE, adjustpval = NULL, list.data = NULL, hmasPA = FALSE, mgSeqnorm = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, class_to_ignore = NULL, ...){
+make_heatmap_report <- function(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, genomecompleteness = NULL, minabscorrcoeff = NULL, heatpalette = "smart", variable_list = NULL, max_annot_legends = 4, includereaddata = TRUE, adjustpval = NULL, list.data = NULL, hmasPA = FALSE, mgSeqnorm = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, class_to_ignore = NULL, ...){
 
     if (is.null(usefulexp)){
         usefulexp <- names(expvec)[!(names(expvec) %in% c("FeatType", "vfdb", "SFLD", "Coils", "Gene3D", "Phobius", "ProSitePatterns", "SMART", "resfinder", "ProDom"))]
@@ -192,7 +192,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                         plot.new()
                         grid.table(c(names(expvec2)[a], "Pairwise Correlation of Features", "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                        plot_correlation_heatmap(mgseqobj = expvec2[[a]], glomby = glomby, stattype = "spearman", subsetby = NULL, list.data = list.data, ignoreunclassified = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ntopvar = 250)
+                        plot_correlation_heatmap(mgseqobj = expvec2[[a]], glomby = glomby, stattype = "spearman", subsetby = NULL, list.data = list.data, ignoreunclassified = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ntopvar = 250, minabscorrcoeff = minabscorrcoeff, class_to_ignore = class_to_ignore)
                     }
                     compvec <- NULL
                 }
@@ -262,7 +262,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                                 plot.new()
                                 grid.table(c(names(expvec2)[a], "Pairwise Correlation of Features", paste("Subset by", vs)), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                                plot_correlation_heatmap(mgseqobj = expvec2[[a]], glomby = glomby, stattype = "spearman", subsetby = vs, list.data = list.data, ignoreunclassified = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ntopvar = 250)
+                                plot_correlation_heatmap(mgseqobj = expvec2[[a]], glomby = glomby, stattype = "spearman", subsetby = vs, list.data = list.data, ignoreunclassified = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ntopvar = 250, minabscorrcoeff = minabscorrcoeff, class_to_ignore = class_to_ignore)
                             }
                             compvec <- NULL
                         } #Type of report conditional

@@ -4,11 +4,23 @@
 \alias{plot_bar_graph}
 \title{Creates bar graph of relative taxonomic abundance from metagenomeSeq object}
 \usage{
-plot_bar_graph(mgseqobj = NULL, glomby = NULL, samplesToKeep = NULL,
-  featuresToKeep = NULL, units = 100, threshold = 2, title = "",
-  category = NULL, cat_pos = -2, cat_text_size = 3,
-  border_color = "white", cdict = NULL, colors = NULL, grid = TRUE,
-  ...)
+plot_bar_graph(
+  mgseqobj = NULL,
+  glomby = NULL,
+  samplesToKeep = NULL,
+  featuresToKeep = NULL,
+  units = 100,
+  threshold = 2,
+  title = "",
+  category = NULL,
+  cat_pos = -2,
+  cat_text_size = 3,
+  border_color = "white",
+  cdict = NULL,
+  colors = NULL,
+  grid = TRUE,
+  ...
+)
 }
 \arguments{
 \item{mgseqobj}{a metagenomeSeq object.}

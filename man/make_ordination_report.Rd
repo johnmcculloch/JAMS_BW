@@ -4,13 +4,25 @@
 \alias{make_ordination_report}
 \title{make_ordination_report(project = NULL, algorithm = "PCA", expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified=TRUE, appendtofilename = NULL, ...)}
 \usage{
-make_ordination_report(project = NULL, algorithm = "PCA",
-  expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE,
-  genomecompleteness = NULL, variable_list = NULL, list.data = NULL,
-  doreads = NULL, cdict = NULL, ellipse = "auto",
-  samplesToKeep = NULL, featuresToKeep = NULL,
-  ignoreunclassified = TRUE, appendtofilename = NULL, threads = 8,
-  ...)
+make_ordination_report(
+  project = NULL,
+  algorithm = "PCA",
+  expvec = NULL,
+  usefulexp = NULL,
+  mgSeqnorm = FALSE,
+  genomecompleteness = NULL,
+  variable_list = NULL,
+  list.data = NULL,
+  doreads = NULL,
+  cdict = NULL,
+  ellipse = "auto",
+  samplesToKeep = NULL,
+  featuresToKeep = NULL,
+  ignoreunclassified = TRUE,
+  appendtofilename = NULL,
+  threads = 8,
+  ...
+)
 }
 \description{
 Generates standard ordination plots for analyses named in expobjects.

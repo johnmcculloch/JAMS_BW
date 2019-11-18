@@ -234,7 +234,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                 statmsg <- stattype
 
             } else {
-                cl = pData(currobj)[ , which(colnames(pData(currobj)) == compareby)]
+                cl <- pData(currobj)[ , which(colnames(pData(currobj)) == compareby)]
                 discretenames <- sort(unique(cl))
 
                 matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = !(asPA), statsonlog = statsonlog, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, nperm = nperm)
@@ -323,9 +323,9 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                         propsignonadj <- length(which(matstats$pval < 0.05)) / length(matstats$pval)
                         fracsigadj <- propsigadj / propsignonadj
                         if ((!is.na(fracsigadj)) && (fracsigadj > 0.2)){
-                            adjustpval = TRUE
+                            adjustpval <- TRUE
                         } else {
-                            adjustpval = FALSE
+                            adjustpval <- FALSE
                         }
                     }
 

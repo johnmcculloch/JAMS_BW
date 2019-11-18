@@ -4,9 +4,15 @@
 \alias{export_expvec_to_XL}
 \title{export_expvec_to_XL(expvec=NULL, usefulexp=NULL, filename=NULL, asPPM=TRUE, asPA=FALSE, mgSeqnorm=FALSE, includemetadata=TRUE)}
 \usage{
-export_expvec_to_XL(expvec = NULL, usefulexp = NULL, filename = NULL,
-  asPPM = TRUE, asPA = FALSE, mgSeqnorm = FALSE,
-  includemetadata = TRUE)
+export_expvec_to_XL(
+  expvec = NULL,
+  usefulexp = NULL,
+  filename = NULL,
+  asPPM = TRUE,
+  asPA = FALSE,
+  mgSeqnorm = FALSE,
+  includemetadata = TRUE
+)
 }
 \description{
 Exports counts and featuredata in an experiment vector into a single spreadsheet.

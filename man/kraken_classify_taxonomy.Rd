@@ -4,8 +4,7 @@
 \alias{kraken_classify_taxonomy}
 \title{kraken_classify_taxonomy}
 \usage{
-kraken_classify_taxonomy(opt = NULL, fastafile = NULL,
-  confidence = 1e-05)
+kraken_classify_taxonomy(opt = NULL, fastafile = NULL, confidence = 1e-05)
 }
 \description{
 JAMSalpha function

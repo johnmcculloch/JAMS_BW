@@ -4,10 +4,18 @@
 \alias{pareto_abundance}
 \title{pareto_abundance(LKTdose=NULL, samplename=NULL, taxlevel=NULL, assemblystats=NULL, showcompletenesstext=TRUE, showcompletenessline=TRUE, showcontigline=FALSE, showparetocurve=TRUE, showpercentagetext=TRUE)}
 \usage{
-pareto_abundance(LKTdose = NULL, samplename = NULL, list.data = NULL,
-  taxlevel = NULL, assemblystats = NULL, showcompletenesstext = TRUE,
-  showcompletenessline = TRUE, showcontigline = FALSE,
-  showparetocurve = TRUE, showpercentagetext = TRUE)
+pareto_abundance(
+  LKTdose = NULL,
+  samplename = NULL,
+  list.data = NULL,
+  taxlevel = NULL,
+  assemblystats = NULL,
+  showcompletenesstext = TRUE,
+  showcompletenessline = TRUE,
+  showcontigline = FALSE,
+  showparetocurve = TRUE,
+  showpercentagetext = TRUE
+)
 }
 \description{
 Plots a pareto chart of the relative abundance of a taxon.

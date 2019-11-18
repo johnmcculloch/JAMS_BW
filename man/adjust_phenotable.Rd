@@ -4,8 +4,12 @@
 \alias{adjust_phenotable}
 \title{adjust_phenotable(opt = NULL, list.data = NULL, addtaxlevelstoisolates = NULL)}
 \usage{
-adjust_phenotable(opt = NULL, list.data = NULL,
-  addtaxlevelstoisolates = NULL, class_to_ignore = "N_A")
+adjust_phenotable(
+  opt = NULL,
+  list.data = NULL,
+  addtaxlevelstoisolates = NULL,
+  class_to_ignore = "N_A"
+)
 }
 \description{
 Adjusts the metadata table into a format which can be used by the MetagenomeSeq package.

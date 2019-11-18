@@ -4,9 +4,13 @@
 \alias{randomize_experiment}
 \title{randomize_experiment(mgseqobj = NULL, newname = "Noise", shuffleclassifieds = FALSE, shufflemetadata = TRUE, iterations = 10)}
 \usage{
-randomize_experiment(mgseqobj = NULL, newname = "Noise",
-  shuffleclassifieds = FALSE, shufflemetadata = TRUE,
-  iterations = 10)
+randomize_experiment(
+  mgseqobj = NULL,
+  newname = "Noise",
+  shuffleclassifieds = FALSE,
+  shufflemetadata = TRUE,
+  iterations = 10
+)
 }
 \description{
 Shuffles data (counts and metadata) of a metagenomeSeq MRexperiment object. Useful for sanity checking.

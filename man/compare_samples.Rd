@@ -4,12 +4,23 @@
 \alias{compare_samples}
 \title{compare_samples(mgseqobj=NULL, mgSeqnorm=FALSE, glomby=NULL, stattype=c("variance", "binary"), samplesToKeep=NULL, featuresToKeep=NULL, binaryclass=NULL, invertbinaryorder=FALSE, subsetby=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), maxl2fc=NULL, minl2fc=NULL, genomecompleteness=NULL, list.data=NULL)}
 \usage{
-compare_samples(mgseqobj = NULL, mgSeqnorm = FALSE, glomby = NULL,
-  stattype = c("variance", "binary"), samplesToKeep = NULL,
-  featuresToKeep = NULL, binaryclass = NULL,
-  invertbinaryorder = FALSE, subsetby = NULL, featmaxatleastPPM = 0,
-  featcutoff = c(0, 0), maxl2fc = NULL, minl2fc = NULL,
-  genomecompleteness = NULL, list.data = NULL)
+compare_samples(
+  mgseqobj = NULL,
+  mgSeqnorm = FALSE,
+  glomby = NULL,
+  stattype = c("variance", "binary"),
+  samplesToKeep = NULL,
+  featuresToKeep = NULL,
+  binaryclass = NULL,
+  invertbinaryorder = FALSE,
+  subsetby = NULL,
+  featmaxatleastPPM = 0,
+  featcutoff = c(0, 0),
+  maxl2fc = NULL,
+  minl2fc = NULL,
+  genomecompleteness = NULL,
+  list.data = NULL
+)
 }
 \description{
 Returns a list of dataframes with relative abundance statistics

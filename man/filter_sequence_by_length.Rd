@@ -4,8 +4,7 @@
 \alias{filter_sequence_by_length}
 \title{filter_sequence_by_length(sequence=NULL, minlength=0, maxlength=Inf)}
 \usage{
-filter_sequence_by_length(sequence = NULL, minlength = 0,
-  maxlength = Inf)
+filter_sequence_by_length(sequence = NULL, minlength = 0, maxlength = Inf)
 }
 \description{
 Filters sequences by size

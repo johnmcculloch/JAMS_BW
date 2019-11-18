@@ -4,8 +4,13 @@
 \alias{blast_databases}
 \title{blast_databases}
 \usage{
-blast_databases(opt = NULL, blastanalyses = NULL, QcovThreshold = 75,
-  HitcovThreshold = 75, PidentThreshold = 75)
+blast_databases(
+  opt = NULL,
+  blastanalyses = NULL,
+  QcovThreshold = 75,
+  HitcovThreshold = 75,
+  PidentThreshold = 75
+)
 }
 \description{
 JAMSalpha function

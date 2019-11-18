@@ -4,8 +4,7 @@
 \alias{plot_wordcloud_sample}
 \title{plot_wordcloud_sample(opt=opt, elements=NULL)}
 \usage{
-plot_wordcloud_sample(opt = NULL, analysis = NULL,
-  removeunclassifieds = TRUE)
+plot_wordcloud_sample(opt = NULL, analysis = NULL, removeunclassifieds = TRUE)
 }
 \description{
 JAMSalpha function

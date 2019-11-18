@@ -4,8 +4,12 @@
 \alias{make_metadata_from_taxtable}
 \title{make_metadata_from_taxtable(taxlvlinterest = NULL, taxainterest = NULL, nobs = TRUE,  metadatafn = NULL)}
 \usage{
-make_metadata_from_taxtable(taxlvlinterest = NULL, taxainterest = NULL,
-  nobs = TRUE, metadatafn = NULL)
+make_metadata_from_taxtable(
+  taxlvlinterest = NULL,
+  taxainterest = NULL,
+  nobs = TRUE,
+  metadatafn = NULL
+)
 }
 \description{
 Generates JAMS-style metadata in xlsx format for comparing bacterial isolates which have been deposited in NCBI GenBank

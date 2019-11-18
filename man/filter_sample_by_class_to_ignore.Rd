@@ -4,8 +4,11 @@
 \alias{filter_sample_by_class_to_ignore}
 \title{filter_sample_by_class_to_ignore(mgseqobj = NULL, variables = NULL, class_to_ignore = "N_A")}
 \usage{
-filter_sample_by_class_to_ignore(mgseqobj = NULL, variables = NULL,
-  class_to_ignore = NULL)
+filter_sample_by_class_to_ignore(
+  mgseqobj = NULL,
+  variables = NULL,
+  class_to_ignore = NULL
+)
 }
 \description{
 Filters a metagenomeSeq object by several criteria.

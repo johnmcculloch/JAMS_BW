@@ -32,7 +32,7 @@ blast_databases <- function(opt = NULL, blastanalyses = NULL, QcovThreshold = 75
 
             #Load lookup table if it exists
             if(file.exists(file.path(blastdbori, "lookup.tsv"))){
-                lookup <- read.table(file=file.path(blastdbori, "lookup.tsv"), sep="\t", header=TRUE, stringsAsFactors=FALSE)
+                lookup <- read.table(file = file.path(blastdbori, "lookup.tsv"), sep = "\t", header = TRUE, stringsAsFactors = FALSE)
             } else {
                 lookup <- NULL
             }

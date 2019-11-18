@@ -4,8 +4,7 @@
 \alias{print_table}
 \title{print_table(tb=NULL, tabletitle=NULL, fontsize=6, numrows=20)}
 \usage{
-print_table(tb = NULL, tabletitle = NULL, fontsize = 6,
-  numrows = 20)
+print_table(tb = NULL, tabletitle = NULL, fontsize = 6, numrows = 20)
 }
 \description{
 JAMSalpha function
