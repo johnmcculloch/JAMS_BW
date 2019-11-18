@@ -579,11 +579,11 @@ if (opt$make_PA_reports == TRUE){
 
 if (opt$make_correlation_reports == TRUE){
     flog.info(paste0("Generating feature correlation heatmaps for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-    tryCatch((make_heatmap_report(report = "correlation", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating comparative heatmaps for basic analyses"))
+    tryCatch((make_heatmap_report(report = "correlation", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", minabscorrcoeff = 0.55, ntopvar = 250)), error = function(e) whoopsieplot("generating comparative heatmaps for basic analyses"))
 
     if (length(specialexp) > 0){
         flog.info(paste0("Generating feature correlation heatmaps for special analyses (", paste(specialexp, collapse= ", "), ")."))
-        tryCatch((make_heatmap_report(report = "correlation", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05)), error = function(e) whoopsieplot("generating comparative heatmaps for special analyses"))
+        tryCatch((make_heatmap_report(report = "correlation", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", minabscorrcoeff = 0.55, ntopvar = 250)), error = function(e) whoopsieplot("generating comparative heatmaps for special analyses"))
     }
 }
 
