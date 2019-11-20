@@ -372,26 +372,26 @@ IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads =
         threads <- opt$threads
     }
 
-    flog.info(paste("Workspace image is", opt$projimage))
+    flog.info(paste("Workspace image is", workspaceimage))
 
     if (operation == "save"){
 
         if ("fastSave" %in% rownames(installed.packages())){
             flog.info(paste("Saving project workspace image using fastSave package with", opt$threads, "CPUs"))
-            save.image.pigz(file = opt$projimage, n.cores = threads)
+            save.image.pigz(file = workspaceimage, n.cores = threads)
         } else {
             flog.info("Saving project workspace image. Please be patient...")
-            save.image(opt$projimage)
+            save.image(workspaceimage)
         }
 
     } else if (operation == "load"){
 
         if ("fastSave" %in% rownames(installed.packages())){
             flog.info(paste("Loading project workspace image using fastSave package with", opt$threads, "CPUs"))
-            load.pigz(file = opt$projimage)
+            load.pigz(file = workspaceimage, verbose = TRUE)
         } else {
             flog.info("Loading project workspace image. Please be patient...")
-            save.image(opt$projimage)
+            save.image(workspaceimage)
         }
 
     } else {
