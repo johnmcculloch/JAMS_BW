@@ -190,8 +190,7 @@ if (all(c((is.null(opt$load_workspace)), (is.null(opt$jamsfiles_path))))) {
             projimagesize <- file.size(opt$load_workspace)
             flog.info(paste("Found previous R session file with", projimagesize, "bytes at", as.character(opt$load_workspace)))
             saveRDS(opt, file = "preloadopt.rds") #Save current options, or else it will be substituted when loading workspace image.
-            flog.info("Loading saved workspace image. Please be patient...")
-            load(opt$load_workspace)
+            IO_jams_workspace_image(workspaceimage = opt$load_workspace, operation = "load")
             preloadopt <- readRDS("preloadopt.rds")
             #change name of ordination report option, for backwards compatibility. This patch will be phased out by July2020.
             if ("ordination" %in% names(opt)){
@@ -339,8 +338,7 @@ if (!(exists("list.data"))) {
     }
     list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = Samples_want, threads = opt$threads)
     #Save session
-    flog.info("Saving R workspace image. Please be patient.")
-    save.image(opt$projimage)
+    IO_jams_workspace_image(opt = opt, operation = "save")
 }
 if (length(opt$dupes) > 0){
     list.data[grep(paste0(opt$dupes, "_"), names(list.data))] <- NULL
@@ -437,8 +435,8 @@ if (!exists("expvec")){
     flog.info("Making metagenomeSeq MRexperiment objects")
     expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data)
 
-    flog.info("Saving R session image. Please be patient.")
-    save.image(opt$projimage)
+    IO_jams_workspace_image(opt = opt, operation = "save")
+
 } else {
     #Expvec exists. Either do nothing, or replace the metadata.
     flog.info(paste("Found a list of metagenomeSeq experiments for the following analyses:", paste0(names(expvec), collapse = ", ")))
@@ -592,8 +590,7 @@ if (opt$make_alpha_reports == TRUE){
 }
 
 #Save image
-flog.info("Saving R session image. Please be patient.")
-save.image(opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Running extra script if required
 if (!is.null(opt$run_script)){
