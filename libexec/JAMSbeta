@@ -187,6 +187,7 @@ if (all(c((is.null(opt$load_workspace)), (is.null(opt$jamsfiles_path))))) {
             opt$load_workspace <- file.path(opt$load_workspace, ".RData")
         }
         if (file.exists(opt$load_workspace)) {
+            suppressMessages(suppressPackageStartupMessages(library(JAMS)))
             projimagesize <- file.size(opt$load_workspace)
             flog.info(paste("Found previous R session file with", projimagesize, "bytes at", as.character(opt$load_workspace)))
             saveRDS(opt, file = "preloadopt.rds") #Save current options, or else it will be substituted when loading workspace image.
