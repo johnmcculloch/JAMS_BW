@@ -4,7 +4,7 @@
 #' Loads all JAMS files from system
 #' @export
 
-load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, loadfromscratch = TRUE, list.data = NULL, threads = 8){
+load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, loadfromscratch = TRUE, list.data = NULL, threads = 8, multithread_decomp = TRUE){
     fljams <- list.files(path = path, pattern = "*.jams$", full.names = TRUE, recursive = recursive)
 
     if (length(fljams) < 1){
@@ -52,9 +52,18 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     if (length(fpfljams) > 0){
         flog.info("Please be patient. Depending on how much data you have this might take a while.")
         flog.info(paste("There are", length(fpfljams), "objects to expand."))
-        for (f in 1:nrow(jamsfilesdfwant)){
-            flog.info(paste("Expanding ", jamsfilesdfwant$Prefix[f], ", file ", f, "/", nrow(jamsfilesdfwant), "...", sep = ""))
-            untar(jamsfilesdfwant$FullPath[f], list = FALSE, exdir = jamstempfilespath, compressed = TRUE, verbose = TRUE)
+
+        decompress_jamsfile <- function (x){
+            untar(jamsfilesdfwant$FullPath[x], list = FALSE, exdir = jamstempfilespath, compressed = TRUE, verbose = TRUE)
+        }
+        if (multithread_decomp == TRUE){
+            appropriatenumcores <-  max((threads - 2), 1)
+            explist <- mclapply(1:nrow(jamsfilesdfwant), function (x) { decompress_jamsfile(x) }, mc.cores = appropriatenumcores)
+        } else {
+            for (f in 1:nrow(jamsfilesdfwant)){
+                flog.info(paste("Expanding ", jamsfilesdfwant$Prefix[f], ", file ", f, "/", nrow(jamsfilesdfwant), "...", sep = ""))
+                untar(jamsfilesdfwant$FullPath[f], list = FALSE, exdir = jamstempfilespath, compressed = TRUE, verbose = TRUE)
+            }
         }
     }
 
@@ -73,8 +82,8 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     flog.info(paste("There are", length(fl), "objects to load."))
     for (i in 1:length(fl)){
         flog.info(paste("Loading ", fl[i], ", file ", i, "/", length(fl), "...", sep = ""))
-        list.data[[i+lastpos]] <- read.table(file = flwp[i], sep = "\t", header = TRUE, quote = "", skipNul = FALSE, fill = TRUE, stringsAsFactors = FALSE)
-        #list.data[[i+lastpos]] <- fread(file = flwp[i], sep = "\t", header = TRUE, quote = "", fill = TRUE, stringsAsFactors = FALSE, nThread = threads)
+        #list.data[[i+lastpos]] <- read.table(file = flwp[i], sep = "\t", header = TRUE, quote = "", skipNul = FALSE, fill = TRUE, stringsAsFactors = FALSE)
+        list.data[[i+lastpos]] <- fread(data.table = FALSE, file = flwp[i], sep = "\t", header = TRUE, quote = "", fill = TRUE, integer64 = "numeric", logical01 = FALSE, stringsAsFactors = FALSE, nThread = threads)
         names(list.data)[i + lastpos] <- on[i]
     }
 
