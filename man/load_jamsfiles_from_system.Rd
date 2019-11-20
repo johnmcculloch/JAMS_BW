@@ -11,7 +11,8 @@ load_jamsfiles_from_system(
   onlysamples = NULL,
   loadfromscratch = TRUE,
   list.data = NULL,
-  threads = 8
+  threads = 8,
+  multithread_decomp = TRUE
 )
 }
 \description{
