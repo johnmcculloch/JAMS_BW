@@ -353,3 +353,48 @@ can_be_made_numeric <- function(x, cats_to_ignore = NULL){
      assemblystats_taxlevel <- assemblystats_taxlevel[order(assemblystats_taxlevel$ProbNumGenomes, decreasing = TRUE), ]
      return(assemblystats_taxlevel)
  }
+
+
+ #' IO_jams_workspace_image(opt = NULL, workspaceimage = NULL, threads = 8, operation = c("save", "load"))
+ #' Safe way of either loading or saving an R workspace image. If argument workspaceimage is null, workspace image file will be searched for in opt (opt$projimage). If that is also NULL, saving or loading is aborted. If the fastSave package () is installed, multi-threaded loading or saving will be used. If opt is passed, number of CPUs will be set to opt$threads, trumping the threads argument.
+ #'
+ #' @export
+IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads = 8, operation = NULL){
+    if (is.null(workspaceimage)){
+        workspaceimage <- opt$projimage
+    }
+
+    if (is.null(workspaceimage)){
+        stop("Workspace image not found or specified.")
+    }
+
+    if (!is.null(opt)){
+        threads <- opt$threads
+    }
+
+    flog.info(paste("Workspace image is", opt$projimage))
+
+    if (operation == "save"){
+
+        if ("fastSave" %in% rownames(installed.packages())){
+            flog.info(paste("Saving project workspace image using fastSave package with", opt$threads, "CPUs"))
+            save.image.pigz(file = opt$projimage, n.cores = threads)
+        } else {
+            flog.info("Saving project workspace image. Please be patient...")
+            save.image(opt$projimage)
+        }
+
+    } else if (operation == "load"){
+
+        if ("fastSave" %in% rownames(installed.packages())){
+            flog.info(paste("Loading project workspace image using fastSave package with", opt$threads, "CPUs"))
+            load.pigz(file = opt$projimage)
+        } else {
+            flog.info("Loading project workspace image. Please be patient...")
+            save.image(opt$projimage)
+        }
+
+    } else {
+        flog.info("You must choose between \"load\" or \"save\" as an operation.")
+    }
+}
