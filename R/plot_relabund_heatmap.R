@@ -73,7 +73,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
     } else {
         variables_to_fix <- subsetby
     }
-    obj <- filter_sample_by_class_to_ignore(mgseqobj = obj, variables = variables_to_fix, class_to_ignore = class_to_ignore)
+    obj <- suppressWarnings(filter_sample_by_class_to_ignore(mgseqobj = obj, variables = variables_to_fix, class_to_ignore = class_to_ignore))
 
     if (!(is.null(subsetby))){
         subset_points <- sort(unique((pData(obj)[, which(colnames(pData(obj)) == subsetby)])))
@@ -110,8 +110,11 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
 
         if (all(c(!is.null(compareby), (hmtype != "exploratory")))) {
             #investigate if there are at least two of each class of things to compare to go ahead
-            if ((min(table(curr_pt[ , compareby]))) < 2){
-                proceed <- FALSE
+            if (length(unique(curr_pt[ , compareby])) == 2){
+                #Comparison is binary. Is there at least 2 of each class to get a p-value?
+                if ((min(table(curr_pt[ , compareby]))) < 2){
+                    proceed <- FALSE
+                }
             }
         }
 
@@ -151,6 +154,8 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                 }
             }
             currobj <- filter_experiment(mgseqobj = obj, featmaxatleastPPM = featmaxatleastPPM, featcutoff = featcutoff, samplesToKeep = samplesToKeep, asPA = asPA, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
+        } else {
+            stop("Unable to make heatmap with the current metadata for this comparison.")
         }
 
         #There must be at least two samples for a heatmap and at least two features
