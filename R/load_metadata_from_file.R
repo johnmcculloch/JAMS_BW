@@ -5,6 +5,8 @@
 
 load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv = NULL, phenolabels_tsv = NULL, class_to_ignore = "N_A"){
 
+    ctable <- NULL
+
     if (!is.null(opt)){
         xlsxFile <- opt$excel_metadata
         phenotable_tsv <- opt$phenotable
@@ -13,9 +15,71 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
     }
 
     if (!is.null(xlsxFile)) {
-        #Load metadata table from an Excel-style spreadsheet.
-        phenotable <- read.xlsx(xlsxFile, sheet = 1, startRow = 1, colNames = TRUE, rowNames = FALSE, detectDates = FALSE, skipEmptyRows = FALSE, skipEmptyCols = TRUE)
-        phenolabels <- read.xlsx(xlsxFile, sheet = 2, startRow = 1, colNames = TRUE, rowNames = FALSE, detectDates = FALSE, skipEmptyRows = FALSE, skipEmptyCols = TRUE)
+
+        xlMD <-  list()
+        for (sheet in 1:3){
+            xlMD[[sheet]] <- tryCatch(read.xlsx(xlsxFile, sheet = sheet, startRow = 1, colNames = TRUE, rowNames = FALSE, detectDates = FALSE, skipEmptyRows = FALSE, skipEmptyCols = TRUE), error = function(e) { message(paste("Sheet", sheet, "is empty.")) } )
+        }
+
+        #Find out who is who
+        find_metadata_type <- function(xlMD = NULL, sheet = NULL){
+            if (all(c("Class_label", "Class_colour") %in% colnames(xlMD[[sheet]]))){
+                mdtype <- "ctable"
+            } else if (all(c("Var_label", "Var_type") %in% colnames(xlMD[[sheet]]))){
+                mdtype <- "phenolabels"
+            } else {
+                mdtype <- "phenotable"
+            }
+
+            return(mdtype)
+        }
+
+        metadata_types <- sapply(1:length(xlMD), function (x) { find_metadata_type(xlMD, sheet = x) })
+
+        #Get a phenotable
+        if (unname(table(metadata_types)["phenotable"]) != 1){
+            stop("Unable to determine which sheet is the phenotable. Review metadata and try again.")
+        } else {
+            phenotable <- xlMD[[which(metadata_types == "phenotable")]]
+        }
+
+        #See if colour table exists
+        #Get a phenotable
+        if (!is.na(unname(table(metadata_types)["ctable"]))) {
+            flog.info("Found a colour table for mapping classes onto colours")
+            ctable <- xlMD[[which(metadata_types == "ctable")[1]]]
+            ctable <- trim_whitespace_from_df(ctable)
+            fix_hex_cols <- function(colour){
+                if (length(grep("#", colour, fixed = TRUE)) == 0){
+                    colour <- col2hex(colour)
+                }
+                return(colour)
+            }
+            ctable$Class_colour <- sapply(ctable$Class_colour, function (x) { fix_hex_cols(x) } )
+        }
+
+        #See if phenolabels exists, else make one
+        if (!is.na(unname(table(metadata_types)["phenolabels"]))) {
+            phenolabels <- xlMD[[which(metadata_types == "phenolabels")[1]]]
+            phenolabels <- trim_whitespace_from_df(phenolabels)
+        } else {
+            Var_label <- colnames(phenotable)
+            infer_column_type <- function(colm){
+                if (colm %in% c("Sample", "sample")){
+                    colmtype <- "Sample"
+                } else {
+                    if (can_be_made_numeric( (phenotable[, colm] ), cats_to_ignore = class_to_ignore)){
+                        colmtype <- "continuous"
+                    } else {
+                        colmtype <- "discrete"
+                    }
+                }
+                return(colmtype)
+            }
+            Var_type <- sapply(Var_label, function (x) { infer_column_type(x) } )
+            phenolabels <- data.frame(Var_label = unname(Var_label), Var_type = unname(Var_type), stringsAsFactors = FALSE)
+        }
+
     } else {
         phenotable <- read.table(file = phenotable_tsv, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
         phenotable[] <- lapply(phenotable, as.character)
@@ -34,6 +98,7 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
             phenolabels$Var_type[sampcol[1]] <- "Sample"
         }
     }
+
     #If there are any empty cells, fill them with JAMS "N_A" for missing data
     phenotable[is.na(phenotable)] <- class_to_ignore
 
@@ -57,12 +122,15 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
         opt$phenotable <- phenotable
         opt$phenolabels <- phenolabels
         opt$dupes <- opt$dupes
+        opt$ctable <- ctable
+
         return(opt)
     } else {
         metadata <- list()
         metadata[[1]] <- phenotable
         metadata[[2]] <- phenolabels
+        names(metadata) <- c("phenotable", "phenolabels")
+
         return(metadata)
     }
-
 }
