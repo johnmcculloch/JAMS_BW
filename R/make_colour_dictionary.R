@@ -3,7 +3,7 @@
 #' Returns a dictionary of colours for each class within each variable_list
 #' @export
 
-make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_ignore = NULL, colour_of_class_to_ignore = "#bcc2c2", shuffle = FALSE){
+make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_ignore = NULL, colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE){
 
     #Build a palette
     #atoms <- c("07437A", "96CABB", "FBEBA8", "FAB370", "ED7E65", "41303E", "486746", "203C51", "AC1629", "4E4346", "2D734E", "D6D77C", "2AD1BF", "FBFAF4", "1E1A11", "C48556", "38433F", "06FBFA", "E15631")
@@ -40,10 +40,19 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_
     } else {
         #Start by attributing colours to things that are named the same
         discrete2colour <- data.frame(Name = uniqueclasses, Colour = JAMSpalette[1:length(uniqueclasses)], stringsAsFactors = FALSE)
+        rownames(discrete2colour) <- uniqueclasses
 
-        #Make class_to_ignore black
+        #Make class_to_ignore gray
         if (!is.null(class_to_ignore)){
             discrete2colour$Colour[(discrete2colour$Name %in% class_to_ignore)] <- colour_of_class_to_ignore
+        }
+
+        if (!is.null(colour_table)){
+            rownames(colour_table) <- colour_table$Class_label
+            colour_table <- colour_table[rownames(colour_table) %in% discrete2colour$Name, ]
+            if (nrow(colour_table) > 0){
+                discrete2colour$Colour[match(colour_table$Class_label, discrete2colour$Name)]<-colour_table$Class_colour
+            }
         }
 
         cdict <- NULL

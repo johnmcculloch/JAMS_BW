@@ -9,6 +9,7 @@ make_colour_dictionary(
   pheno = NULL,
   class_to_ignore = NULL,
   colour_of_class_to_ignore = "#bcc2c2",
+  colour_table = NULL,
   shuffle = FALSE
 )
 }

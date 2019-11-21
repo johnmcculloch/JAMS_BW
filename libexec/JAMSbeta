@@ -110,9 +110,9 @@ option_list <- list(
                 help ="Generate Pairwise Feature Correlation heatmaps."),
 
     make_option(c("-z", "--make_alpha_reports"),
-                action="store_true", default = FALSE,
-                type="logical",
-                help ="Generate alpha diversity plots."),
+                action = "store_true", default = FALSE,
+                type = "logical",
+                help = "Generate alpha diversity plots."),
 
     make_option(c("-s", "--run_script"),
                 action="store", default = NULL,
@@ -191,7 +191,8 @@ if (all(c((is.null(opt$load_workspace)), (is.null(opt$jamsfiles_path))))) {
             projimagesize <- file.size(opt$load_workspace)
             flog.info(paste("Found previous R session file with", projimagesize, "bytes at", as.character(opt$load_workspace)))
             saveRDS(opt, file = "preloadopt.rds") #Save current options, or else it will be substituted when loading workspace image.
-            IO_jams_workspace_image(workspaceimage = opt$load_workspace, operation = "load")
+            #IO_jams_workspace_image(workspaceimage = opt$load_workspace, operation = "load")
+            load(opt$load_workspace)
             preloadopt <- readRDS("preloadopt.rds")
             #change name of ordination report option, for backwards compatibility. This patch will be phased out by July2020.
             if ("ordination" %in% names(opt)){
@@ -323,7 +324,7 @@ if (opt$metadatavetting == TRUE){
     }
 
     #Stop if something went wrong after subsetting phenotable to desired columns in phenolabels.
-        if(nrow(opt$phenotable) < 1){
+    if (nrow(opt$phenotable) < 1){
         stop("No data found in the metadata file supplied. Please check file.")
     }
 }
@@ -510,7 +511,7 @@ if (opt$export_tables == TRUE){
 ## Make a colour dictionary for plots ##
 ########################################
 flog.info("Making a dictionary of colours for consistency throughout plots.")
-cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, class_to_ignore = opt$class_to_ignore, shuffle = FALSE)
+cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, colour_table = opt$ctable, class_to_ignore = opt$class_to_ignore, shuffle = FALSE)
 
 allexp <- names(expvec)
 basicexp <- c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO")[c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO") %in% allexp]
