@@ -30,14 +30,15 @@ compute_readcounts <- function(opt = opt){
         #opt$fastqstats <- read.table("reads.stats", header = FALSE, sep = "\t", stringsAsFactors = FALSE, skipNul = FALSE, fill = TRUE, colClasses = c("character","numeric","numeric"))
         #colnames(opt$fastqstats) <- c("Reads", "Count", "Bases")
         fastqfiles <- list.files(path = readsworkdir, pattern = "fastq")
-        opt$fastqstats <- countfastq_files(fastqfiles = list.files(pattern = "fastq"), threads = opt$threads)
+        appropriatenumcores <- max(1, min(length(fastqfiles), (opt$threads - 2)))
+        opt$fastqstats <- countfastq_files(fastqfiles = list.files(pattern = "fastq"), threads = appropriatenumcores)
     } else {
-        NAssreadsfiles <- opt$fastqstats[grep("_NAss_",opt$fastqstats$Reads ), "Reads"]
+        NAssreadsfiles <- opt$fastqstats[grep("_NAss_", opt$fastqstats$Reads ), "Reads"]
     }
 
     #Flush out any lines which are NA
-    opt$fastqstats <- opt$fastqstats[!is.na(opt$fastqstats[,2]), ]
-    opt$fastqstats <- opt$fastqstats[!is.na(opt$fastqstats[,3]), ]
+    opt$fastqstats <- opt$fastqstats[!is.na(opt$fastqstats[, 2]), ]
+    opt$fastqstats <- opt$fastqstats[!is.na(opt$fastqstats[, 3]), ]
 
     ##Aggregate counts
     #Start by aggregating counts which will always be present
