@@ -84,6 +84,11 @@ option_list <- list(
                 type="logical",
                 help ="Export relative abundance tables and feature data tables in tsv format."),
 
+    make_option(c("-n", "--restrict_plot_analyses"),
+                action="store", default = NULL,
+                type="character",
+                help ="Only generate reports for the following analyses separated by comma. Example: -n LKT,ECNumber,GO,resfinder will only generate reports for these analyses, if available. If omitted, all available analyses will be used." ),
+
     make_option(c("-d", "--make_ordination_reports"),
                 action="store", default = NULL,
                 type="character",
@@ -513,86 +518,64 @@ if (opt$export_tables == TRUE){
 flog.info("Making a dictionary of colours for consistency throughout plots.")
 cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, colour_table = opt$ctable, class_to_ignore = opt$class_to_ignore, shuffle = FALSE)
 
-allexp <- names(expvec)
-basicexp <- c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO")[c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO") %in% allexp]
-specialexp <- c("vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM")[c("vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM") %in% allexp]
-
+#Determine reasonable cutoff level
 if ("isolate" %in% pheno$JAMS_Run_type){
     applyfilters <- "none"
 } else {
     applyfilters <- "moderate"
 }
 
+#Stop here and save if nothing else is required.
+if (!any(c(opt$make_exploratory_reports, opt$make_comparative_reports, opt$make_PA_reports, opt$make_correlation_reports, opt$make_alpha_reports))){
+    #Save image
+    IO_jams_workspace_image(opt = opt, operation = "save")
+    q()
+}
+
 #######################
 ## Do optional tasks ##
 #######################
+#Determine analyses to be plot
+if (!is.null(opt$restrict_plot_analyses)){
+    wantedanalyses <- unique(unlist(strsplit(opt$restrict_plot_analyses, split = ",")))
+    wantedanalyses <- names(expvec)[(names(expvec) %in% wantedanalyses)]
+} else {
+    wantedanalyses <- names(expvec)[(names(expvec) %in% c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO")[c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM"))]
+}
 
+flog.info(paste("Reports will be restricted to the following analyses:", paste0(wantedanalyses, collapse = ", ")))
+
+#Create folder structure to hold outputs
+analysespaths <- file.path(opt$outdir, "Reports", wantedanalyses)
+quiet(sapply(analysespaths, function (x) { dir.create(x, showWarnings = FALSE, recursive = TRUE) } ))
+
+#Make a list of plots that are to be created.
+plotkinds <- list()
 if (!is.null(opt$make_ordination_reports)){
-    flog.info(paste("Will now try to generate ordination plots based on Metadata which looks meaningful using", opt$make_ordination_reports))
-    #Get algorithms requested
     ordalgs <- unlist(strsplit(opt$make_ordination_reports, split = ","))
-    #Make an ordination plot report for each algorithm
-    for (ordalg in ordalgs){
-        flog.info(paste0("Generating ordination plots with ", ordalg, " for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-        tryCatch((make_ordination_report(algorithm = ordalg, project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = paste("Basic", ordalg, sep = "_"), mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = opt$doreads, cdict = cdict, threads = opt$threads, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for basic analyses"))
-
-        if (length(specialexp) > 0){
-            flog.info(paste0("Generating ordination plots with ", ordalg, " for special analyses (", paste(specialexp, collapse= ", "), ")."))
-            tryCatch((make_ordination_report(algorithm = ordalg, project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = paste("Special", ordalg, sep = "_"), mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = opt$doreads, cdict = cdict, threads = opt$threads, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating ordination plots for special analyses"))
-        }
+    for(algo in ordalgs){
+        plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, algo) }))
     }
 }
-
-if (opt$make_exploratory_reports == TRUE){
-    flog.info(paste0("Generating exploratory heatmap plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-    tryCatch((make_heatmap_report(report = "exploratory", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 2, numthreads = opt$threads, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating exploratory heatmaps for basic analyses"))
-
-    if (length(specialexp) > 0){
-        flog.info(paste0("Generating exploratory heatmap plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
-        tryCatch((make_heatmap_report(report = "exploratory", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating exploratory heatmaps for special analyses"))
-    }
+if (opt$make_comparative_reports){
+    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "comparative") }))
+}
+if (opt$make_correlation_reports){
+    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "correlation") }))
+}
+if (opt$make_exploratory_reports){
+    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "exploratory") }))
+}
+if (opt$make_PA_reports){
+    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "PA") }))
+}
+if (opt$make_alpha_reports){
+    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "alpha") }))
 }
 
-if (opt$make_comparative_reports == TRUE){
-    flog.info(paste0("Generating comparative heatmap plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-    tryCatch((make_heatmap_report(report = "comparative", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating comparative heatmaps for basic analyses"))
-
-    if (length(specialexp) > 0){
-        flog.info(paste0("Generating comparative heatmap plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
-        tryCatch((make_heatmap_report(report = "comparative", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating comparative heatmaps for special analyses"))
-    }
-}
-
-if (opt$make_PA_reports == TRUE){
-    if (length(variable_list$binary) > 0){
-        flog.info(paste0("Generating presence/absence heatmap plots for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-        tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating presence/absence heatmaps for basic analyses"))
-
-        if (length(specialexp) > 0){
-            flog.info(paste0("Generating presence/absence heatmap plots for special analyses (", paste(specialexp, collapse= ", "), ")."))
-            tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot("generating presence/absence heatmaps for special analyses"))
-        }
-    } else {
-        flog.info("There are no binary variables in the metadata supplied. PA testing can only be carried out with variables with exactly two classes.")
-    }
-}
-
-if (opt$make_correlation_reports == TRUE){
-    flog.info(paste0("Generating feature correlation heatmaps for basic analyses (", paste(basicexp, collapse= ", "), ")."))
-    tryCatch((make_heatmap_report(report = "correlation", project = project, expvec = expvec, usefulexp = basicexp, appendtofilename = "Basic", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", minabscorrcoeff = 0.55, ntopvar = 250)), error = function(e) whoopsieplot("generating comparative heatmaps for basic analyses"))
-
-    if (length(specialexp) > 0){
-        flog.info(paste0("Generating feature correlation heatmaps for special analyses (", paste(specialexp, collapse= ", "), ")."))
-        tryCatch((make_heatmap_report(report = "correlation", project = project, expvec = expvec, usefulexp = specialexp, appendtofilename = "Special", applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = opt$threads, adjustpval = "auto", minabscorrcoeff = 0.55, ntopvar = 250)), error = function(e) whoopsieplot("generating comparative heatmaps for special analyses"))
-    }
-}
-
-if (opt$make_alpha_reports == TRUE){
-    make_alpha_report(project = project, expvec = expvec, usefulexp = basicexp, variable_list = variable_list, cdict = cdict)
-}
-
-#Save image
-IO_jams_workspace_image(opt = opt, operation = "save")
+#launch plotting in parallel with an appropriate number of CPUs
+appropriatenumcores <- max(1 , (min((opt$threads - 2), length(plotkinds))))
+mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) }, mc.cores = appropriatenumcores)
 
 #Running extra script if required
 if (!is.null(opt$run_script)){

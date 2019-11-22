@@ -398,3 +398,41 @@ IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads =
         flog.info("You must choose between \"load\" or \"save\" as an operation.")
     }
 }
+
+#' spew_heatmap_report(c("analysis", "report"))
+#' Wrapper for launching a report for a SINGLE analysis
+#'
+#' @export
+spew_heatmap_report <- function(hmcomb){
+    analysis = hmcomb[1]
+    report = hmcomb[2]
+    setwd(file.path(opt$outdir, "Reports", analysis))
+
+    if (report == "comparative"){
+
+        tryCatch((make_heatmap_report(report = "comparative", project = project, expvec = expvec, usefulexp = analysis, appendtofilename = analysis, applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = 1, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot(paste("generating comparative heatmaps for", analysis, "analysis")))
+
+    } else if (report == "exploratory") {
+
+        tryCatch((make_heatmap_report(report = "exploratory", project = project, expvec = expvec, usefulexp = analysis, appendtofilename = analysis, applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 2, numthreads = 1, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot(paste("generating exploratory heatmaps for", analysis, "analysis")))
+
+    } else if (report == "correlation") {
+
+        tryCatch((make_heatmap_report(report = "correlation", project = project, expvec = expvec, usefulexp = analysis, appendtofilename = analysis, applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = 1, adjustpval = "auto", minabscorrcoeff = 0.55, ntopvar = 250)), error = function(e) whoopsieplot(paste("generating correlation heatmaps for", analysis, "analysis")))
+
+    } else if (report == "PA") {
+
+        tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = analysis, appendtofilename = analysis, applyfilters = applyfilters, variable_list = variable_list, list.data = list.data, mgSeqnorm = FALSE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = 1, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot(paste("generating presence/absence heatmaps for", analysis, "analysis")))
+
+    } else if ((report %in% c("tUMAP", "PCA", "tSNE"))){
+
+        tryCatch((make_ordination_report(algorithm = report, project = project, expvec = expvec, usefulexp = analysis, appendtofilename = paste(analysis, report, sep = "_"), mgSeqnorm = FALSE, variable_list = variable_list, list.data = list.data, doreads = opt$doreads, cdict = cdict, threads = 1, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot(paste("generating", report, "ordination plots for", analysis, "analysis")))
+
+    }  else if (report == "alpha") {
+
+        tryCatch(make_alpha_report(project = project, expvec = expvec, usefulexp = basicexp, variable_list = variable_list, cdict = cdict), error = function(e) whoopsieplot(paste("generating alpha diversity plots for", analysis, "analysis")))
+
+    }
+
+    setwd(opt$outdir)
+}
