@@ -540,7 +540,7 @@ if (!is.null(opt$restrict_plot_analyses)){
     wantedanalyses <- unique(unlist(strsplit(opt$restrict_plot_analyses, split = ",")))
     wantedanalyses <- names(expvec)[(names(expvec) %in% wantedanalyses)]
 } else {
-    wantedanalyses <- names(expvec)[(names(expvec) %in% c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO")[c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM"))]
+    wantedanalyses <- names(expvec)[(names(expvec) %in% c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM"))]
 }
 
 flog.info(paste("Reports will be restricted to the following analyses:", paste0(wantedanalyses, collapse = ", ")))
