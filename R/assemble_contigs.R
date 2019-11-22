@@ -228,5 +228,8 @@ assemble_contigs <- function(opt = NULL){
         system(paste("cp", asslog, file.path(opt$sampledir, paste(paste(opt$prefix, opt$assembler, sep = "_"), "log", sep = "."))))
     }
 
+    #Delete assembly folder
+    unlink(paste(opt$prefix, "assembly", sep = "_"))
+
     return(opt)
 }
