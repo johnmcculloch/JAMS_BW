@@ -320,22 +320,22 @@ flog.info(paste("Project type is", opt$analysis))
 #######################
 #Start the clock
 opt$starttime <- Sys.time()
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Obtain contigs
 setwd(opt$workdir)
 opt <- get_contigs(opt = opt)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Add some contig statistics
 seqstats <- get_sequence_stats(sequences = opt$NHcontigs_sequence)
 colnames(seqstats)[which(colnames(seqstats) == "Sequence")] <- "Contig"
 opt$contigsdata <- left_join(opt$contigsdata, seqstats)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Functional annotation
 opt <- annotate_contigs(opt=opt)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Launch interproscan if on a cluster
 if (nchar(slurmjobid) < 3){
@@ -350,11 +350,11 @@ if (nchar(slurmjobid) < 3){
 
 #Classify 16Ss
 opt <- classify_16S_from_contigs(opt = opt)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Evaluate assembly
 opt <- evaluate_assembly(opt = opt)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Get dose of each taxon and function
 if (opt$analysis %in% c("isolate", "isolaternaseq")){
@@ -365,24 +365,24 @@ opt <- get_contig_coverage(opt = opt, markduplicates = FALSE)
 #Bank information gathered
 objectstoexport <- names(opt)[names(opt) %in% c("contigsdata", "assemblystats", "contigperbasecoverage", "LKTdose")]
 export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Do specific blast-based analyses
 opt <- blast_databases(opt = opt, blastanalyses = opt$blastanalyses)
 objectstoexport <- names(opt)[names(opt) %in% opt$blastanalyses]
 export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Get feature stats
 opt <- add_blast_results_to_featuredata(opt = opt, blastanalyses = opt$blastanalyses)
 opt <- get_feature_stats(opt = opt)
 objectstoexport <- names(opt)[names(opt) %in% c("featuredata", "ucobias")]
 export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Make functional analysis
 opt <- harvest_functions(opt = opt)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Compute readcounts if there are any reads
 if("readsdir" %in% names(opt)){
@@ -393,7 +393,7 @@ if("readsdir" %in% names(opt)){
 
 objectstoexport <- names(opt)[names(opt) %in% c("interproscanoutput", "featuredose", "readstats")]
 export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #End the analysis and gather information on the run
 opt$endtime <- Sys.time()
@@ -401,7 +401,7 @@ opt <- gather_run_info(opt = opt)
 opt <- consolidate_tables(opt = opt)
 objectstoexport <- names(opt)[names(opt) %in% c("projinfo", "taxa_16S_cons", opt$blastanalyses)]
 export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
 
 #Deal with Ucobias
 #Plot ucobias if proj is isolate and there seems to be contamination and split genomes
@@ -444,7 +444,8 @@ print_jams_report(opt = opt, elements = c("readplots", "taxonomy", "SixteenSid",
 #Cleanup and compress project
 setwd(opt$sampledir)
 unlink(c(opt$tmpsampdir, opt$iprodir, opt$covdir, opt$readsdir), recursive = TRUE)
-save.image(file = opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save")
+
 setwd(opt$outdir)
 JAMStarball <- paste(paste0(opt$prefix, "_JAMS"), "tar", "gz", sep=".")
 tarcmd<-paste("tar", "cf", "-", paste0(opt$prefix, "_JAMS"), "|", "pigz", "-9", "-p", opt$threads, ">", JAMStarball, collapse=" ")
