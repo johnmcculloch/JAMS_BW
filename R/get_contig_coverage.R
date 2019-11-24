@@ -103,25 +103,25 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
                 return(k2out)
             }
 
-            #Cap the number of CPUs to 24 because of memory issues
-            appropriatenumcores <-  min((opt$threads - 2), 24)
+            #Cap the number of CPUs to 32 because of memory issues
+            appropriatenumcores <-  min(max(1, (opt$threads - 2)), 32)
 
             k2outlist <- mclapply(1:numchunks, function (x) { split_to_df(kraken2taxid[chunkcoords[[x]]]) }, mc.cores = appropriatenumcores)
             k2out <- plyr::ldply(k2outlist, rbind)
             k2out <- as.data.frame(k2out)
 
             NAssdata <- k2out[,c("Sequence", "Length", "Taxid")]
-            NAssdata <- left_join(NAssdata, JAMStaxtable)
+            NAssdata <- suppressMessages(left_join(NAssdata, JAMStaxtable))
             #Temporarily, fill in taxids which are NOT in the database with unclassifieds
             unclassdf <- JAMStaxtable[which(JAMStaxtable$Taxid == 0), 2:ncol(JAMStaxtable)]
             NAssdata[which(is.na(NAssdata$Domain == TRUE)), colnames(unclassdf)] <- unname(unclassdf)
             oriNAsslength <- sum(NAssdata$Length)
-            hostlength <- sum(subset(NAssdata, Kingdom != "k__Metazoa")[]$Length)
+            hostlength <- sum(subset(NAssdata, Kingdom == "k__Metazoa")[]$Length)
             #Filter out any vertebrate DNA if existant
             NAssdata <- subset(NAssdata, Kingdom != "k__Metazoa")
 
             #Report host reads were found, if applicable
-            if(hostlength > 0){
+            if (hostlength > 0){
                 hostpct <- round((hostlength / oriNAsslength) * 100, 2)
                 flog.info(paste("Of the non-assebmled reads", hostpct, "% were classified as k__Metazoa (host) DNA and were discarded."))
             }
@@ -248,7 +248,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
     opt$LKTdose <- totaldose[ , c((validtaxlvls[!(validtaxlvls %in% "IS1")]), "NumBases", "PctFromCtg")]
     opt$LKTdose <- opt$LKTdose[order(-opt$LKTdose$NumBases), ]
     opt$LKTdose$CumSum <- cumsum(opt$LKTdose$NumBases)
-    opt$LKTdose$PctCumSum <- round(opt$LKTdose$CumSum/sum(opt$LKTdose$NumBases) * 100, 2)
+    opt$LKTdose$PctCumSum <- round(opt$LKTdose$CumSum / sum(opt$LKTdose$NumBases) * 100, 2)
     #Data should be non-empty and non-redundant, but just make sure
     opt$LKTdose[is.na(opt$LKTdose)] <- 0
 

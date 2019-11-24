@@ -19,7 +19,8 @@ evaluate_assembly<-function(opt=NULL){
     rownames(JAMSMedian_Genome_Sizes) <- JAMSMedian_Genome_Sizes$Taxon
 
     taxlvls <- c("LKT", "IS1", "Species", "Genus", "Family", "Order", "Class", "Phylum", "Kingdom", "Domain")
-    assemblystats_alllevels <- mclapply(taxlvls, function (x) { get_assembly_stats_by_taxlevel(opt = opt, taxlevel = x) }, mc.cores = max(1, (opt$threads - 2)))
+    assemblystats_alllevels <- mclapply(taxlvls, function (x) { get_assembly_stats_by_taxlevel(opt = opt, taxlevel = x) }, mc.cores = max(1, min(length(taxlvls), (opt$threads - 2))))
+
     assemblystats_alllevels <- plyr::ldply(assemblystats_alllevels, rbind)
 
     opt$assemblystats <- assemblystats_alllevels
