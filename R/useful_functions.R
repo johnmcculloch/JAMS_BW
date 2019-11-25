@@ -279,6 +279,7 @@ IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads =
     flog.info(paste("Workspace image is", workspaceimage))
 
     if (verbose){
+        flog.info("Random Access Memory (RAM) status")
         print(RAMbytes_status(RAMbytesavail = RAMbytesavail))
     }
 
@@ -307,6 +308,7 @@ IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads =
     }
 
     if (verbose){
+        flog.info("Random Access Memory (RAM) status")
         print(RAMbytes_status(RAMbytesavail = RAMbytesavail))
     }
 }
