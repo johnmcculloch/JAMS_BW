@@ -345,7 +345,7 @@ if (!(exists("list.data"))) {
     }
     list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = Samples_want, threads = opt$threads)
     #Save session
-    IO_jams_workspace_image(opt = opt, operation = "save")
+    IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 }
 if (length(opt$dupes) > 0){
     list.data[grep(paste0(opt$dupes, "_"), names(list.data))] <- NULL
@@ -442,7 +442,7 @@ if (!exists("expvec")){
     flog.info("Making metagenomeSeq MRexperiment objects")
     expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data)
 
-    IO_jams_workspace_image(opt = opt, operation = "save")
+    IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 
 } else {
     #Expvec exists. Either do nothing, or replace the metadata.
@@ -528,7 +528,7 @@ if ("isolate" %in% pheno$JAMS_Run_type){
 #Stop here and save if nothing else is required.
 if (!any(c(opt$make_exploratory_reports, opt$make_comparative_reports, opt$make_PA_reports, opt$make_correlation_reports, opt$make_alpha_reports))){
     #Save image
-    IO_jams_workspace_image(opt = opt, operation = "save")
+    IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
     q()
 }
 
