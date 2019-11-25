@@ -9,7 +9,8 @@ IO_jams_workspace_image(
   opt = NULL,
   workspaceimage = NULL,
   threads = 8,
-  operation = NULL
+  operation = NULL,
+  verbose = FALSE
 )
 }
 \description{
