@@ -525,10 +525,11 @@ if ("isolate" %in% pheno$JAMS_Run_type){
     applyfilters <- "moderate"
 }
 
+#Save image
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
+
 #Stop here and save if nothing else is required.
 if (!any(c(opt$make_exploratory_reports, opt$make_comparative_reports, opt$make_PA_reports, opt$make_correlation_reports, opt$make_alpha_reports))){
-    #Save image
-    IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
     q()
 }
 
@@ -573,6 +574,7 @@ if (opt$make_alpha_reports){
     plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "alpha") }))
 }
 
+print(RAMbytes_status())
 #launch plotting in parallel with an appropriate number of CPUs
 appropriatenumcores <- max(1 , (min((opt$threads - 2), length(plotkinds))))
 mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) }, mc.cores = appropriatenumcores)
