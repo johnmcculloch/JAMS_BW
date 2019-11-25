@@ -363,8 +363,8 @@ RAMbytes_status <- function(RAMbytesavail = NULL){
     memstats <- gc(full = TRUE)
     usedMbcolm <- (which(colnames(memstats) == "used") + 1)
     maxusedMbcolm <- (which(colnames(memstats) == "max used") + 1)
-    usedRAMbytes <- sum(gc(full = TRUE)[ , usedMbcolm]) * 1024
-    maxusedRAMbytes <- sum(gc(full = TRUE)[ , maxusedMbcolm]) * 1024
+    usedRAMbytes <- sum(memstats[ , usedMbcolm]) * (1024 ^ 2)
+    maxusedRAMbytes <- sum(memstats[ , maxusedMbcolm]) * (1024 ^ 2)
     RAMbytes <- unname(c(usedRAMbytes, maxusedRAMbytes, RAMbytesavail))
     RAMdf <- data.frame(Bytes = RAMbytes, Gbytes = round((RAMbytes / 1e9), 1), stringsAsFactors = FALSE)
     rownames(RAMdf) <- c("Used", "MaxUsed", "Available")
