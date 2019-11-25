@@ -197,13 +197,18 @@ if (all(c((is.null(opt$load_workspace)), (is.null(opt$jamsfiles_path))))) {
             flog.info(paste("Found previous R session file with", projimagesize, "bytes at", as.character(opt$load_workspace)))
             saveRDS(opt, file = "preloadopt.rds") #Save current options, or else it will be substituted when loading workspace image.
             #IO_jams_workspace_image(workspaceimage = opt$load_workspace, operation = "load")
+            flog.info("Random Access Memory (RAM) status")
+            print(RAMbytes_status())
+            flog.info("Loading previous R session. Please be patient.")
             load(opt$load_workspace)
+            flog.info("Random Access Memory (RAM) status")
+            print(RAMbytes_status())
             preloadopt <- readRDS("preloadopt.rds")
             #change name of ordination report option, for backwards compatibility. This patch will be phased out by July2020.
             if ("ordination" %in% names(opt)){
                 names(opt)[which(names(opt) == "ordination")] <- "make_ordination_report"
             }
-            rm(list=c("phenotable", "phenolabels")[c("phenotable", "phenolabels") %in% ls()])
+            rm(list = c("phenotable", "phenolabels")[c("phenotable", "phenolabels") %in% ls()])
             #Replace old options with new ones
             opt$replaced <- NULL
             optstosub <- names(preloadopt)[!(names(preloadopt) %in% c("jamsfiles_path", "load_workspace", "projimage", "projimagesize"))]
@@ -576,7 +581,10 @@ if (opt$make_alpha_reports){
 
 print(RAMbytes_status())
 #launch plotting in parallel with an appropriate number of CPUs
+UsedRAM <- RAMbytes_status()[]$ProportionAvail[1]
 appropriatenumcores <- max(1 , (min((opt$threads - 2), length(plotkinds))))
+#Not sure if this is the calculation, but will use it to temper RAM use at the cost of CPU use and time.
+appropriatenumcores <- round((appropriatenumcores * UsedRAM), 0)
 mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) }, mc.cores = appropriatenumcores)
 
 #Running extra script if required
