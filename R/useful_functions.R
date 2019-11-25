@@ -260,7 +260,7 @@ can_be_made_numeric <- function(x, cats_to_ignore = NULL){
  #' Safe way of either loading or saving an R workspace image. If argument workspaceimage is null, workspace image file will be searched for in opt (opt$projimage). If that is also NULL, saving or loading is aborted. If the fastSave package () is installed, multi-threaded loading or saving will be used. If opt is passed, number of CPUs will be set to opt$threads, trumping the threads argument.
  #'
  #' @export
-IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads = 8, operation = NULL){
+IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads = 8, operation = NULL, verbose = FALSE){
     if (is.null(workspaceimage)){
         workspaceimage <- opt$projimage
     }
@@ -271,9 +271,16 @@ IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads =
 
     if (!is.null(opt)){
         threads <- opt$threads
+        RAMbytesavail <- opt$totmembytes
+    } else {
+        RAMbytesavail <- NULL
     }
 
     flog.info(paste("Workspace image is", workspaceimage))
+
+    if (verbose){
+        print(RAMbytes_status(RAMbytesavail = RAMbytesavail))
+    }
 
     if (operation == "save"){
 
@@ -297,6 +304,10 @@ IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads =
 
     } else {
         flog.info("You must choose between \"load\" or \"save\" as an operation.")
+    }
+
+    if (verbose){
+        print(RAMbytes_status(RAMbytesavail = RAMbytesavail))
     }
 }
 
@@ -339,11 +350,25 @@ spew_heatmap_report <- function(hmcomb){
 }
 
 
-#' maxRAMbytes_used()
-#' Wrapper for launching a report for a SINGLE analysis
+#' RAMbytes_status(RAMbytesavail = NULL)
+#' Reports how much RAM memory is being or has maximally been used.
 #'
 #' @export
-maxRAMbytes_used <- function(){
-    RAMbytes <- sum(gc(full = TRUE)[,6]) * 1024
-    return(RAMbytes)
+RAMbytes_status <- function(RAMbytesavail = NULL){
+
+    if (is.null(RAMbytesavail)){
+        RAMbytesavail <- detectHardwareResources()["memory"]
+    }
+
+    memstats <- gc(full = TRUE)
+    usedMbcolm <- (which(colnames(memstats) == "used") + 1)
+    maxusedMbcolm <- (which(colnames(memstats) == "max used") + 1)
+    usedRAMbytes <- sum(gc(full = TRUE)[ , usedMbcolm]) * 1024
+    maxusedRAMbytes <- sum(gc(full = TRUE)[ , maxusedMbcolm]) * 1024
+    RAMbytes <- unname(c(usedRAMbytes, maxusedRAMbytes, RAMbytesavail))
+    RAMdf <- data.frame(Bytes = RAMbytes, Gbytes = round((RAMbytes / 1e9), 1), stringsAsFactors = FALSE)
+    rownames(RAMdf) <- c("Used", "MaxUsed", "Available")
+    RAMdf$ProportionAvail <- round((RAMdf$Bytes / RAMbytesavail), 2)
+
+    return(RAMdf)
 }
