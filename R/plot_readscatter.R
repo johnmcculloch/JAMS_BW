@@ -27,8 +27,8 @@ plot_readscatter <- function(opt = NULL){
         readdf$Usable_Gb <- round(readdf$NonHost_bases / 1000000000, 2)
         readdf$Type <- phenotable[match(readdf$Sample, phenotable[ , "Sample"]), which(colnames(phenotable) == discrete)]
 
-        assembly.plot <- ggplot(readdf, aes(x = Usable_Gb, y = PctAss)) + geom_point(aes(color = factor(Type))) + geom_smooth(method = loess, se = FALSE)
-        assembly.plot <- assembly.plot + labs(color = discrete, title = "Contig Assembly Statistics")
+        assembly.plot <- ggplot(readdf, aes(x = Usable_Gb, y = PctAss)) + geom_point(aes(color = factor(Type))) + geom_smooth(method = "loess", se = FALSE, span = 2)
+        assembly.plot <- assembly.plot + labs(color = discrete, title = paste(opt$project, "Contig Assembly Statistics"))
         assembly.plot <- assembly.plot + xlab("Gigabases of assemblable data") + ylab("Percentage Bases assembled into Contigs")
 
         gvec[[g]] <- assembly.plot
