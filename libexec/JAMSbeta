@@ -143,6 +143,10 @@ if (!is.null(opt$version)) {
     quit()
 }
 
+#Authorship message
+authors <- as.character(as.person(packageDescription("JAMS")$Author))
+authorshipmessage <- c(packageDescription("JAMS")$Title, paste("JAMS version", packageVersion("JAMS")), authors, paste("Contact:", "john.mcculloch@nih.gov"), "National Cancer Institute", "National Institutes of Health", "Bethesda, MD, USA")
+
 #Fix path relativity
 fixrelpath <- function(JAMSpath = NULL){
     require(R.utils)
@@ -421,10 +425,16 @@ if (adjustmetadata == TRUE){
         }
 
         #Dump to pdf
-        pdffn = paste("JAMS_Reads_Stats_", opt$projectname, ".pdf", sep = "")
+        pdffn <- paste("JAMS_Reads_Stats_", opt$projectname, ".pdf", sep = "")
         pdf(pdffn, paper = "a4r")
+
+        prjinfo <- data.frame(Attribute = c("Project_Name", "Date", "JAMSbeta_version"), Value = c(opt$project, as.character(Sys.time()), opt$verstr), stringsAsFactors = FALSE)
+        print_table(tb = prjinfo, tabletitle = NULL, fontsize = 15)
         quiet(print(opt$readplots))
         quiet(print(opt$assvecplot))
+        plot.new()
+        grid.table(authorshipmessage, rows = NULL, cols = NULL, theme = ttheme_default(base_size = 15))
+
         dev.off()
     }
 }
