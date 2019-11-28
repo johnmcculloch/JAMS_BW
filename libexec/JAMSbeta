@@ -534,7 +534,7 @@ flog.info("Making a dictionary of colours for consistency throughout plots.")
 cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, colour_table = opt$ctable, class_to_ignore = opt$class_to_ignore, shuffle = FALSE)
 
 #Determine reasonable cutoff level
-if ("isolate" %in% pheno$JAMS_Run_type){
+if (any(c("metatranscriptome", "isolate") %in% pheno$JAMS_Run_type)){
     applyfilters <- "none"
 } else {
     applyfilters <- "moderate"
@@ -594,7 +594,7 @@ print(RAMbytes_status())
 UsedRAM <- RAMbytes_status()[]$ProportionAvail[1]
 appropriatenumcores <- max(1 , (min((opt$threads - 2), length(plotkinds))))
 #Not sure if this is the calculation, but will use it to temper RAM use at the cost of CPU use and time.
-appropriatenumcores <- round((appropriatenumcores * UsedRAM), 0)
+appropriatenumcores <- round((appropriatenumcores * 1 - (UsedRAM)), 0)
 mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) }, mc.cores = appropriatenumcores)
 
 #Running extra script if required
