@@ -205,7 +205,14 @@ setwd(opt$destination)
 #Get a list of fastq files
 rawfastqpaths <- list.files(path = opt$origin, pattern = "fastq.gz", full.names = TRUE, recursive = TRUE)
 rawfastqnames <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 1) })
-datasetids <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 2)[1] })
+
+#Find the appropriate folder level at which datasets are in.
+
+folderdepth <- max(sapply(1:length(rawfastqpaths), function(x) { length(unlist(strsplit(rawfastqpaths[x], split = "/"))) }))
+numunique <- sapply(1:folderdepth, function (y) { length(unique(sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = y)[1] }))) })
+appropriate_folder_depth <- max(which(numunique > 1))
+datasetids <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = appropriate_folder_depth)[1] })
+
 #Make a dataframe with all the info
 rawfastqsdf <- data.frame(Filenames = rawfastqnames, Filepaths = rawfastqpaths, DatasetIDs = datasetids, stringsAsFactors = FALSE)
 rawfastqsdf$Prefix <- NULL
@@ -238,16 +245,17 @@ if (!(is.null(opt$prefixlist))) {
 
 OriPrefixes <- unique(rawfastqsdf$OriPrefix)
 flog.info(paste("Found original BaseSpaceSample names:", paste0(OriPrefixes, collapse = ", ")))
+flog.info(paste("Found dataset IDs:", paste0(unique(rawfastqsdf$DatasetIDs), collapse = ", ")))
+
 for (currsamp in OriPrefixes){
     flog.info(paste("Processing sample", currsamp))
     currsampdf <- subset(rawfastqsdf, OriPrefix == currsamp)
+    currsampdf <- currsampdf[order(currsampdf$DatasetIDs), ]
     currprefix <- currsampdf$Prefix[1]
     flog.info(paste("Output prefix for this sample is", currprefix))
     flog.info("Processing R1")
-
     currR1df <- currsampdf[which(currsampdf$Read == "R1"), ]
     currR1df <- currR1df[order(currR1df$Lane) , ]
-    dsorder <- currR1df$DatasetIDs
     fastqR1in <- paste(currR1df$Filepaths, collapse = " ")
     fastqR1out <- file.path(opt$destination, paste(paste(currprefix, "R1", sep = "_"), "fastq", "gz", sep = "."))
     joinR1cmd <- paste("cat", fastqR1in, ">", fastqR1out)
@@ -265,7 +273,8 @@ for (currsamp in OriPrefixes){
     if ("R2" %in% currsampdf$Read){
         flog.info("Processing R2")
         currR2df <- currsampdf[which(currsampdf$Read == "R2"), ]
-        currR2df <- currR2df[match(currR2df$DatasetIDs, dsorder) , ]
+        #currR2df <- currR2df[match(currR2df$DatasetIDs, dsorder) , ]
+        currR2df <- currR1df[order(currR2df$Lane) , ]
         fastqR2in <- paste(currR2df$Filepaths, collapse = " ")
         fastqR2out <- file.path(opt$destination, paste(paste(currprefix, "R2", sep = "_"), "fastq", "gz", sep = "."))
         joinR2cmd <- paste("cat", fastqR2in, ">", fastqR2out)
