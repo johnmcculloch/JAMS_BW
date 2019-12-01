@@ -240,6 +240,9 @@ if (opt$basespaceformat == TRUE){
     rawfastqsdf$OriPrefix <- sapply(1:nrow(rawfastqsdf), function(x) { paste(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_"))[1:((which(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")) == tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 4)[1])) - 1)], collapse = "_") } )
 } else {
     rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 1)[1] } )
+
+    rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { head(unlist(strsplit(rawfastqsdf$Read[x], split = ".", fixed = TRUE)), n = 1)[1] } )
+
     rawfastqsdf$OriPrefix <- sapply(1:nrow(rawfastqsdf), function(x) { paste(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_"))[1:((which(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")) == tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 2)[1])) - 1)], collapse = "_") } )
 }
 
@@ -259,7 +262,7 @@ if (!(is.null(opt$substitutionmap))){
 }
 
 #Test for redundancy in substitution map.
-redtestsubmap <- apply(submap, is.redundant, MARGIN=2)
+redtestsubmap <- apply(submap, is.redundant, MARGIN = 2)
 if (any(redtestsubmap)){
     flog.warn(paste("Values in substitution table column(s)" , paste0(names(which(redtestsubmap == TRUE)), collapse = " and "), "are not unique. Check table and try again. Aborting now"))
     q()
