@@ -533,7 +533,11 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
 
                     if (all(c((any(!(c(is.null(minl2fc), is.null(maxl2fc))))), ("l2fc" %in% colnames(stathm))))){
                         l2fcmsg <- paste(minl2fcmsg, maxl2fcmsg, sep = " | ")
-                        plotit <- paste(plotit, l2fcmsg, l2fcmeaning, sep = "\n")
+                        plotit <- paste(plotit, l2fcmsg, sep = "\n")
+                    }
+
+                    if  ("l2fc" %in% colnames(stathm)){
+                        plotit <- paste(plotit, l2fcmeaning, sep = "\n")
                     }
 
                     #Add plot number if there is more than one heatmap matrix.
