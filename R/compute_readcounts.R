@@ -166,9 +166,9 @@ compute_readcounts <- function(opt = opt){
         }
     }
     Read_type <- factor(Read_type, levels = Read_type)
-    readsdf2 <- data.frame(Read_type=Read_type, Gigabases=GBases)
+    readsdf2 <- data.frame(Read_type = Read_type, Gigabases = GBases)
 
-    Bar.gigabases <- ggplot(readsdf2, aes(Read_type, GBases)) + geom_bar(stat = "identity", fill = (rep(4, length(readsdf2[, 1])))) + labs(title = paste(opt$prefix, "Total Basepairs per Read Type (Gbp)", sep = " - "))
+    Bar.gigabases <- ggplot(readsdf2, aes(Read_type, GBases)) + geom_bar(stat = "identity", fill = "blue") + labs(title = paste(opt$prefix, "Total Basepairs per Read Type (Gbp)", sep = " - "))
 
     opt$readplots <- list(pieQC, pieNAHS, pieSubsampling, pieAss, Bar.gigabases)
     #Flush out empty elements from list
