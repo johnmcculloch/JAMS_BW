@@ -210,7 +210,15 @@ rawfastqnames <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsp
 
 folderdepth <- max(sapply(1:length(rawfastqpaths), function(x) { length(unlist(strsplit(rawfastqpaths[x], split = "/"))) }))
 numunique <- sapply(1:folderdepth, function (y) { length(unique(sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = y)[1] }))) })
-appropriate_folder_depth <- max(which(numunique > 1))
+tentative_appropriate_folder_depth <- max(which(numunique > 1))
+#test if dataset ID has less than the number of samples. If so, that is the dataset folder depth, else take the preceding one, as there is only a single dataset.
+numunique_test <- length(unique(sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = tentative_appropriate_folder_depth)[1] })))
+if (numunique_test == length(rawfastqpaths)){
+    appropriate_folder_depth <- tentative_appropriate_folder_depth + 1
+} else {
+    appropriate_folder_depth <- tentative_appropriate_folder_depth
+}
+
 datasetids <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = appropriate_folder_depth)[1] })
 
 #Make a dataframe with all the info
@@ -250,12 +258,12 @@ flog.info(paste("Found dataset IDs:", paste0(unique(rawfastqsdf$DatasetIDs), col
 for (currsamp in OriPrefixes){
     flog.info(paste("Processing sample", currsamp))
     currsampdf <- subset(rawfastqsdf, OriPrefix == currsamp)
-    currsampdf <- currsampdf[order(currsampdf$DatasetIDs), ]
+    currsampdf <- currsampdf[order(currsampdf$Lane), ]
     currprefix <- currsampdf$Prefix[1]
     flog.info(paste("Output prefix for this sample is", currprefix))
     flog.info("Processing R1")
     currR1df <- currsampdf[which(currsampdf$Read == "R1"), ]
-    currR1df <- currR1df[order(currR1df$Lane) , ]
+    currR1df <- currR1df[order(currR1df$DatasetIDs) , ]
     fastqR1in <- paste(currR1df$Filepaths, collapse = " ")
     fastqR1out <- file.path(opt$destination, paste(paste(currprefix, "R1", sep = "_"), "fastq", "gz", sep = "."))
     joinR1cmd <- paste("cat", fastqR1in, ">", fastqR1out)
@@ -274,7 +282,7 @@ for (currsamp in OriPrefixes){
         flog.info("Processing R2")
         currR2df <- currsampdf[which(currsampdf$Read == "R2"), ]
         #currR2df <- currR2df[match(currR2df$DatasetIDs, dsorder) , ]
-        currR2df <- currR1df[order(currR2df$Lane) , ]
+        currR2df <- currR1df[order(currR2df$DatasetIDs) , ]
         fastqR2in <- paste(currR2df$Filepaths, collapse = " ")
         fastqR2out <- file.path(opt$destination, paste(paste(currprefix, "R2", sep = "_"), "fastq", "gz", sep = "."))
         joinR2cmd <- paste("cat", fastqR2in, ">", fastqR2out)
@@ -306,3 +314,4 @@ for (currsamp in OriPrefixes){
     }
 }
 flog.info("Joining of lanes completed. Thank you for using JAMSjoinlanes.")
+save.image(opt$projimage)
