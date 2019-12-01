@@ -1,9 +1,9 @@
-#' plot_Ordination(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, class_to_ignore = "N_A", ...)
+#' plot_Ordination(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plotcentroids = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, class_to_ignore = "N_A", ...)
 #'
-#' Creates ordination plots based on tSNE or PCA
+#' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plotcentroids = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, class_to_ignore = "N_A", ...){
 
     #Get appropriate object to work with
     obj <- mgseqobj
@@ -158,6 +158,11 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
         dford$Colours <- pData(currobj)[match(rownames(dford), rownames(pData(currobj))), which(colnames(pData(currobj)) == colourby)]
         dford$Size <- pData(currobj)[match(rownames(dford), rownames(pData(currobj))), which(colnames(pData(currobj)) == sizeby)]
         dford$Shape <- pData(currobj)[match(rownames(dford), rownames(pData(currobj))), which(colnames(pData(currobj)) == shapeby)]
+        dford$Pair <- pData(currobj)[match(rownames(dford), rownames(pData(currobj))), which(colnames(pData(currobj)) == pairby)]
+
+        #centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford, mean)
+        #colnames(centroids)[c(2,3)] <- c("meanx", "meany")
+        #dford <- left_join(dford, centroids)
 
         if (plot3D == TRUE) {
             aesthetic <- aes(x=PC1, y=PC2, z=PC3)
@@ -182,6 +187,8 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             p <- p + scale_shape_manual(values = dotsize:(dotsize + numsizes))
         }
 
+
+
         if (is.numeric(dford$Colours)){
             #Check if there is enough variance in the continuous data to plot a gradient
             if ((max(dford$Colours) - min(dford$Colours)) > 0){
@@ -195,6 +202,11 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
                 p <- p + scale_color_manual(values = groupcols)
             }
         }
+
+        if (!is.null(pairby)){
+            p <- p + aes(group = Pair) + geom_line()
+        }
+
 
         if (ellipse != FALSE) {
             if (algorithm == "PCA"){
@@ -211,6 +223,11 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
                 }
             }
         }
+
+
+        #if (plotcentroids == TRUE){
+        #    p <- p + geom_point(data = centroids, size = 5) + geom_segment(aes(x=dford$meanx, y=dford$meany, xend=dford$PC1, yend=dford$PC2))
+        #}
 
         if (!(is.null(plottit))){
             pcatit <- plottit
