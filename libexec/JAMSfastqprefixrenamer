@@ -239,8 +239,8 @@ if (opt$basespaceformat == TRUE){
     rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 2)[1] } )
     rawfastqsdf$OriPrefix <- sapply(1:nrow(rawfastqsdf), function(x) { paste(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_"))[1:((which(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")) == tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 4)[1])) - 1)], collapse = "_") } )
 } else {
-    flog.info("Still working on other input formats. Check for future versions.")
-    q()
+    rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 1)[1] } )
+    rawfastqsdf$OriPrefix <- sapply(1:nrow(rawfastqsdf), function(x) { paste(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_"))[1:((which(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")) == tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 2)[1])) - 1)], collapse = "_") } )
 }
 
 save.image(opt$projimage)
