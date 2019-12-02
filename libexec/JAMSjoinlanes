@@ -282,7 +282,7 @@ for (currsamp in OriPrefixes){
         flog.info("Processing R2")
         currR2df <- currsampdf[which(currsampdf$Read == "R2"), ]
         #currR2df <- currR2df[match(currR2df$DatasetIDs, dsorder) , ]
-        currR2df <- currR1df[order(currR2df$DatasetIDs) , ]
+        currR2df <- currR2df[order(currR2df$DatasetIDs) , ]
         fastqR2in <- paste(currR2df$Filepaths, collapse = " ")
         fastqR2out <- file.path(opt$destination, paste(paste(currprefix, "R2", sep = "_"), "fastq", "gz", sep = "."))
         joinR2cmd <- paste("cat", fastqR2in, ">", fastqR2out)
