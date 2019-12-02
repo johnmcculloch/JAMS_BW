@@ -334,7 +334,7 @@ opt$contigsdata <- left_join(opt$contigsdata, seqstats)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 
 #Functional annotation
-opt <- annotate_contigs(opt=opt)
+opt <- annotate_contigs(opt = opt)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 
 #Launch interproscan if on a cluster
