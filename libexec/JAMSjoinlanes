@@ -119,6 +119,8 @@ option_list <- list(
                 help = str_c("Path of directory where you want the merged reads (default: ", defopt$destination, ")")),
     make_option(c("-s", "--substitutionmap"), default = NULL, action="store",
                 help = str_c("Optional tab limited text file for sample name substitution in the format: oldname[TAB]newname")),
+    make_option(c("-a", "--append_to_prefix"), default = NULL, action="store",
+                help = str_c("Append this string to each original BaseSpace prefix. Example: -a PRJ4140dec2017B would rename BaseSpace prefix S1D12 to S1D12PRJ4140dec2017B. This is useful for increasing likelihood that JAMS prefixes are unique. If used with -s (substitution map), the string will be appended to the newname prefix.")),
     make_option(c("-b", "--basespace_projectID"), default = NULL, action="store",
                 help = str_c("Project ID for downloading reads from Illumina BaseSpace. If using the -b option, any reads from the -o input will be ignored. BaseSpace CLI must be installed. To install, see this: https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview")),
     make_option(c("-z", "--tarup"), default = defopt$tarup, action="store_true",
@@ -239,6 +241,11 @@ if (!(is.null(opt$substitutionmap))){
 } else {
     rawfastqsdf$Prefix <- rawfastqsdf$OriPrefix
 }
+
+if (!is.null(opt$append_to_prefix)){
+    rawfastqsdf$Prefix <- paste0(rawfastqsdf$Prefix, as.character(opt$append_to_prefix))
+}
+
 save.image(opt$projimage)
 
 if (!(is.null(opt$prefixlist))) {
