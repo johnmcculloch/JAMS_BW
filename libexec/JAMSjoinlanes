@@ -215,7 +215,7 @@ numunique <- sapply(1:folderdepth, function (y) { length(unique(sapply(1:length(
 tentative_appropriate_folder_depth <- max(which(numunique > 1))
 #test if dataset ID has less than the number of samples. If so, that is the dataset folder depth, else take the preceding one, as there is only a single dataset.
 numunique_test <- length(unique(sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = tentative_appropriate_folder_depth)[1] })))
-if (numunique_test == length(rawfastqpaths)){
+if (numunique_test >= (length(rawfastqpaths) / 2)){
     appropriate_folder_depth <- tentative_appropriate_folder_depth + 1
 } else {
     appropriate_folder_depth <- tentative_appropriate_folder_depth
