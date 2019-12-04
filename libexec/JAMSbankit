@@ -315,22 +315,33 @@ for (currPrefix in JAMSalphaorigindf$Prefix){
     #Bank jams, report and tarball file
     for (jf in c("JAMSfile", "Report", "JAMStarball")){
         target <- switch(jf, "JAMSfile" = opt$jamsfiles, "Report" = opt$reports, "JAMStarball" = opt$JAMStarballs)
-        if(file.exists(file.path(opt$origin, sampledf[, jf]))){
-            #Check if file with same name has already been banked.
-            if (file.exists(file.path(target, sampledf[, jf]))){
-                report2log(message = paste("Target file", (file.path(target, sampledf[, jf])), "already exists." ), warn = TRUE, opt = opt)
-                abortprefix <- TRUE
+        if (file.exists(file.path(opt$origin, sampledf[, jf]))){
+
+            #If not force banking, check if file exists.
+            if (opt$forcebanking != TRUE){
+                #Check if file with same name has already been banked.
+                if (file.exists(file.path(target, sampledf[, jf]))){
+                    report2log(message = paste("Target file", (file.path(target, sampledf[, jf])), "already exists." ), warn = TRUE, opt = opt)
+                    abortprefix <- TRUE
+                }
             } else {
+                report2log(message = paste("Forced banking requested for file", (file.path(target, sampledf[, jf]))), warn = TRUE, opt = opt)
+                abortprefix <- FALSE
+            }
+
+            if (abortprefix == FALSE){
                 currbankcmds <- append(paste(manipcmd, (file.path(opt$origin, sampledf[, jf])), (file.path(target, sampledf[, jf]))), currbankcmds)
-                if (!is.null(opt$chmod)){
-                    currbankcmds <- append(paste("chmod", as.character(opt$chmod), file.path(target, sampledf[, jf])), currbankcmds)
+                    if (!is.null(opt$chmod)){
+                        currbankcmds <- append(paste("chmod", as.character(opt$chmod), file.path(target, sampledf[, jf])), currbankcmds)
                 }
             }
+
         } else {
             report2log(message = paste("Could not find", sampledf[, jf]), warn = TRUE, opt = opt)
             abortprefix <- TRUE
         }
     }
+
     #Bank reads
     if (opt$ignorereads != TRUE){
         readsfilenames <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", sep = "_"), "tar", "gz", sep = ".")
