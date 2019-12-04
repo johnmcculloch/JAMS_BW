@@ -315,33 +315,35 @@ for (currPrefix in JAMSalphaorigindf$Prefix){
     #Bank jams, report and tarball file
     for (jf in c("JAMSfile", "Report", "JAMStarball")){
         target <- switch(jf, "JAMSfile" = opt$jamsfiles, "Report" = opt$reports, "JAMStarball" = opt$JAMStarballs)
-        if (file.exists(file.path(opt$origin, sampledf[, jf]))){
+        if(file.exists(file.path(opt$origin, sampledf[, jf]))){
+            #Check if file with same name has already been banked.
+            if (file.exists(file.path(target, sampledf[, jf]))){
+                report2log(message = paste("Target file", (file.path(target, sampledf[, jf])), "already exists." ), warn = TRUE, opt = opt)
 
-            #If not force banking, check if file exists.
-            if (opt$forcebanking != TRUE){
-                #Check if file with same name has already been banked.
-                if (file.exists(file.path(target, sampledf[, jf]))){
-                    report2log(message = paste("Target file", (file.path(target, sampledf[, jf])), "already exists." ), warn = TRUE, opt = opt)
-                    abortprefix <- TRUE
-                }
-            } else {
-                report2log(message = paste("Forced banking requested for file", (file.path(target, sampledf[, jf]))), warn = TRUE, opt = opt)
-                abortprefix <- FALSE
-            }
-
-            if (abortprefix == FALSE){
-                currbankcmds <- append(paste(manipcmd, (file.path(opt$origin, sampledf[, jf])), (file.path(target, sampledf[, jf]))), currbankcmds)
+                #Target file exists, but create banking command if forcing has been requested.
+                if (opt$forcebanking == TRUE){
+                    report2log(message = paste("Forced banking of file", (file.path(target, sampledf[, jf])), "requested." ), warn = TRUE, opt = opt)
+                    abortprefix <- FALSE
+                    currbankcmds <- append(paste(manipcmd, (file.path(opt$origin, sampledf[, jf])), (file.path(target, sampledf[, jf]))), currbankcmds)
                     if (!is.null(opt$chmod)){
                         currbankcmds <- append(paste("chmod", as.character(opt$chmod), file.path(target, sampledf[, jf])), currbankcmds)
+                    }
+                } else {
+                    abortprefix <- TRUE
+                }
+
+            } else {
+                #Ok, file does not exist, create banking command.
+                currbankcmds <- append(paste(manipcmd, (file.path(opt$origin, sampledf[, jf])), (file.path(target, sampledf[, jf]))), currbankcmds)
+                if (!is.null(opt$chmod)){
+                    currbankcmds <- append(paste("chmod", as.character(opt$chmod), file.path(target, sampledf[, jf])), currbankcmds)
                 }
             }
-
         } else {
             report2log(message = paste("Could not find", sampledf[, jf]), warn = TRUE, opt = opt)
             abortprefix <- TRUE
         }
     }
-
     #Bank reads
     if (opt$ignorereads != TRUE){
         readsfilenames <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", sep = "_"), "tar", "gz", sep = ".")
@@ -351,11 +353,24 @@ for (currPrefix in JAMSalphaorigindf$Prefix){
             currreadsfilename <- readsfilenames[which(file.exists(readsfilenameswithpaths) == TRUE)][1]
             destreadsfn <- file.path(opt$reads, currreadsfilename)
             if (!file.exists(destreadsfn)){
+                #Destination file does not exist, so bank.
                 currbankcmds <- append(paste(manipcmd, currreadsfile, destreadsfn), currbankcmds)
                 if (!is.null(opt$chmod)){
                     currbankcmds <- append(paste("chmod", as.character(opt$chmod), destreadsfn), currbankcmds)
                 }
+            } else {
+                #Destination file already exists, so omit or bank upon forcebanking request.
+                if (opt$forcebanking == TRUE){
+                    report2log(message = paste("Forced banking of file", (file.path(currreadsfile, sampledf[, jf])), "requested." ), warn = TRUE, opt = opt)
+                    currbankcmds <- append(paste(manipcmd, currreadsfile, destreadsfn), currbankcmds)
+                    if (!is.null(opt$chmod)){
+                        currbankcmds <- append(paste("chmod", as.character(opt$chmod), destreadsfn), currbankcmds)
+                    }
+                } else {
+                    report2log(message = paste("File", (file.path(currreadsfile, sampledf[, jf])), "already exists at destination, therefore banking will be omitted." ), warn = TRUE, opt = opt)
+                }
             }
+
         } else {
             report2log(message = paste("Unable to find any reads for sample", currPrefix), opt = opt)
         }
