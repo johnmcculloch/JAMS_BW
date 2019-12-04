@@ -595,7 +595,10 @@ UsedRAM <- RAMbytes_status()[]$ProportionAvail[1]
 appropriatenumcores <- max(1 , (min((opt$threads - 2), length(plotkinds))))
 #Not sure if this is the calculation, but will use it to temper RAM use at the cost of CPU use and time.
 appropriatenumcores <- round((appropriatenumcores * 1 - (UsedRAM)), 0)
-mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) }, mc.cores = appropriatenumcores)
+#mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) }, mc.cores = appropriatenumcores)
+sapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) })
+
+
 
 #Running extra script if required
 if (!is.null(opt$run_script)){
