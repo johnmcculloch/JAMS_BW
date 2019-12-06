@@ -2,7 +2,7 @@
 % Please edit documentation in R/export_expvec_to_XL.R
 \name{export_expvec_to_XL}
 \alias{export_expvec_to_XL}
-\title{export_expvec_to_XL(expvec=NULL, usefulexp=NULL, filename=NULL, asPPM=TRUE, asPA=FALSE, mgSeqnorm=FALSE, includemetadata=TRUE)}
+\title{export_expvec_to_XL(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, asPA = FALSE, mgSeqnorm = FALSE, includemetadata = TRUE)}
 \usage{
 export_expvec_to_XL(
   expvec = NULL,

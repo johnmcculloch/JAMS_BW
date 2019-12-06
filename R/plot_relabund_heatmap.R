@@ -341,18 +341,16 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                         sigmeas <- "padj_fdr"
                     }
 
-
                     if (cluster_samples_per_heatmap == FALSE){
                         flog.info("Clustering samples using entire matrix to obtain sample order for all heatmaps.")
                         #create a heatmap from the entire count matrix for getting column order.
-                        htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                        htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"))
 
                         fullheatmap_column_order <- column_order(htfull)
                         fullheatmap_column_dend <- column_dend(htfull)
                         #fullheatmap_row_order <- row_order(htfull)
                         #fullheatmap_row_dend <- row_dend(htfull)
                     }
-
 
                     if (is.null(showonlypbelow)){
                         if (nrow(countmat2) < topcats){

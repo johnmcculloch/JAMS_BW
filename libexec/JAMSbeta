@@ -548,6 +548,7 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 
 #Stop here and save if nothing else is required.
 if (!any(c((!is.null(opt$make_ordination_reports)), opt$make_exploratory_reports, opt$make_comparative_reports, opt$make_PA_reports, opt$make_correlation_reports, opt$make_alpha_reports))){
+    flog.info("Thank you for using JAMSbeta")
     q()
 }
 
@@ -597,7 +598,7 @@ print(RAMbytes_status())
 UsedRAM <- RAMbytes_status()[]$ProportionAvail[1]
 appropriatenumcores <- max(1 , (min((opt$threads - 2), length(plotkinds))))
 #Not sure if this is the calculation, but will use it to temper RAM use at the cost of CPU use and time.
-appropriatenumcores <- round((appropriatenumcores * 1 - (UsedRAM)), 0)
+appropriatenumcores <- round((appropriatenumcores * (1 - UsedRAM)), 0)
 mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) }, mc.cores = appropriatenumcores)
 #sapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) })
 
