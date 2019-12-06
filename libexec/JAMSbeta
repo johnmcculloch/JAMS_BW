@@ -527,6 +527,9 @@ if (opt$export_tables == TRUE){
     export_expvec_to_XL(expvec = expvec, filename = paste(paste(project, "counts", "PPM", sep = "_"), "xlsx", sep = "."))
 }
 
+#Export as spreadsheet
+export_expvec_to_XL(expvec = expvec, asPPM = TRUE, includemetadata = TRUE, filename = paste(paste(project, "counts", "PPM", sep = "_"), "xlsx", sep = "."))
+
 ########################################
 ## Make a colour dictionary for plots ##
 ########################################
@@ -544,7 +547,7 @@ if (any(c("metatranscriptome", "isolate") %in% pheno$JAMS_Run_type)){
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 
 #Stop here and save if nothing else is required.
-if (!any(c(opt$make_ordination_reports, opt$make_exploratory_reports, opt$make_comparative_reports, opt$make_PA_reports, opt$make_correlation_reports, opt$make_alpha_reports))){
+if (!any(c((!is.null(opt$make_ordination_reports)), opt$make_exploratory_reports, opt$make_comparative_reports, opt$make_PA_reports, opt$make_correlation_reports, opt$make_alpha_reports))){
     q()
 }
 
