@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_relabund_heatmap.R
 \name{plot_relabund_heatmap}
 \alias{plot_relabund_heatmap}
-\title{plot_relabund_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, colcategories = NULL, cluster_rows = FALSE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...)}
+\title{plot_relabund_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...)}
 \usage{
 plot_relabund_heatmap(
   mgseqobj = NULL,
@@ -14,8 +14,9 @@ plot_relabund_heatmap(
   invertbinaryorder = FALSE,
   ntop = NULL,
   ordercolsby = NULL,
+  cluster_samples_per_heatmap = FALSE,
   colcategories = NULL,
-  cluster_rows = FALSE,
+  cluster_rows = TRUE,
   subsetby = NULL,
   applyfilters = NULL,
   featmaxatleastPPM = 0,
@@ -35,7 +36,7 @@ plot_relabund_heatmap(
   mgSeqnorm = FALSE,
   cdict = NULL,
   maxnumheatmaps = NULL,
-  numthreads = 4,
+  numthreads = 1,
   nperm = 99,
   statsonlog = TRUE,
   ignoreunclassified = TRUE,
