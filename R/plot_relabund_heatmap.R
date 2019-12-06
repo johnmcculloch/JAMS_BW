@@ -1,9 +1,9 @@
-#' plot_relabund_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, colcategories = NULL, cluster_rows = FALSE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...)
+#' plot_relabund_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...)
 #'
 #' Plots relative abundance heatmaps annotated by the metadata
 #' @export
 
-plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, colcategories = NULL, cluster_rows = FALSE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...){
+plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...){
 
     #Get appropriate object to work with
     obj <- mgseqobj
@@ -332,6 +332,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                         } else {
                             adjustpval <- FALSE
                         }
+                        flog.info(paste("P-value adjustment set to auto. Upon adjustment using FDR, the proportion still below 0.05 after adjustment is", round((fracsigadj * 100), 1), "% of unadjusted p-values, so p-value adjustment is set to", as.character(adjustpval)))
                     }
 
                     if (("pval" %in% colnames(matstats)) && adjustpval != TRUE){
@@ -339,6 +340,19 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     } else if (("pval" %in% colnames(matstats)) && adjustpval == TRUE){
                         sigmeas <- "padj_fdr"
                     }
+
+
+                    if (cluster_samples_per_heatmap == FALSE){
+                        flog.info("Clustering samples using entire matrix to obtain sample order for all heatmaps.")
+                        #create a heatmap from the entire count matrix for getting column order.
+                        htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+
+                        fullheatmap_column_order <- column_order(htfull)
+                        fullheatmap_column_dend <- column_dend(htfull)
+                        #fullheatmap_row_order <- row_order(htfull)
+                        #fullheatmap_row_dend <- row_dend(htfull)
+                    }
+
 
                     if (is.null(showonlypbelow)){
                         if (nrow(countmat2) < topcats){
@@ -440,6 +454,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                 } else {
                     mhm <- length(matlist)
                 }
+
 
                 for (hm in 1:mhm){
                     #Regenerate the current matrix being plot from matrix list
@@ -640,10 +655,23 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                             gord <- hcmat$order
                             co <- append(co, colnames(gmat)[gord], after = length(co))
                         }
+
                         ht1 <- Heatmap(mathm, name = relabundscalename, cluster_columns = FALSE, column_order = co, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+
                     } else {
-                        ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+
+                        if (cluster_samples_per_heatmap == TRUE){
+
+                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+
+                        } else {
+
+                            #Coerce column order to the order obtained using the full countmatrix
+                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), cluster_columns = fullheatmap_column_dend, column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+
+                        }
                     }
+
                     #Make a genome completeness heatmap if in taxonomic space
                     if (analysis == "LKT"){
                         #Draw heatmap with completeness if taxonomic analysis
