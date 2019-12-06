@@ -155,7 +155,8 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
             }
             currobj <- filter_experiment(mgseqobj = obj, featmaxatleastPPM = featmaxatleastPPM, featcutoff = featcutoff, samplesToKeep = samplesToKeep, asPA = asPA, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
         } else {
-            stop("Unable to make heatmap with the current metadata for this comparison.")
+            flog.info("Unable to make heatmap with the current metadata for this comparison.")
+            return(NULL)
         }
 
         #There must be at least two samples for a heatmap and at least two features
@@ -262,6 +263,18 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                 if (matstats$Method[1] == "variance") {
                     matstats$Colour <- rep("black", nrow(matstats))
                     countmat2 <- countmat[rownames(matstats), ]
+
+                    if (cluster_samples_per_heatmap == FALSE){
+                        flog.info("Clustering samples using entire matrix to obtain sample order for all heatmaps.")
+                        #create a heatmap from the entire count matrix for getting column order.
+                        htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"))
+
+                        fullheatmap_column_order <- column_order(htfull)
+                        fullheatmap_column_dend <- column_dend(htfull)
+                        #fullheatmap_row_order <- row_order(htfull)
+                        #fullheatmap_row_dend <- row_dend(htfull)
+                    }
+
                     #Create a list of matrices each of maximum 50 rows
                     topcats <- min(nrow(countmat2), 50)
                     rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
@@ -344,7 +357,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     if (cluster_samples_per_heatmap == FALSE){
                         flog.info("Clustering samples using entire matrix to obtain sample order for all heatmaps.")
                         #create a heatmap from the entire count matrix for getting column order.
-                        htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"))
+                        htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"))
 
                         fullheatmap_column_order <- column_order(htfull)
                         fullheatmap_column_dend <- column_dend(htfull)
