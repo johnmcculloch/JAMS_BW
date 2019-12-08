@@ -547,7 +547,7 @@ if (any(c("metatranscriptome", "isolate") %in% pheno$JAMS_Run_type)){
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 
 #Stop here and save if nothing else is required.
-if (!any(c((!is.null(opt$make_ordination_reports)), opt$make_exploratory_reports, opt$make_comparative_reports, opt$make_PA_reports, opt$make_correlation_reports, opt$make_alpha_reports))){
+if (!any(c((!is.null(opt$make_ordination_reports)), (!is.null(opt$run_script)), opt$make_exploratory_reports, opt$make_comparative_reports, opt$make_PA_reports, opt$make_correlation_reports, opt$make_alpha_reports))){
     flog.info("Thank you for using JAMSbeta")
     q()
 }
