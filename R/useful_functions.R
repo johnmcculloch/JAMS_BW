@@ -23,6 +23,41 @@ Pct2log2PPM <- function(Pct){
 }
 
 
+#' convert_matrix_log2(mat = NULL, transformation = NULL)
+#'
+#' Wrapper for transforming a matrix to and from log2 formats
+#' @export
+
+convert_matrix_log2 <- function(mat = NULL, transformation = NULL){
+
+    if (!(transformation %in% c("to_log2", "from_log2"))){
+        stop("Please choose either \"to_log2\", or \"from_log2\" as transformation to apply to matrix.")
+    }
+
+    if (class(mat) != "matrix"){
+        stop("Object to transform must be a matrix.")
+    }
+
+
+    if (transformation == "to_log2"){
+        tfun <- function (x) {
+            fx <- log2(x + 1)
+            return(fx)
+        }
+    } else if (transformation == "from_log2"){
+        tfun <- function (x) {
+            fx <- ((2 ^ x) - 1)
+            return(fx)
+        }
+    }
+
+    transmat <- base::apply(mat, MARGIN = 2, FUN = tfun)
+
+    return(transmat)
+
+}
+
+
 #' detectHardwareResources()
 #' Generic function for getting number of CPUs and total memory on Biowulf or otherwise
 #' Returns a named vector with available CPUs and Memory in bytes
