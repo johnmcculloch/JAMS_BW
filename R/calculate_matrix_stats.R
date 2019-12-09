@@ -4,7 +4,7 @@
 #'
 #' @export
 
-calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, numthreads = 4, nperm = 99){
+calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, numthreads = 1, nperm = 99){
 
     #Test for silly stuff
     if ((stattype %in% c("binary", "permanova", "anova", "PA")) && (is.null(classesvector))){
@@ -45,9 +45,10 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
     if ((uselog == TRUE) && (statsonlog == FALSE)){
         flog.info("Transforming log2 counts back to raw counts for calculating stats.")
         #log2 transform if applicable
-        countmatrix2 <- sapply(1:ncol(countmatrix), function(x){ countmatrix[, x] <- ((2 ^ (countmatrix[, x])) - 1)} )
-        colnames(countmatrix2) <- colnames(countmatrix)
-        countmatrix <- countmatrix2
+        #countmatrix2 <- sapply(1:ncol(countmatrix), function(x){ countmatrix[, x] <- ((2 ^ (countmatrix[, x])) - 1)} )
+        #colnames(countmatrix2) <- colnames(countmatrix)
+        #countmatrix <- countmatrix2
+        countmatrix <- convert_matrix_log2(mat = countmatrix, transformation = "from_log2")
     }
 
     #Protect against rows with empty data
