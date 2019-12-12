@@ -100,7 +100,8 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
             return(l2fc)
         }
 
-        l2fc <- sapply(1:nrow(countmatrix), function(x) { getl2fc(countsvec = countmatrix[x, ], classesvector = classesvector, discretenames = discretenames, countsinlog = uselog, method = "median") })
+        #l2fc <- sapply(1:nrow(countmatrix), function(x) { getl2fc(countsvec = countmatrix[x, ], classesvector = classesvector, discretenames = discretenames, countsinlog = uselog, method = "median") })
+        l2fc <- sapply(1:nrow(countmatrix), function(x) { getl2fc(countsvec = countmatrix[x, ], classesvector = classesvector, discretenames = discretenames, countsinlog = uselog, method = "mean") })
 
         if (invertbinaryorder == TRUE){
             l2fc <- (l2fc * -1)
