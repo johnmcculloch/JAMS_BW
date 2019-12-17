@@ -38,7 +38,6 @@ convert_matrix_log2 <- function(mat = NULL, transformation = NULL){
         stop("Object to transform must be a matrix.")
     }
 
-
     if (transformation == "to_log2"){
         tfun <- function (x) {
             fx <- log2(x + 1)
