@@ -388,7 +388,7 @@ if (adjustmetadata == TRUE){
     #See if there are reads data in list.data, and analyze reads if there is
     if (length(grep("_readstats", names(list.data))) > 0){
         flog.info("Found sequencing read assembly data in jams objects. Will incorporate read and assembly information.")
-        opt$doreads = TRUE
+        opt$doreads <- TRUE
         # Set minimum number of Gb filter to 0 if not specified
         flog.info(paste("Will not include any sample with less than", opt$minGbNAHS, "Gbp of usable data."))
         # Set minimum percentage assembly filter to 0 if not specified
@@ -412,8 +412,10 @@ if (adjustmetadata == TRUE){
     opt <- adjust_phenotable(opt = opt, list.data = list.data, addtaxlevelstoisolates = c("Genus", "LKT"), class_to_ignore = opt$class_to_ignore)
 
     #Get rid of samples with not enough data
-    opt$phenotable <- subset(opt$phenotable, GbNAHS >= opt$minGbNAHS)
-    opt$phenotable <- subset(opt$phenotable, PctAss >= opt$minPctAssembly)
+    if (opt$doreads == TRUE){
+        opt$phenotable <- subset(opt$phenotable, GbNAHS >= opt$minGbNAHS)
+        opt$phenotable <- subset(opt$phenotable, PctAss >= opt$minPctAssembly)
+    }
 
     #Define kinds of variables
     variable_list <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenotable = opt$phenotable, maxclass = opt$maxnumclasses, maxsubclass = 6, class_to_ignore = opt$class_to_ignore)
@@ -456,6 +458,7 @@ if (!exists("expvec")){
     #Make MetagenomeSeq-style experiments
     flog.info("Making metagenomeSeq MRexperiment objects")
     expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data)
+    #expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data, minPctFromCtg = 0)
 
     IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 
