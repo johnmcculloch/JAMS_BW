@@ -192,7 +192,9 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                 rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]
             } else {
                 #get genome completeness for taxonomic objects
-                genomecompletenessdf <- get_genome_completeness(pheno = pData(currobj), list.data = list.data)
+                if (!is.null(genomecompleteness)){
+                    genomecompletenessdf <- get_genome_completeness(pheno = pData(currobj), list.data = list.data)
+                }
             }
             matrixSamples <- colnames(countmat)
             matrixRows <- rownames(countmat)
@@ -576,7 +578,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     #Get genome completeness hmdf if in taxonomic space
                     ht1fs <- 10
                     hm1tit <- plotit
-                    if (analysis == "LKT"){
+                    if (all(c((!is.null(genomecompleteness)), (analysis == "LKT")))){
                         gchmdf <- genomecompletenessdf[rownames(mathm), colnames(mathm)]
                         gchmdf <- as.matrix(gchmdf)
                         gchmdf <- gchmdf * 100
@@ -684,7 +686,7 @@ plot_relabund_heatmap <- function(mgseqobj = NULL, glomby = NULL, heatpalette = 
                     }
 
                     #Make a genome completeness heatmap if in taxonomic space
-                    if (analysis == "LKT"){
+                    if (all(c((!is.null(genomecompleteness)), (analysis == "LKT")))){
                         #Draw heatmap with completeness if taxonomic analysis
                         GCheatmapCols <- colorRamp2(c(0, 100, 200, 300, 400), c("white", "forestgreen", "blue", "firebrick1", "black"))
                         GCha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
