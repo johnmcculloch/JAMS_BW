@@ -1,16 +1,16 @@
-#' plot_relabund_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...)
+#' plot_relabund_heatmap_mgseq(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...)
 #'
 #' Plots relative abundance heatmaps annotated by the metadata
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featcutoff = c(0, 0), PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, GenomeCompletenessCutoff = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...){
+plot_relabund_heatmap_mgseq <- function(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...){
 
-    if (as.character(class(ExpObj)) != "SummarizedExperiment"){
-        stop("This function can only take a SummarizedExperiment object as input. For using a metagenomeSeq object (deprecated), please use plot_relabund_heatmap_mgseq.")
+    if (as.character(class(mgseqobj)) != "MRexperiment"){
+        stop("This function can only take a MetagenomeSeq object as input. For using a SummarizedExperiment object (preferred), please use plot_relabund_heatmap")
     }
 
     #Get appropriate object to work with
-    obj <- ExpObj
+    obj <- mgseqobj
 
     #Exclude samples and features if specified
     if (!(is.null(samplesToKeep))){
@@ -25,13 +25,12 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
     analysisname <- analysis
 
     if (!(is.null(glomby))){
-        stop("This feature is currently being implemented. Please check back later. I apologise for the inconvenience.")
-        #obj <- agglomerate_features(mgseqobj = obj, glomby = glomby)
-        #if (analysis != "LKT"){
-        #    analysisname <- attr(obj, "analysis")
-        #} else {
-        #    analysisname <- glomby
-        #}
+        obj <- agglomerate_features(mgseqobj = obj, glomby = glomby)
+        if (analysis != "LKT"){
+            analysisname <- attr(obj, "analysis")
+        } else {
+            analysisname <- glomby
+        }
     }
 
     #Test for silly stuff
@@ -43,7 +42,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
         if (applyfilters == "stringent"){
             if (analysis == "LKT"){
                 featcutoff <- c(2000, 15)
-                GenomeCompletenessCutoff <- c(30, 10)
+                genomecompleteness <- 0.3
                 minl2fc <- 2
             } else {
                 featcutoff <- c(50, 15)
@@ -52,19 +51,24 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
             }
         } else if (applyfilters == "moderate"){
             if (analysis == "LKT"){
-                featcutoff <- c(250, 5)
-                GenomeCompletenessCutoff <- c(10, 1)
-                minl2fc <- 1
+                featcutoff <- c(500, 10)
+                genomecompleteness <- 0.1
+                minl2fc <- 1.5
             } else {
                 featcutoff <- c(10, 5)
-                minl2fc <- 1
+                genomecompleteness <- NULL
+                minl2fc <- 2
             }
         }
     }
 
-    if ((analysis != "LKT") && (!(is.null(GenomeCompletenessCutoff)))){
+    if ((analysis != "LKT") && (!(is.null(genomecompleteness)))){
         warning("Genome completeness only makes sense for taxa. Please choose a taxonomic (non functional) analysis.")
-        GenomeCompletenessCutoff <- NULL
+        genomecompleteness <- NULL
+    }
+
+    if ((!(is.null(genomecompleteness))) && (is.null(list.data))){
+        stop("Genome completeness can only be obtained by supplying a list.data object.")
     }
 
     #Fix metadata classes and remove classes to ignore, if present
@@ -73,10 +77,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
     } else {
         variables_to_fix <- subsetby
     }
-    obj <- suppressWarnings(filter_sample_by_class_to_ignore(SEobj = obj, variables = variables_to_fix, class_to_ignore = class_to_ignore))
+    obj <- suppressWarnings(filter_sample_by_class_to_ignore(mgseqobj = obj, variables = variables_to_fix, class_to_ignore = class_to_ignore))
 
     if (!(is.null(subsetby))){
-        subset_points <- sort(unique(((obj)[, which(colnames((obj)) == subsetby)])))
+        subset_points <- sort(unique((pData(obj)[, which(colnames(pData(obj)) == subsetby)])))
     } else {
         subset_points <- "none"
     }
@@ -90,18 +94,18 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
     #subset by metadata column
     for (sp in 1:length(subset_points)){
         if (!(is.null(subsetby))){
-            samplesToKeep <- rownames((obj))[which(((obj)[ , subsetby]) == subset_points[sp])]
+            samplesToKeep <- which((pData(obj)[ , which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])
             flog.info(paste("Plotting within", subset_points[sp]))
             colcategories <- colcategories[!(colcategories %in% subsetby)]
             subsetname <- subset_points[sp]
         } else {
-            samplesToKeep <- rownames((obj))
+            samplesToKeep <- rownames(pData(obj))
             subsetname <- "no_sub"
         }
 
         #See if there are enough samples and features to go ahead
         proceed <- TRUE
-        curr_pt <- (obj)[samplesToKeep, ]
+        curr_pt <- pData(obj)[samplesToKeep, ]
 
         if ((dim(curr_pt)[1] * dim(curr_pt)[2]) < 4){
             #There are less than 4 cells, a heatmap is meaningless.
@@ -119,50 +123,48 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
         }
 
         if (proceed){
-            filtermsg <- NULL
             #Discard features which do not match certain criteria
             if (!(is.null(featcutoff))){
                 thresholdPPM <- featcutoff[1]
                 sampcutoffpct <- min(featcutoff[2], 100)
-                filtermsg <- paste("Feature must be >", thresholdPPM, "PPM in at least ", sampcutoffpct, "% of samples", sep = "")
+                cutoffmsg <- paste("Feature must be >", thresholdPPM, "PPM in at least ", sampcutoffpct, "% of samples", sep = "")
             } else {
-                filtermsg <- NULL
+                cutoffmsg <- "Feature must be > 0 PPM in at least 0% of samples"
                 featcutoff <- c(0, 0)
             }
 
-            if (!(is.null(PctFromCtgscutoff))){
-                thresholdPctFromCtgs <- PctFromCtgscutoff[1]
-                sampcutoffpctPctFromCtgs <- min(PctFromCtgscutoff[2], 100)
-                filtermsg <- paste(filtermsg, (paste("Taxonomy information must come from >", sampcutoffpctPctFromCtgs, "% contigs in at least ", sampcutoffpctPctFromCtgs, "% of samples", sep = "")), sep = "\n")
-            }
-
-            if (!(is.null(GenomeCompletenessCutoff))){
-                thresholdGenomeCompleteness <- GenomeCompletenessCutoff[1]
-                sampcutoffpctGenomeCompleteness <- min(GenomeCompletenessCutoff[2], 100)
-                filtermsg <- paste(filtermsg, (paste("Taxon genome completeness must be >", thresholdGenomeCompleteness, "% in at least ", sampcutoffpctGenomeCompleteness, "% of samples", sep = "")), sep = "\n")
-            }
-
-            hmtypemsg <- "Relative Abundance Heatmap"
-            asPA <- FALSE
-            hmasPA <- FALSE
-            if (hmtype == "exploratory"){
-                stattype <- "variance"
-                if (is.null(ntop)){
-                    ntop <- 50
-                }
+            if (all(c((!(is.null(featmaxatleastPPM))), (featmaxatleastPPM > 0)))) {
+                minPPMmsg <- paste("Highest feature must be >", featmaxatleastPPM, "PPM", sep = " ")
             } else {
-                stattype <- "auto"
+                minPPMmsg <- NULL
+                featmaxatleastPPM <- 0
             }
 
-            currobj <- filter_experiment(ExpObj = obj, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, asPPM = TRUE, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
-
+            if (hmtype == "PA"){
+                hmtypemsg <- "Presence/Absence Heatmap"
+                asPA <- hmasPA
+                stattype <- "PA"
+            } else {
+                hmtypemsg <- "Relative Abundance Heatmap"
+                asPA <- FALSE
+                hmasPA <- FALSE
+                if (hmtype != "comparative"){
+                    stattype <- "variance"
+                    if (is.null(ntop)){
+                        ntop <- 50
+                    }
+                } else {
+                    stattype <- "auto"
+                }
+            }
+            currobj <- filter_experiment(mgseqobj = obj, featmaxatleastPPM = featmaxatleastPPM, featcutoff = featcutoff, samplesToKeep = samplesToKeep, asPA = asPA, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
         } else {
             flog.info("Unable to make heatmap with the current metadata for this comparison.")
             return(NULL)
         }
 
         #There must be at least two samples for a heatmap and at least two features
-        if (((dim((currobj))[1] * dim((currobj))[2]) >= 4)){
+        if (((dim(pData(currobj))[1] * dim(pData(currobj))[2]) >= 4)){
 
             #Compose an appropriate title for the plot
             if (length(unique(subset_points)) > 1){
@@ -175,7 +177,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
             }
 
             #Get counts matrix
-            countmat <- as.matrix(assays(currobj)$BaseCounts)
+            countmat <- MRcounts(currobj, norm = FALSE, log = !(asPA))
 
             #Protect against rows with empty data
             rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
@@ -189,12 +191,27 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
 
             #Rename rows to include description if not taxonomic data
             if (analysis != "LKT"){
-                feattable <- rowData(currobj)
+                feattable <- fData(currobj)
                 feattable$Feature <- paste(feattable$Accession, feattable$Description, sep = "-")
                 rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]
+            } else {
+                #get genome completeness for taxonomic objects
+                if (!is.null(genomecompleteness)){
+                    genomecompletenessdf <- get_genome_completeness(pheno = pData(currobj), list.data = list.data)
+                }
             }
             matrixSamples <- colnames(countmat)
             matrixRows <- rownames(countmat)
+
+            #Discard taxa below required level of completeness
+            if (!(is.null(genomecompleteness))){
+                flog.info(paste("Genome completeness must be", genomecompleteness, "in at least one sample"))
+                featuresToKeep2 <- rownames(genomecompletenessdf)[which(rowMax(as.matrix(genomecompletenessdf)) >= genomecompleteness)]
+                countmat <- countmat[(rownames(countmat)[(rownames(countmat) %in% featuresToKeep2)]), ]
+                completenessmsg <- paste("Genome completeness >", genomecompleteness)
+            } else {
+                completenessmsg <- NULL
+            }
 
             topcats <- nrow(countmat)
             if (!(is.null(ntop))) {
@@ -206,9 +223,8 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                 matstats <- calculate_matrix_stats(countmatrix = countmat, stattype = "variance")
                 #Bank raw stats
                 matstatsbank <- as.data.frame(matstats)
-                if ("GenomeCompleteness" %in% names(assays(currobj))){
+                if (!(is.null(genomecompleteness))){
                     matstatsbank$Taxa <- rownames(matstatsbank)
-                    genomecompletenessdf <- assays(currobj)$GenomeCompleteness
                     genomecompletenessdf$MedianGenomeComp <- rowMedians(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$SDGenomeComp <- rowSds(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
@@ -230,16 +246,15 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                 statmsg <- stattype
 
             } else {
-                cl <- (currobj)[ , which(colnames((currobj)) == compareby)]
+                cl <- pData(currobj)[ , which(colnames(pData(currobj)) == compareby)]
                 discretenames <- sort(unique(cl))
 
-                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = FALSE, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, nperm = nperm)
+                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = !(asPA), statsonlog = statsonlog, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, nperm = nperm)
 
                 #Bank raw stats
                 matstatsbank <- as.data.frame(matstats)
-                if ("GenomeCompleteness" %in% names(assays(currobj))){
+                if (!(is.null(genomecompleteness))){
                     matstatsbank$Taxa <- rownames(matstatsbank)
-                    genomecompletenessdf <- assays(currobj)$GenomeCompleteness
                     genomecompletenessdf$MedianGenomeComp <- rowMedians(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$SDGenomeComp <- rowSds(as.matrix(genomecompletenessdf))
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
@@ -254,18 +269,16 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                 if (matstats$Method[1] == "variance") {
                     matstats$Colour <- rep("black", nrow(matstats))
                     countmat2 <- countmat[rownames(matstats), ]
-                    #Transform to log2 space
-                    countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
 
-                    if (any(c(cluster_samples_per_heatmap, cluster_features_per_heatmap))){
-                        flog.info("Clustering samples and features using entire matrix to obtain sample and feature order for all heatmaps.")
+                    if (cluster_samples_per_heatmap == FALSE){
+                        flog.info("Clustering samples using entire matrix to obtain sample order for all heatmaps.")
                         #create a heatmap from the entire count matrix for getting column order.
                         htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"))
 
                         fullheatmap_column_order <- column_order(htfull)
                         fullheatmap_column_dend <- column_dend(htfull)
-                        fullheatmap_row_order <- row_order(htfull)
-                        fullheatmap_row_dend <- row_dend(htfull)
+                        #fullheatmap_row_order <- row_order(htfull)
+                        #fullheatmap_row_dend <- row_dend(htfull)
                     }
 
                     #Create a list of matrices each of maximum 50 rows
@@ -328,20 +341,6 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                     l2fcmeaning <- paste("Positive l2fc means increased in", discretenames[1])
                     countmat2 <- as.matrix(countmat[rownames(matstats), ])
 
-                    if (any(c(cluster_samples_per_heatmap, cluster_features_per_heatmap))){
-                        flog.info("Clustering samples and features using entire matrix to obtain sample and feature order for all heatmaps.")
-                        #create a heatmap from the entire count matrix for getting column order.
-                        htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"))
-
-                        fullheatmap_column_order <- column_order(htfull)
-                        fullheatmap_column_dend <- column_dend(htfull)
-                        fullheatmap_row_order <- row_order(htfull)
-                        fullheatmap_row_dend <- row_dend(htfull)
-                    }
-
-                    #Transform to log2 space
-                    countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
-
                     #If adjustpval is set to auto, then find out which is best and re-set it to either TRUE or FALSE
                     if (("pval" %in% colnames(matstats)) && adjustpval == "auto"){
                         propsigadj <- length(which(matstats$padj_fdr < 0.05)) / length(matstats$padj_fdr)
@@ -359,6 +358,17 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                         sigmeas <- "pval"
                     } else if (("pval" %in% colnames(matstats)) && adjustpval == TRUE){
                         sigmeas <- "padj_fdr"
+                    }
+
+                    if (cluster_samples_per_heatmap == FALSE){
+                        flog.info("Clustering samples using entire matrix to obtain sample order for all heatmaps.")
+                        #create a heatmap from the entire count matrix for getting column order.
+                        htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"))
+
+                        fullheatmap_column_order <- column_order(htfull)
+                        fullheatmap_column_dend <- column_dend(htfull)
+                        #fullheatmap_row_order <- row_order(htfull)
+                        #fullheatmap_row_dend <- row_dend(htfull)
                     }
 
                     if (is.null(showonlypbelow)){
@@ -427,7 +437,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                             #matlist<-list(countmat2[1:allIhave, ])
                             #rowlblcol_list<-list(matstats$Colour[1:allIhave])
                             #Report nothing was found
-                            matlist <- NULL
+                            matlist<-NULL
                             if (!(is.na(matstats$Method[1]))) {
                                 if (matstats$Method[1] == "MannWhitneyWilcoxon") {
                                     stattit <- c(paste(sigmeas, "<", showonlypbelow, "different between"), paste(compareby, "using MannWhitneyWilcoxon"))
@@ -475,10 +485,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                     fontsizey <- min(6, round((((-1 / 150) * (nrow(mathm))) + 1) * 6, 0))
                     fontsizex <- as.numeric(unlist(round((((-1 / 150) * (ncol(mathm))) + 1) * 5, 0)))
 
-                    hmdf <- as.data.frame(matrix(data = 0, nrow = nrow(colData(currobj)), ncol = length(colcategories)))
+                    hmdf <- as.data.frame(matrix(data = 0, nrow = nrow(pData(currobj)), ncol = length(colcategories)))
                     cores <- vector("list", length = length(colcategories))
                     for (g in 1:length(colcategories)){
-                        hmdf[ , g] <- colData(currobj)[ , which(colnames(colData(currobj)) == colcategories[g])]
+                        hmdf[ , g] <- pData(currobj)[ , which(colnames(pData(currobj)) == colcategories[g])]
                         colnames(hmdf)[g] <- colcategories[g]
 
                         #Test if variable can be coerced to numeric
@@ -508,45 +518,49 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                         names(cores)[g] <- colcategories[g]
                     }
 
-                    hmasPA <- FALSE
-                    #Make colour scale for relabund heatmap
-                    if ( hmasPA == FALSE ) {
-                        #This is the colour spectrum we are aiming to span
-                        PctHmColours <- c("blue4", "blue", "slategray1", "khaki", "orange", "tomato", "red", "magenta2", "magenta4")
-
-                        if (analysis == "LKT"){
-                            PctBreakPts <- c(0.0001, 0.001, 0.1, 1, 2.5, 5, 10, 50, 100)
-                            RelabundBreakPts <- signif(PctBreakPts, digits = 3)
-                            relabundscalename <- "Relative Abundance (%)"
-                            RelabundBreakPtsLbls <- as.character(paste0(RelabundBreakPts, "%"))
-                            HMrelabundBreaks <- Pct2log2PPM(PctBreakPts)
-                        } else {
-                            #Let us see what the distribution looks like to fit it to the colour spectrum
-                            #Transform to PPM
-                            quantprobs <- round(((2:(length(PctHmColours) - 1)) * (1 / length(PctHmColours))), 1)
-                            #quantprobs <- c(0.10, 0.20, 0.35, 0.50, 0.85, 0.95, 0.99)
-                            nonlogmat <- convert_matrix_log2(mat = mathm, transformation = "from_log2")
-                            #Transform to get quantiles
-                            countmatdistrib <- apply(nonlogmat, function (x) { quantile(x, probs = quantprobs) }, MARGIN = 2)
-                            #take median values of these
-                            medpoints <- rowMedians(countmatdistrib)
-                            PPMrelabundBreaks <- c(0, medpoints, max(nonlogmat))
-                            HMrelabundBreaks <- log2(PPMrelabundBreaks + 1)
-                            RelabundBreakPts <- PPMrelabundBreaks
-                            relabundscalename <- "Parts Per Million"
-                            RelabundBreakPtsLbls <- as.character(paste(RelabundBreakPts, "PPM"))
-                        }
-                        relabundheatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
+                    if (heatpalette == "sequential"){
+                        heatmapCols <- colorRampPalette((brewer.pal(9, "YlOrRd")))(50)
+                    } else if (heatpalette == "diverging"){
+                        heatmapCols <- colorRampPalette(rev(brewer.pal(9, "RdYlBu")))(50)
                     } else {
-                        relabundheatmapCols <- colorRamp2(c(0, 1), c("blue4", "red"))
-                        relabundscalename <- "Pres/Abs"
+                        if ( hmasPA == FALSE ) {
+                            #This is the colour spectrum we are aiming to span
+                            PctHmColours <- c("blue4", "blue", "slategray1", "khaki", "orange", "tomato", "red", "magenta2", "magenta4")
+
+                            if (analysis == "LKT"){
+                                PctBreakPts <- c(0.0001, 0.001, 0.1, 1, 2.5, 5, 10, 50, 100)
+                                RelabundBreakPts <- signif(PctBreakPts, digits = 3)
+                                relabundscalename <- "Relative Abundance (%)"
+                                RelabundBreakPtsLbls <- as.character(paste0(RelabundBreakPts, "%"))
+                                HMrelabundBreaks <- Pct2log2PPM(PctBreakPts)
+                            } else {
+                                #Let us see what the distribution looks like to fit it to the colour spectrum
+                                #Transform to PPM
+                                quantprobs <- round(((2:(length(PctHmColours) - 1)) * (1 / length(PctHmColours))), 1)
+                                #quantprobs <- c(0.10, 0.20, 0.35, 0.50, 0.85, 0.95, 0.99)
+                                nonlogmat <- round(((2 ^ (mathm)) - 1), 0)
+                                #Transform tget quantiles
+                                countmatdistrib <- apply(nonlogmat, function (x) {quantile(x, probs = quantprobs) }, MARGIN = 2)
+                                #take median values of these
+                                medpoints <- rowMedians(countmatdistrib)
+                                PPMrelabundBreaks <- c(0, medpoints, max(nonlogmat))
+                                HMrelabundBreaks <- log2(PPMrelabundBreaks + 1)
+                                RelabundBreakPts <- PPMrelabundBreaks
+                                relabundscalename <- "Parts Per Million"
+                                RelabundBreakPtsLbls <- as.character(paste(RelabundBreakPts, "PPM"))
+                            }
+                            heatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
+                        } else {
+                            heatmapCols <- colorRamp2(c(0, 1), c("blue4", "red"))
+                            relabundscalename <- "Pres/Abs"
+                        }
                     }
 
                     ha_column <- HeatmapAnnotation(df = hmdf, col = cores, annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"))
 
                     #Build plot title
                     nsampmsg <- paste0("Number of samples in heatmap = ", ncol(mathm))
-                    msgs <- c(maintit, stattit, filtermsg, nsampmsg)
+                    msgs <- c(maintit, stattit, cutoffmsg, minPPMmsg, completenessmsg, nsampmsg)
                     plotit <- paste0(msgs, collapse = "\n")
 
                     if (all(c((any(!(c(is.null(minl2fc), is.null(maxl2fc))))), ("l2fc" %in% colnames(stathm))))){
@@ -568,17 +582,22 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                     #Get genome completeness hmdf if in taxonomic space
                     ht1fs <- 10
                     hm1tit <- plotit
-                    if ("GenomeCompleteness" %in% names(assays(currobj))){
+                    if (all(c((!is.null(genomecompleteness)), (analysis == "LKT")))){
                         gchmdf <- genomecompletenessdf[rownames(mathm), colnames(mathm)]
                         gchmdf <- as.matrix(gchmdf)
                         gchmdf <- gchmdf * 100
-                        #Cap genome completeness to 400% max, to preserve scale across heatmaps
+                        #Cull genome completeness to 400% max, to preserve scale across heatmaps
                         gchmdf[which(gchmdf[] > 400)] <- 400
                         if (ncol(mathm) < 51){
                             ht1fs <- 7
                             dualHMtit <- plotit
                             hm1tit <- "Relative Abundance"
                         }
+                    }
+
+                    if (scaled == TRUE) {
+                        countmat2 <- t(apply(countmat2, 1, scale))
+                        relabundscalename <- "scaling"
                     }
 
                     #Include row annotations for pvalues and l2fc if required.
@@ -592,7 +611,6 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                         l2fcamplitudeculled[which(l2fcamplitudeculled == -Inf)] <- (maximuml2fctoshow * -1)
                         l2fcamplitudeshifted <- l2fcamplitudeculled + 15 #Offset amplitude to contain only positive values, maintaining their relativity
                     }
-
                     #Include annotations for Odds Ratio if PA
                     if ("oddsRatio" %in% colnames(stathm)){
                         ORamplitude <- paste0(round(stathm$oddsRatio, 2), paste0("(", paste(round(stathm$lower, 2), round(stathm$upper, 2), sep = "-"), ")"))
@@ -645,9 +663,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                     #Determine column order explicitly if required and draw heatmap
                     if (!(is.null(ordercolsby))){
                         co <- NULL
-                        colgroups <- sort(unique(colData(currobj)[, which(colnames(colData(currobj)) == ordercolsby)]))
+                        colgroups <- sort(unique(pData(currobj)[, which(colnames(pData(currobj)) == ordercolsby)]))
                         for(w in 1:length(unique(colgroups))){
-                            wantedsamp <- colData(currobj)[]$Sample[which(colData(currobj)[, ordercolsby] == colgroups[w])]
+                            wantedsamp <- pData(currobj)[]$Sample[which(pData(currobj)[, ordercolsby] == colgroups[w])]
                             #get temporary matrix with only one group to calculate distance
                             gmat <- mathm[, wantedsamp]
                             hcmat <- hclust(dist(t(gmat)))
@@ -655,24 +673,24 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                             co <- append(co, colnames(gmat)[gord], after = length(co))
                         }
 
-                        ht1 <- Heatmap(mathm, name = relabundscalename, cluster_columns = FALSE, column_order = co, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                        ht1 <- Heatmap(mathm, name = relabundscalename, cluster_columns = FALSE, column_order = co, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side="left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
 
                     } else {
 
                         if (cluster_samples_per_heatmap == TRUE){
 
-                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
 
                         } else {
 
                             #Coerce column order to the order obtained using the full countmatrix
-                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), cluster_columns = fullheatmap_column_dend, column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = heatmapCols, column_names_gp = gpar(fontsize = fontsizex), cluster_columns = fullheatmap_column_dend, column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
 
                         }
                     }
 
                     #Make a genome completeness heatmap if in taxonomic space
-                    if ("GenomeCompleteness" %in% names(assays(currobj))){
+                    if (all(c((!is.null(genomecompleteness)), (analysis == "LKT")))){
                         #Draw heatmap with completeness if taxonomic analysis
                         GCheatmapCols <- colorRamp2(c(0, 100, 200, 300, 400), c("white", "forestgreen", "blue", "firebrick1", "black"))
                         GCha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
@@ -746,13 +764,13 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
             } #End conditional if there are heatmaps to plot from stats matrix
 
         } else {
-            if (ncol(colData(currobj)) < 2){
+            if (ncol(pData(currobj)) < 2){
                 #There is only one sample in subset, so nothing was done.
-                flog.info(paste(as.character(colnames(colData(currobj))[samplesToKeep]), "was the only sample within", subsetname, "subset. Must have at least two samples for a heatmap."))
+                flog.info(paste(as.character(colnames(pData(obj))[samplesToKeep]), "was the only sample within", subsetname, "subset. Must have at least two samples for a heatmap."))
             }
-            if (nrow(colData(currobj)) < 2){
+            if (nrow(pData(currobj)) < 2){
                 #There is only one sample in subset, so nothing was done.
-                flog.info(paste(as.character(rownames(assays(currobj)$BaseCounts)), "was the only feature within", subsetname, "subset. Must have at least two features for a heatmap."))
+                flog.info(paste(as.character(rownames(MRcounts(currobj))), "was the only feature within", subsetname, "subset. Must have at least two features for a heatmap."))
             }
         } #End conditional if there is more than a two samples and or two features in subset
 

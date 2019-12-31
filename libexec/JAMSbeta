@@ -458,7 +458,7 @@ if (!exists("expvec")){
     #Make MetagenomeSeq-style experiments
     flog.info("Making metagenomeSeq MRexperiment objects")
     expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data)
-    #expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data, minPctFromCtg = 0)
+    #expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data)
 
     IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 

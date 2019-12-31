@@ -10,7 +10,7 @@ make_metagenomeSeq_experiments(
   onlyanalyses = NULL,
   minnumsampanalysis = NULL,
   minpropsampanalysis = 0.1,
-  minPctFromCtg = 20,
+  minPctFromCtg = NULL,
   minProbNumGenomes = NULL,
   restricttoLKTs = NULL,
   list.data = NULL

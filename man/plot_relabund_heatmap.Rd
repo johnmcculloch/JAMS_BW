@@ -2,11 +2,10 @@
 % Please edit documentation in R/plot_relabund_heatmap.R
 \name{plot_relabund_heatmap}
 \alias{plot_relabund_heatmap}
-\title{plot_relabund_heatmap(mgseqobj = NULL, glomby = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, genomecompleteness = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...)}
+\title{plot_relabund_heatmap(ExpObj = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featcutoff = c(0, 0), PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...)}
 \usage{
 plot_relabund_heatmap(
-  mgseqobj = NULL,
-  glomby = NULL,
+  ExpObj = NULL,
   heatpalette = "smart",
   hmtype = NULL,
   hmasPA = FALSE,
@@ -15,12 +14,15 @@ plot_relabund_heatmap(
   ntop = NULL,
   ordercolsby = NULL,
   cluster_samples_per_heatmap = FALSE,
+  cluster_features_per_heatmap = FALSE,
   colcategories = NULL,
   cluster_rows = TRUE,
   subsetby = NULL,
   applyfilters = NULL,
-  featmaxatleastPPM = 0,
   featcutoff = c(0, 0),
+  PPM_normalize_to_bases_sequenced = FALSE,
+  GenomeCompletenessCutoff = NULL,
+  PctFromCtgscutoff = NULL,
   samplesToKeep = NULL,
   featuresToKeep = NULL,
   adjustpval = FALSE,
@@ -29,7 +31,6 @@ plot_relabund_heatmap(
   showl2fc = TRUE,
   maxl2fc = NULL,
   minl2fc = NULL,
-  genomecompleteness = NULL,
   list.data = NULL,
   addtit = NULL,
   scaled = FALSE,
@@ -46,5 +47,5 @@ plot_relabund_heatmap(
 )
 }
 \description{
-Plots relative abundance heatmaps annotated by the metadata
+Plots relative abundance heatmaps annotated by the metadata using as input a SummarizedExperiment object
 }

@@ -2,19 +2,21 @@
 % Please edit documentation in R/filter_experiment.R
 \name{filter_experiment}
 \alias{filter_experiment}
-\title{filter_experiment(mgseqobj=NULL, featmaxatleastPPM=0, featcutoff=c(0, 0), samplesToKeep=NULL, featuresToKeep=NULL, asPA=FALSE, asPPM=TRUE, mgSeqnorm=FALSE)}
+\title{filter_experiment(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, mgSeqnorm = FALSE)}
 \usage{
 filter_experiment(
-  mgseqobj = NULL,
+  ExpObj = NULL,
   featmaxatleastPPM = 0,
   featcutoff = c(0, 0),
   samplesToKeep = NULL,
   featuresToKeep = NULL,
-  asPA = FALSE,
   asPPM = TRUE,
+  PPM_normalize_to_bases_sequenced = FALSE,
+  GenomeCompletenessCutoff = NULL,
+  PctFromCtgscutoff = NULL,
   mgSeqnorm = FALSE
 )
 }
 \description{
-Filters a metagenomeSeq object by several criteria.
+Filters a SummarizedExperiment or metagenomeSeq object by several criteria.
 }

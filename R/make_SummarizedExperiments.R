@@ -1,9 +1,11 @@
-#' make_metagenomeSeq_experiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, minPctFromCtg = NULL, minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL)
+#' make_SummarizedExperiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, minPctFromCtg = NULL, minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL)
 #'
-#' Makes MetagenomeSeq MRexperiments for every analysis that is possible to make given loaded jams files in list.data.
+#' Makes a SummarizedExperiment object for every analysis that is possible to make given loaded jams files in list.data.
 #' @export
 
-make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, minPctFromCtg = NULL, minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL){
+make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, list.data = NULL){
+
+    require(SummarizedExperiment)
 
     #Get data for features
     if (!is.null(onlysamples)){
@@ -56,7 +58,7 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
 
     if (is.null(restricttoLKTs)){
         #Start by making LKT experiment
-        flog.info("Making LKT MRexperiment")
+        flog.info("Making LKT SummarizedExperiment")
         LKTobjects <- paste(Samples, "LKTdose", sep="_")
         LKTdoses <- list.data[LKTobjects]
         names(LKTdoses) <- Samples
@@ -69,24 +71,6 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
         }
         LKTdosesall <- bind_rows(LKTdoses, .id = "id")
         colnames(LKTdosesall)[which(colnames(LKTdosesall) == "id")] <- "Sample"
-
-        #Apply filters if applicable
-        if (!is.null(minPctFromCtg)){
-            flog.info(paste0("For taxonomy, only taxa identified from reads at least ", minPctFromCtg, "% of which were assembled into contigs will be kept."))
-            SumAllBasesB4 <- sum(LKTdosesall$NumBases)
-            NTaxaB4 <- length(unique(LKTdosesall$LKT))
-            LKTdosesall <- subset(LKTdosesall, PctFromCtg >= minPctFromCtg)
-            SumAllBasesAftr <- sum(LKTdosesall$NumBases)
-            NTaxaAftr <- length(unique(LKTdosesall$LKT))
-            NTaxaDiscarded <- NTaxaB4 - NTaxaAftr
-            PctBasesDiscarded <- round((((SumAllBasesB4 - SumAllBasesAftr) / SumAllBasesB4) * 100), 2)
-            flog.info(paste0("A total of ", NTaxaDiscarded, " taxa were discarded, representing ", PctBasesDiscarded, "% of the total number of bases sequenced across all samples."))
-        }
-
-        #Apply filters if applicable
-        if (!is.null(minProbNumGenomes)){
-            LKTdosesall <- subset(LKTdosesall, ProbNumGenomes >= minProbNumGenomes)
-        }
 
         #Make tax table
         taxlvlspresent <- colnames(LKTdosesall)[colnames(LKTdosesall) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
@@ -106,22 +90,44 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
         cts <- spread(LKTallcounts, Sample, NumBases, fill = 0, drop = FALSE)
         rownames(cts) <- cts$LKT
         cts$LKT <- NULL
+        cts <- cts[order(rowSums(cts), decreasing = TRUE), ]
+        featureorder <- rownames(cts)
 
         sampleorder <- rownames(pheno2)
-        tt <- tt[rownames(cts), ]
+        tt <- tt[featureorder, ]
         cts <- cts[, sampleorder]
-
-        ##Create metagenomeSeq MRexperiment
-        phenotypeData <- AnnotatedDataFrame(pheno2)
-        ttdata <- AnnotatedDataFrame(tt)
-        mgseq <- newMRexperiment(cts, phenoData = phenotypeData, featureData = ttdata)
-
-        attr(mgseq, "analysis") <- "LKT"
 
         #Register the total number of NAHS bases sequenced for each sample
         TotBasesSamples <- colSums(cts)
+        TotalBasesSequenced <- t(as.matrix(TotBasesSamples))
+        rownames(TotalBasesSequenced) <- "NumBases"
 
-        expvec[[e]] <- mgseq
+        #Get percentage from contig matrix
+        LKTallPctFromCtg <- LKTdosesall[, c("Sample", "LKT", "PctFromCtg")]
+        #Be sure that data is not empty or redundant
+        LKTallPctFromCtg[is.na(LKTallPctFromCtg)] <- 0
+        LKTPctFromCtgcts <- spread(LKTallPctFromCtg, Sample, PctFromCtg, fill = 0, drop = FALSE)
+        rownames(LKTPctFromCtgcts) <- LKTPctFromCtgcts$LKT
+        LKTPctFromCtgcts$LKT <- NULL
+        LKTPctFromCtgcts <- LKTPctFromCtgcts[featureorder, sampleorder]
+
+        #Get genome completeness matrix
+        LKTallGenComp <- LKTdosesall[, c("Sample", "LKT", "ProbNumGenomes")]
+        #Be sure that data is not empty or redundant
+        LKTallGenComp[is.na(LKTallGenComp)] <- 0
+        LKTallGenCompcts <- spread(LKTallGenComp, Sample, ProbNumGenomes, fill = 0, drop = FALSE)
+        rownames(LKTallGenCompcts) <- LKTallGenCompcts$LKT
+        LKTallGenCompcts$LKT <- NULL
+        LKTallGenCompcts <- LKTallGenCompcts[featureorder, sampleorder]
+
+        assays <- list(cts, LKTPctFromCtgcts, LKTallGenCompcts)
+        names(assays) <- c("BaseCounts", "PctFromCtgs", "GenomeCompleteness")
+
+        SEobj <- SummarizedExperiment(assays = assays, rowData = tt, colData = pheno2)
+        metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
+        attr(SEobj, "analysis") <- "LKT"
+
+        expvec[[e]] <- SEobj
         names(expvec)[e] <- "LKT"
         e <- e + 1
     }
@@ -129,7 +135,7 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
     #Now, for the functional analyses
     for (a in 1:length(possibleanalyses)) {
         analysis <- possibleanalyses[a]
-        flog.info(paste("Making", analysis, "MRexperiment"))
+        flog.info(paste("Making", analysis, "SummarizedExperiment"))
 
         #subset doses to contain only the analysis wanted
         analysisdoses <- NULL
@@ -137,6 +143,8 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
 
         #Get names of Samples which have data for the analysis
         SamplesofInterest <- names(anallist)[which(sapply(1:length(anallist), function(x) { (analysis %in% anallist[[x]]) } ) == TRUE)]
+
+        cts <- NULL
 
         if (is.null(restricttoLKTs)){
             #Dose of each analysis is total number of bases attributed to it
@@ -170,8 +178,6 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
             }
         }
 
-        #Take into account that the phenotable might contain less samples
-        #phenoanal <- pheno2[SamplesofInterest, ]
         phenoanal <- pheno2
 
         featureall <- bind_rows(analysisdoses, .id = "id")
@@ -197,6 +203,7 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
             rownames(complementarycts) <- rownames(cts)
             cts <- cbind(cts, complementarycts)
         }
+        cts <- as.matrix(cts)
 
         ftt <- featureall[, c("Accession", "Description")]
         ftt <- ftt[!(duplicated(ftt$Accession)), ]
@@ -215,25 +222,28 @@ make_metagenomeSeq_experiments <- function(pheno = NULL, onlysamples = NULL,  on
             ftt$Description <- ftt$Class
         }
 
+        cts <- cts[order(rowSums(cts), decreasing = TRUE), ]
+        featureorder <- rownames(cts)
         sampleorder <- rownames(phenoanal)
-        ftt <- ftt[rownames(cts), ]
+        ftt <- ftt[featureorder, ]
         cts <- cts[, sampleorder]
 
-        ##Create metagenomeSeq MRexperiment
-        phenotypeData <- AnnotatedDataFrame(phenoanal)
-        ttdata <- AnnotatedDataFrame(ftt)
-        mgseq <- newMRexperiment(cts, phenoData = phenotypeData, featureData = ttdata)
+        assays <- list(cts)
+        names(assays) <- "BaseCounts"
 
-        attr(mgseq, "analysis") <- analysis
+        ##Create SummarizedExperiment
+        SEobj <- SummarizedExperiment(assays = assays, rowData = ftt, colData = phenoanal)
+        metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
+        attr(SEobj, "analysis") <- analysis
 
-        expvec[[e]] <- mgseq
+        expvec[[e]] <- SEobj
         names(expvec)[e] <- analysis
         e <- e + 1
 
         #Add an extra one if converting resfinder to antibiogram
         if (analysis == "resfinder"){
             flog.info("Converting resfinder to antibiogram")
-            expvec[[e]] <- make_antibiogram_experiment(expvec[["resfinder"]])
+            expvec[[e]] <- make_antibiogram_experiment(SEobjresfinder = expvec[["resfinder"]])
             names(expvec)[e] <- "antibiogram"
             e <- e + 1
         }

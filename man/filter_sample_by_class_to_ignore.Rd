@@ -2,14 +2,15 @@
 % Please edit documentation in R/filter_sample_by_class_to_ignore.R
 \name{filter_sample_by_class_to_ignore}
 \alias{filter_sample_by_class_to_ignore}
-\title{filter_sample_by_class_to_ignore(mgseqobj = NULL, variables = NULL, class_to_ignore = "N_A")}
+\title{filter_sample_by_class_to_ignore(SEobj = NULL, mgseqobj = NULL, variables = NULL, class_to_ignore = NULL)}
 \usage{
 filter_sample_by_class_to_ignore(
+  SEobj = NULL,
   mgseqobj = NULL,
   variables = NULL,
   class_to_ignore = NULL
 )
 }
 \description{
-Filters a metagenomeSeq object by several criteria.
+Filters a SummarizedExperiment or metagenomeSeq object by several criteria.
 }
