@@ -3,13 +3,13 @@
 #' JAMSalpha function
 #' @export
 
-trim_reads<-function(opt=NULL, discardleftoverSE=FALSE){
+trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18){
 
     #Check if reads are in tmpdir
-    if(opt$workdir != opt$sampledir){
-        readsworkdir<-file.path(opt$workdir, "reads")
+    if (opt$workdir != opt$sampledir){
+        readsworkdir <- file.path(opt$workdir, "reads")
     } else {
-        readsworkdir<-opt$readsdir
+        readsworkdir <- opt$readsdir
     }
     setwd(readsworkdir)
 
@@ -28,7 +28,6 @@ trim_reads<-function(opt=NULL, discardleftoverSE=FALSE){
         flog.info("Sequences are Illumina reads. Clipping adapters and quality trimming fastq reads.")
         #Trimmomatic options
         sliding=4
-        qual=18
         crop=0
         minlen=36
         trimmcommand<-"trimmomatic"
@@ -51,7 +50,7 @@ trim_reads<-function(opt=NULL, discardleftoverSE=FALSE){
             system(commandtorun)
             #delete unpaired1 and unpaired2
             file.remove(c(output.trim_unpaired1, output.trim_unpaired2))
-        
+
             #add output of what was trimmed to opt
             opt$trimreads<-c(output.trim1, output.trim2)
 

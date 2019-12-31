@@ -3,22 +3,22 @@
 #' JAMSalpha function
 #' @export
 
-get_feature_to_accession_table<-function(opt=NULL, iproanalysis=NULL){
+get_feature_to_accession_table <- function(opt = NULL, iproanalysis = NULL){
 
         flog.info(paste("Adding", iproanalysis, "signatures to featuredata."))
         #subset ipro to contain only applicable analysis
-        if(!(iproanalysis %in% c("Interpro", "GO"))){
-            iprointerest<-subset(opt$interproscanoutput, Analysis == iproanalysis)
-            accessioncol<-"Accession"
-            descriptioncol<-"Description"
+        if (!(iproanalysis %in% c("Interpro", "GO"))){
+            iprointerest <- subset(opt$interproscanoutput, Analysis == iproanalysis)
+            accessioncol <- "Accession"
+            descriptioncol <- "Description"
         } else {
-            iprointerest<-subset(opt$interproscanoutput, IproAcc != "none")
-            accessioncol<-"IproAcc"
-            descriptioncol<-"IproDesc"
+            iprointerest <- subset(opt$interproscanoutput, IproAcc != "none")
+            accessioncol <- "IproAcc"
+            descriptioncol <- "IproDesc"
         }
 
         if(iproanalysis != "GO"){
-            featsIwant<-sapply(unique(iprointerest[,"Feature"]), function (x) { paste0(sort(unique(iprointerest[which(iprointerest[,"Feature"] == x), accessioncol])), collapse="|")} )
+            featsIwant<-sapply(unique(iprointerest[, "Feature"]), function (x) { paste0(sort(unique(iprointerest[which(iprointerest[,"Feature"] == x), accessioncol])), collapse="|")} )
         } else {
             #get rid of information without GO terms
             iprointerest<-subset(iprointerest, GOterms != "none")

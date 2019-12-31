@@ -225,7 +225,7 @@ if (!(opt$analysis %in% c("metagenome", "metatranscriptome", "isolate", "isolate
 }
 
 #Fix path relativity
-fixrelpath <- function(JAMSpath=NULL){
+fixrelpath <- function(JAMSpath = NULL){
     require(R.utils)
     if (!(isAbsolutePath(JAMSpath))){
         fixedpath <- getAbsolutePath(JAMSpath)
