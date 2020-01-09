@@ -262,7 +262,7 @@ can_be_made_numeric <- function(x, cats_to_ignore = NULL){
 #' Given a pairwise correlation matrix, eliminate features which do not present an absolute correlation coefficient smaller than mincorrelcoeff with all other features other than itself.
 #'
 #' @export
- filter_correlations <- function(corrmat = NULL, mincorrelcoeff = NULL){
+filter_correlations <- function(corrmat = NULL, mincorrelcoeff = NULL){
 
      if(nrow(corrmat) != ncol(corrmat)){
          stop("Correlation matrix must have equal numbers of rows and columns.")
@@ -294,6 +294,7 @@ can_be_made_numeric <- function(x, cats_to_ignore = NULL){
  #' Safe way of either loading or saving an R workspace image. If argument workspaceimage is null, workspace image file will be searched for in opt (opt$projimage). If that is also NULL, saving or loading is aborted. If the fastSave package () is installed, multi-threaded loading or saving will be used. If opt is passed, number of CPUs will be set to opt$threads, trumping the threads argument.
  #'
  #' @export
+ 
 IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads = 8, operation = NULL, verbose = FALSE){
     if (is.null(workspaceimage)){
         workspaceimage <- opt$projimage

@@ -456,9 +456,10 @@ if (!exists("expvec")){
     Samples <- as.character(rownames(pheno))
 
     #Make MetagenomeSeq-style experiments
-    flog.info("Making metagenomeSeq MRexperiment objects")
-    expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data)
-    #expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data)
+    #flog.info("Making metagenomeSeq MRexperiment objects")
+    #expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data)
+    flog.info("Making SummarizedExperiments objects")
+    expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data)
 
     IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 
@@ -531,7 +532,7 @@ if (opt$export_tables == TRUE){
 }
 
 #Export as spreadsheet
-export_expvec_to_XL(expvec = expvec, asPPM = TRUE, includemetadata = TRUE, filename = paste(paste(project, "counts", "PPM", sep = "_"), "xlsx", sep = "."))
+#export_expvec_to_XL(expvec = expvec, asPPM = TRUE, includemetadata = TRUE, filename = paste(paste(project, "counts", "PPM", sep = "_"), "xlsx", sep = "."))
 
 ########################################
 ## Make a colour dictionary for plots ##
