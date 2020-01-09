@@ -461,8 +461,6 @@ if (!exists("expvec")){
     flog.info("Making SummarizedExperiments objects")
     expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data)
 
-    IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
-
 } else {
     #Expvec exists. Either do nothing, or replace the metadata.
     flog.info(paste("Found a list of metagenomeSeq experiments for the following analyses:", paste0(names(expvec), collapse = ", ")))
@@ -498,6 +496,12 @@ if (!exists("expvec")){
         }
     } #End conditional for replacing metadata
 }
+
+#Export list.data to system and set it as NULL, to decrease RAM burden.
+list.data_fn <- file.path(opt$outdir, "list_data.rda")
+save(list.data, file = list.data_fn)
+list.data <- NULL
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 
 ###################
 ## Export tables ##
