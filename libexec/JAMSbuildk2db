@@ -371,14 +371,14 @@ for (organisms in opt$wantedorganisms){
 } #End loop for downloading and counting different kinds of organisms
 
 #Remove gensizes that didn't go through
-opt$master_assembly_summary <- opt$master_assembly_summary[(which(opt$master_assembly_summary$gensize != NA)), ]
+opt$master_assembly_summary_backup <- opt$opt$master_assembly_summary
+opt$master_assembly_summary <- opt$master_assembly_summary[which(is.na(opt$master_assembly_summary$gensize) == FALSE), ]
 opt$master_assembly_summary[is.na(opt$master_assembly_summary)] <- 0
 opt$master_assembly_summary[] <- lapply(opt$master_assembly_summary, as.character)
 opt$master_assembly_summary$gensize <- as.numeric(opt$master_assembly_summary$gensize)
 
 flog.info("Finished downloading all genomes.")
 save.image(opt$projimage)
-
 
 ##########################################
 # derive a valid taxid to taxonomy table
