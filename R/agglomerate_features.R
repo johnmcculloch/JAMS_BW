@@ -1,24 +1,23 @@
-#' agglomerate_features(mgseqobj=NULL, glomby=NULL)
+#' agglomerate_features(ExpObj = NULL, glomby = NULL)
 #'
-#' Agglomerates features in a JAMS mgSeq object safely
+#' Agglomerates features in a JAMS SummarizedExperiment object safely
 #' @export
 
-agglomerate_features <- function(mgseqobj = NULL, glomby = NULL){
+agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
 
     #Find out what kind of an object it is
-    analysis <- attr(mgseqobj, "analysis")
-    glommgseqobj <- aggTax(mgseqobj, lvl = glomby, out = 'MRexperiment', norm = FALSE)
+    analysis <- metadata(ExpObj)$analysis
 
-    if (analysis != "LKT"){
-        cts <- MRcounts(glommgseqobj)
-        ftt <- fData(glommgseqobj)
-        ftt$Accession <- rownames(ftt)
-        ftt$Description <- rep(glomby, nrow(ftt))
-        ftt <- ftt[, c("Accession", "Description", glomby)]
-        ftt <- ftt[rownames(cts), ]
-        fData(glommgseqobj) <- ftt
-        attr(glommgseqobj, "analysis") <- paste(analysis, glomby, sep = "_")
+    if (analysis == "LKT"){
+        ftt <- as.data.frame(rowData(ExpObj))
+        targetfeats <- unique(ftt[, glomby])
+
+        cts <- as.matrix(assays(ExpObj)$BaseCounts)
+
+    } else {
+        flog.warn(paste("The current version of JAMS is unable to aggregate", analysis, "SummarizedExperiment objects. Sorry for the inconvenience."))
+        glomExpObj <- ExpObj
     }
 
-    return(glommgseqobj)
+    return(glomExpObj)
 }

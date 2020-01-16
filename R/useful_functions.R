@@ -1,3 +1,110 @@
+#' ExpObjVetting(ExpObj = NULL)
+#'
+#' Performs vetting of a SummarizedExperiment object for use in several functions
+#' @export
+
+ExpObjVetting <- function(ExpObj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, glomby = NULL, variables_to_fix = NULL, class_to_ignore = NULL){
+
+        #Get appropriate object to work with
+        if (as.character(class(ExpObj)) != "SummarizedExperiment"){
+            stop("This function can only take a SummarizedExperiment object as input. For using a metagenomeSeq object (deprecated), please use plot_relabund_heatmap_mgseq.")
+        }
+        obj <- ExpObj
+
+        if (!(is.null(glomby))){
+            obj <- agglomerate_features(ExpObj = obj, glomby = glomby)
+        }
+
+        #Exclude samples and features if specified
+        if (!(is.null(samplesToKeep))){
+            samplesToKeep <- samplesToKeep[samplesToKeep %in% colnames(obj)]
+            obj <- obj[, samplesToKeep]
+        }
+
+        if (!(is.null(featuresToKeep))){
+            featuresToKeep <- featuresToKeep[featuresToKeep %in% rownames(obj)]
+            obj <- obj[featuresToKeep, ]
+        }
+
+        obj <- suppressWarnings(filter_sample_by_class_to_ignore(SEobj = obj, variables = variables_to_fix, class_to_ignore = class_to_ignore))
+
+    return(obj)
+}
+
+#' declare_filtering_presets(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL)
+#'
+#' Performs vetting of a SummarizedExperiment object for use in several functions
+#' @export
+declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL){
+
+    if ((analysis != "LKT") && (!(is.null(GenomeCompletenessCutoff)))){
+        warning("Genome completeness only makes sense for taxa. Please choose a taxonomic (non functional) analysis.")
+        GenomeCompletenessCutoff <- NULL
+    }
+
+    presetlist <- list()
+
+    if (!is.null(applyfilters)){
+        if (applyfilters == "stringent"){
+            if (analysis == "LKT"){
+                presetlist$featcutoff <- c(2000, 15)
+                presetlist$GenomeCompletenessCutoff <- c(30, 10)
+                presetlist$PctFromCtgscutoff <- c(50, 10)
+                presetlist$minl2fc <- 2
+            } else {
+                presetlist$featcutoff <- c(50, 15)
+                presetlist$minl2fc <- 2.5
+            }
+        } else if (applyfilters == "moderate"){
+            if (analysis == "LKT"){
+                presetlist$featcutoff <- c(250, 15)
+                presetlist$GenomeCompletenessCutoff <- c(10, 5)
+                presetlist$PctFromCtgscutoff <- c(25, 10)
+                presetlist$minl2fc <- 1
+            } else {
+                presetlist$featcutoff <- c(10, 5)
+                presetlist$minl2fc <- 1
+            }
+        }
+    }
+
+    #Replace with any values explicitly set by the user
+    argstoset <- c("featcutoff", "GenomeCompletenessCutoff", "PctFromCtgscutoff", "maxl2fc", "minl2fc")[!unlist(lapply(list(featcutoff, GenomeCompletenessCutoff, PctFromCtgscutoff, maxl2fc, minl2fc), is.null))]
+
+    if (length(argstoset) > 0){
+        for (ats in argstoset){
+            presetlist[[ats]] <- get(ats)
+        }
+    }
+
+    #Generate a filtration message
+    presetlist$filtermsg <- NULL
+    #Discard features which do not match certain criteria
+    if (!(is.null(presetlist$featcutoff))){
+        presetlist$thresholdPPM <- presetlist$featcutoff[1]
+        presetlist$sampcutoffpct <- min(presetlist$featcutoff[2], 100)
+        presetlist$filtermsg <- paste("Feature must be >", presetlist$thresholdPPM, "PPM in at least ", presetlist$sampcutoffpct, "% of samples", sep = "")
+    } else {
+        presetlist$filtermsg <- NULL
+        presetlist$featcutoff <- c(0, 0)
+    }
+
+    if (!(is.null(presetlist$PctFromCtgscutoff))){
+        presetlist$thresholdPctFromCtgs <- presetlist$PctFromCtgscutoff[1]
+        presetlist$sampcutoffpctPctFromCtgs <- min(presetlist$PctFromCtgscutoff[2], 100)
+        presetlist$filtermsg <- paste(presetlist$filtermsg, (paste("Taxonomy information must come from >", presetlist$thresholdPctFromCtgs, "% contigs in at least ", presetlist$sampcutoffpctPctFromCtgs, "% of samples", sep = "")), sep = "\n")
+    }
+
+    if (!(is.null(presetlist$GenomeCompletenessCutoff))){
+        presetlist$thresholdGenomeCompleteness <- presetlist$GenomeCompletenessCutoff[1]
+        presetlist$sampcutoffpctGenomeCompleteness <- min(presetlist$GenomeCompletenessCutoff[2], 100)
+        presetlist$filtermsg <- paste(presetlist$filtermsg, (paste("Taxon genome completeness must be >", presetlist$thresholdGenomeCompleteness, "% in at least ", presetlist$sampcutoffpctGenomeCompleteness, "% of samples", sep = "")), sep = "\n")
+    }
+
+    return(presetlist)
+}
+
+
 #' log2PPMtoPct(log2PPM)
 #'
 #' Returns a rounded percentage given a log2 transformed PPM value
@@ -294,7 +401,7 @@ filter_correlations <- function(corrmat = NULL, mincorrelcoeff = NULL){
  #' Safe way of either loading or saving an R workspace image. If argument workspaceimage is null, workspace image file will be searched for in opt (opt$projimage). If that is also NULL, saving or loading is aborted. If the fastSave package () is installed, multi-threaded loading or saving will be used. If opt is passed, number of CPUs will be set to opt$threads, trumping the threads argument.
  #'
  #' @export
- 
+
 IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads = 8, operation = NULL, verbose = FALSE){
     if (is.null(workspaceimage)){
         workspaceimage <- opt$projimage

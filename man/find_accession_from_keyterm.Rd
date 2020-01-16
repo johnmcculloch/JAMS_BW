@@ -2,10 +2,10 @@
 % Please edit documentation in R/find_accession_from_keyterm.R
 \name{find_accession_from_keyterm}
 \alias{find_accession_from_keyterm}
-\title{find_accession_from_keyterm(mgseqobj=NULL, keyterm=NULL)}
+\title{find_accession_from_keyterm(ExpObj = NULL, keyterm = NULL)}
 \usage{
-find_accession_from_keyterm(mgseqobj = NULL, keyterm = NULL)
+find_accession_from_keyterm(ExpObj = NULL, keyterm = NULL)
 }
 \description{
-Returns the accession number(s) of a feature(s) matching a general expression present in a metagenomeSeq object.
+Returns the accession number(s) of a feature(s) matching a general expression present in a SummarizedExperiment or metagenomeSeq object.
 }

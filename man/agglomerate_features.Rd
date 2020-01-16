@@ -2,10 +2,10 @@
 % Please edit documentation in R/agglomerate_features.R
 \name{agglomerate_features}
 \alias{agglomerate_features}
-\title{agglomerate_features(mgseqobj=NULL, glomby=NULL)}
+\title{agglomerate_features(ExpObj = NULL, glomby = NULL)}
 \usage{
-agglomerate_features(mgseqobj = NULL, glomby = NULL)
+agglomerate_features(ExpObj = NULL, glomby = NULL)
 }
 \description{
-Agglomerates features in a JAMS mgSeq object safely
+Agglomerates features in a JAMS SummarizedExperiment object safely
 }

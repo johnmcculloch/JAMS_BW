@@ -42,11 +42,11 @@ filter_sample_by_class_to_ignore <- function(SEobj = NULL, mgseqobj = NULL, vari
         }
     }
     if (as.character(class(ExpObj)) == "SummarizedExperiment"){
-        analysis <- attr(ExpObj, "analysis")
+        analysis <- metadata(ExpObj)$analysis
         TotalBasesSequenced <- metadata(ExpObj)$TotalBasesSequenced
         ExpObj <- SummarizedExperiment(assays = assays(ExpObj), rowData = rowData(ExpObj), colData = ptb)
-        attr(ExpObj, "analysis") <- analysis
         metadata(ExpObj)$TotalBasesSequenced <- TotalBasesSequenced
+        metadata(ExpObj)$analysis <- analysis
     } else {
         pData(ExpObj) <- ptb
     }

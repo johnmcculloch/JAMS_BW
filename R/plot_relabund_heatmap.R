@@ -1,70 +1,13 @@
-#' plot_relabund_heatmap(ExpObj = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featcutoff = c(0, 0), PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...)
+#' plot_relabund_heatmap(ExpObj = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...)
 #'
 #' Plots relative abundance heatmaps annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featcutoff = c(0, 0), PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, list.data = NULL, addtit = NULL, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...){
-
-    if (as.character(class(ExpObj)) != "SummarizedExperiment"){
-        stop("This function can only take a SummarizedExperiment object as input. For using a metagenomeSeq object (deprecated), please use plot_relabund_heatmap_mgseq.")
-    }
-
-    #Get appropriate object to work with
-    obj <- ExpObj
-
-    #Exclude samples and features if specified
-    if (!(is.null(samplesToKeep))){
-        obj <- obj[, samplesToKeep]
-    }
-
-    if (!(is.null(featuresToKeep))){
-        obj <- obj[featuresToKeep, ]
-    }
-
-    analysis <- attr(obj, "analysis")
-    analysisname <- analysis
-
-    #if (!(is.null(glomby))){
-    #    stop("This feature is currently being implemented. Please check back later. I apologise for the inconvenience.")
-        #obj <- agglomerate_features(mgseqobj = obj, glomby = glomby)
-        #if (analysis != "LKT"){
-        #    analysisname <- attr(obj, "analysis")
-        #} else {
-        #    analysisname <- glomby
-        #}
-    #}
+plot_relabund_heatmap <- function(ExpObj = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...){
 
     #Test for silly stuff
     if ((hmtype %in% c("comparative", "PA")) && (is.null(compareby))){
         stop("If rows are to be selected by highest significant difference between classes in a discrete category, you must determine the category using the argument *classesvector*")
-    }
-
-    if (!is.null(applyfilters)){
-        if (applyfilters == "stringent"){
-            if (analysis == "LKT"){
-                featcutoff <- c(2000, 15)
-                GenomeCompletenessCutoff <- c(30, 10)
-                minl2fc <- 2
-            } else {
-                featcutoff <- c(50, 15)
-                genomecompleteness <- NULL
-                minl2fc <- 2.5
-            }
-        } else if (applyfilters == "moderate"){
-            if (analysis == "LKT"){
-                featcutoff <- c(250, 5)
-                GenomeCompletenessCutoff <- c(10, 1)
-                minl2fc <- 1
-            } else {
-                featcutoff <- c(10, 5)
-                minl2fc <- 1
-            }
-        }
-    }
-
-    if ((analysis != "LKT") && (!(is.null(GenomeCompletenessCutoff)))){
-        warning("Genome completeness only makes sense for taxa. Please choose a taxonomic (non functional) analysis.")
-        GenomeCompletenessCutoff <- NULL
     }
 
     #Fix metadata classes and remove classes to ignore, if present
@@ -73,12 +16,28 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
     } else {
         variables_to_fix <- subsetby
     }
-    obj <- suppressWarnings(filter_sample_by_class_to_ignore(SEobj = obj, variables = variables_to_fix, class_to_ignore = class_to_ignore))
+
+    #Vet experiment object
+    obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = variables_to_fix, class_to_ignore = class_to_ignore)
+
+    analysis <- metadata(obj)$analysis
+    analysisname <- analysis
+
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, maxl2fc = maxl2fc, minl2fc = minl2fc)
 
     if (!(is.null(subsetby))){
         subset_points <- sort(unique(colData(obj)[, which(colnames(colData(obj)) == subsetby)]))
     } else {
         subset_points <- "none"
+    }
+
+    if (is.null(colcategories)){
+        if (!is.null(cdict)){
+            colcategories <- names(cdict)
+        } else {
+            #Include anything with between 2 and 10 classes in it
+            colcategories <- colnames(colData(obj))[which((sapply(1:ncol(colData(obj)), function (x) { length(levels(as.factor(colData(obj)[, x]))) })) < 10 & (sapply(1:ncol(colData(obj)), function (x) { length(levels(as.factor(colData(obj)[, x]))) })) > 1)]
+        }
     }
 
     #Initialize Stats Vector list
@@ -119,28 +78,6 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
         }
 
         if (proceed){
-            filtermsg <- NULL
-            #Discard features which do not match certain criteria
-            if (!(is.null(featcutoff))){
-                thresholdPPM <- featcutoff[1]
-                sampcutoffpct <- min(featcutoff[2], 100)
-                filtermsg <- paste("Feature must be >", thresholdPPM, "PPM in at least ", sampcutoffpct, "% of samples", sep = "")
-            } else {
-                filtermsg <- NULL
-                featcutoff <- c(0, 0)
-            }
-
-            if (!(is.null(PctFromCtgscutoff))){
-                thresholdPctFromCtgs <- PctFromCtgscutoff[1]
-                sampcutoffpctPctFromCtgs <- min(PctFromCtgscutoff[2], 100)
-                filtermsg <- paste(filtermsg, (paste("Taxonomy information must come from >", sampcutoffpctPctFromCtgs, "% contigs in at least ", sampcutoffpctPctFromCtgs, "% of samples", sep = "")), sep = "\n")
-            }
-
-            if (!(is.null(GenomeCompletenessCutoff))){
-                thresholdGenomeCompleteness <- GenomeCompletenessCutoff[1]
-                sampcutoffpctGenomeCompleteness <- min(GenomeCompletenessCutoff[2], 100)
-                filtermsg <- paste(filtermsg, (paste("Taxon genome completeness must be >", thresholdGenomeCompleteness, "% in at least ", sampcutoffpctGenomeCompleteness, "% of samples", sep = "")), sep = "\n")
-            }
 
             hmtypemsg <- "Relative Abundance Heatmap"
             asPA <- FALSE
@@ -154,7 +91,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                 stattype <- "auto"
             }
 
-            currobj <- filter_experiment(ExpObj = obj, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, asPPM = TRUE, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
+            currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, asPPM = TRUE, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
 
         } else {
             flog.info("Unable to make heatmap with the current metadata for this comparison.")
@@ -162,7 +99,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
         }
 
         #There must be at least two samples for a heatmap and at least two features
-        if (((dim((currobj))[1] * dim((currobj))[2]) >= 4)){
+        if (((dim(colData(currobj))[1] * dim(colData(currobj))[2]) >= 4)){
 
             #Compose an appropriate title for the plot
             if (length(unique(subset_points)) > 1){
@@ -235,6 +172,8 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
 
                 matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = FALSE, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, nperm = nperm)
 
+                ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
+
                 #Bank raw stats
                 matstatsbank <- as.data.frame(matstats)
                 if ("GenomeCompleteness" %in% names(assays(currobj))){
@@ -279,30 +218,30 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
 
                 } else {
 
-                    if (all(c((!(is.null(minl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
+                    if (all(c((!(is.null(presetlist$minl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
                         #Check if there is enough leftover after filter.
-                        if (length(which(matstats$absl2fc > minl2fc)) < 2){
-                            flog.info(paste("There are less than 2 features which have >", minl2fc, "l2fc."))
+                        if (length(which(matstats$absl2fc > presetlist$minl2fc)) < 2){
+                            flog.info(paste("There are less than 2 features which have >", presetlist$minl2fc, "l2fc."))
                             #Redefine min l2fc to whatever is the lowest available keeping between 2 and 40 features to plot.
-                            minl2fc <- matstats[order(matstats$absl2fc, decreasing = TRUE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
-                            flog.info(paste("Resetting minimum l2fc to", round(minl2fc, 2)))
+                            presetlist$minl2fc <- matstats[order(matstats$absl2fc, decreasing = TRUE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
+                            flog.info(paste("Resetting minimum l2fc to", round(presetlist$minl2fc, 2)))
                         }
-                        minl2fcmsg <- paste("log2foldchange >", round(minl2fc, 2))
-                        matstats <- subset(matstats, absl2fc > minl2fc)
+                        minl2fcmsg <- paste("log2foldchange >", round(presetlist$minl2fc, 2))
+                        matstats <- subset(matstats, absl2fc > presetlist$minl2fc)
                     } else {
                         minl2fcmsg <- "log2foldchange > 0"
                     }
 
-                    if (all(c((!(is.null(maxl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
+                    if (all(c((!(is.null(presetlist$maxl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
                         #Check if there is enough leftover after filter.
-                        if (length(which(matstats$absl2fc < maxl2fc)) < 2){
-                            flog.info(paste("There are less than 2 features which have <", maxl2fc, "l2fc."))
+                        if (length(which(matstats$absl2fc < presetlist$maxl2fc)) < 2){
+                            flog.info(paste("There are less than 2 features which have <", presetlist$maxl2fc, "l2fc."))
                             #Redefine max l2fc to whatever is the lowest available keeping between 2 and 40 features to plot.
-                            maxl2fc <- matstats[order(matstats$absl2fc, decreasing = FALSE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
-                            flog.info(paste("Resetting maximum l2fc to", round(maxl2fc, 2)))
+                            presetlist$maxl2fc <- matstats[order(matstats$absl2fc, decreasing = FALSE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
+                            flog.info(paste("Resetting maximum l2fc to", round(presetlist$maxl2fc, 2)))
                         }
-                        maxl2fcmsg <- paste("log2foldchange <", round(maxl2fc, 2))
-                        matstats <- subset(matstats, absl2fc < maxl2fc)
+                        maxl2fcmsg <- paste("log2foldchange <", round(presetlist$maxl2fc, 2))
+                        matstats <- subset(matstats, absl2fc < presetlist$maxl2fc)
                     } else {
                         maxl2fcmsg <- "log2foldchange > Inf"
                     }
@@ -546,10 +485,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
 
                     #Build plot title
                     nsampmsg <- paste0("Number of samples in heatmap = ", ncol(mathm))
-                    msgs <- c(maintit, stattit, filtermsg, nsampmsg)
+                    msgs <- c(maintit, stattit, presetlist$filtermsg, paste(nsampmsg, ffeatmsg, sep = " | "))
                     plotit <- paste0(msgs, collapse = "\n")
 
-                    if (all(c((any(!(c(is.null(minl2fc), is.null(maxl2fc))))), ("l2fc" %in% colnames(stathm))))){
+                    if (all(c((any(!(c(is.null(presetlist$minl2fc), is.null(presetlist$maxl2fc))))), ("l2fc" %in% colnames(stathm))))){
                         l2fcmsg <- paste(minl2fcmsg, maxl2fcmsg, sep = " | ")
                         plotit <- paste(plotit, l2fcmsg, sep = "\n")
                     }
@@ -738,7 +677,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, heatpalette = "smart", hmtype =
                 }
             } else {
                 #There is no valid matrix, so print out the conditions which led the matrix to be empty.
-                plotit <- c(stattit, paste(cutoffmsg, sep=", "))
+                plotit <- c(stattit, paste(filtermsg, sep=", "))
                 plot.new()
                 grid.table(c(maintit, "No features fulfilling", plotit), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 10))
                 #gvec[[n]]<-recordPlot()

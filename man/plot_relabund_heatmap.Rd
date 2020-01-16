@@ -2,37 +2,35 @@
 % Please edit documentation in R/plot_relabund_heatmap.R
 \name{plot_relabund_heatmap}
 \alias{plot_relabund_heatmap}
-\title{plot_relabund_heatmap(ExpObj = NULL, heatpalette = "smart", hmtype = NULL, hmasPA = FALSE, compareby = NULL, invertbinaryorder = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, subsetby = NULL, applyfilters = NULL, featcutoff = c(0, 0), PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, samplesToKeep = NULL, featuresToKeep = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, list.data = NULL, addtit = NULL,  scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = NULL, ...)}
+\title{plot_relabund_heatmap(ExpObj = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...)}
 \usage{
 plot_relabund_heatmap(
   ExpObj = NULL,
-  heatpalette = "smart",
   hmtype = NULL,
-  hmasPA = FALSE,
+  samplesToKeep = NULL,
+  featuresToKeep = NULL,
+  subsetby = NULL,
   compareby = NULL,
   invertbinaryorder = FALSE,
+  hmasPA = FALSE,
   ntop = NULL,
   ordercolsby = NULL,
   cluster_samples_per_heatmap = FALSE,
   cluster_features_per_heatmap = FALSE,
   colcategories = NULL,
   cluster_rows = TRUE,
-  subsetby = NULL,
   applyfilters = NULL,
-  featcutoff = c(0, 0),
-  PPM_normalize_to_bases_sequenced = FALSE,
+  featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
   PctFromCtgscutoff = NULL,
-  samplesToKeep = NULL,
-  featuresToKeep = NULL,
+  maxl2fc = NULL,
+  minl2fc = NULL,
   adjustpval = FALSE,
   showonlypbelow = NULL,
   showpval = TRUE,
   showl2fc = TRUE,
-  maxl2fc = NULL,
-  minl2fc = NULL,
-  list.data = NULL,
   addtit = NULL,
+  PPM_normalize_to_bases_sequenced = FALSE,
   scaled = FALSE,
   mgSeqnorm = FALSE,
   cdict = NULL,
@@ -42,7 +40,7 @@ plot_relabund_heatmap(
   statsonlog = TRUE,
   ignoreunclassified = TRUE,
   returnstats = FALSE,
-  class_to_ignore = NULL,
+  class_to_ignore = "N_A",
   ...
 )
 }

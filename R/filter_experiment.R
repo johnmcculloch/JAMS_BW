@@ -7,7 +7,8 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
 
     #Get only samples you asked for
     if (!(is.null(samplesToKeep))){
-        ExpObj <- ExpObj[ , samplesToKeep]
+        samplesToKeep <- samplesToKeep[samplesToKeep %in% colnames(ExpObj)]
+        ExpObj <- ExpObj[, samplesToKeep]
     }
 
     #Get appropriate object with which to work
