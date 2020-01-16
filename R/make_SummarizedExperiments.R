@@ -125,7 +125,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
 
         SEobj <- SummarizedExperiment(assays = assays, rowData = tt, colData = pheno2)
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
-        metadata(SEobj)$analysis <- analysis
+        metadata(SEobj)$analysis <- "LKT"
 
         expvec[[e]] <- SEobj
         names(expvec)[e] <- "LKT"
