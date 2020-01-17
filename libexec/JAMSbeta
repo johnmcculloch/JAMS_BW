@@ -515,25 +515,10 @@ if (opt$export_tables == TRUE){
         dir.create(tablespath, showWarnings = FALSE, recursive = FALSE)
     }
 
-    #Export current phenotable
-    exporttabletsv(dataobj = pheno, project = opt$projectname, basename = "Metadata", row.names = FALSE, col.names = TRUE, path = tablespath)
-
-    analysesIhave <- names(expvec)
-    for (analysis in analysesIhave){
-        mgseqobj <- NULL
-        mgseqobj <- expvec[[analysis]]
-        mrc <- NULL
-        mrc <- as.data.frame(MRcounts(mgseqobj))
-        sampvec <- colnames(mrc)
-        mrc$Feature <- rownames(mrc)
-        mrc <- mrc[, c("Feature", sampvec)]
-        exporttabletsv(dataobj = mrc, project = opt$projectname, basename = paste(analysis, "NumBases", sep = "_"), row.names = FALSE, col.names = TRUE, path = tablespath)
-        tt <- NULL
-        tt <- as.data.frame(fData(mgseqobj))
-        exporttabletsv(dataobj = tt, project = opt$projectname, basename = paste(analysis, "FeatTable", sep = "_"), row.names = FALSE, col.names = TRUE, path = tablespath)
-    }
     #Export as spreadsheet
-    export_expvec_to_XL(expvec = expvec, filename = paste(paste(project, "counts", "PPM", sep = "_"), "xlsx", sep = "."))
+    export_expvec_to_XL(expvec = expvec, asPPM = TRUE, filename = paste(paste(project, "Relabund", "PPM", sep = "_"), "xlsx", sep = "."))
+    #Export as spreadsheet
+    export_expvec_to_XL(expvec = expvec, asPPM = FALSE, filename = paste(paste(project, "Base_counts", sep = "_"), "xlsx", sep = "."))
 }
 
 #Export as spreadsheet

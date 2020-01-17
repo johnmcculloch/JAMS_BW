@@ -1,9 +1,9 @@
-#' make_ordination_report(project = NULL, algorithm = "PCA", expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", grid = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, appendtofilename = NULL, ...)
+#' make_ordination_report(project = NULL, algorithm = "PCA", expvec = NULL, usefulexp = NULL, log2tran = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, variable_list = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", grid = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, appendtofilename = NULL, threads = 8, ...)
 #'
 #' Generates standard ordination plots for analyses named in expobjects.
 #' @export
 
-make_ordination_report <- function(project = NULL, algorithm = "PCA", expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", grid = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, appendtofilename = NULL, threads = 8, ...){
+make_ordination_report <- function(project = NULL, algorithm = "PCA", expvec = NULL, usefulexp = NULL, log2tran = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, variable_list = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", grid = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, appendtofilename = NULL, threads = 8, ...){
 
     if(is.null(usefulexp)){
         usefulexp <- names(expvec)[!(names(expvec) %in% c("SFLD", "Coils", "Gene3D", "Phobius", "ProSitePatterns", "SMART", "ProDom"))]
@@ -18,7 +18,7 @@ make_ordination_report <- function(project = NULL, algorithm = "PCA", expvec = N
     variables_cont <- variable_list$continuous
     variables_subs <- variable_list$subsettable
 
-    pt <- as.data.frame(pData(expvec2[[1]]))
+    pt <- as.data.frame(colData(expvec2[[1]]))
     variables_all <- unique(c(variables_disc, variables_subs, variables_bin, variables_cont))
     readscols <- (colnames(pt)[(colnames(pt) %in% c("GbNAHS", "PctAss"))])
     if (length(readscols) > 0){
@@ -56,7 +56,7 @@ make_ordination_report <- function(project = NULL, algorithm = "PCA", expvec = N
 
         #Cycle through possible experiments
         for(e in 1:length(expvec2)){
-            print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = algorithm, colourby = "GbNAHS", logtran = TRUE, transp = TRUE, permanova = FALSE, ellipse = FALSE, grid = grid, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep))
+            print(plot_Ordination(ExpObj = expvec2[[e]], algorithm = algorithm, colourby = "GbNAHS", logtran = TRUE, transp = TRUE, permanova = FALSE, ellipse = FALSE, grid = grid, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep))
         }
     }
 
@@ -75,7 +75,7 @@ make_ordination_report <- function(project = NULL, algorithm = "PCA", expvec = N
             for(e in 1:length(expvec2)){
                 flog.info(paste("Plotting", names(expvec2)[e], " and marking by", variables_all[c]))
 
-                print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = algorithm, colourby = variables_all[c], shapeby=NULL, log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict=cdict, grid = grid, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ignoreunclassified = ignoreunclassified, threads = threads))
+                print(plot_Ordination(ExpObj = expvec2[[e]], algorithm = algorithm, colourby = variables_all[c], shapeby = NULL, log2tran = log2tran, permanova = TRUE, ellipse = ellipse, cdict = cdict, grid = grid, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ignoreunclassified = ignoreunclassified, threads = threads, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced))
                 #If there are any subsettable variables, subset by them.
                 validsubs <- variables_subs[!(variables_subs %in% variables_all[c])]
 
@@ -93,7 +93,7 @@ make_ordination_report <- function(project = NULL, algorithm = "PCA", expvec = N
                         if (all(classtest)){
                             plot.new()
                             grid.table(c("Marking samples by", variables_all[c], "Subsetting samples by", vs), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 25))
-                            print(plot_Ordination(mgseqobj = expvec2[[e]], mgSeqnorm=mgSeqnorm, algorithm = algorithm, subsetby=vs, colourby = variables_all[c], log2tran = TRUE, transp = TRUE, permanova = TRUE, ellipse = ellipse, cdict = cdict, grid = grid, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ignoreunclassified = ignoreunclassified, threads = threads))
+                            print(plot_Ordination(ExpObj = expvec2[[e]], algorithm = algorithm, subsetby = vs, colourby = variables_all[c], log2tran = log2tran, permanova = TRUE, ellipse = ellipse, cdict = cdict, grid = grid, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ignoreunclassified = ignoreunclassified, threads = threads, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced))
                         } else {
                             flog.info(paste("Will not plot", variables_all[c], "within", vs, "because",  paste0(discnamesvs[!classtest], collapse=", " ),  "do(es) not have more than a single class."))
                         } #End conditional that there is more than a single class

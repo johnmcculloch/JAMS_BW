@@ -2,17 +2,20 @@
 % Please edit documentation in R/make_ordination_report.R
 \name{make_ordination_report}
 \alias{make_ordination_report}
-\title{make_ordination_report(project = NULL, algorithm = "PCA", expvec = NULL, usefulexp = NULL, mgSeqnorm = FALSE, genomecompleteness = NULL, variable_list = NULL, list.data = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", grid = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, appendtofilename = NULL, ...)}
+\title{make_ordination_report(project = NULL, algorithm = "PCA", expvec = NULL, usefulexp = NULL, log2tran = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, variable_list = NULL, doreads = NULL, cdict = NULL, ellipse = "auto", grid = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, appendtofilename = NULL, threads = 8, ...)}
 \usage{
 make_ordination_report(
   project = NULL,
   algorithm = "PCA",
   expvec = NULL,
   usefulexp = NULL,
-  mgSeqnorm = FALSE,
-  genomecompleteness = NULL,
+  log2tran = FALSE,
+  applyfilters = NULL,
+  featcutoff = NULL,
+  GenomeCompletenessCutoff = NULL,
+  PctFromCtgscutoff = NULL,
+  PPM_normalize_to_bases_sequenced = FALSE,
   variable_list = NULL,
-  list.data = NULL,
   doreads = NULL,
   cdict = NULL,
   ellipse = "auto",
