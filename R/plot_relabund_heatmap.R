@@ -1,9 +1,9 @@
-#' plot_relabund_heatmap(ExpObj = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...)
+#' plot_relabund_heatmap(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...)
 #'
 #' Plots relative abundance heatmaps annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...){
+plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...){
 
     #Test for silly stuff
     if ((hmtype %in% c("comparative", "PA")) && (is.null(compareby))){
@@ -155,9 +155,25 @@ plot_relabund_heatmap <- function(ExpObj = NULL, hmtype = NULL, samplesToKeep = 
                     matstatsbank$Taxa <- NULL
                 }
                 svec[[s]] <- matstatsbank
+                ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
 
                 matstats$Colour <- rep("black", nrow(matstats))
                 countmat2 <- countmat[rownames(matstats), ]
+
+                #Transform to log2 space
+                countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
+
+                if (any(!(c(cluster_samples_per_heatmap, cluster_features_per_heatmap)))){
+                    flog.info("Clustering samples and features using entire matrix to obtain sample and feature order for all heatmaps.")
+                    #create a heatmap from the entire count matrix for getting column order.
+                    htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"))
+
+                    fullheatmap_column_order <- column_order(htfull)
+                    fullheatmap_column_dend <- column_dend(htfull)
+                    fullheatmap_row_order <- row_order(htfull)
+                    fullheatmap_row_dend <- row_dend(htfull)
+                }
+
                 #Create a list of matrices each of maximum 50 rows
                 rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
                 matlist <- lapply(1:length(rowlist), function(x){countmat2[rowlist[[x]], ]})
@@ -677,7 +693,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, hmtype = NULL, samplesToKeep = 
                 }
             } else {
                 #There is no valid matrix, so print out the conditions which led the matrix to be empty.
-                plotit <- c(stattit, paste(filtermsg, sep=", "))
+                plotit <- c(stattit, paste(presetlist$filtermsg, sep=", "))
                 plot.new()
                 grid.table(c(maintit, "No features fulfilling", plotit), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 10))
                 #gvec[[n]]<-recordPlot()

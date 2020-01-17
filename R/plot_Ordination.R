@@ -1,59 +1,22 @@
-#' plot_Ordination(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plotcentroids = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...)
+#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = FALSE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plotcentroids = FALSE, addtit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...)
 #'
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plotcentroids = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
-
-    #Get appropriate object to work with
-    obj <- mgseqobj
-
-    #Exclude samples and features if specified
-    if (!(is.null(samplesToKeep))){
-        obj <- obj[, samplesToKeep]
-    }
-
-    if(!(is.null(featuresToKeep))){
-        obj <- obj[featuresToKeep, ]
-    }
-
-    #Aggregate if required
-    if (!(is.null(glomby))){
-        obj <- agglomerate_features(mgseqobj = obj, glomby = glomby)
-    }
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = FALSE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plotcentroids = FALSE, addtit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
 
     #Remove samples bearing categories within class_to_ignore
     valid_vars <- c(colourby, shapeby, sizeby, subsetby)[which(!is.na(c(colourby, shapeby, sizeby, subsetby)))]
-    obj <- filter_sample_by_class_to_ignore(mgseqobj = obj, variables = valid_vars, class_to_ignore = class_to_ignore)
 
-    #Define analysis type
-    analysis <- attr(obj, "analysis")
+    #Vet experiment object
+    obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = valid_vars, class_to_ignore = class_to_ignore)
 
-    if (!is.null(applyfilters)){
-        if (applyfilters == "stringent"){
-            if (analysis == "LKT"){
-                featcutoff <- c(2000, 15)
-                genomecompleteness <- 0.3
-            } else {
-                featcutoff <- c(50, 15)
-                genomecompleteness <- NULL
-            }
-        } else if (applyfilters == "moderate"){
-            if (analysis == "LKT"){
-                featcutoff <- c(500, 10)
-                genomecompleteness <- 0.1
-            } else {
-                featcutoff <- c(10, 5)
-                genomecompleteness <- NULL
-            }
-        }
-    } else {
-        featcutoff <- c(0, 0)
-        genomecompleteness <- NULL
-    }
+    analysis <- metadata(obj)$analysis
+
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
 
     if (!(is.null(subsetby))){
-        subset_points <- sort(unique((pData(obj)[, which(colnames(pData(obj)) == subsetby)])))
+        subset_points <- sort(unique(colData(obj)[, which(colnames(colData(obj)) == subsetby)]))
     } else {
         subset_points <- "none"
     }
@@ -64,37 +27,49 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
     pcatitbase <- paste(algorithm, "of", analysis)
 
     for (sp in 1:length(subset_points)){
+
         if (!(is.null(subsetby))){
-            samplesToKeep <- rownames(pData(obj))[which((pData(obj)[, which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])]
+            samplesToKeep <- rownames(colData(obj))[which(colData(obj)[ , subsetby] == subset_points[sp])]
+            flog.info(paste("Plotting within", subset_points[sp]))
+            subsetname <- subset_points[sp]
             pcatit <- paste(pcatitbase, "within", subset_points[sp])
-            currobj <- obj[, samplesToKeep]
         } else {
-            currobj <- obj
-            samplesToKeep <- rownames(pData(currobj))
+            samplesToKeep <- rownames(colData(obj))
+            subsetname <- "no_sub"
             pcatit <- pcatitbase
         }
+        pcatit <- paste(c(pcatit, presetlist$filtermsg), collapse = "\n")
 
-        currobj <- filter_experiment(mgseqobj = currobj, featmaxatleastPPM = featmaxatleastPPM, featcutoff = featcutoff, samplesToKeep = samplesToKeep, asPA = FALSE, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
+        currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, asPPM = TRUE, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
 
-        countmat <- MRcounts(currobj)
+        if (PPM_normalize_to_bases_sequenced == TRUE){
+            pcatit <- paste(c(pcatit, "Normalized to total number of bases sequenced in sample"), collapse = "\n")
+        } else {
+            pcatit <- paste(c(pcatit, "Normalized to number of bases for analysis in sample"), collapse = "\n")
+        }
+
+        #Get counts matrix
+        countmat <- as.matrix(assays(currobj)$BaseCounts)
+
+        #Protect against rows with empty data
+        rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
+        countmat <- countmat[rowsToKeep, ]
 
         if (ignoreunclassified == TRUE){
-            dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified")
+            dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")
             rowsToKeep <- which(!(rownames(countmat) %in% dunno))
             countmat <- countmat[rowsToKeep, ]
         }
 
         #log2 transform if applicable
         if (log2tran == TRUE){
-            countmat2 <- sapply(1:ncol(countmat), function(x){ countmat[, x] <- (log2(countmat[, x] + 1)) })
-            colnames(countmat2) <- colnames(countmat)
-            countmat <- countmat2
+            #Transform to log2 space
+            countmat <- convert_matrix_log2(mat = countmat, transformation = "to_log2")
+            pcatit <- paste(c(pcatit, "Matrix log2 transformed"), collapse = "\n")
         }
 
         n <- nrow(countmat)
         comp <- 1:3
-        rowsToKeep <- names(which(rowSums(countmat) > 0))
-        countmat <- countmat[rowsToKeep, ]
         rowVars <- rowSds(countmat)
         countmat <- countmat[order(rowVars, decreasing = TRUE), ]
         if (transp == TRUE) {
@@ -105,13 +80,13 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             #tSNE algorithm
             permanova <- FALSE
             if (is.null(perplx)){
-                perplx <- round(nrow(pData(currobj)) * 0.3, 0)
+                perplx <- round(nrow(colData(currobj)) * 0.3, 0)
             }
 
             set.seed(4140)
             tsne_out <- Rtsne(countmat, dims = 3, initial_dims = 500, perplexity = perplx, theta = 0.5, check_duplicates = FALSE, pca = TRUE, max_iter = 1000)
             dford <- as.data.frame(tsne_out$Y)
-            rownames(dford) <- rownames(pData(currobj))
+            rownames(dford) <- rownames(colData(currobj))
             colnames(dford)[1:3] <- c("PC1", "PC2", "PC3")
             xl <- "tSNE 1"
             yl <- "tSNE 2"
@@ -122,7 +97,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             set.seed(4140)
             tumap_out <- tumap(countmat, n_components = 2, n_neighbors = 15, verbose = FALSE, n_threads = threads)
             dford <- as.data.frame(tumap_out)
-            rownames(dford) <- rownames(pData(currobj))
+            rownames(dford) <- rownames(colData(currobj))
             colnames(dford)[1:2] <- c("PC1", "PC2")
             xl <- "tUMAP 1"
             yl <- "tUMAP 2"
@@ -138,11 +113,11 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             vars <- pcaRes$sdev^2
             vars <- round(vars/sum(vars), 5) * 100
 
-            pnmetadata <- pData(currobj)
+            pnmetadata <- colData(currobj)
             cats <- pnmetadata[, colourby]
 
             if (!(is.numeric(cats))){
-                permanovap <- vegan::adonis(as.formula(paste("d ~ ", colourby)), data = pData(currobj))$aov.tab$`Pr(>F)`[1]
+                permanovap <- vegan::adonis(as.formula(paste("d ~ ", colourby)), data = colData(currobj))$aov.tab$`Pr(>F)`[1]
             } else {
                 #print("Impossible to get permanova because colourby is continuous")
                 permanova <- FALSE
@@ -155,10 +130,10 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             dford <- as.data.frame(ord[, comp])
         }
         #Add colour, size, shape
-        dford$Colours <- pData(currobj)[match(rownames(dford), rownames(pData(currobj))), which(colnames(pData(currobj)) == colourby)]
-        dford$Size <- pData(currobj)[match(rownames(dford), rownames(pData(currobj))), which(colnames(pData(currobj)) == sizeby)]
-        dford$Shape <- pData(currobj)[match(rownames(dford), rownames(pData(currobj))), which(colnames(pData(currobj)) == shapeby)]
-        dford$Pair <- pData(currobj)[match(rownames(dford), rownames(pData(currobj))), which(colnames(pData(currobj)) == pairby)]
+        dford$Colours <- colData(currobj)[match(rownames(dford), rownames(colData(currobj))), which(colnames(colData(currobj)) == colourby)]
+        dford$Size <- colData(currobj)[match(rownames(dford), rownames(colData(currobj))), which(colnames(colData(currobj)) == sizeby)]
+        dford$Shape <- colData(currobj)[match(rownames(dford), rownames(colData(currobj))), which(colnames(colData(currobj)) == shapeby)]
+        dford$Pair <- colData(currobj)[match(rownames(dford), rownames(colData(currobj))), which(colnames(colData(currobj)) == pairby)]
 
         #centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford, mean)
         #colnames(centroids)[c(2,3)] <- c("meanx", "meany")
@@ -187,8 +162,6 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
             p <- p + scale_shape_manual(values = dotsize:(dotsize + numsizes))
         }
 
-
-
         if (is.numeric(dford$Colours)){
             #Check if there is enough variance in the continuous data to plot a gradient
             if ((max(dford$Colours) - min(dford$Colours)) > 0){
@@ -206,7 +179,6 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
         if (!is.null(pairby)){
             p <- p + aes(group = Pair) + geom_line()
         }
-
 
         if (ellipse != FALSE) {
             if (algorithm == "PCA"){
@@ -229,8 +201,8 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
         #    p <- p + geom_point(data = centroids, size = 5) + geom_segment(aes(x=dford$meanx, y=dford$meany, xend=dford$PC1, yend=dford$PC2))
         #}
 
-        if (!(is.null(plottit))){
-            pcatit <- plottit
+        if (!(is.null(addtit))){
+            pcatit <- paste(c(pcatit, addtit), collapse = "\n")
         }
 
         if ((permanova != FALSE) && (algorithm == "PCA")) {
@@ -238,7 +210,7 @@ plot_Ordination <- function(mgseqobj = NULL, glomby = NULL, subsetby = NULL, sam
         }
 
         if (mgSeqnorm == TRUE){
-            pcatit <- paste(pcatit, (paste0("MetagenomeSeq normalization = ", as.character(mgSeqnorm))), sep="\n")
+            #pcatit <- paste(pcatit, (paste0("MetagenomeSeq normalization = ", as.character(mgSeqnorm))), sep="\n")
         }
 
         p <- p + ggtitle(pcatit)

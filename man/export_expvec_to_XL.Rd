@@ -2,18 +2,17 @@
 % Please edit documentation in R/export_expvec_to_XL.R
 \name{export_expvec_to_XL}
 \alias{export_expvec_to_XL}
-\title{export_expvec_to_XL(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, asPA = FALSE, mgSeqnorm = FALSE, includemetadata = TRUE)}
+\title{export_expvec_to_XL(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, asPA = FALSE, PPM_normalize_to_bases_sequenced = FALSE, includemetadata = TRUE)}
 \usage{
 export_expvec_to_XL(
   expvec = NULL,
   usefulexp = NULL,
   filename = NULL,
   asPPM = TRUE,
-  asPA = FALSE,
-  mgSeqnorm = FALSE,
+  PPM_normalize_to_bases_sequenced = FALSE,
   includemetadata = TRUE
 )
 }
 \description{
-Exports counts and featuredata in an experiment vector into a single spreadsheet.
+Exports counts and featuredata in a SummarizedExperiment vector into a single spreadsheet.
 }

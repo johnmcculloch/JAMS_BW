@@ -2,19 +2,21 @@
 % Please edit documentation in R/plot_Ordination.R
 \name{plot_Ordination}
 \alias{plot_Ordination}
-\title{plot_Ordination(mgseqobj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL,  algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plotcentroids = FALSE, plottit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...)}
+\title{plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = FALSE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plotcentroids = FALSE, addtit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...)}
 \usage{
 plot_Ordination(
-  mgseqobj = NULL,
+  ExpObj = NULL,
   glomby = NULL,
   subsetby = NULL,
   samplesToKeep = NULL,
   featuresToKeep = NULL,
   ignoreunclassified = TRUE,
   mgSeqnorm = FALSE,
-  featmaxatleastPPM = 0,
-  featcutoff = c(0, 0),
   applyfilters = NULL,
+  featcutoff = NULL,
+  GenomeCompletenessCutoff = NULL,
+  PctFromCtgscutoff = NULL,
+  PPM_normalize_to_bases_sequenced = FALSE,
   algorithm = "PCA",
   colourby = NULL,
   shapeby = NULL,
@@ -22,13 +24,13 @@ plot_Ordination(
   pairby = NULL,
   dotsize = 2,
   dotborder = NULL,
-  log2tran = TRUE,
+  log2tran = FALSE,
   transp = TRUE,
   perplx = NULL,
   permanova = FALSE,
   ellipse = FALSE,
   plotcentroids = FALSE,
-  plottit = NULL,
+  addtit = NULL,
   plot3D = FALSE,
   theta = 130,
   phi = 60,
