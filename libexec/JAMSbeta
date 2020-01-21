@@ -119,6 +119,11 @@ option_list <- list(
                 type = "logical",
                 help = "Generate alpha diversity plots."),
 
+    make_option(c("-l", "--plot_in_parallel"),
+                action = "store_true", default = FALSE,
+                type = "logical",
+                help = "Use multiple CPUs when generating plots. This option is experimental, and is not guaranteed to not crash."),
+
     make_option(c("-s", "--run_script"),
                 action="store", default = NULL,
                 type="character",
@@ -593,8 +598,13 @@ UsedRAM <- RAMbytes_status()[]$ProportionAvail[1]
 appropriatenumcores <- max(1 , (min((opt$threads - 2), length(plotkinds))))
 #Not sure if this is the calculation, but will use it to temper RAM use at the cost of CPU use and time.
 appropriatenumcores <- round((appropriatenumcores * (1 - UsedRAM)), 0)
-#mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) }, mc.cores = appropriatenumcores)
-sapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) })
+
+if(opt$plot_in_parallel == TRUE){
+    flog.info(paste("Using", appropriatenumcores, "CPUs for generating plots in parallel."))
+    mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) }, mc.cores = appropriatenumcores)
+} else {
+    sapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) })
+}
 
 #Running extra script if required
 if (!is.null(opt$run_script)){

@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_correlation_heatmap.R
 \name{plot_correlation_heatmap}
 \alias{plot_correlation_heatmap}
-\title{plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, heatpalette = "smart", stattype = "spearman", cluster_rows = FALSE, subsetby = NULL, maxnumfeatallowed = 500, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL, samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL, showGram = FALSE, showphylum = FALSE, addtit = NULL, mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE, returnstats = FALSE, ...)}
+\title{plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL)}
 \usage{
 plot_correlation_heatmap(
   ExpObj = NULL,
@@ -12,17 +12,16 @@ plot_correlation_heatmap(
   maxnumfeatallowed = 10000,
   minabscorrcoeff = NULL,
   ntopvar = NULL,
-  featmaxatleastPPM = 0,
-  featcutoff = c(0, 0),
-  applyfilters = NULL,
   featuresToKeep = NULL,
   samplesToKeep = NULL,
-  genomecompleteness = NULL,
-  list.data = NULL,
+  applyfilters = NULL,
+  featcutoff = NULL,
+  GenomeCompletenessCutoff = NULL,
+  PctFromCtgscutoff = NULL,
+  PPM_normalize_to_bases_sequenced = FALSE,
   showGram = TRUE,
   showphylum = TRUE,
   addtit = NULL,
-  mgSeqnorm = FALSE,
   cdict = NULL,
   ignoreunclassified = TRUE,
   class_to_ignore = NULL

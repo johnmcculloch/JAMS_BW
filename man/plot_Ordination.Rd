@@ -27,7 +27,7 @@ plot_Ordination(
   log2tran = FALSE,
   transp = TRUE,
   perplx = NULL,
-  permanova = FALSE,
+  permanova = TRUE,
   ellipse = FALSE,
   plotcentroids = FALSE,
   addtit = NULL,

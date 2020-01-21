@@ -1,69 +1,17 @@
-#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, heatpalette = "smart", stattype = "spearman", cluster_rows = FALSE, subsetby = NULL, maxnumfeatallowed = 500, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL, samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL, showGram = FALSE, showphylum = FALSE, addtit = NULL, mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE, returnstats = FALSE, ...)
+#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL)
 #'
 #' Plots correlation heatmaps annotated by the metadata or a correlelogram of features
 #' @export
 
-plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), applyfilters = NULL, featuresToKeep = NULL, samplesToKeep = NULL, genomecompleteness = NULL, list.data = NULL, showGram = TRUE, showphylum = TRUE, addtit = NULL, mgSeqnorm = FALSE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL) {
+plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL) {
 
-    #Get appropriate object to work with
-    if (as.character(class(ExpObj)) != "SummarizedExperiment"){
-        stop("This function can only take a SummarizedExperiment object as input. For using a metagenomeSeq object (deprecated), please use plot_relabund_heatmap_mgseq.")
-    }
-    obj <- ExpObj
+    #Vet experiment object
+    obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, class_to_ignore = class_to_ignore)
 
-    #Exclude samples and features if specified
-    if (!(is.null(samplesToKeep))){
-        obj <- obj[, samplesToKeep]
-    }
-
-    if (!(is.null(featuresToKeep))){
-        obj <- obj[featuresToKeep, ]
-    }
-
-    analysis <- attr(obj, "analysis")
+    analysis <- metadata(obj)$analysis
     analysisname <- analysis
 
-    if (!(is.null(glomby))){
-        obj <- agglomerate_features(ExpObj = obj, glomby = glomby)
-        if (analysis != "LKT"){
-            analysisname <- attr(obj, "analysis")
-        } else {
-            analysisname <- glomby
-        }
-    }
-
-    if (!is.null(applyfilters)){
-        if (applyfilters == "stringent"){
-            if (analysis == "LKT"){
-                featcutoff <- c(2000, 15)
-                genomecompleteness <- 0.3
-                #minabscorrcoeff <- 0.8
-            } else {
-                featcutoff <- c(50, 15)
-                genomecompleteness <- NULL
-                #minabscorrcoeff <- 0.8
-            }
-        } else if (applyfilters == "moderate"){
-            if (analysis == "LKT"){
-                featcutoff <- c(500, 10)
-                genomecompleteness <- 0.1
-                #minabscorrcoeff <- 0.5
-            } else {
-                featcutoff <- c(10, 5)
-                genomecompleteness <- NULL
-                #minabscorrcoeff <- 0.5
-            }
-        }
-    }
-
-    if ((analysis != "LKT") && (!(is.null(genomecompleteness)))){
-        warning("Genome completeness only makes sense for taxa. Please choose a taxonomic (non functional) analysis.")
-        genomecompleteness <- NULL
-    }
-
-    if ((!(is.null(genomecompleteness))) && (is.null(list.data))){
-        stop("Genome completeness can only be obtained by supplying a list.data object.")
-    }
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
 
     if (!(is.null(subsetby))){
         subset_points <- sort(unique((colData(obj)[, which(colnames(colData(obj)) == subsetby)])))
@@ -77,40 +25,23 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
     #s <- 1
     #n <- 1
 
-    numfeats <- nrow(MRcounts(obj))
-
     #subset by metadata column
     for (sp in 1:length(subset_points)) {
         if (!(is.null(subsetby))){
-            samplesToKeep <- which((colData(obj)[, which(colnames(colData(obj)) == subsetby)]) == subset_points[sp])
-            print(paste("Plotting within", subset_points[sp]))
+            samplesToKeep <- rownames(colData(obj))[which(colData(obj)[ , subsetby] == subset_points[sp])]
+            flog.info(paste("Plotting within", subset_points[sp]))
             subsetname <- subset_points[sp]
         } else {
-            samplesToKeep = rownames(colData(obj))
+            samplesToKeep <- rownames(colData(obj))
             subsetname <- "no_sub"
         }
 
-        #There must be at least two samples for a heatmap and at least two features
-        if ((length(samplesToKeep) > 1) && (numfeats > 1)){
-            #Discard features which do not match certain criteria
-            if (!(is.null(featcutoff))){
-                thresholdPPM <- featcutoff[1]
-                sampcutoffpct <- min(featcutoff[2], 100)
-                cutoffmsg <- paste("Feature must be >", thresholdPPM, "PPM in at least ", sampcutoffpct, "% of samples", sep = "")
-            } else {
-                cutoffmsg <- "Feature must be > 0 PPM in at least 0% of samples"
-                featcutoff <- c(0, 0)
-            }
+        currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, asPPM = TRUE, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
 
-            if (all(c((!(is.null(featmaxatleastPPM))), (featmaxatleastPPM > 0)))) {
-                minPPMmsg <- paste("Highest feature must be >", featmaxatleastPPM, "PPM", sep = " ")
-            } else {
-                minPPMmsg <- NULL
-                featmaxatleastPPM <- 0
-            }
+        numfeats <- nrow(currobj)
 
-            currobj <- filter_experiment(ExpObj = obj, featmaxatleastPPM = featmaxatleastPPM, featcutoff = featcutoff, samplesToKeep = samplesToKeep, asPA = FALSE, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
-
+        #There must be at least three features for a correlation heatmap
+        if (nrow(currobj) > 3){
             #Compose an appropriate title for the plot
             if (length(unique(subset_points)) > 1){
                 maintit <- paste("Feature Correlation Heatmap", analysisname, paste("within", subset_points[sp]), sep = " | ")
@@ -122,7 +53,7 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
             }
 
             #Get counts matrix
-            countmat <- MRcounts(currobj, norm = FALSE, log = FALSE)
+            countmat <- as.matrix(assays(currobj)$BaseCounts)
 
             #Protect against rows with empty data
             rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
@@ -134,6 +65,15 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
                 countmat <- countmat[rowsToKeep, ]
             }
 
+            #Rename rows to include description if not taxonomic data
+            if (analysis != "LKT"){
+                feattable <- rowData(currobj)
+                feattable$Feature <- paste(feattable$Accession, feattable$Description, sep = "-")
+                rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]
+            }
+            matrixSamples <- colnames(countmat)
+            matrixRows <- rownames(countmat)
+
             if (!is.null(ntopvar)){
                 ntop <- min(ntopvar, nrow(countmat))
                 featsds <- rowSds(countmat)
@@ -142,26 +82,6 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
                 ntopvarmsg <- paste("Top", ntop, "most variant features across samples")
             } else {
                 ntopvarmsg <- NULL
-            }
-
-            #Rename rows to include description if not taxonomic data
-            if (analysis != "LKT"){
-                feattable <- rowData(currobj)
-                feattable$Feature <- paste(feattable$Accession, feattable$Description, sep = "-")
-                rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]
-            } else {
-                #get genome completeness for taxonomic objects
-                genomecompletenessdf <- get_genome_completeness(pheno = colData(currobj), list.data = list.data)
-            }
-            matrixSamples <- colnames(countmat)
-            matrixRows <- rownames(countmat)
-
-            #Discard taxa below required level of completeness
-            if (!(is.null(genomecompleteness))){
-                print(paste("Genome completeness must be", genomecompleteness, "in at least one sample"))
-                featuresToKeep2 <- rownames(genomecompletenessdf)[which(rowMax(as.matrix(genomecompletenessdf)) >= genomecompleteness)]
-                countmat <- countmat[(rownames(countmat)[(rownames(countmat) %in% featuresToKeep2)]), ]
-                completenessmsg <- paste("Genome completeness >", genomecompleteness)
             }
 
             docorrelations <- TRUE
@@ -177,7 +97,7 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
                 matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = FALSE, stattype = stattype, classesvector = NULL)
 
                 if (!is.null(minabscorrcoeff)){
-                    print(paste("Eliminating features which do not correlate with other features with a coefficient of at least", minabscorrcoeff))
+                    flog.info(paste("Eliminating features which do not correlate with other features with a coefficient of at least", minabscorrcoeff))
                     matstats <- filter_correlations(corrmat= matstats, mincorrelcoeff = minabscorrcoeff)
                     minabscorrcoeffmsg <- paste("Largest correlation coefficient at least", minabscorrcoeff)
                 } else {
@@ -194,13 +114,14 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
 
                 #Add genome completeness info if LKT
                 if (analysis == "LKT"){
+                    genomecompletenessdf <- assays(currobj)$GenomeCompleteness
                     genomecompletenessstats <- as.matrix(genomecompletenessdf[rownames(matstats), ])
                     gcl <- lapply(1:nrow(genomecompletenessstats), function (x){ (as.numeric(genomecompletenessstats[x, ][which(genomecompletenessstats[x, ] != 0)])) * 100 })
 
                     data(Gram)
                     #Get Phyla
                     if (analysisname %in% c("LKT", "Species", "Genus", "Family", "Order", "Class")){
-                        tt <- rowData(currobj)
+                        tt <- as.data.frame(rowData(currobj))
                         tt <- tt[rownames(matstats), c(analysisname, "Phylum")]
                         Gram$Kingdom <- NULL
                         tt <- left_join(tt, Gram)
@@ -222,7 +143,7 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
 
                 #Build plot title
                 stattit <- paste("Correlation measure =", stattype)
-                plotit <- paste(maintit, stattit, cutoffmsg, minPPMmsg, ntopvarmsg, minabscorrcoeffmsg, sep = "\n")
+                plotit <- paste(maintit, stattit, presetlist$filtermsg, ntopvarmsg, minabscorrcoeffmsg, sep = "\n")
 
                 ht1 <- Heatmap(matstats, name = paste(stattype, "correlation coefficient"), column_title = plotit, column_title_gp = gpar(fontsize = 10), col = heatmapCols, column_dend_height = unit(5, "mm"), cluster_rows = TRUE, show_row_dend = FALSE, row_names_gp = gpar(fontsize = fontsizey), column_names_gp = gpar(fontsize = fontsizey), heatmap_legend_param = list(direction = "horizontal", legend_width = unit(6, "cm"), title = paste(stattype, "correlation coefficient"), labels = c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1), at = c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1), title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), left_annotation = ha1, bottom_annotation = ha2)
 

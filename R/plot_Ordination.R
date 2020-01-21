@@ -3,7 +3,7 @@
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = FALSE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plotcentroids = FALSE, addtit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = FALSE, transp = TRUE, perplx = NULL, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, addtit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
 
     #Remove samples bearing categories within class_to_ignore
     valid_vars <- c(colourby, shapeby, sizeby, subsetby)[which(!is.na(c(colourby, shapeby, sizeby, subsetby)))]
@@ -42,6 +42,8 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, asPPM = TRUE, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
 
+        currpt <- as.data.frame(colData(currobj))
+
         if (PPM_normalize_to_bases_sequenced == TRUE){
             pcatit <- paste(c(pcatit, "Normalized to total number of bases sequenced in sample"), collapse = "\n")
         } else {
@@ -76,53 +78,62 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             countmat <- t(countmat)
         }
 
+        if (permanova == TRUE){
+            d <- vegdist(countmat, method = "jaccard", na.rm = TRUE)
+            cats <- currpt[, colourby]
+            if (!(is.numeric(cats))){
+                permanovap <- vegan::adonis(as.formula(paste("d ~ ", colourby)), data = currpt)$aov.tab$`Pr(>F)`[1]
+            } else {
+                flog.info("Impossible to get permanova because colourby is continuous")
+                permanovap <- NULL
+            }
+        } else {
+            permanovap <- NULL
+        }
+
         if (algorithm == "tSNE"){
             #tSNE algorithm
-            permanova <- FALSE
             if (is.null(perplx)){
-                perplx <- round(nrow(colData(currobj)) * 0.3, 0)
+                perplx <- round(nrow(currpt) * 0.3, 0)
             }
 
             set.seed(4140)
             tsne_out <- Rtsne(countmat, dims = 3, initial_dims = 500, perplexity = perplx, theta = 0.5, check_duplicates = FALSE, pca = TRUE, max_iter = 1000)
             dford <- as.data.frame(tsne_out$Y)
-            rownames(dford) <- rownames(colData(currobj))
+            rownames(dford) <- rownames(currpt)
             colnames(dford)[1:3] <- c("PC1", "PC2", "PC3")
             xl <- "tSNE 1"
             yl <- "tSNE 2"
             zl <- "tSNE 3"
 
         } else if (algorithm == "tUMAP"){
-            permanova <- FALSE
+
             set.seed(4140)
-            tumap_out <- tumap(countmat, n_components = 2, n_neighbors = 15, verbose = FALSE, n_threads = threads)
+            if (nrow(countmat) < 20){
+                n_neighbors <- (nrow(countmat) - 1)
+            } else {
+                n_neighbors <- 20
+            }
+            tumap_out <- tumap(countmat, n_components = 2, n_neighbors = n_neighbors, verbose = FALSE, n_threads = threads)
             dford <- as.data.frame(tumap_out)
-            rownames(dford) <- rownames(colData(currobj))
+            rownames(dford) <- rownames(currpt)
             colnames(dford)[1:2] <- c("PC1", "PC2")
             xl <- "tUMAP 1"
             yl <- "tUMAP 2"
             #zl <- "tSNE 3"
 
         } else {
-            #Not tSNE, so use PCA
+            #Not tSNE or tUMAP, so use PCA
             distfun <- stats::dist
-            #d <- distfun(mat, method = "euclidian")
-            d <- vegdist(countmat, method = "jaccard", na.rm = TRUE)
+            if (permanova == FALSE){
+                #get distance if missing
+                #d <- distfun(mat, method = "euclidian")
+                d <- vegdist(countmat, method = "jaccard", na.rm = TRUE)
+            }
             pcaRes <- prcomp(d)
             ord <- pcaRes$x
             vars <- pcaRes$sdev^2
             vars <- round(vars/sum(vars), 5) * 100
-
-            pnmetadata <- colData(currobj)
-            cats <- pnmetadata[, colourby]
-
-            if (!(is.numeric(cats))){
-                permanovap <- vegan::adonis(as.formula(paste("d ~ ", colourby)), data = colData(currobj))$aov.tab$`Pr(>F)`[1]
-            } else {
-                #print("Impossible to get permanova because colourby is continuous")
-                permanova <- FALSE
-                permanovap <- 1
-            }
 
             xl <- sprintf("%s: %.2f%% variance", colnames(ord)[comp[1]], vars[comp[1]])
             yl <- sprintf("%s: %.2f%% variance", colnames(ord)[comp[2]], vars[comp[2]])
@@ -130,10 +141,10 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             dford <- as.data.frame(ord[, comp])
         }
         #Add colour, size, shape
-        dford$Colours <- colData(currobj)[match(rownames(dford), rownames(colData(currobj))), which(colnames(colData(currobj)) == colourby)]
-        dford$Size <- colData(currobj)[match(rownames(dford), rownames(colData(currobj))), which(colnames(colData(currobj)) == sizeby)]
-        dford$Shape <- colData(currobj)[match(rownames(dford), rownames(colData(currobj))), which(colnames(colData(currobj)) == shapeby)]
-        dford$Pair <- colData(currobj)[match(rownames(dford), rownames(colData(currobj))), which(colnames(colData(currobj)) == pairby)]
+        dford$Colours <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == colourby)]
+        dford$Size <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == sizeby)]
+        dford$Shape <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == shapeby)]
+        dford$Pair <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == pairby)]
 
         #centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford, mean)
         #colnames(centroids)[c(2,3)] <- c("meanx", "meany")
@@ -183,7 +194,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         if (ellipse != FALSE) {
             if (algorithm == "PCA"){
                 if (ellipse == "auto"){
-                    if (permanovap < 0.05){
+                    if (all(c(!is.null(permanovap), (permanovap < 0.05)))){
                         p <- p + stat_ellipse(type = "norm")
                     }
                 } else if (ellipse == TRUE) {
@@ -196,7 +207,6 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             }
         }
 
-
         #if (plotcentroids == TRUE){
         #    p <- p + geom_point(data = centroids, size = 5) + geom_segment(aes(x=dford$meanx, y=dford$meany, xend=dford$PC1, yend=dford$PC2))
         #}
@@ -205,12 +215,8 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             pcatit <- paste(c(pcatit, addtit), collapse = "\n")
         }
 
-        if ((permanova != FALSE) && (algorithm == "PCA")) {
-            pcatit <- paste(pcatit, paste("p <", permanovap))
-        }
-
-        if (mgSeqnorm == TRUE){
-            #pcatit <- paste(pcatit, (paste0("MetagenomeSeq normalization = ", as.character(mgSeqnorm))), sep="\n")
+        if (!is.null(permanovap)) {
+            pcatit <- paste(c(pcatit, (paste("PERMANOVA p <", permanovap))), collapse = "\n")
         }
 
         p <- p + ggtitle(pcatit)
