@@ -119,7 +119,7 @@ option_list <- list(
                 type = "logical",
                 help = "Generate alpha diversity plots."),
 
-    make_option(c("-l", "--plot_in_parallel"),
+    make_option(c("-m", "--plot_in_parallel"),
                 action = "store_true", default = FALSE,
                 type = "logical",
                 help = "Use multiple CPUs when generating plots. This option is experimental, and is not guaranteed to not crash."),
