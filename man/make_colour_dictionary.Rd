@@ -10,7 +10,8 @@ make_colour_dictionary(
   class_to_ignore = NULL,
   colour_of_class_to_ignore = "#bcc2c2",
   colour_table = NULL,
-  shuffle = FALSE
+  shuffle = FALSE,
+  showcoloursonly = FALSE
 )
 }
 \description{

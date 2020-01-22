@@ -3,17 +3,13 @@
 #' Returns a dictionary of colours for each class within each variable_list
 #' @export
 
-make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_ignore = NULL, colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE){
+make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_ignore = NULL, colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, showcoloursonly = FALSE){
 
-    #Build a palette
-    #atoms <- c("0075f2", "02c9e3", "ff7300", "00f2f2",  "fc03f0", "ebda26", "fc0303", "41f505", "000000")
-
-    atoms <- c("fc0000", "f4fc00", "fcac00", "00f4fc",  "04fc00", "fc00d2", "0061fc", "8600fc", "000000")
+    atoms <- c("0200FC", "ff7f02", "468B00", "CD2626", "267ACD", "640032", "FC00FA", "000000", "478559", "161748", "f95d9b", "39a0ca")
 
     JAMSpalette <- paste0("#", atoms)
 
-    offsets <- c(48, -71)
-
+    offsets <- c(64, 128)
     for(offsetamplitude in offsets){
         offset <- as.hexmode(offsetamplitude)
         atomsoff <- as.character(as.hexmode(atoms) + offset)
@@ -23,6 +19,23 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_
 
     if (shuffle == TRUE){
         JAMSpalette <- JAMSpalette[shuffle(JAMSpalette)]
+    }
+
+    if (showcoloursonly == TRUE){
+        #make example pies if requested
+        sliceValues <- as.data.frame(rep(10, length(atoms)))
+        colnames(sliceValues) <- "Slice"
+        colourpies <- list()
+        for (pies in 1:(length(offsets) + 1)){
+            currsliceValues <- sliceValues
+            pallist <- split(1:length(JAMSpalette), ceiling(seq_along(1:length(JAMSpalette)) / length(atoms)))
+            currpalette <- JAMSpalette[pallist[[pies]]]
+            currsliceValues$Colour <- factor(currpalette, levels=as.character(currpalette))
+            currcols <- as.character(currsliceValues$Colour)
+            names(currcols) <- as.character(currsliceValues$Colour)
+            colourpies[[pies]] <- ggplot(currsliceValues, aes(x = "", y = Slice, fill = Colour)) + geom_bar(width = 1, stat = "identity") + scale_fill_manual(values = currcols)  + coord_polar("y") + labs(title = paste0("JAMSpalette", pies))
+        }
+        return(colourpies)
     }
 
     #See how many different things there are
