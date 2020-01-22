@@ -24,7 +24,7 @@ plot_Ordination(
   pairby = NULL,
   dotsize = 2,
   dotborder = NULL,
-  log2tran = FALSE,
+  log2tran = TRUE,
   transp = TRUE,
   perplx = NULL,
   permanova = TRUE,
