@@ -31,6 +31,7 @@ filter_sample_by_class_to_ignore <- function(SEobj = NULL, mgseqobj = NULL, vari
             omitted_samples <- rownames(ptb)[!(rownames(ptb) %in% valid_samples)]
             flog.info(paste("A total of", length(omitted_samples), "samples were omitted for containing", paste0(class_to_ignore, collapse = ", "), "within metadata variables", paste0(variables, collapse = ", ")))
             ExpObj <- ExpObj[ , valid_samples]
+            ptb <- as.data.frame(colData(ExpObj))
         }
     }
 
