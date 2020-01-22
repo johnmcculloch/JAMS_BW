@@ -483,7 +483,7 @@ spew_heatmap_report <- function(hmcomb){
 
     } else if ((report %in% c("tUMAP", "PCA", "tSNE"))){
 
-        tryCatch((make_ordination_report(algorithm = report, project = project, expvec = expvec, usefulexp = analysis, appendtofilename = paste(analysis, report, sep = "_"), variable_list = variable_list, list.data = list.data, doreads = opt$doreads, cdict = cdict, threads = 1, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot(paste("generating", report, "ordination plots for", analysis, "analysis")))
+        tryCatch((make_ordination_report(algorithm = report, project = project, expvec = expvec, usefulexp = analysis, applyfilters = applyfilters, appendtofilename = paste(analysis, report, sep = "_"), variable_list = variable_list, doreads = opt$doreads, cdict = cdict, threads = 1, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot(paste("generating", report, "ordination plots for", analysis, "analysis")))
 
     }  else if (report == "alpha") {
 
