@@ -73,7 +73,7 @@ make_ordination_report <- function(project = NULL, algorithm = "PCA", expvec = N
             grid.table(c("Marking samples by", variables_all[c]), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 25))
 
             for(e in 1:length(expvec2)){
-                flog.info(paste("Plotting", names(expvec2)[e], " and marking by", variables_all[c]))
+                flog.info(paste("Plotting", names(expvec2)[e], "and marking by", variables_all[c]))
 
                 print(plot_Ordination(ExpObj = expvec2[[e]], algorithm = algorithm, colourby = variables_all[c], shapeby = NULL, log2tran = log2tran, permanova = TRUE, ellipse = ellipse, cdict = cdict, grid = grid, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, ignoreunclassified = ignoreunclassified, threads = threads, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced))
                 #If there are any subsettable variables, subset by them.
