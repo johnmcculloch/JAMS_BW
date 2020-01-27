@@ -358,8 +358,8 @@ if (!(exists("list.data"))) {
         flog.info("Crikey! There are over 200 samples to load. Go grab a coffee, this will take some time.")
     }
     list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = Samples_want, threads = opt$threads)
-    #Save session
-    IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
+
+    #IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 }
 if (length(opt$dupes) > 0){
     list.data[grep(paste0(opt$dupes, "_"), names(list.data))] <- NULL
@@ -460,15 +460,13 @@ if (!exists("expvec")){
     #Get sample list from current pheno
     Samples <- as.character(rownames(pheno))
 
-    #Make MetagenomeSeq-style experiments
-    #flog.info("Making metagenomeSeq MRexperiment objects")
-    #expvec <- make_metagenomeSeq_experiments(pheno = pheno, list.data = list.data)
+    #Make Summarized Experiments
     flog.info("Making SummarizedExperiments objects")
     expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data)
 
 } else {
     #Expvec exists. Either do nothing, or replace the metadata.
-    flog.info(paste("Found a list of metagenomeSeq experiments for the following analyses:", paste0(names(expvec), collapse = ", ")))
+    flog.info(paste("Found a list of SummarizedExperiment experiments for the following analyses:", paste0(names(expvec), collapse = ", ")))
     #Check structure and integrity of experiments and see if they match the metadata.
     Samples_have <- rownames(pData(expvec[["LKT"]]))
     pheno <- pheno[(rownames(pheno)[rownames(pheno) %in% Samples_have]), ]
@@ -505,7 +503,12 @@ if (!exists("expvec")){
 #Export list.data to system and set it as NULL, to decrease RAM burden.
 flog.info("Saving list.data.rda to system. Please be patient...")
 list.data_fn <- file.path(opt$outdir, "list_data.rda")
-save(list.data, file = list.data_fn)
+if ("fastSave" %in% rownames(installed.packages())) {
+    save.pigz(list.data, file = list.data_fn, envir = .GlobalEnv, n.cores = opt$threads)
+} else {
+    save(list.data, file = list.data_fn)
+}
+
 list.data <- NULL
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 

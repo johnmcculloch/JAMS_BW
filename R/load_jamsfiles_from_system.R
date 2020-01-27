@@ -37,6 +37,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
 
     #Restrict loading to only certain samples if required.
     if (!is.null(onlysamples)){
+        flog.info(paste("There are", length(onlysamples), "samples to load."))
         flog.info(paste("Will only load .jams files for samples", paste0(onlysamples, collapse = ", ")))
         jamsfilesdfwant <- subset(jamsfilesdf, Prefix %in% onlysamples)
         samplesIhavejams <- jamsfilesdfwant$Prefix
