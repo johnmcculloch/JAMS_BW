@@ -1,9 +1,9 @@
-#' plot_relabund_heatmap(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...)
+#' plot_relabund_heatmap(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...)
 #'
 #' Plots relative abundance heatmaps annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...){
+plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = TRUE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...){
 
     #Test for silly stuff
     if ((hmtype %in% c("comparative", "PA")) && (is.null(compareby))){
@@ -174,6 +174,16 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     fullheatmap_row_dend <- row_dend(htfull)
                 }
 
+                if (!cluster_features_per_heatmap){
+                    countmat2 <- countmat2[fullheatmap_row_order, ]
+                    matstats <- matstats[rownames(countmat2), ]
+                }
+
+                if (scaled == TRUE) {
+                    countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "from_log2")
+                    countmat2 <- t(apply(countmat2, 1, scale))
+                }
+
                 #Create a list of matrices each of maximum 50 rows
                 rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
                 matlist <- lapply(1:length(rowlist), function(x){countmat2[rowlist[[x]], ]})
@@ -223,6 +233,16 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         fullheatmap_row_dend <- row_dend(htfull)
                     }
 
+                    if (!cluster_features_per_heatmap){
+                        countmat2 <- countmat2[fullheatmap_row_order, ]
+                        matstats <- matstats[rownames(countmat2), ]
+                    }
+
+                    if (scaled == TRUE) {
+                        countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "from_log2")
+                        countmat2 <- t(apply(countmat2, 1, scale))
+                    }
+
                     #Create a list of matrices each of maximum 50 rows
                     topcats <- min(nrow(countmat2), 50)
                     rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
@@ -233,7 +253,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     statmsg <- paste("Var", compareby, sep = "_")
 
                 } else {
-
+                    #Stats are not variance
                     if (all(c((!(is.null(presetlist$minl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
                         #Check if there is enough leftover after filter.
                         if (length(which(matstats$absl2fc > presetlist$minl2fc)) < 2){
@@ -283,6 +303,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     l2fcmeaning <- paste("Positive l2fc means increased in", discretenames[1])
                     countmat2 <- as.matrix(countmat[rownames(matstats), ])
 
+                    #Transform to log2 space
+                    countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
+
                     if (any(!(c(cluster_samples_per_heatmap, cluster_features_per_heatmap)))){
                         flog.info("Clustering samples and features using entire matrix to obtain sample and feature order for all heatmaps.")
                         #create a heatmap from the entire count matrix for getting column order.
@@ -294,8 +317,15 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         fullheatmap_row_dend <- row_dend(htfull)
                     }
 
-                    #Transform to log2 space
-                    countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
+                    if (!cluster_features_per_heatmap){
+                        countmat2 <- countmat2[fullheatmap_row_order, ]
+                        matstats <- matstats[rownames(countmat2), ]
+                    }
+
+                    if (scaled == TRUE) {
+                        countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "from_log2")
+                        countmat2 <- t(apply(countmat2, 1, scale))
+                    }
 
                     #If adjustpval is set to auto, then find out which is best and re-set it to either TRUE or FALSE
                     if (("pval" %in% colnames(matstats)) && adjustpval == "auto"){
@@ -465,31 +495,41 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
 
                     hmasPA <- FALSE
                     #Make colour scale for relabund heatmap
-                    if ( hmasPA == FALSE ) {
-                        #This is the colour spectrum we are aiming to span
-                        PctHmColours <- c("blue4", "blue", "slategray1", "khaki", "orange", "tomato", "red", "magenta2", "magenta4")
-
-                        if (analysis == "LKT"){
-                            PctBreakPts <- c(0.0001, 0.001, 0.1, 1, 2.5, 5, 10, 50, 100)
-                            RelabundBreakPts <- signif(PctBreakPts, digits = 3)
-                            relabundscalename <- "Relative Abundance (%)"
-                            RelabundBreakPtsLbls <- as.character(paste0(RelabundBreakPts, "%"))
-                            HMrelabundBreaks <- Pct2log2PPM(PctBreakPts)
-                        } else {
+                    if (hmasPA == FALSE) {
+                        if (scaled == TRUE) {
+                            #This is the colour spectrum we are aiming to span
+                            PctHmColours <- c("blue4", "khaki", "red")
                             #Let us see what the distribution looks like to fit it to the colour spectrum
                             #Transform to PPM
-                            quantprobs <- round(((2:(length(PctHmColours) - 1)) * (1 / length(PctHmColours))), 1)
-                            #quantprobs <- c(0.10, 0.20, 0.35, 0.50, 0.85, 0.95, 0.99)
-                            nonlogmat <- convert_matrix_log2(mat = mathm, transformation = "from_log2")
-                            #Transform to get quantiles
-                            countmatdistrib <- apply(nonlogmat, function (x) { quantile(x, probs = quantprobs) }, MARGIN = 2)
-                            #take median values of these
-                            medpoints <- rowMedians(countmatdistrib)
-                            PPMrelabundBreaks <- c(0, medpoints, max(nonlogmat))
-                            HMrelabundBreaks <- log2(PPMrelabundBreaks + 1)
-                            RelabundBreakPts <- PPMrelabundBreaks
-                            relabundscalename <- "Parts Per Million"
-                            RelabundBreakPtsLbls <- as.character(paste(RelabundBreakPts, "PPM"))
+                            RelabundBreakPts <- c(min(mathm), ((min(mathm) + max(mathm)) / 2), max(mathm))
+                            relabundscalename <- "scaling"
+                            RelabundBreakPtsLbls <- round(RelabundBreakPts, 2)
+                            HMrelabundBreaks <- RelabundBreakPtsLbls
+                        } else {
+                            #This is the colour spectrum we are aiming to span
+                            PctHmColours <- c("blue4", "blue", "slategray1", "khaki", "orange", "tomato", "red", "magenta2", "magenta4")
+                            if (analysis == "LKT"){
+                                PctBreakPts <- c(0.0001, 0.001, 0.1, 1, 2.5, 5, 10, 50, 100)
+                                RelabundBreakPts <- signif(PctBreakPts, digits = 3)
+                                relabundscalename <- "Relative Abundance (%)"
+                                RelabundBreakPtsLbls <- as.character(paste0(RelabundBreakPts, "%"))
+                                HMrelabundBreaks <- Pct2log2PPM(PctBreakPts)
+                            } else {
+                                #Let us see what the distribution looks like to fit it to the colour spectrum
+                                #Transform to PPM
+                                quantprobs <- round(((2:(length(PctHmColours) - 1)) * (1 / length(PctHmColours))), 1)
+                                #quantprobs <- c(0.10, 0.20, 0.35, 0.50, 0.85, 0.95, 0.99)
+                                nonlogmat <- convert_matrix_log2(mat = mathm, transformation = "from_log2")
+                                #Transform to get quantiles
+                                countmatdistrib <- apply(nonlogmat, function (x) { quantile(x, probs = quantprobs) }, MARGIN = 2)
+                                #take median values of these
+                                medpoints <- rowMedians(countmatdistrib)
+                                PPMrelabundBreaks <- c(0, medpoints, max(nonlogmat))
+                                HMrelabundBreaks <- log2(PPMrelabundBreaks + 1)
+                                RelabundBreakPts <- PPMrelabundBreaks
+                                relabundscalename <- "Parts Per Million"
+                                RelabundBreakPtsLbls <- as.character(paste(RelabundBreakPts, "PPM"))
+                            }
                         }
                         relabundheatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
                     } else {
@@ -519,20 +559,34 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         plotit <- paste(plotit, paste("Heatmap", hmcounter), sep = "\n")
                     }
 
-                    #Switch plot title if doing a dual heatmap with genome completeness
+                    #Switch plot title if doing a dual heatmap with either genome completeness or percentage from contigs
                     #Get genome completeness hmdf if in taxonomic space
                     ht1fs <- 10
                     hm1tit <- plotit
-                    if ("GenomeCompleteness" %in% names(assays(currobj))){
-                        gchmdf <- genomecompletenessdf[rownames(mathm), colnames(mathm)]
-                        gchmdf <- as.matrix(gchmdf)
-                        gchmdf <- gchmdf * 100
-                        #Cap genome completeness to 400% max, to preserve scale across heatmaps
-                        gchmdf[which(gchmdf[] > 400)] <- 400
-                        if (ncol(mathm) < 51){
-                            ht1fs <- 7
-                            dualHMtit <- plotit
-                            hm1tit <- "Relative Abundance"
+
+                    if (secondaryheatmap == "GenomeCompleteness"){
+                        if ("GenomeCompleteness" %in% names(assays(currobj))){
+                            gchmdf <- genomecompletenessdf[rownames(mathm), colnames(mathm)]
+                            gchmdf <- as.matrix(gchmdf)
+                            gchmdf <- gchmdf * 100
+                            #Cap genome completeness to 400% max, to preserve scale across heatmaps
+                            gchmdf[which(gchmdf[] > 400)] <- 400
+                            if (ncol(mathm) < 51){
+                                ht1fs <- 7
+                                dualHMtit <- plotit
+                                hm1tit <- "Relative Abundance"
+                            }
+                        }
+                    } else if (secondaryheatmap == "PctFromCtgs"){
+                        if ("PctFromCtgs" %in% names(assays(currobj))){
+                            pctctgsdf <- as.data.frame(assays(currobj)$PctFromCtgs)
+                            gchmdf <- pctctgsdf[rownames(mathm), colnames(mathm)]
+                            gchmdf <- as.matrix(gchmdf)
+                            if (ncol(mathm) < 51){
+                                ht1fs <- 7
+                                dualHMtit <- plotit
+                                hm1tit <- "Relative Abundance"
+                            }
                         }
                     }
 
@@ -627,12 +681,21 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     }
 
                     #Make a genome completeness heatmap if in taxonomic space
-                    if ("GenomeCompleteness" %in% names(assays(currobj))){
-                        #Draw heatmap with completeness if taxonomic analysis
-                        GCheatmapCols <- colorRamp2(c(0, 100, 200, 300, 400), c("white", "forestgreen", "blue", "firebrick1", "black"))
-                        GCha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
-                        RelabundRowOrder <- row_order(ht1)
-                        ht2 <- Heatmap(gchmdf, name = "GenComp", column_title = "% Genome completeness", column_title_gp = gpar(fontsize = ht1fs), top_annotation = GCha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, cluster_rows = FALSE, column_order = column_order(ht1), row_order = RelabundRowOrder, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = "% GenComp", labels = c("0%", "100%", "200%", "300%", "> 400%"), title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                    if (all(c((secondaryheatmap %in% c("GenomeCompleteness", "PctFromCtgs")), (any(c(("GenomeCompleteness" %in% names(assays(currobj))), ("PctFromCtgs" %in% names(assays(currobj))))))))) {
+
+                        if (secondaryheatmap == "GenomeCompleteness"){
+                            #Draw heatmap with completeness
+                            GCheatmapCols <- colorRamp2(c(0, 100, 200, 300, 400), c("white", "forestgreen", "blue", "firebrick1", "black"))
+                            GCha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
+                            RelabundRowOrder <- row_order(ht1)
+                            ht2 <- Heatmap(gchmdf, name = "GenComp", column_title = "% Genome completeness", column_title_gp = gpar(fontsize = ht1fs), top_annotation = GCha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, cluster_rows = FALSE, column_order = column_order(ht1), row_order = RelabundRowOrder, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = "% GenComp", labels = c("0%", "100%", "200%", "300%", "> 400%"), title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                        } else if (secondaryheatmap == "PctFromCtgs"){
+                            #Draw heatmap with percentage from contigs
+                            GCheatmapCols <- colorRamp2(c(0, 100), c("white", "midnightblue"))
+                            GCha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
+                            RelabundRowOrder <- row_order(ht1)
+                            ht2 <- Heatmap(gchmdf, name = "PctFromCtgs", column_title = "% Taxonomic info from Contigs", column_title_gp = gpar(fontsize = ht1fs), top_annotation = GCha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, cluster_rows = FALSE, column_order = column_order(ht1), row_order = RelabundRowOrder, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = "PctFromCtgs", title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                        }
 
                         #Plot heatmaps side by side if there are 50 samples or less. Else plot one on each page.
                         if (ncol(mathm) < 51){

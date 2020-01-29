@@ -1,12 +1,12 @@
-#' plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, glomby=NULL, accession=NULL, groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, uselog=TRUE, statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel=c("p.signif", "p.format"), plottitle=NULL, asPA=FALSE, subsetbytaxlevel=NULL, taxtable=NULL, list.data=NULL, cdict=NULL, ...)
+#' plot_feature_relabund<-function(ExpObj=NULL, mgSeqnorm=FALSE, feature=NULL, glomby=NULL, accession=NULL, groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, uselog=TRUE, statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel=c("p.signif", "p.format"), plottitle=NULL, asPA=FALSE, subsetbytaxlevel=NULL, taxtable=NULL, list.data=NULL, cdict=NULL, ...)
 #'
 #' Plots the relative abundance of an entity present in a sample or group of samples and subsets by taxonomy.
 #' @export
 
-plot_feature_relabund <- function(mgseqobj = NULL, mgSeqnorm = FALSE, feature = NULL, glomby = NULL, accession = NULL, groupby = NULL, colourby = NULL, shapeby = NULL, subsetby = NULL, uselog = TRUE, statmeth = "wilcox.test", samplesToKeep = NULL, featuresToKeep = NULL, signiflabel = "p.format", plottitle = NULL, asPA = FALSE, subsetbytaxlevel = NULL, taxtable = NULL, list.data = NULL, cdict = NULL, max_categories = 3, ...){
+plot_feature_relabund <- function(ExpObj = NULL, mgSeqnorm = FALSE, feature = NULL, glomby = NULL, accession = NULL, groupby = NULL, colourby = NULL, shapeby = NULL, subsetby = NULL, uselog = TRUE, statmeth = "wilcox.test", samplesToKeep = NULL, featuresToKeep = NULL, signiflabel = "p.format", plottitle = NULL, asPA = FALSE, subsetbytaxlevel = NULL, taxtable = NULL, list.data = NULL, cdict = NULL, max_categories = 3, ...){
 
     require(reshape2)
-    obj <- mgseqobj
+    obj <- ExpObj
 
     #Exclude samples and features if specified
     if (!(is.null(samplesToKeep))){
@@ -28,7 +28,7 @@ plot_feature_relabund <- function(mgseqobj = NULL, mgSeqnorm = FALSE, feature = 
     }
 
     if (!(is.null(subsetby))){
-        subset_points <- sort(unique((pData(obj)[, which(colnames(pData(obj))==subsetby)])))
+        subset_points <- sort(unique((colData(obj)[, which(colnames(colData(obj))==subsetby)])))
     }else{
         subset_points <- "none"
     }
@@ -42,7 +42,7 @@ plot_feature_relabund <- function(mgseqobj = NULL, mgSeqnorm = FALSE, feature = 
     }
 
     if (is.null(plottitle)){
-        featdesc <- paste(feature, fData(obj)[feature, "Description"], sep="-")
+        featdesc <- paste(feature, rowData(obj)[feature, "Description"], sep="-")
         if(length(feature) < 3){
             plottitle <- paste(featdesc, collapse = ' AND ')
         } else {
@@ -57,7 +57,7 @@ plot_feature_relabund <- function(mgseqobj = NULL, mgSeqnorm = FALSE, feature = 
     for (sp in 1:length(subset_points)){
 
         if (!(is.null(subsetby))){
-            samplesToKeep = which((pData(obj)[ , which(colnames(pData(obj)) == subsetby)]) == subset_points[sp])
+            samplesToKeep = which((colData(obj)[ , which(colnames(colData(obj)) == subsetby)]) == subset_points[sp])
             currobj = obj[ , samplesToKeep]
             maintit <- paste(plottitle, paste("Subset:", subset_points[sp]), sep = "\n")
         } else {
@@ -65,22 +65,22 @@ plot_feature_relabund <- function(mgseqobj = NULL, mgSeqnorm = FALSE, feature = 
             maintit <- plottitle
         }
 
-        currobj <- filter_experiment(mgseqobj = currobj, asPA = asPA, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
+        currobj <- filter_experiment(ExpObj = currobj, asPA = asPA, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
 
-        if (is.factor(pData(currobj)[, groupby])) { # use order if factor
-          discretenames <- levels(pData(currobj)[ , groupby])
+        if (is.factor(colData(currobj)[, groupby])) { # use order if factor
+          discretenames <- levels(colData(currobj)[ , groupby])
         } else {
-          discretenames <- sort(unique(as.character(pData(currobj)[ , which(colnames(pData(currobj)) == groupby)])))
+          discretenames <- sort(unique(as.character(colData(currobj)[ , which(colnames(colData(currobj)) == groupby)])))
         }
         classIndex <- NULL
         classIndex <- list()
         for (n in 1:length(discretenames)){
-            classIndex[[n]] = which(pData(currobj)[, which(colnames(pData(currobj)) == groupby)] == discretenames[n])
+            classIndex[[n]] = which(colData(currobj)[, which(colnames(colData(currobj)) == groupby)] == discretenames[n])
             names(classIndex)[[n]] <- discretenames[n]
         }
         par(cex.axis = 0.5, cex.main = 1, cex.sub = 0.5, las = 2)
 
-        mat <- MRcounts(currobj, norm = FALSE, log = uselog)
+        mat <- as.matrix(assays(currobj)$BaseCounts)
 
         #Protect against feature being absent
         if (all(feature %in% rownames(mat))){
@@ -104,27 +104,27 @@ plot_feature_relabund <- function(mgseqobj = NULL, mgSeqnorm = FALSE, feature = 
             xnam <- rep(names(l), sapply(l, length))
             dat <- data.frame(xnam = xnam, x = x, y = y)
 
-            if(length(discretenames) < nrow(pData(currobj))){
-                jitfact <- -( 0.3 / nrow(pData(currobj))) * (length(discretenames)) + 0.25
+            if(length(discretenames) < nrow(colData(currobj))){
+                jitfact <- -( 0.3 / nrow(colData(currobj))) * (length(discretenames)) + 0.25
             } else {
                 jitfact = 0
             }
 
             if (!(is.null(shapeby))){
-                shapeindex = lapply(classIndex, function(j) { pData(currobj)[j, which(colnames(pData(currobj))==shapeby)] })
+                shapeindex = lapply(classIndex, function(j) { colData(currobj)[j, which(colnames(colData(currobj))==shapeby)] })
                 shp=unlist(shapeindex)
                 dat$shape<-shp
             }
 
             if(!(is.null(colourby))){
-                colourindex = lapply(classIndex, function(j) { pData(currobj)[j, which(colnames(pData(currobj))==colourby)] })
+                colourindex = lapply(classIndex, function(j) { colData(currobj)[j, which(colnames(colData(currobj))==colourby)] })
                 col=unlist(colourindex)
                 dat$colours<-col
             }
 
             #I know, I know, call me inelegant, but it works.
             if(!(is.null(colourby))){
-                p <- ggplot(dat, aes(pData(currobj)[,groupby], y, colour = colours))
+                p <- ggplot(dat, aes(colData(currobj)[,groupby], y, colour = colours))
                 if(is.numeric(dat$colours)){
                     p <- p + scale_color_gradient(low="blue", high="red")
                 } else {
@@ -202,7 +202,7 @@ plot_feature_relabund <- function(mgseqobj = NULL, mgSeqnorm = FALSE, feature = 
                 tt$Colour[which(tt$Phylum=="Unclassified")]<-"#000000"
 
                 #Get data for features
-                wantedSamples<-rownames(pData(currobj))
+                wantedSamples<-rownames(colData(currobj))
                 featureobjects<-paste(wantedSamples, "featuredose", sep="_")
                 featuredoses<-list.data[featureobjects]
                 names(featuredoses)<-wantedSamples
@@ -254,7 +254,7 @@ plot_feature_relabund <- function(mgseqobj = NULL, mgSeqnorm = FALSE, feature = 
                 classIndex2<-NULL
                 classIndex2<-list()
                 for (n in 1:length(discretenames)){
-                    classIndex2[[n]]=rownames(pData(currobj))[which(pData(currobj)[,which(colnames(pData(currobj))==groupby)]==discretenames[n])]
+                    classIndex2[[n]]=rownames(colData(currobj))[which(colData(currobj)[,which(colnames(colData(currobj))==groupby)]==discretenames[n])]
                     names(classIndex2)[[n]] <- discretenames[n]
                 }
 

@@ -2,10 +2,10 @@
 % Please edit documentation in R/plot_feature_relabund.R
 \name{plot_feature_relabund}
 \alias{plot_feature_relabund}
-\title{plot_feature_relabund<-function(mgseqobj=NULL, mgSeqnorm=FALSE, feature=NULL, glomby=NULL, accession=NULL, groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, uselog=TRUE, statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel=c("p.signif", "p.format"), plottitle=NULL, asPA=FALSE, subsetbytaxlevel=NULL, taxtable=NULL, list.data=NULL, cdict=NULL, ...)}
+\title{plot_feature_relabund<-function(ExpObj=NULL, mgSeqnorm=FALSE, feature=NULL, glomby=NULL, accession=NULL, groupby=NULL, colourby=NULL, shapeby=NULL, subsetby=NULL, uselog=TRUE, statmeth="wilcox.test", samplesToKeep=NULL, featuresToKeep=NULL, signiflabel=c("p.signif", "p.format"), plottitle=NULL, asPA=FALSE, subsetbytaxlevel=NULL, taxtable=NULL, list.data=NULL, cdict=NULL, ...)}
 \usage{
 plot_feature_relabund(
-  mgseqobj = NULL,
+  ExpObj = NULL,
   mgSeqnorm = FALSE,
   feature = NULL,
   glomby = NULL,
