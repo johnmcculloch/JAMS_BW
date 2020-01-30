@@ -25,6 +25,7 @@ plot_Ordination(
   dotsize = 2,
   dotborder = NULL,
   log2tran = TRUE,
+  distmethod = "jaccard",
   transp = TRUE,
   perplx = NULL,
   permanova = TRUE,
