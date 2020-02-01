@@ -1,9 +1,9 @@
-#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = FALSE, transp = TRUE, perplx = NULL, permanova = FALSE, ellipse = FALSE, plotcentroids = FALSE, addtit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...)
+#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, addtit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...)
 #'
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, distmethod = "jaccard", transp = TRUE, perplx = NULL, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, addtit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, addtit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
 
     #Remove samples bearing categories within class_to_ignore
     valid_vars <- c(colourby, shapeby, sizeby, subsetby)[which(!is.na(c(colourby, shapeby, sizeby, subsetby)))]
@@ -124,11 +124,11 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         } else {
             #Not tSNE or tUMAP, so use PCA
-            distfun <- stats::dist
+            #distfun <- stats::dist
             if (permanova == FALSE){
                 #get distance if missing
                 #d <- distfun(mat, method = "euclidian")
-                d <- vegdist(countmat, method = "jaccard", na.rm = TRUE)
+                d <- vegdist(countmat, method = distmethod, na.rm = TRUE)
             }
             pcaRes <- prcomp(d)
             ord <- pcaRes$x
@@ -191,20 +191,12 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             p <- p + aes(group = Pair) + geom_line()
         }
 
-        if (ellipse != FALSE) {
-            if (algorithm == "PCA"){
-                if (ellipse == "auto"){
-                    if (all(c(!is.null(permanovap), (permanovap < 0.05)))){
-                        p <- p + stat_ellipse(type = "norm")
-                    }
-                } else if (ellipse == TRUE) {
-                    p <- p + stat_ellipse(type = "norm")
-                }
-            } else {
-                if (ellipse == TRUE) {
-                    p <- p + stat_ellipse(type = "norm")
-                }
+        if (ellipse == "auto"){
+            if (all(c(!is.null(permanovap), (permanovap < 0.05)))){
+                p <- p + stat_ellipse(show.legend = TRUE, type = "norm")
             }
+        } else if (ellipse == TRUE) {
+            p <- p + stat_ellipse(show.legend = TRUE, type = "norm")
         }
 
         #if (plotcentroids == TRUE){
@@ -217,6 +209,11 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (!is.null(permanovap)) {
             pcatit <- paste(c(pcatit, (paste("PERMANOVA p <", permanovap))), collapse = "\n")
+        }
+
+        if(any(c((!is.null(permanovap)), (algorithm == "PCA")))){
+            distmessage <- paste0("Dissimilarity index = ", distmethod)
+            pcatit <- paste(c(pcatit, distmessage), collapse = "\n")
         }
 
         p <- p + ggtitle(pcatit)
