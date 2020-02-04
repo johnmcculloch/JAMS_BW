@@ -229,7 +229,10 @@ assemble_contigs <- function(opt = NULL){
     }
 
     #Delete assembly folder
-    unlink(paste(opt$prefix, "assembly", sep = "_"))
+    #unlink(paste(opt$prefix, "assembly", sep = "_"))
+    assemblyfolder <- file.path(opt$workdir, paste(opt$prefix, "assembly", sep = "_"))
+    delcmd <- paste("rm", "-r", assemblyfolder)
+    system(delcmd)
 
     return(opt)
 }
