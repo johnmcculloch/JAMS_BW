@@ -153,8 +153,8 @@ if (onbiowulf == TRUE){
 
 #Install devtools and stringr if not present
 repos <- "https://cloud.r-project.org"
-if(!(all((c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager") %in% rownames(installed.packages()))))){
-    install.packages(c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager"), repos = repos)
+if(!(all((c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits") %in% rownames(installed.packages()))))){
+    install.packages(c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits"), repos = repos)
 }
 require("devtools")
 require("stringr")
@@ -168,9 +168,9 @@ bytesRAM <- detectAvailRAM()
 cat(paste0("You have ~", round(bytesRAM/1E9, 1), " Gbytes of RAM available\n"))
 
 #Install Bioconductor packages
-bioconductordeps <- c("dada2", "metagenomeSeq", "HybridMTest", "genefilter")
+bioconductordeps <- c("dada2", "SummarizedExperiment", "metagenomeSeq", "HybridMTest", "genefilter", "ComplexHeatmap")
 BiocManager::install(pkgs = bioconductordeps, update = TRUE, ask = FALSE, site_repository = repos)
-devtools::install_github("jokergoo/ComplexHeatmap")
+#devtools::install_github("jokergoo/ComplexHeatmap")
 devtools::install_github('barkasn/fastSave')
 #Install the rest of JAMS
 devtools::install(jamsdir, upgrade = FALSE, repos = repos)
