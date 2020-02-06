@@ -99,7 +99,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
         }
 
         #There must be at least two samples for a heatmap and at least two features
-        if (((dim(colData(currobj))[1] * dim(colData(currobj))[2]) >= 4)){
+        if (((dim(rowData(currobj))[1] * dim(rowData(currobj))[2]) >= 4)){
 
             #Compose an appropriate title for the plot
             if (length(unique(subset_points)) > 1){
