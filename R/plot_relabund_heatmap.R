@@ -99,7 +99,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
         }
 
         #There must be at least two samples for a heatmap and at least two features
-        if ((nrow(currobj) * ncol(currobj)) >= 4)){
+        if ((nrow(currobj) * ncol(currobj)) >= 4){
 
             #Compose an appropriate title for the plot
             if (length(unique(subset_points)) > 1){
@@ -196,7 +196,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                 cl <- colData(currobj)[ , which(colnames(colData(currobj)) == compareby)]
                 discretenames <- sort(unique(cl))
 
-                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = FALSE, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, nperm = nperm)
+                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = statsonlog, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, nperm = nperm)
 
                 ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
 
@@ -239,7 +239,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     }
 
                     if (scaled == TRUE) {
-                        countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "from_log2")
+                        #countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "from_log2")
                         countmat2 <- t(apply(countmat2, 1, scale))
                     }
 

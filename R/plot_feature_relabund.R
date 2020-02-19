@@ -65,7 +65,7 @@ plot_feature_relabund <- function(ExpObj = NULL, mgSeqnorm = FALSE, feature = NU
             maintit <- plottitle
         }
 
-        currobj <- filter_experiment(ExpObj = currobj, asPA = asPA, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
+        currobj <- filter_experiment(ExpObj = currobj, asPPM = TRUE, mgSeqnorm = mgSeqnorm)
 
         if (is.factor(colData(currobj)[, groupby])) { # use order if factor
           discretenames <- levels(colData(currobj)[ , groupby])

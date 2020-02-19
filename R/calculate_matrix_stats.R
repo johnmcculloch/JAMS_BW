@@ -42,12 +42,9 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         }
     }
 
-    if ((uselog == TRUE) && (statsonlog == FALSE)){
+    if (all(c((uselog == TRUE), (statsonlog == FALSE)))){
         flog.info("Transforming log2 counts back to raw counts for calculating stats.")
         #log2 transform if applicable
-        #countmatrix2 <- sapply(1:ncol(countmatrix), function(x){ countmatrix[, x] <- ((2 ^ (countmatrix[, x])) - 1)} )
-        #colnames(countmatrix2) <- colnames(countmatrix)
-        #countmatrix <- countmatrix2
         countmatrix <- convert_matrix_log2(mat = countmatrix, transformation = "from_log2")
     }
 
@@ -126,7 +123,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
             flog.info(paste("Calculating p-values with PERMANOVA using", nperm, "permutations on", numthreads, "threads. Please be patient..."))
             mwpval <- sapply(1:nrow(countmatrix), function(x) { vegan::adonis(countmatrix[x,] ~ classesvector, parallel = numthreads, permutations = nperm)$aov.tab$`Pr(>F)`[1] } )
         } else if (stattype == "anova") {
-            flog.info("Calculating p-values with ANOVA. Please be patient...")
+            flog.info("Calculating p-values with ANOVA.")
             mwpval <- sapply(1:nrow(countmatrix), function(x) { summary(aov(countmatrix[x,] ~ classesvector))[[1]]$`Pr(>F)`[1] } )
         }
 
