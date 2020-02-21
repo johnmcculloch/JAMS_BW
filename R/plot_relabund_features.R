@@ -1,9 +1,9 @@
-#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = FALSE, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = TRUE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...)
+#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = TRUE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = FALSE, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = TRUE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...){
+plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = TRUE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...){
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
@@ -103,7 +103,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
             countmat <- countmat[rowsToKeep, ]
 
-            wantedfeatures <- featuresToKeep[featuresToKeep %in% rownames(countmat)]
             if (length(wantedfeatures) < length(featuresToKeep)){
                 #warn that some features were not found
                 flog.warn(paste("Some of the wanted features were not found in SummarizedExperiment object when using the current filtration parameters. Only", paste0(length(wantedfeatures), "/", length(featuresToKeep)), "are still present."))
@@ -137,6 +136,35 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             #Cull to only features wanted
             matstats <- matstats[wantedfeatures, ]
+            topcats <- nrow(matstats)
+            if (!(is.null(ntop))) {
+                topcats <- min(topcats, ntop)
+            }
+
+            if (!is.null(showonlypbelow)){
+                if (showonlypadjusted == TRUE) {
+                    sigmeas <- paste("padj", padjmeth, sep = "_")
+                } else {
+                    sigmeas <- "pval"
+                }
+                rowcutoff <- which(matstats[ , sigmeas] < showonlypbelow)
+            } else {
+                rowcutoff <- 1:nrow(matstats)
+            }
+
+            #Limit number of features to requested number or number available
+            rowcutoff <- rowcutoff[1:(min(topcats, length(rowcutoff)))]
+
+            if (length(rowcutoff) == 0){
+                #abort, nothing is left over
+                flog.warn("None of the wanted features were not found in SummarizedExperiment object when using the current filtration parameters.")
+
+                return(NULL)
+            }
+
+            matstats <- matstats[rowcutoff, ]
+
+            #Redefine countmat to include only features matching filtering criteria
             countmat <- countmat[rownames(matstats), ]
             if (class(countmat) != "matrix"){
                 countmat <- t(as.matrix(countmat))
@@ -146,6 +174,10 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             if ("GenomeCompleteness" %in% names(assays(currobj))){
                 genomecompletenessdf <- as.matrix(assays(currobj)$GenomeCompleteness)
                 genomecompletenessdf <- genomecompletenessdf[wantedfeatures, ]
+                if (class(genomecompletenessdf) != "matrix"){
+                    genomecompletenessdf <- t(as.matrix(genomecompletenessdf))
+                    rownames(genomecompletenessdf) <- wantedfeatures
+                }
             } else {
                 genomecompletenessdf <- NULL
             }
@@ -153,6 +185,10 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             if ("PctFromCtgs" %in% names(assays(currobj))){
                 PctFromCtgsdf <- as.matrix(assays(currobj)$PctFromCtgs)
                 PctFromCtgsdf <- PctFromCtgsdf[wantedfeatures, ]
+                if (class(PctFromCtgsdf) != "matrix"){
+                    PctFromCtgsdf <- t(as.matrix(PctFromCtgsdf))
+                    rownames(PctFromCtgsdf) <- wantedfeatures
+                }
             } else {
                 PctFromCtgsdf <- NULL
             }
@@ -160,7 +196,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
         } else {
 
             #abort, nothing is left over
-            flog.info("None of the wanted features were not found in SummarizedExperiment object when using the current filtration parameters.")
+            flog.warn("None of the wanted features were not found in SummarizedExperiment object when using the current filtration parameters.")
 
             return(NULL)
         }
@@ -196,15 +232,33 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 }
 
                 if (!(is.null(colourby))){
-                    colourindex <- lapply(classIndex, function(j) { colData(currobj)[j, which(colnames(colData(currobj)) == colourby)] })
+                    if (colourby == "GenomeCompleteness"){
+                        pctgencompdf <- t(genomecompletenessdf) * 100
+                        colourindex <- lapply(classIndex, function(j) { pctgencompdf[j, which(colnames(pctgencompdf) == feat)] })
+                    } else if (colourby == "PctFromCtgs"){
+                        colourindex <- lapply(classIndex, function(j) { t(PctFromCtgsdf)[j, which(colnames(t(PctFromCtgsdf)) == feat)] })
+
+                    } else {
+                        colourindex <- lapply(classIndex, function(j) { colData(currobj)[j, which(colnames(colData(currobj)) == colourby)] })
+                    }
                     col <- unlist(colourindex)
                     dat$colours <- col
+                    p <- ggplot(dat, aes(xnam, y, colour = colours))
+                } else {
+                    p <- ggplot(dat, aes(factor(xnam), y))
                 }
 
                 #I know, I know, call me inelegant, but it works.
                 if (!(is.null(colourby))){
-                    p <- ggplot(dat, aes(colData(currobj)[, compareby], y, colour = colours))
                     if (is.numeric(dat$colours)){
+                        #If it is numeric, chech that range is enough for a gradient
+                        #if ((range(dat$colours)[2] - range(dat$colours)[1]) != 0){
+                            #p <- p + scale_color_gradient(low = "blue", high = "red")
+                        #} else {
+                            #dat$colours <- as.character(dat$colours)
+                            #groupcols <- setNames("black", unique(dat$colours))
+                            #p <- p + scale_color_manual(values = groupcols)
+                        #}
                         p <- p + scale_color_gradient(low = "blue", high = "red")
                     } else {
                         #if there is a colour dictionary, then use that
@@ -214,8 +268,14 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                             p <- p + scale_color_manual(values = groupcols)
                         }
                     }
+                }
+
+                p <- p + geom_boxplot(outlier.shape = NA)
+
+                if (!(is.null(shapeby))){
+                    p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0), aes(shape = shape))
                 } else {
-                    p <- ggplot(dat, aes(factor(xnam), y))
+                    p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0))
                 }
 
                 if ((length(discretenames) > 1) && (length(discretenames) <= max_pairwise_cats)){
@@ -229,18 +289,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     flog.warn("There are too many combinations to plot significance.")
                 }
 
-                p <- p + geom_boxplot(outlier.shape = NA)
-
-                if (!(is.null(shapeby))){
-                    p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0), aes(shape = shape))
-                } else {
-                    p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0))
-                }
                 p <- p + theme_minimal()
-
-#insert stat_compare_block here
-
-
 
                 #Build plot title
                 overallpmeth <- matstats[feat, "Method"]

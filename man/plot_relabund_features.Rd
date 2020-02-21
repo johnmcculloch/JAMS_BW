@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_relabund_features.R
 \name{plot_relabund_features}
 \alias{plot_relabund_features}
-\title{plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = FALSE, showpval = TRUE, showl2fc = TRUE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = TRUE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...)}
+\title{plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = TRUE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...)}
 \usage{
 plot_relabund_features(
   ExpObj = NULL,
@@ -21,9 +21,10 @@ plot_relabund_features(
   GenomeCompletenessCutoff = NULL,
   PctFromCtgscutoff = NULL,
   ntop = NULL,
-  adjustpval = FALSE,
-  showpval = TRUE,
-  showl2fc = TRUE,
+  adjustpval = TRUE,
+  padjmeth = "fdr",
+  showonlypbelow = NULL,
+  showonlypadjusted = FALSE,
   maxl2fc = NULL,
   minl2fc = NULL,
   addtit = NULL,
