@@ -1,4 +1,9 @@
-add_enterotypes_to_metadata <- function(ptable = NULL, ExpObj = NULL, PPM_normalize_to_bases_sequenced = TRUE){
+#' add_enterotypes_to_metadata(ptable = NULL, ExpObj = NULL, PPM_normalize_to_bases_sequenced = TRUE, force_n_clusters = NULL)
+#' Defines enterotypes and attributes samples to enterotypes
+#'
+#' @export
+
+add_enterotypes_to_metadata <- function(ptable = NULL, ExpObj = NULL, PPM_normalize_to_bases_sequenced = TRUE, force_n_clusters = NULL){
 
     require(ade4)
     require(cluster)
@@ -68,6 +73,12 @@ add_enterotypes_to_metadata <- function(ptable = NULL, ExpObj = NULL, PPM_normal
     nclusters[which(is.na(nclusters))] <- 0
     optk <- which(nclusters == max(nclusters))
     #plot(nclusters, type="h", xlab="k clusters", ylab="CH index")
+
+    if (!is.null(force_n_clusters)){
+        flog.warn(paste("Forcing clusterization into", force_n_clusters, "enterotypes"))
+        flog.warn(paste("Calculated optimal number of enterotypes =", optk))
+        optk <- force_n_clusters
+    }
 
     #Redefine now with the best k
     enterotype_table_relabund.cluster <- pam.clustering(enterotype_table_relabund.dist, k = optk)

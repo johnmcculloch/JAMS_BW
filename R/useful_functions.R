@@ -517,3 +517,35 @@ RAMbytes_status <- function(RAMbytesavail = NULL){
 
     return(RAMdf)
 }
+
+
+#' update_ExpObj_metadata(ExpObj = NULL, phenotable = NULL)
+#'
+#' Updates phenotable of a SummarizedExperiment object
+#' @export
+
+update_ExpObj_metadata <- function(ExpObj = NULL, phenotable = NULL){
+
+        #Get appropriate object to work with
+        if (as.character(class(ExpObj)) != "SummarizedExperiment"){
+            stop("This function can only take a SummarizedExperiment object as input.")
+        }
+
+        #Let's see what we have here
+        pheno_original <- colData(ExpObj)
+        Samples_have <- rownames(pheno_original)
+        if (!all(rownames(phenotable) %in% Samples_have)){
+            stop("New phenotable contains samples not present in SummarizedExperiment. Phenotable sample names must match those in SummarizedExperiment. Check your new metadata and try again.")
+        }
+
+        #The SummarizedExperiment package does not permit coercing different metadata, so object has to be re-assembled from scratch
+        assays_ExpObj <-(assays(ExpObj))
+        ftt <- rowData(ExpObj)
+        metadata_ExpObj <- metadata(ExpObj)
+
+        ##Create SummarizedExperiment
+        newExpObj <- SummarizedExperiment(assays = assays_ExpObj, rowData = ftt, colData = phenotable)
+        metadata(newExpObj) <- metadata_ExpObj
+
+        return(newExpObj)
+}
