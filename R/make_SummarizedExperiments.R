@@ -13,47 +13,49 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     } else {
         pheno2 <- pheno
     }
+
     Samples <- rownames(pheno2)
-    featureobjects <- paste(Samples, "featuredose", sep="_")
-    featuredoses <- list.data[featureobjects]
-    names(featuredoses) <- Samples
+    if (onlyanalyses != "LKT"){
+        featureobjects <- paste(Samples, "featuredose", sep="_")
+        featuredoses <- list.data[featureobjects]
+        names(featuredoses) <- Samples
 
-    #Find out which functional analyses can be made
-    anallist <- lapply(1:length(featuredoses), function (x) { as.character(unique(featuredoses[[x]][]$Analysis)) } )
-    names(anallist) <- Samples
+        #Find out which functional analyses can be made
+        anallist <- lapply(1:length(featuredoses), function (x) { as.character(unique(featuredoses[[x]][]$Analysis)) } )
+        names(anallist) <- Samples
 
-    allanalyses <- Reduce(union, anallist)
-    numsampwithanalysis <- NULL
-    for (pa in 1:length(allanalyses)){
-        possibleanalysis <- allanalyses[pa]
-        numsampwithanalysis[pa] <- length(which(sapply(1:length(anallist), function(x) { (possibleanalysis %in% anallist[[x]]) } ) == TRUE))
-    }
+        allanalyses <- Reduce(union, anallist)
+        numsampwithanalysis <- NULL
+        for (pa in 1:length(allanalyses)){
+            possibleanalysis <- allanalyses[pa]
+            numsampwithanalysis[pa] <- length(which(sapply(1:length(anallist), function(x) { (possibleanalysis %in% anallist[[x]]) } ) == TRUE))
+        }
 
-    names(numsampwithanalysis) <- allanalyses
-    propsampleswithanalysis <- numsampwithanalysis / length(anallist)
+        names(numsampwithanalysis) <- allanalyses
+        propsampleswithanalysis <- numsampwithanalysis / length(anallist)
 
-    if (!(is.null(minpropsampanalysis))) {
-        possibleanalyses <- names(propsampleswithanalysis[propsampleswithanalysis >= minpropsampanalysis])
-    }
+        if (!(is.null(minpropsampanalysis))) {
+            possibleanalyses <- names(propsampleswithanalysis[propsampleswithanalysis >= minpropsampanalysis])
+        }
 
-    if (!(is.null(minnumsampanalysis))) {
-        possibleanalyses <- names(numsampwithanalysis[numsampwithanalysis >= minnumsampanalysis])
-    }
+        if (!(is.null(minnumsampanalysis))) {
+            possibleanalyses <- names(numsampwithanalysis[numsampwithanalysis >= minnumsampanalysis])
+        }
 
-    if (!is.null(onlyanalyses)){
-        possibleanalyses <- allanalyses[allanalyses %in% onlyanalyses]
-    } else {
-        possibleanalyses <- allanalyses
-    }
+        if (!is.null(onlyanalyses)){
+            possibleanalyses <- allanalyses[allanalyses %in% onlyanalyses]
+        } else {
+            possibleanalyses <- allanalyses
+        }
 
-    #Stop if unreasonable
-    if (length(possibleanalyses) < 1){
-        stop("There are no analyses fitting the criteria to make.")
+        #Stop if unreasonable
+        if (length(possibleanalyses) < 1){
+            stop("There are no analyses fitting the criteria to make.")
+        }
     }
 
     #Make a vector for holding experiment list
-    expvec <- NULL
-    expvec <- vector("list",length = (length(possibleanalyses) + 1))
+    expvec <- list()
     e <- 1
 
     if (is.null(restricttoLKTs)){
@@ -130,6 +132,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         expvec[[e]] <- SEobj
         names(expvec)[e] <- "LKT"
         e <- e + 1
+    }
+
+    if (onlyanalyses == "LKT"){
+        #stop here and return LKT SummarizedExperiment
+        return(expvec)
     }
 
     #Now, for the functional analyses
