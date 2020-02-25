@@ -549,3 +549,20 @@ update_ExpObj_metadata <- function(ExpObj = NULL, phenotable = NULL){
 
         return(newExpObj)
 }
+
+
+#' fixrelpath(JAMSpath = NULL)
+#'
+#' Fixes path relativity and returns absolute path
+#' @export
+
+fixrelpath <- function(JAMSpath = NULL){
+    require(R.utils)
+    if (!(isAbsolutePath(JAMSpath))){
+        fixedpath <- getAbsolutePath(JAMSpath)
+    } else {
+        fixedpath <- JAMSpath
+    }
+
+    return(fixedpath)
+}
