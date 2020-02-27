@@ -1,9 +1,9 @@
-#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = TRUE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...)
+#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = TRUE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...){
+plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...){
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
@@ -46,7 +46,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             proceed <- FALSE
         }
 
-
         if (proceed){
 
             hmtypemsg <- "Relative Abundance Plot"
@@ -82,6 +81,12 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 flog.info("None of the wanted features were found in SummarizedExperiment object when using the current filtration parameters.")
                 return(NULL)
             }
+
+            if (length(wantedfeatures) < length(featuresToKeep)){
+                #warn that some features were not found
+                flog.warn(paste("Some of the wanted features were not found in SummarizedExperiment object when using the current filtration parameters. Only", paste0(length(wantedfeatures), "/", length(featuresToKeep)), "are still present."))
+            }
+
         }
 
         if (length(wantedfeatures) > 0){
@@ -103,11 +108,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
             countmat <- countmat[rowsToKeep, ]
 
-            if (length(wantedfeatures) < length(featuresToKeep)){
-                #warn that some features were not found
-                flog.warn(paste("Some of the wanted features were not found in SummarizedExperiment object when using the current filtration parameters. Only", paste0(length(wantedfeatures), "/", length(featuresToKeep)), "are still present."))
-            }
-
             if (ignoreunclassified == TRUE){
                 dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")
                 rowsToKeep <- which(!(rownames(countmat) %in% dunno))
@@ -119,8 +119,14 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 }
             }
 
-            if (uselog == TRUE){
-                countmat <- convert_matrix_log2(mat = countmat, transformation = "to_log2")
+            #Aggregate if appropriate
+            if (aggregatefeatures == TRUE){
+                #Count matrix should not be in log2 at this point
+                aggcountmat <- colSums(countmat)
+                aggcountmat <- t(as.matrix(aggcountmat))
+                rownames(aggcountmat) <- aggregatefeatures_label
+                countmat <- aggcountmat
+                wantedfeatures <- aggregatefeatures_label
             }
 
             matrixSamples <- colnames(countmat)
@@ -130,12 +136,15 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             cl <- colData(currobj)[ , which(colnames(colData(currobj)) == compareby)]
             discretenames <- sort(unique(cl))
 
-            matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = uselog, statsonlog = statsonlog, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, nperm = nperm)
+            matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = FALSE, stattype = stattype, classesvector = cl, invertbinaryorder = FALSE, numthreads = numthreads, nperm = nperm)
 
             ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
 
             #Cull to only features wanted
+            wantedfeatures <- wantedfeatures[wantedfeatures %in% rownames(matstats)]
             matstats <- matstats[wantedfeatures, ]
+            #Reorder matrix by p-value
+            matstats <- matstats[order(matstats$pval), ]
             topcats <- nrow(matstats)
             if (!(is.null(ntop))) {
                 topcats <- min(topcats, ntop)
@@ -157,12 +166,23 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             if (length(rowcutoff) == 0){
                 #abort, nothing is left over
-                flog.warn("None of the wanted features were not found in SummarizedExperiment object when using the current filtration parameters.")
+                flog.warn("None of the wanted features were not found in SummarizedExperiment object when using the current p-value filtration parameters.")
 
                 return(NULL)
             }
 
             matstats <- matstats[rowcutoff, ]
+
+            #Filter by l2fc if applicable
+            if (all(c((!is.null(minl2fc)), ("absl2fc" %in% colnames(matstats))))){
+                matstats <- subset(matstats, absl2fc >= minl2fc)
+                if (nrow(matstats) < 1){
+                    #abort, nothing is left over
+                    flog.warn("None of the wanted features were not found in SummarizedExperiment object when using the current log2 foldchange filtration parameters.")
+
+                    return(NULL)
+                }
+            }
 
             #Redefine countmat to include only features matching filtering criteria
             countmat <- countmat[rownames(matstats), ]
@@ -201,79 +221,54 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             return(NULL)
         }
 
-        #Plot features by statistic type
-        if (!(matstats$Method[1] %in% c("spearman", "pearson"))){
-            #Plotting discrete categories
-            #Strategy from metagenomeSeq package
-            classIndex <- NULL
-            classIndex <- list()
-            for (n in 1:length(discretenames)){
-                classIndex[[n]] <- rownames(colData(currobj))[which(colData(currobj)[, which(colnames(colData(currobj)) == compareby)] == discretenames[n])]
-                names(classIndex)[[n]] <- discretenames[n]
+        for (feat in rownames(countmat)){
+            dat <- data.frame(Sample = names(countmat[feat, ]), PPM = as.numeric(countmat[feat, ]), Compareby = cl, stringsAsFactors = FALSE)
+            rownames(dat) <- dat$Sample
+
+            if (!is.null(shapeby)){
+                dat$Shape <- curr_pt[rownames(dat) , shapeby]
             }
 
-            for (feat in rownames(countmat)){
-                l <- lapply(classIndex, function(j) { countmat[feat, j] })
-                y <- unlist(l)
-                x <- rep(seq(along = l), sapply(l, length))
-                xnam <- rep(names(l), sapply(l, length))
-                dat <- data.frame(xnam = xnam, x = x, y = y)
+            if (!is.null(colourby)){
+                if (colourby == "GenomeCompleteness"){
+                    pctgencompdf <- t(genomecompletenessdf) * 100
+                    dat$Colour <- pctgencompdf[rownames(dat), feat]
+                    #cap to 400%
+                    dat$Colour[which(dat$Colour > 400)] <- 400
+                } else if (colourby == "PctFromCtgs"){
+                    pctctgsdf <- t(PctFromCtgsdf)
+                    dat$Colour <- pctctgsdf[rownames(dat), feat]
+                } else {
+                    dat$Colour <- curr_pt[rownames(dat) , colourby]
+                }
+            }
 
-                if(length(discretenames) < nrow(colData(currobj))){
+            #Start building a plot
+            p <- ggplot(dat, aes(x = Compareby, y = PPM))
+
+            if (matstats$Method[1] %in% c("spearman", "pearson")){
+                #Make a scatterplot
+                p <- p + geom_point()
+                p <- p + geom_smooth(method = lm, aes(group=1), se = FALSE)
+                if (!(is.null(shapeby))){
+                    p <- p + aes(shape = Shape)
+                    numshapes <- length(unique(dat$Shape))
+                    p <- p + scale_shape_manual(values = 15:(numshapes + 15))
+                }
+                rotang <- 0
+
+            } else {
+                #Code for a boxplot
+                if(length(discretenames) < nrow(curr_pt)){
                     jitfact <- -( 0.3 / nrow(colData(currobj))) * (length(discretenames)) + 0.25
                 } else {
                     jitfact <- 0
                 }
 
-                if (!(is.null(shapeby))){
-                    shapeindex <- lapply(classIndex, function(j) { colData(currobj)[j, which(colnames(colData(currobj)) == shapeby)] })
-                    shp <- unlist(shapeindex)
-                    dat$shape <- shp
-                }
-
-                if (!(is.null(colourby))){
-                    if (colourby == "GenomeCompleteness"){
-                        pctgencompdf <- t(genomecompletenessdf) * 100
-                        colourindex <- lapply(classIndex, function(j) { pctgencompdf[j, which(colnames(pctgencompdf) == feat)] })
-                    } else if (colourby == "PctFromCtgs"){
-                        colourindex <- lapply(classIndex, function(j) { t(PctFromCtgsdf)[j, which(colnames(t(PctFromCtgsdf)) == feat)] })
-
-                    } else {
-                        colourindex <- lapply(classIndex, function(j) { colData(currobj)[j, which(colnames(colData(currobj)) == colourby)] })
-                    }
-                    col <- unlist(colourindex)
-                    dat$colours <- col
-                    p <- ggplot(dat, aes(xnam, y, colour = colours))
-                } else {
-                    p <- ggplot(dat, aes(factor(xnam), y))
-                }
-
-                #I know, I know, call me inelegant, but it works.
-                if (!(is.null(colourby))){
-                    if (is.numeric(dat$colours)){
-                        #If it is numeric, chech that range is enough for a gradient
-                        #if ((range(dat$colours)[2] - range(dat$colours)[1]) != 0){
-                            #p <- p + scale_color_gradient(low = "blue", high = "red")
-                        #} else {
-                            #dat$colours <- as.character(dat$colours)
-                            #groupcols <- setNames("black", unique(dat$colours))
-                            #p <- p + scale_color_manual(values = groupcols)
-                        #}
-                        p <- p + scale_color_gradient(low = "blue", high = "red")
-                    } else {
-                        #if there is a colour dictionary, then use that
-                        if (!(is.null(cdict))){
-                            ct <- cdict[[colourby]]
-                            groupcols <- setNames(as.character(ct$Colour), as.character(ct$Name))
-                            p <- p + scale_color_manual(values = groupcols)
-                        }
-                    }
-                }
-
                 p <- p + geom_boxplot(outlier.shape = NA)
 
                 if (!(is.null(shapeby))){
-                    p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0), aes(shape = shape))
+                    p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0), aes(shape = Shape))
                 } else {
                     p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0))
                 }
@@ -288,49 +283,96 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 } else {
                     flog.warn("There are too many combinations to plot significance.")
                 }
+                rotang <- 90
+            }
 
-                p <- p + theme_minimal()
+            if (!is.null(colourby)){
+                p <- p + aes(colour = Colour)
 
-                #Build plot title
-                overallpmeth <- matstats[feat, "Method"]
-                overallp <- paste0("pval=", round(matstats[feat, "pval"], 4))
-                overalladjp <- paste0("padj_fdr=", round(matstats[feat, "padj_fdr"], 4))
-                stattit <- paste(overallpmeth, overallp, overalladjp, ffeatmsg, sep = " | ")
-                msgs <- c(maintit, feat, stattit)
-                plotit <- paste0(msgs, collapse = "\n")
-
-                p <- p + ggtitle(plotit)
-
-                if (!(is.null(colourby))){
-                    p <- p + labs(colour = colourby)
-                }
-
-                if (!(is.null(shapeby))){
-                    p <- p + labs(shape = shapeby)
-                }
-
-                if (uselog == TRUE){
-                    ytit <- "log2 of (Relative Abundance in PPM)"
-                    #p <- p + scale_y_continuous(expand = c(0, 0),  sec.axis = sec_axis(trans=~expm1(.*log(2)), name="Percentage relative abundance"))
+                if (colourby == "GenomeCompleteness"){
+                    p <- p + scale_fill_gradientn(aesthetics = "colour", colours = c("white", "forestgreen", "blue", "firebrick1", "black"),  values = scales::rescale(c(0, 100, 200, 300, 400), to = c(0, (400/max(dat$Colour)))))
                 } else {
-                    ytit <- "Relative Abundance in PPM"
+                    if (is.numeric(dat$Colour)){
+                        #If it is numeric, check that range is enough for a gradient
+                        #if ((range(dat$colours)[2] - range(dat$colours)[1]) != 0){
+                        #p <- p + scale_color_gradient(low = "blue", high = "red")
+                        #} else {
+                        #dat$colours <- as.character(dat$colours)
+                        #groupcols <- setNames("black", unique(dat$colours))
+                        #p <- p + scale_color_manual(values = groupcols)
+                        #}
+                        p <- p + scale_color_gradient(low = "blue", high = "red")
+                    } else {
+                        #if there is a colour dictionary, then use that
+                        if (!(is.null(cdict))){
+                            ct <- cdict[[colourby]]
+                            groupcols <- setNames(as.character(ct$Colour), as.character(ct$Name))
+                            p <- p + scale_color_manual(values = groupcols)
+                        }
+                    }
                 }
+            }
 
-                p <- p + labs(x = compareby, y = ytit)
-                p <- p + theme(axis.text.x = element_text(angle = 90, size = rel(1), colour = "black"))
-                p <- p + theme(plot.title = element_text(size = 10))
+            #Deal with titles and legends
+            p <- p + theme_minimal()
+            #Build plot title
+            overallpmeth <- matstats[feat, "Method"]
+            overallp <- paste0("pval=", round(matstats[feat, "pval"], 4))
+            overalladjp <- paste0("padj_fdr=", round(matstats[feat, "padj_fdr"], 4))
+            stattit <- paste(overallpmeth, overallp, overalladjp, ffeatmsg, sep = " | ")
 
-                gvec[[plotcount]] <- p
-                names(gvec)[plotcount] <- paste(maintit, feat, sep = " | ")
-                plotcount <- plotcount + 1
+            if ("correl" %in% colnames(matstats)){
+                correlstat <- paste0("corr_coeff=", round(matstats[feat, "correl"], 3))
+                stattit <- paste(stattit, correlstat, sep = "\n")
+            }
 
-            } #End loop plotting every feature
+            if ("l2fc" %in% colnames(matstats)){
+                l2fcmsg <- paste0("Log2FC=", round(matstats[feat, "l2fc"], 3))
+                l2fcmeaning <- paste("Positive l2fc means increased in", discretenames[1])
+                l2fcmsg <- paste(l2fcmsg, l2fcmeaning, sep = " | ")
+                stattit <- paste(stattit, l2fcmsg, sep = "\n")
+            }
 
-        } #End conditional that plot is discrete
+            #Add description to feature, if applicable
+            if (analysis != "LKT"){
+                featdesc <- rowData(currobj)[feat, "Description"]
+                featname <- paste(feat, featdesc)
+            } else {
+                featname <- feat
+            }
+
+            msgs <- c(maintit, featname, stattit)
+            plotit <- paste0(msgs, collapse = "\n")
+
+            p <- p + ggtitle(plotit)
+
+            if (!(is.null(colourby))){
+                p <- p + labs(colour = colourby)
+            }
+
+            if (!(is.null(shapeby))){
+                p <- p + labs(shape = shapeby)
+            }
+
+            if (uselog == TRUE){
+                ytit <- "Relative Abundance in PPM"
+                #p <- p + coord_trans(y = "log2", clip = "off")
+                p <- p + scale_y_continuous(trans = scales::log2_trans(), breaks = scales::trans_breaks("log2", function(x) {2^x}), labels = scales::trans_format("log2", function(x) {2^x}))
+            } else {
+                ytit <- "Relative Abundance in PPM"
+            }
+
+            p <- p + labs(x = compareby, y = ytit)
+            p <- p + theme(axis.text.x = element_text(angle = rotang, size = rel(1), colour = "black"))
+            p <- p + theme(plot.title = element_text(size = 10))
+
+            gvec[[plotcount]] <- p
+            names(gvec)[plotcount] <- paste(maintit, feat, sep = " | ")
+            plotcount <- plotcount + 1
+
+        }#End loop for plotting each feature
+
     }#End loop for each subset
-
-    #Redefine stats list as ones only containing data
-    #gvec <- gvec[sapply(gvec, function(x){ !(is.null(x)) } )]
 
     return(gvec)
 
