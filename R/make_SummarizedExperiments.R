@@ -3,7 +3,7 @@
 #' Makes a SummarizedExperiment object for every analysis that is possible to make given loaded jams files in list.data.
 #' @export
 
-make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, list.data = NULL){
+make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, split_functions_by_taxon = TRUE, list.data = NULL){
 
     require(SummarizedExperiment)
 
@@ -15,7 +15,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     }
 
     Samples <- rownames(pheno2)
-    if (onlyanalyses != "LKT"){
+    if (any(c(is.null(onlyanalyses), (onlyanalyses != "LKT")))){
         featureobjects <- paste(Samples, "featuredose", sep="_")
         featuredoses <- list.data[featureobjects]
         names(featuredoses) <- Samples
@@ -127,6 +127,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
 
         SEobj <- SummarizedExperiment(assays = assays, rowData = tt, colData = pheno2)
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
+        metadata(SEobj)$TotalBasesSequencedinAnalysis <- TotalBasesSequenced #LKT is the special case in which all bases sequenced are for the analysis
         metadata(SEobj)$analysis <- "LKT"
 
         expvec[[e]] <- SEobj
@@ -235,12 +236,18 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         ftt <- ftt[featureorder, ]
         cts <- cts[, sampleorder]
 
+        #Register the total number of bases sequenced for each sample within that analysis
+        TotalBasesSequencedinAnalysis <- colSums(cts)
+        TotalBasesSequencedinAnalysis <- t(as.matrix(TotalBasesSequencedinAnalysis))
+        rownames(TotalBasesSequencedinAnalysis) <- "NumBases"
+
         assays <- list(cts)
         names(assays) <- "BaseCounts"
 
         ##Create SummarizedExperiment
         SEobj <- SummarizedExperiment(assays = assays, rowData = ftt, colData = phenoanal)
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
+        metadata(SEobj)$TotalBasesSequencedinAnalysis <- TotalBasesSequencedinAnalysis
         metadata(SEobj)$analysis <- analysis
 
         expvec[[e]] <- SEobj

@@ -52,12 +52,12 @@ option_list <- list(
     make_option(c("-c", "--maxnumclasses"),
                 action="store", default = 15,
                 type="numeric",
-                help="Maximum number of classes for a discrete variable to be kept. Default=10"),
+                help="Maximum number of classes for a discrete variable to be kept. Default=15"),
 
     make_option(c("-i", "--class_to_ignore"),
                 action="store", default = "N_A",
                 type="character",
-                help="Ignore cells containing this text in the metadata. Samples bearing this class of text when comparing within a variable will be omitted from an analysis."),
+                help="Ignore cells containing this text in the metadata. Samples bearing this class of text when comparing within a variable will be omitted from an analysis. Default = N_A"),
 
     make_option(c("-y", "--jamsfiles_path"),
                 action="store", default = NULL,
@@ -462,6 +462,8 @@ if (!exists("expvec")){
 
     #Make Summarized Experiments
     flog.info("Making SummarizedExperiments objects")
+    #Find out kind of data available
+
     expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data)
 
 } else {

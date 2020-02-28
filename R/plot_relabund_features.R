@@ -1,9 +1,9 @@
-#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...)
+#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...){
+plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, cdict = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...){
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
@@ -176,9 +176,21 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             #Filter by l2fc if applicable
             if (all(c((!is.null(minl2fc)), ("absl2fc" %in% colnames(matstats))))){
                 matstats <- subset(matstats, absl2fc >= minl2fc)
+                print(paste("After correl filtering", nrow(matstats)))
                 if (nrow(matstats) < 1){
                     #abort, nothing is left over
-                    flog.warn("None of the wanted features were not found in SummarizedExperiment object when using the current log2 foldchange filtration parameters.")
+                    flog.warn("None of the wanted features were not found in the SummarizedExperiment object when using the current log2 foldchange filtration parameters.")
+
+                    return(NULL)
+                }
+            }
+
+            #Filter by correlation coefficient, if applicable
+            if (all(c((!is.null(minabscorrcoeff)), ("abscorrel" %in% colnames(matstats))))){
+                matstats <- subset(matstats, abscorrel >= minabscorrcoeff)
+                if (nrow(matstats) < 1){
+                    #abort, nothing is left over
+                    flog.warn("None of the wanted features were not found in the SummarizedExperiment object when using the current absolute correlation coefficient filtration parameters.")
 
                     return(NULL)
                 }
@@ -188,15 +200,15 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             countmat <- countmat[rownames(matstats), ]
             if (class(countmat) != "matrix"){
                 countmat <- t(as.matrix(countmat))
-                rownames(countmat) <- wantedfeatures
+                rownames(countmat) <- rownames(matstats)
             }
 
             if ("GenomeCompleteness" %in% names(assays(currobj))){
                 genomecompletenessdf <- as.matrix(assays(currobj)$GenomeCompleteness)
-                genomecompletenessdf <- genomecompletenessdf[wantedfeatures, ]
+                genomecompletenessdf <- genomecompletenessdf[rownames(matstats), ]
                 if (class(genomecompletenessdf) != "matrix"){
                     genomecompletenessdf <- t(as.matrix(genomecompletenessdf))
-                    rownames(genomecompletenessdf) <- wantedfeatures
+                    rownames(genomecompletenessdf) <- rownames(matstats)
                 }
             } else {
                 genomecompletenessdf <- NULL
@@ -204,10 +216,10 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             if ("PctFromCtgs" %in% names(assays(currobj))){
                 PctFromCtgsdf <- as.matrix(assays(currobj)$PctFromCtgs)
-                PctFromCtgsdf <- PctFromCtgsdf[wantedfeatures, ]
+                PctFromCtgsdf <- PctFromCtgsdf[rownames(matstats), ]
                 if (class(PctFromCtgsdf) != "matrix"){
                     PctFromCtgsdf <- t(as.matrix(PctFromCtgsdf))
-                    rownames(PctFromCtgsdf) <- wantedfeatures
+                    rownames(PctFromCtgsdf) <- rownames(matstats)
                 }
             } else {
                 PctFromCtgsdf <- NULL

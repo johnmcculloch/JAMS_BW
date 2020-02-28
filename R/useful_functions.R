@@ -65,11 +65,21 @@ declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, feat
                 presetlist$featcutoff <- c(10, 5)
                 presetlist$minl2fc <- 1
             }
+        } else if (applyfilters == "light"){
+            if (analysis == "LKT"){
+                presetlist$featcutoff <- c(50, 5)
+                presetlist$GenomeCompletenessCutoff <- c(5, 5)
+                presetlist$PctFromCtgscutoff <- c(25, 10)
+                presetlist$minl2fc <- 1
+            } else {
+                presetlist$featcutoff <- c(5, 5)
+                presetlist$minl2fc <- 1
+            }
         }
     }
 
     #Replace with any values explicitly set by the user
-    argstoset <- c("featcutoff", "GenomeCompletenessCutoff", "PctFromCtgscutoff", "maxl2fc", "minl2fc")[!unlist(lapply(list(featcutoff, GenomeCompletenessCutoff, PctFromCtgscutoff, maxl2fc, minl2fc), is.null))]
+    argstoset <- c("featcutoff", "GenomeCompletenessCutoff", "PctFromCtgscutoff", "maxl2fc", "minl2fc",)[!unlist(lapply(list(featcutoff, GenomeCompletenessCutoff, PctFromCtgscutoff, maxl2fc, minl2fc), is.null))]
 
     if (length(argstoset) > 0){
         for (ats in argstoset){
@@ -565,4 +575,15 @@ fixrelpath <- function(JAMSpath = NULL){
     }
 
     return(fixedpath)
+}
+
+#' name_samples(list.data = NULL)
+#'
+#' Given a list.data object, returns a vector of sample names present in the object.
+#' @export
+
+name_samples <- function(list.data = NULL){
+    loadedsamples <- gsub("_projinfo", "", (names(list.data)[grep("_projinfo", names(list.data))]))
+
+    return(loadedsamples)
 }
