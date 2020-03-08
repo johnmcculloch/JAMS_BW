@@ -79,7 +79,7 @@ declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, feat
     }
 
     #Replace with any values explicitly set by the user
-    argstoset <- c("featcutoff", "GenomeCompletenessCutoff", "PctFromCtgscutoff", "maxl2fc", "minl2fc",)[!unlist(lapply(list(featcutoff, GenomeCompletenessCutoff, PctFromCtgscutoff, maxl2fc, minl2fc), is.null))]
+    argstoset <- c("featcutoff", "GenomeCompletenessCutoff", "PctFromCtgscutoff", "maxl2fc", "minl2fc")[!unlist(lapply(list(featcutoff, GenomeCompletenessCutoff, PctFromCtgscutoff, maxl2fc, minl2fc), is.null))]
 
     if (length(argstoset) > 0){
         for (ats in argstoset){

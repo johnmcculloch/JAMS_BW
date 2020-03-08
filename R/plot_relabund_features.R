@@ -11,7 +11,11 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
     obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = NULL, glomby = glomby, variables_to_fix = variables_to_fix, class_to_ignore = class_to_ignore)
 
     analysis <- metadata(obj)$analysis
-    analysisname <- analysis
+    if (!is.null(glomby)){
+        analysisname <- glomby
+    } else {
+        analysisname <- analysis
+    }
 
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, maxl2fc = maxl2fc, minl2fc = minl2fc)
 

@@ -17,8 +17,8 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
         if (PPM_normalize_to_bases_sequenced) {
             totbases <- metadata(ExpObj)$TotalBasesSequenced
         } else {
-            totbases <- metadata(ExpObj)$TotalBasesSequencedinAnalysis
-            #totbases <- t(data.frame(NumBases = colSums(rawcts)))
+            #totbases <- metadata(ExpObj)$TotalBasesSequencedinAnalysis
+            totbases <- t(data.frame(NumBases = colSums(rawcts)))
         }
 
     } else if (as.character(class(ExpObj)) == "MRexperiment"){
