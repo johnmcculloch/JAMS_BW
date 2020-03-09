@@ -6,7 +6,7 @@
 #module load perl
 cd $HOME
 brew update
-brew tap brewsci/bio
+#brew tap brewsci/bio
 #for JAMSdep in git wget pigz seqtk sratoolkit samtools trimmomatic bowtie2 kraken2 bedtools bedops prokka
 #do
 #    brew ls --versions "$JAMSdep" && brew upgrade "$JAMSdep" || brew install "$JAMSdep"
