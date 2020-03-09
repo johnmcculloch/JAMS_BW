@@ -49,8 +49,8 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
     }
 
     #Protect against rows with empty data
-    rowsToKeep <- which(rowSums(countmatrix) > 0)
-    countmatrix <- countmatrix[rowsToKeep, ]
+    #rowsToKeep <- which(rowSums(countmatrix) > 0)
+    #countmatrix <- countmatrix[rowsToKeep, ]
 
     #Calculate matrix stats and get new matrix.
     if(stattype == "variance"){
