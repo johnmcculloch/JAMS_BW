@@ -123,6 +123,18 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 }
             }
 
+            if ("GenomeCompleteness" %in% names(assays(currobj))){
+                genomecompletenessdf <- as.matrix(assays(currobj)$GenomeCompleteness)
+            } else {
+                genomecompletenessdf <- NULL
+            }
+
+            if ("PctFromCtgs" %in% names(assays(currobj))){
+                PctFromCtgsdf <- as.matrix(assays(currobj)$PctFromCtgs)
+            } else {
+                PctFromCtgsdf <- NULL
+            }
+
             #Aggregate if appropriate
             if (aggregatefeatures == TRUE){
                 #If aggregating features, then cull to wantedfeatures now and aggregate
@@ -132,6 +144,25 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 aggcountmat <- t(as.matrix(aggcountmat))
                 rownames(aggcountmat) <- aggregatefeatures_label
                 countmat <- aggcountmat
+
+                #Also aggregate Genome Completeness, if applicable
+                if ("GenomeCompleteness" %in% names(assays(currobj))){
+                    genomecompletenessdf <- genomecompletenessdf[wantedfeatures, ]
+                    agggenomecompletenessdf <- colSums(genomecompletenessdf)
+                    agggenomecompletenessdf <- t(as.matrix(agggenomecompletenessdf))
+                    rownames(agggenomecompletenessdf) <- aggregatefeatures_label
+                    genomecompletenessdf <- agggenomecompletenessdf
+                }
+
+                #Also get mean percentage from contigs, if applicable
+                if ("PctFromCtgs" %in% names(assays(currobj))){
+                    PctFromCtgsdf <- PctFromCtgsdf[wantedfeatures, ]
+                    aggPctFromCtgsdf <- colMeans(PctFromCtgsdf)
+                    aggPctFromCtgsdf <- t(as.matrix(aggPctFromCtgsdf))
+                    rownames(aggPctFromCtgsdf) <- aggregatefeatures_label
+                    PctFromCtgsdf <- aggPctFromCtgsdf
+                }
+
                 wantedfeatures <- aggregatefeatures_label
             }
 
@@ -210,7 +241,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             }
 
             if ("GenomeCompleteness" %in% names(assays(currobj))){
-                genomecompletenessdf <- as.matrix(assays(currobj)$GenomeCompleteness)
+                #genomecompletenessdf <- as.matrix(assays(currobj)$GenomeCompleteness)
                 genomecompletenessdf <- genomecompletenessdf[rownames(matstats), ]
                 if (class(genomecompletenessdf) != "matrix"){
                     genomecompletenessdf <- t(as.matrix(genomecompletenessdf))
@@ -221,7 +252,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             }
 
             if ("PctFromCtgs" %in% names(assays(currobj))){
-                PctFromCtgsdf <- as.matrix(assays(currobj)$PctFromCtgs)
+                #PctFromCtgsdf <- as.matrix(assays(currobj)$PctFromCtgs)
                 PctFromCtgsdf <- PctFromCtgsdf[rownames(matstats), ]
                 if (class(PctFromCtgsdf) != "matrix"){
                     PctFromCtgsdf <- t(as.matrix(PctFromCtgsdf))
