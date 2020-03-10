@@ -135,9 +135,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         e <- e + 1
     }
 
-    if (onlyanalyses == "LKT"){
-        #stop here and return LKT SummarizedExperiment
-        return(expvec)
+    if (!is.null(onlyanalyses)){
+        if (onlyanalyses == "LKT") {
+            #stop here and return LKT SummarizedExperiment
+            return(expvec)
+        }
     }
 
     #Now, for the functional analyses
@@ -249,6 +251,59 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
         metadata(SEobj)$TotalBasesSequencedinAnalysis <- TotalBasesSequencedinAnalysis
         metadata(SEobj)$analysis <- analysis
+
+        #Split functions by taxon, if applicable
+        if (split_functions_by_taxon){
+            flog.info(paste("Splitting", analysis, "features by taxa. This may take a while."))
+
+            featurebytaxonlist <- list()
+            SamplesWanted <- colnames(cts)[!(colnames(cts) %in% emptySamples)]
+            wantedfeatures <- rownames(cts)
+            NumBases1PPMthreshold <- TotalBasesSequencedinAnalysis / 1000000
+            for(samp in SamplesWanted){
+                currFeatdose <- NULL
+                #Get appropriate object with counts
+                wantedobj <- paste(samp, "featuredose", sep = "_")
+                currFeatdose <- list.data[[wantedobj]]
+                currFeatdose <- subset(currFeatdose, Analysis == analysis)
+                currFeatdose$Analysis <- NULL
+                rownames(currFeatdose) <- currFeatdose$Accession
+                currwantedfeatures <- wantedfeatures[wantedfeatures %in% rownames(currFeatdose)]
+                currFeatdose <- currFeatdose[currwantedfeatures, ]
+                currFeatdose$Accession <- NULL
+                currFeatdose$Description <- NULL
+                currFeatdose$NumBases <- NULL
+                signalthreshold <- NumBases1PPMthreshold["NumBases" , samp]
+                NonEmptyTaxa <- names(which(colSums(currFeatdose) > 0))
+                currnonemptyFeatdose <- as.data.frame(currFeatdose[, NonEmptyTaxa])
+                rownames(currnonemptyFeatdose) <- currwantedfeatures
+                colnames(currnonemptyFeatdose) <- NonEmptyTaxa
+                currnonemptyFeatdose$Sample <- samp
+                currnonemptyFeatdose$Accession <- rownames(currnonemptyFeatdose)
+                featurebytaxonlist[[samp]] <- currnonemptyFeatdose
+            }
+
+            allfeaturesbytaxa <- plyr::rbind.fill(featurebytaxonlist)
+            allfeaturesbytaxa[is.na(allfeaturesbytaxa)] <- 0
+
+            allfeaturesbytaxa <- allfeaturesbytaxa[ , c("Sample", "Accession", (sort(colnames(allfeaturesbytaxa)[which(!colnames(allfeaturesbytaxa) %in% c("Sample", "Accession"))])))]
+
+            SampleAccession2Row <- allfeaturesbytaxa[c("Sample", "Accession")]
+            SampleAccession2Row$RowNumber <- 1:nrow(SampleAccession2Row)
+
+            allfeaturesbytaxa$Sample <- NULL
+            allfeaturesbytaxa$Accession <- NULL
+            allfeaturesbytaxa <- as.matrix(allfeaturesbytaxa)
+            rownames(allfeaturesbytaxa) <- 1:nrow(allfeaturesbytaxa)
+
+            allfeaturesbytaxa_matrix <- Matrix::Matrix(data = allfeaturesbytaxa, sparse = TRUE)
+            allfeaturesbytaxa <- NULL
+
+            #Add features-by-taxon matrix and index into SummarizedExperiment object
+            metadata(SEobj)$allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix
+            metadata(SEobj)$allfeaturesbytaxa_index <- SampleAccession2Row
+
+        } #End of splitting features by taxonomy
 
         expvec[[e]] <- SEobj
         names(expvec)[e] <- analysis

@@ -463,8 +463,17 @@ if (!exists("expvec")){
     #Make Summarized Experiments
     flog.info("Making SummarizedExperiments objects")
     #Find out kind of data available
+    projinfolist <- list.data[(paste(Samples, "projinfo", sep = "_"))]
+    names(projinfolist) <- Samples
+    projinfodf <- bind_rows(projinfolist, .id = "id")
+    colnames(projinfodf)[which(colnames(projinfodf) == "id")] <- "Sample"
+    if ("Metaphlann" %in% subset(projinfodf, Run_info == "Process")[]$Run_value){
+        onlyanalyses <- "LKT"
+    } else {
+        onlyanalyses <- NULL
+    }
 
-    expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data)
+    expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data, onlyanalyses = onlyanalyses)
 
 } else {
     #Expvec exists. Either do nothing, or replace the metadata.

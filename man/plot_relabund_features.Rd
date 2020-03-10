@@ -32,6 +32,7 @@ plot_relabund_features(
   uselog = FALSE,
   statsonlog = FALSE,
   cdict = NULL,
+  stratify_by_taxlevel = NULL,
   maxnumplots = NULL,
   signiflabel = "p.format",
   max_pairwise_cats = 4,
