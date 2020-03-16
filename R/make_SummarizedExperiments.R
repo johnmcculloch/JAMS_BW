@@ -6,6 +6,7 @@
 make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, split_functions_by_taxon = TRUE, list.data = NULL){
 
     require(SummarizedExperiment)
+    require(Matrix)
 
     #Get data for features
     if (!is.null(onlysamples)){
@@ -15,7 +16,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     }
 
     Samples <- rownames(pheno2)
-    if (any(c(is.null(onlyanalyses), (onlyanalyses != "LKT")))){
+    if (any(c(is.null(onlyanalyses), !(all(c((length(onlyanalyses) == 1), ("LKT" %in% onlyanalyses))))))) {
         featureobjects <- paste(Samples, "featuredose", sep="_")
         featuredoses <- list.data[featureobjects]
         names(featuredoses) <- Samples
@@ -82,7 +83,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         #get rid of LKT dupes due to NCBI taxonomy names at species level including subspecies nomenclature. Sigh. These are usually unclassified species.
         tt <- tt[!(duplicated(tt$LKT)), ]
         rownames(tt) <- tt$LKT
-        ttm <- as.matrix(tt)
+        tt <- as.matrix(tt)
 
         #Make counts table
         LKTallcounts <- LKTdosesall[, c("Sample", "LKT", "NumBases")]
@@ -122,10 +123,10 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         LKTallGenCompcts$LKT <- NULL
         LKTallGenCompcts <- LKTallGenCompcts[featureorder, sampleorder]
 
-        assays <- list(cts, LKTPctFromCtgcts, LKTallGenCompcts)
+        assays <- list(as.matrix(cts), as.matrix(LKTPctFromCtgcts), as.matrix(LKTallGenCompcts))
         names(assays) <- c("BaseCounts", "PctFromCtgs", "GenomeCompleteness")
 
-        SEobj <- SummarizedExperiment(assays = assays, rowData = tt, colData = pheno2)
+        SEobj <- SummarizedExperiment(assays = assays, rowData = as.matrix(tt), colData = as.matrix(pheno2))
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
         metadata(SEobj)$TotalBasesSequencedinAnalysis <- TotalBasesSequenced #LKT is the special case in which all bases sequenced are for the analysis
         metadata(SEobj)$analysis <- "LKT"
@@ -136,7 +137,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     }
 
     if (!is.null(onlyanalyses)){
-        if (onlyanalyses == "LKT") {
+        if (all(c((length(onlyanalyses) == 1), ("LKT" %in% onlyanalyses)))) {
             #stop here and return LKT SummarizedExperiment
             return(expvec)
         }
@@ -243,11 +244,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         TotalBasesSequencedinAnalysis <- t(as.matrix(TotalBasesSequencedinAnalysis))
         rownames(TotalBasesSequencedinAnalysis) <- "NumBases"
 
-        assays <- list(cts)
+        assays <- list(as.matrix(cts))
         names(assays) <- "BaseCounts"
 
         ##Create SummarizedExperiment
-        SEobj <- SummarizedExperiment(assays = assays, rowData = ftt, colData = phenoanal)
+        SEobj <- SummarizedExperiment(assays = assays, rowData = as.matrix(ftt), colData = as.matrix(phenoanal))
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
         metadata(SEobj)$TotalBasesSequencedinAnalysis <- TotalBasesSequencedinAnalysis
         metadata(SEobj)$analysis <- analysis
