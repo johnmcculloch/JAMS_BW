@@ -1,120 +1,3 @@
-#' ExpObjVetting(ExpObj = NULL)
-#'
-#' Performs vetting of a SummarizedExperiment object for use in several functions
-#' @export
-
-ExpObjVetting <- function(ExpObj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, glomby = NULL, variables_to_fix = NULL, class_to_ignore = NULL){
-
-        #Get appropriate object to work with
-        if (as.character(class(ExpObj)) != "SummarizedExperiment"){
-            stop("This function can only take a SummarizedExperiment object as input. For using a metagenomeSeq object (deprecated), please use plot_relabund_heatmap_mgseq.")
-        }
-        obj <- ExpObj
-
-        if (!(is.null(glomby))){
-            obj <- agglomerate_features(ExpObj = obj, glomby = glomby)
-        }
-
-        #Exclude samples and features if specified
-        if (!(is.null(samplesToKeep))){
-            samplesToKeep <- samplesToKeep[samplesToKeep %in% colnames(obj)]
-            obj <- obj[, samplesToKeep]
-        }
-
-        if (!(is.null(featuresToKeep))){
-            featuresToKeep <- featuresToKeep[featuresToKeep %in% rownames(obj)]
-            obj <- obj[featuresToKeep, ]
-        }
-
-        obj <- suppressWarnings(filter_sample_by_class_to_ignore(SEobj = obj, variables = variables_to_fix, class_to_ignore = class_to_ignore))
-
-    return(obj)
-}
-
-#' declare_filtering_presets(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL)
-#'
-#' Performs vetting of a SummarizedExperiment object for use in several functions
-#' @export
-declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL){
-
-    if ((analysis != "LKT") && (!(is.null(GenomeCompletenessCutoff)))){
-        warning("Genome completeness only makes sense for taxa. Please choose a taxonomic (non functional) analysis.")
-        GenomeCompletenessCutoff <- NULL
-    }
-
-    presetlist <- list()
-
-    if (!is.null(applyfilters)){
-        if (applyfilters == "stringent"){
-            if (analysis == "LKT"){
-                presetlist$featcutoff <- c(2000, 15)
-                presetlist$GenomeCompletenessCutoff <- c(30, 10)
-                presetlist$PctFromCtgscutoff <- c(50, 10)
-                presetlist$minl2fc <- 2
-            } else {
-                presetlist$featcutoff <- c(50, 15)
-                presetlist$minl2fc <- 2.5
-            }
-        } else if (applyfilters == "moderate"){
-            if (analysis == "LKT"){
-                presetlist$featcutoff <- c(250, 15)
-                presetlist$GenomeCompletenessCutoff <- c(10, 5)
-                presetlist$PctFromCtgscutoff <- c(25, 10)
-                presetlist$minl2fc <- 1
-            } else {
-                presetlist$featcutoff <- c(10, 5)
-                presetlist$minl2fc <- 1
-            }
-        } else if (applyfilters == "light"){
-            if (analysis == "LKT"){
-                presetlist$featcutoff <- c(50, 5)
-                presetlist$GenomeCompletenessCutoff <- c(5, 5)
-                presetlist$PctFromCtgscutoff <- c(25, 10)
-                presetlist$minl2fc <- 1
-            } else {
-                presetlist$featcutoff <- c(5, 5)
-                presetlist$minl2fc <- 1
-            }
-        }
-    }
-
-    #Replace with any values explicitly set by the user
-    argstoset <- c("featcutoff", "GenomeCompletenessCutoff", "PctFromCtgscutoff", "maxl2fc", "minl2fc")[!unlist(lapply(list(featcutoff, GenomeCompletenessCutoff, PctFromCtgscutoff, maxl2fc, minl2fc), is.null))]
-
-    if (length(argstoset) > 0){
-        for (ats in argstoset){
-            presetlist[[ats]] <- get(ats)
-        }
-    }
-
-    #Generate a filtration message
-    presetlist$filtermsg <- NULL
-    #Discard features which do not match certain criteria
-    if (!(is.null(presetlist$featcutoff))){
-        presetlist$thresholdPPM <- presetlist$featcutoff[1]
-        presetlist$sampcutoffpct <- min(presetlist$featcutoff[2], 100)
-        presetlist$filtermsg <- paste("Feature must be >", presetlist$thresholdPPM, "PPM in at least ", presetlist$sampcutoffpct, "% of samples", sep = "")
-    } else {
-        presetlist$filtermsg <- NULL
-        presetlist$featcutoff <- c(0, 0)
-    }
-
-    if (!(is.null(presetlist$PctFromCtgscutoff))){
-        presetlist$thresholdPctFromCtgs <- presetlist$PctFromCtgscutoff[1]
-        presetlist$sampcutoffpctPctFromCtgs <- min(presetlist$PctFromCtgscutoff[2], 100)
-        presetlist$filtermsg <- paste(presetlist$filtermsg, (paste("Taxonomy information must come from >", presetlist$thresholdPctFromCtgs, "% contigs in at least ", presetlist$sampcutoffpctPctFromCtgs, "% of samples", sep = "")), sep = "\n")
-    }
-
-    if (!(is.null(presetlist$GenomeCompletenessCutoff))){
-        presetlist$thresholdGenomeCompleteness <- presetlist$GenomeCompletenessCutoff[1]
-        presetlist$sampcutoffpctGenomeCompleteness <- min(presetlist$GenomeCompletenessCutoff[2], 100)
-        presetlist$filtermsg <- paste(presetlist$filtermsg, (paste("Taxon genome completeness must be >", presetlist$thresholdGenomeCompleteness, "% in at least ", presetlist$sampcutoffpctGenomeCompleteness, "% of samples", sep = "")), sep = "\n")
-    }
-
-    return(presetlist)
-}
-
-
 #' log2PPMtoPct(log2PPM)
 #'
 #' Returns a rounded percentage given a log2 transformed PPM value
@@ -375,38 +258,6 @@ can_be_made_numeric <- function(x, cats_to_ignore = NULL){
 }
 
 
-#' filter_correlations(corrmat = NULL, mincorrelcoeff = NULL)
-#' Given a pairwise correlation matrix, eliminate features which do not present an absolute correlation coefficient smaller than mincorrelcoeff with all other features other than itself.
-#'
-#' @export
-filter_correlations <- function(corrmat = NULL, mincorrelcoeff = NULL){
-
-     if(nrow(corrmat) != ncol(corrmat)){
-         stop("Correlation matrix must have equal numbers of rows and columns.")
-     }
-
-     featsIwant <- NULL
-
-     for (rw in 1:nrow(corrmat)){
-         featint <- rownames(corrmat)[rw]
-         #print(paste("Checking:", featint))
-         correlations <- corrmat[which(rownames(corrmat) != featint), featint]
-
-         if(max(abs(correlations)) >= mincorrelcoeff){
-             feat <- featint
-         } else {
-             feat <- NULL
-         }
-
-         featsIwant <- append(featsIwant, feat)
-
-     }
-
-     corrmat <- corrmat[featsIwant, featsIwant]
-
-     return(corrmat)
- }
-
  #' IO_jams_workspace_image(opt = NULL, workspaceimage = NULL, threads = 8, operation = c("save", "load"))
  #' Safe way of either loading or saving an R workspace image. If argument workspaceimage is null, workspace image file will be searched for in opt (opt$projimage). If that is also NULL, saving or loading is aborted. If the fastSave package () is installed, multi-threaded loading or saving will be used. If opt is passed, number of CPUs will be set to opt$threads, trumping the threads argument.
  #'
@@ -586,4 +437,140 @@ name_samples <- function(list.data = NULL){
     loadedsamples <- gsub("_projinfo", "", (names(list.data)[grep("_projinfo", names(list.data))]))
 
     return(loadedsamples)
+}
+
+#' retrieve_features_by_taxa(wantedfeatures = NULL, wantedsamples = NULL, allfeaturesbytaxa_matrix = NULL, allfeaturesbytaxa_index = NULL)
+#'
+#' Returns a long form data frame of stratification by taxa of wanted functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
+#' @export
+
+retrieve_features_by_taxa <- function(wantedfeatures = NULL, wantedsamples = NULL, allfeaturesbytaxa_matrix = NULL, allfeaturesbytaxa_index = NULL){
+
+    #Get appropriate rows
+    rowsinterestdf <- subset(allfeaturesbytaxa_index, Sample %in% wantedsamples)
+    rowsinterestdf <- subset(rowsinterestdf, Accession %in% wantedfeatures)
+
+    allfeaturesbytaxa_interest <- as.matrix(allfeaturesbytaxa_matrix[rowsinterestdf$RowNumber, ])
+
+    if (length(rowsinterestdf$RowNumber) == 1){
+        allfeaturesbytaxa_interest <- t(allfeaturesbytaxa_interest)
+    }
+
+    allfeaturesbytaxa_interest <- as.data.frame(allfeaturesbytaxa_interest[, which(colSums(allfeaturesbytaxa_interest) != 0)])
+    allfeaturesbytaxa_interest$RowNumber <- as.numeric(rownames(allfeaturesbytaxa_interest))
+
+    allfeaturesbytaxa_interest <- left_join(allfeaturesbytaxa_interest, rowsinterestdf, by = "RowNumber")
+    allfeaturesbytaxa_interest$RowNumber <- NULL
+    allfeaturesbytaxa_interest <- allfeaturesbytaxa_interest[ , c("Sample", "Accession", (sort(colnames(allfeaturesbytaxa_interest)[which(!colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession"))])))]
+
+    return(allfeaturesbytaxa_interest)
+}
+
+
+#' rename_sequences_consecutively(sequence=NULL, sequence=NULL, headerprefix="ctg")
+#'
+#' Renames sequences numerically consecutively
+#' @export
+
+rename_sequences_consecutively<-function(sequence=NULL, headerprefix="ctg"){
+    sequence_names<-paste(headerprefix, formatC(1:length(sequence), width=nchar(length(sequence)), flag="0"), sep="_")
+
+    #Fix attribute when loaded using sequinr load.fasta with set.attributes being TRUE and ensure CAPS
+    for(t in 1:length(sequence)){
+        tmps<-sequence[[t]]
+        attr(tmps, "name")<-sequence_names[t]
+        tmps<-toupper(tmps)
+        sequence[[t]]<-tmps
+    }
+    names(sequence)<-sequence_names
+
+    return(sequence)
+}
+
+
+#' filter_sequence_by_length(sequence=NULL, minlength=0, maxlength=Inf)
+#'
+#' Filters sequences by size
+#' @export
+
+filter_sequence_by_length <- function(sequence = NULL, minlength = 0, maxlength = Inf){
+    sequence_lengths <- lapply(1:length(sequence), function(x){ length(sequence[[x]]) })
+    seqsIwant <- which(sequence_lengths > minlength & sequence_lengths < maxlength)
+    sequence <- sequence[seqsIwant]
+
+    return(sequence)
+}
+
+#' filter_sequence_by_name(input_sequences = NULL, sequencenames = NULL, keep = TRUE)
+#'
+#' Filters sequinr sequences by name either keeping or discarding specified sequence names
+#' @export
+
+filter_sequence_by_name <- function(input_sequences = NULL, sequencenames = NULL, keep = TRUE){
+    input_seqnames <- names(input_sequences)
+
+    if (!(is.null(sequencenames))){
+        #Filter by read name
+        if (keep == TRUE){
+            seqtoKeep <- which(input_seqnames %in% sequencenames)
+
+        } else {
+            seqtoKeep <- which(!(input_seqnames %in% sequencenames))
+            #Check that all sequences you asked to eliminate existed in the input file.
+            if (!(all(sequencenames %in% input_seqnames))){
+                flog.info("WARNING: Not all sequences you requested to exclude were available in input file.")
+            }
+        }
+        output_sequences <- input_sequences[seqtoKeep]
+    } else {
+        output_sequences <- input_sequences
+    }
+
+    output_sequences <- make_sequences_caps(output_sequences)
+
+    return(output_sequences)
+}
+
+
+#' make_sequences_caps(sequence = NULL)
+#'
+#' Transforms sequinr sequences to uppercase
+#' @export
+
+make_sequences_caps <- function(sequence = NULL){
+    seqnames <- names(sequence)
+    sequence <- lapply(1:length(sequence), function(x){ toupper(sequence[[x]]) })
+    names(sequence) <- seqnames
+
+    return(sequence)
+}
+
+#' sample_by_category
+#'
+#' Sample by category
+#' @export
+
+sample_by_category <- function(rows, frac = 0.25) {
+    #counts <- table(rows$category) %>% .[.>= n]
+    counts <- table(rows$category)
+    result <- data.frame()
+    for (name in names(counts)) {
+        result <- rbind(result, sample_frac(rows[rows$category==name,], frac))
+    }
+
+    return(result)
+}
+
+
+#' shrink_perbasecoverage(perbasecoverage=NULL, percentage=2)
+#'
+#' #Subset down to n% of the dataset to make it calculatable. To be used only by JAMSalpha.
+#' @export
+
+shrink_perbasecoverage <-function(perbasecoverage = NULL, percentage = 2){
+    numbases <- 1:nrow(perbasecoverage)
+    breaks <- numbases[seq(1, length(numbases), (100/percentage))]
+    perbasecoverage_reduced <- perbasecoverage[breaks, ]
+
+    return(perbasecoverage_reduced)
 }

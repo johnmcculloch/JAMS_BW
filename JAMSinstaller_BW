@@ -154,7 +154,7 @@ if (onbiowulf == TRUE){
 #Install devtools and stringr if not present
 repos <- "https://cloud.r-project.org"
 if(!(all((c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits") %in% rownames(installed.packages()))))){
-    install.packages(c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits"), repos = repos)
+    install.packages(c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits"), repos = repos, update = TRUE)
 }
 require("devtools")
 require("stringr")
