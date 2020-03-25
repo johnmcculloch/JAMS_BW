@@ -295,6 +295,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 phcol[which(names(phcol) == "p__Unclassified")] <- "#000000"
                 phcol <- phcol[!duplicated(phcol)]
 
+        } else {
+            stratify_by_taxlevel = FALSE
         }
 
         for (feat in rownames(countmat)){

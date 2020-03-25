@@ -21,7 +21,11 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
     obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = variables_to_fix, class_to_ignore = class_to_ignore)
 
     analysis <- metadata(obj)$analysis
-    analysisname <- analysis
+    if (!is.null(glomby)){
+        analysisname <- glomby
+    } else {
+        analysisname <- analysis
+    }
 
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, maxl2fc = maxl2fc, minl2fc = minl2fc)
 
@@ -145,9 +149,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                 matstatsbank <- as.data.frame(matstats)
                 if ("GenomeCompleteness" %in% names(assays(currobj))){
                     matstatsbank$Taxa <- rownames(matstatsbank)
-                    genomecompletenessdf <- assays(currobj)$GenomeCompleteness
-                    genomecompletenessdf$MedianGenomeComp <- rowMedians(as.matrix(genomecompletenessdf))
-                    genomecompletenessdf$SDGenomeComp <- rowSds(as.matrix(genomecompletenessdf))
+                    genomecompletenessmat <- as.matrix(assays(currobj)$GenomeCompleteness)
+                    genomecompletenessdf <- as.data.frame(genomecompletenessmat)
+                    genomecompletenessdf$MedianGenomeComp <- rowMedians(genomecompletenessmat)
+                    genomecompletenessdf$SDGenomeComp <- rowSds(genomecompletenessmat)
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
                     genomecompletenessdfmedians <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
                     matstatsbank <- left_join(matstatsbank, genomecompletenessdfmedians)
@@ -204,9 +209,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                 matstatsbank <- as.data.frame(matstats)
                 if ("GenomeCompleteness" %in% names(assays(currobj))){
                     matstatsbank$Taxa <- rownames(matstatsbank)
-                    genomecompletenessdf <- assays(currobj)$GenomeCompleteness
-                    genomecompletenessdf$MedianGenomeComp <- rowMedians(as.matrix(genomecompletenessdf))
-                    genomecompletenessdf$SDGenomeComp <- rowSds(as.matrix(genomecompletenessdf))
+                    genomecompletenessmat <- as.matrix(assays(currobj)$GenomeCompleteness)
+                    genomecompletenessdf <- as.data.frame(genomecompletenessmat)
+                    genomecompletenessdf$MedianGenomeComp <- rowMedians(genomecompletenessmat)
+                    genomecompletenessdf$SDGenomeComp <- rowSds(genomecompletenessmat)
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
                     genomecompletenessdfmedians <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
                     matstatsbank <- left_join(matstatsbank, genomecompletenessdfmedians)
@@ -564,7 +570,13 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     ht1fs <- 10
                     hm1tit <- plotit
 
-                    if (secondaryheatmap == "GenomeCompleteness"){
+                    if (is.null(secondaryheatmap)) {
+                        #Cheap trick
+                        secondaryheatmap <- FALSE
+                    }
+
+
+                    if (secondaryheatmap == "GenomeCompleteness") {
                         if ("GenomeCompleteness" %in% names(assays(currobj))){
                             gchmdf <- genomecompletenessdf[rownames(mathm), colnames(mathm)]
                             gchmdf <- as.matrix(gchmdf)
