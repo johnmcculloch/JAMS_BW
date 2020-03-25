@@ -44,7 +44,7 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_
 
     #Attribute colours to a non-redundant list of classes
     if (length(uniqueclasses) > length(JAMSpalette)){
-        cat("There are far too many different classes in the metadata. Humans cannot possibly distinguigh this number of colours.\n")
+        cat("There are far too many different classes in the metadata. Humans cannot possibly distinguish this number of colours.\n")
 
         return(NULL)
 
