@@ -2,15 +2,17 @@
 % Please edit documentation in R/useful_functions.R
 \name{retrieve_features_by_taxa}
 \alias{retrieve_features_by_taxa}
-\title{retrieve_features_by_taxa(wantedfeatures = NULL, wantedsamples = NULL, allfeaturesbytaxa_matrix = NULL, allfeaturesbytaxa_index = NULL)}
+\title{retrieve_features_by_taxa(FuncExpObj = NULL, wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0)}
 \usage{
 retrieve_features_by_taxa(
+  FuncExpObj = NULL,
   wantedfeatures = NULL,
   wantedsamples = NULL,
-  allfeaturesbytaxa_matrix = NULL,
-  allfeaturesbytaxa_index = NULL
+  asPPM = TRUE,
+  PPM_normalize_to_bases_sequenced = FALSE,
+  PPMthreshold = 0
 )
 }
 \description{
-Returns a long form data frame of stratification by taxa of wanted functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
+Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
 }

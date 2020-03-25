@@ -211,8 +211,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             matstats <- matstats[rowcutoff, ]
 
             #Filter by l2fc if applicable
-            if (all(c((!is.null(minl2fc)), ("absl2fc" %in% colnames(matstats))))){
-                matstats <- subset(matstats, absl2fc >= minl2fc)
+            if (all(c((!is.null(presetlist$minl2fc)), ("absl2fc" %in% colnames(matstats))))){
+                matstats <- subset(matstats, absl2fc >= presetlist$minl2fc)
                 print(paste("After correl filtering", nrow(matstats)))
                 if (nrow(matstats) < 1){
                     #abort, nothing is left over
@@ -223,8 +223,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             }
 
             #Filter by correlation coefficient, if applicable
-            if (all(c((!is.null(minabscorrcoeff)), ("abscorrel" %in% colnames(matstats))))){
-                matstats <- subset(matstats, abscorrel >= minabscorrcoeff)
+            if (all(c((!is.null(presetlist$minabscorrcoeff)), ("abscorrel" %in% colnames(matstats))))){
+                matstats <- subset(matstats, abscorrel >= presetlist$minabscorrcoeff)
                 if (nrow(matstats) < 1){
                     #abort, nothing is left over
                     flog.warn("None of the wanted features were not found in the SummarizedExperiment object when using the current absolute correlation coefficient filtration parameters.")
@@ -268,6 +268,33 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             flog.warn("None of the wanted features were not found in SummarizedExperiment object when using the current filtration parameters.")
 
             return(NULL)
+        }
+
+        #Now, for the tricky bit of stratifying by taxa
+        if (!is.null(stratify_by_taxlevel)){
+            if (stratify_by_taxlevel == TRUE){
+                stratify_by_taxlevel <- "LKT"
+            }
+            #See if current SummarizedExperiment object allows for stratification by taxa.
+            if (all(c("allfeaturesbytaxa_index", "allfeaturesbytaxa_matrix") %in% names(metadata(currobj)))){
+                taxsplit <- retrieve_features_by_taxa(FuncExpObj = currobj, wantedfeatures = rownames(countmat), wantedsamples = colnames(countmat), asPPM = TRUE, PPMthreshold = 0)
+                colnames(taxsplit)[which(colnames(taxsplit) == compareby)] <- "Compareby"
+            } else {
+                flog.warn("Current SummarizedExperiment object does not contain the necessary data for stratifying this function by taxonomy. Check your input.")
+            }
+            data(JAMStaxtable)
+            tt <- JAMStaxtable
+            LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", "Compareby"))]
+            tt <- tt[LKTcolumns, c(stratify_by_taxlevel, "Phylum")]
+
+            Gram$Kingdom <- NULL
+            tt <- left_join(tt, Gram)
+                tt$Gram[which(!(tt$Gram %in% c("positive", "negative")))] <- "not_sure"
+                phcol <- colorRampPalette((brewer.pal(9, "Set1")))(length(unique(tt$Phylum)))
+                names(phcol) <- unique(tt$Phylum)
+                phcol[which(names(phcol) == "p__Unclassified")] <- "#000000"
+                phcol <- phcol[!duplicated(phcol)]
+
         }
 
         for (feat in rownames(countmat)){
@@ -323,7 +350,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 }
 
                 if ((length(discretenames) > 1) && (length(discretenames) <= max_pairwise_cats)){
-                    if (missing(signiflabel)){
+                    if (is.null(signiflabel)){
                         signiflabel <- "p.format"
                     }
                     #Add pval
@@ -419,6 +446,40 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             names(gvec)[plotcount] <- paste(maintit, feat, sep = " | ")
             plotcount <- plotcount + 1
 
+            if (stratify_by_taxlevel %in% c("LKT", "Genus", "Family", "Order", "Class", "Phylum", "Kingdom", "Domain")){
+
+                currtaxsplit <- subset(taxsplit, Accession == feat)
+                for (grp in unique(currtaxsplit$Compareby)){
+                    currtaxsplitgrp <- subset(currtaxsplit, Compareby == grp)
+                    LKTcolumns <- colnames(currtaxsplitgrp)[!(colnames(taxsplit) %in% c("Sample", "Accession", "Compareby"))]
+                    #Eliminate empties
+                    LKTsToKeep <- names(which(colSums(currtaxsplitgrp[ , LKTcolumns]) > 0))
+                    currtaxsplitgrp <- currtaxsplitgrp[ , c("Sample", LKTsToKeep)]
+                    dat <- currtaxsplitgrp %>% gather(Taxon, PPM, 4:ncol(currtaxsplitgrp))
+                    #Start building a plot
+                    p <- ggplot(dat, aes(x = Taxon, y = PPM))
+                    p <- p + geom_boxplot(outlier.shape = NA)
+                    p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0))
+                    p <- p + theme_minimal()
+                    plotitstrat <- paste0(c(maintit, featname, paste("Within", grp)), collapse = "\n")
+
+                    p <- p + ggtitle(plotitstrat)
+
+                    if (uselog == TRUE){
+                        ytit <- "Relative Abundance in PPM"
+                        #p <- p + coord_trans(y = "log2", clip = "off")
+                        p <- p + scale_y_continuous(trans = scales::log2_trans(), breaks = scales::trans_breaks("log2", function(x) {2^x}), labels = scales::trans_format("log2", function(x) {2^x}))
+                    } else {
+                        ytit <- "Relative Abundance in PPM"
+                    }
+                    p <- p + labs(x = compareby, y = ytit)
+                    p <- p + theme(axis.text.x = element_text(angle = rotang, size = rel(1), colour = "black"))
+                    p <- p + theme(plot.title = element_text(size = 10))
+                    gvec[[plotcount]] <- p
+                    names(gvec)[plotcount] <- paste(maintit, feat, grp, stratify_by_taxlevel, sep = " | ")
+                    plotcount <- plotcount + 1
+                }#End loop for plotting stratify_by_taxlevel within each group
+            }#End conditional of stratifying by taxonomy
         }#End loop for plotting each feature
 
     }#End loop for each subset

@@ -439,12 +439,15 @@ name_samples <- function(list.data = NULL){
     return(loadedsamples)
 }
 
-#' retrieve_features_by_taxa(wantedfeatures = NULL, wantedsamples = NULL, allfeaturesbytaxa_matrix = NULL, allfeaturesbytaxa_index = NULL)
+#' retrieve_features_by_taxa(FuncExpObj = NULL, wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0)
 #'
-#' Returns a long form data frame of stratification by taxa of wanted functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
+#' Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
 #' @export
 
-retrieve_features_by_taxa <- function(wantedfeatures = NULL, wantedsamples = NULL, allfeaturesbytaxa_matrix = NULL, allfeaturesbytaxa_index = NULL){
+retrieve_features_by_taxa <- function(FuncExpObj = NULL, wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0){
+
+    allfeaturesbytaxa_matrix <- metadata(FuncExpObj)$allfeaturesbytaxa_matrix
+    allfeaturesbytaxa_index <- metadata(FuncExpObj)$allfeaturesbytaxa_index
 
     #Get appropriate rows
     rowsinterestdf <- subset(allfeaturesbytaxa_index, Sample %in% wantedsamples)
@@ -463,7 +466,39 @@ retrieve_features_by_taxa <- function(wantedfeatures = NULL, wantedsamples = NUL
     allfeaturesbytaxa_interest$RowNumber <- NULL
     allfeaturesbytaxa_interest <- allfeaturesbytaxa_interest[ , c("Sample", "Accession", (sort(colnames(allfeaturesbytaxa_interest)[which(!colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession"))])))]
 
-    return(allfeaturesbytaxa_interest)
+    if (asPPM){
+        taxsplit <- allfeaturesbytaxa_interest
+        #Transform to PPM
+        if (PPM_normalize_to_bases_sequenced == TRUE){
+            totbases <- "TotalBasesSequenced"
+        } else {
+            totbases <- "TotalBasesSequencedinAnalysis"
+        }
+        numbases2sampl <- as.data.frame(t(metadata(currobj)[[totbases]]))
+        numbases2sampl$Sample <- rownames(numbases2sampl)
+        taxsplit <- left_join(taxsplit, numbases2sampl, by = "Sample")
+        LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", "NumBases"))]
+
+        #Transform to PPM
+        for(colm in LKTcolumns){
+            taxsplit[ , colm] <- round(((taxsplit[ , colm] / taxsplit$NumBases) * 1000000), 0)
+        }
+
+        #Denoise
+        LKTsMaxima <-sapply(LKTcolumns, function(x) {max(taxsplit[ , x])})
+        LKTsToKeep <- names(which(LKTsMaxima > PPMthreshold))
+        sample2metadata <- as.data.frame(curr_pt[, c("Sample", compareby)])
+        taxsplit <- left_join(taxsplit, sample2metadata, by = "Sample")
+        taxsplit <- taxsplit[ , c("Sample", "Accession", "NumBases", compareby, LKTsToKeep)]
+        taxsplit$NumBases <- NULL
+
+        return(taxsplit)
+
+    } else {
+
+        return(allfeaturesbytaxa_interest)
+
+    }
 }
 
 
