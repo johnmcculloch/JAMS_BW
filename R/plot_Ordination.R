@@ -12,6 +12,11 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = valid_vars, class_to_ignore = class_to_ignore)
 
     analysis <- metadata(obj)$analysis
+    if (!is.null(glomby)){
+        analysisname <- glomby
+    } else {
+        analysisname <- analysis
+    }
 
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
 
@@ -24,7 +29,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     #Create list vector to hold plots
     gvec <- NULL
     gvec <- vector("list", length = length(subset_points))
-    pcatitbase <- paste(algorithm, "of", analysis)
+    pcatitbase <- paste(algorithm, "of", analysisname)
 
     for (sp in 1:length(subset_points)){
 
