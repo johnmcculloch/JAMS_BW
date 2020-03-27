@@ -240,7 +240,7 @@ filter_sample_by_class_to_ignore <- function(SEobj = NULL, variables = NULL, cla
 #'
 #' Performs vetting of a SummarizedExperiment object for use in several functions
 #' @export
-declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL){
+declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, minabscorrcoeff = NULL){
 
     if ((analysis != "LKT") && (!(is.null(GenomeCompletenessCutoff)))){
         warning("Genome completeness only makes sense for taxa. Please choose a taxonomic (non functional) analysis.")
@@ -284,7 +284,7 @@ declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, feat
     }
 
     #Replace with any values explicitly set by the user
-    argstoset <- c("featcutoff", "GenomeCompletenessCutoff", "PctFromCtgscutoff", "maxl2fc", "minl2fc")[!unlist(lapply(list(featcutoff, GenomeCompletenessCutoff, PctFromCtgscutoff, maxl2fc, minl2fc), is.null))]
+    argstoset <- c("featcutoff", "GenomeCompletenessCutoff", "PctFromCtgscutoff", "maxl2fc", "minl2fc", "minabscorrcoeff")[!unlist(lapply(list(featcutoff, GenomeCompletenessCutoff, PctFromCtgscutoff, maxl2fc, minl2fc, minabscorrcoeff), is.null))]
 
     if (length(argstoset) > 0){
         for (ats in argstoset){

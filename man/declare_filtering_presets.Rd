@@ -11,7 +11,8 @@ declare_filtering_presets(
   GenomeCompletenessCutoff = NULL,
   PctFromCtgscutoff = NULL,
   maxl2fc = NULL,
-  minl2fc = NULL
+  minl2fc = NULL,
+  minabscorrcoeff = NULL
 )
 }
 \description{

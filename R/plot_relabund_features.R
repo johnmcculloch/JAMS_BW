@@ -213,7 +213,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             #Filter by l2fc if applicable
             if (all(c((!is.null(presetlist$minl2fc)), ("absl2fc" %in% colnames(matstats))))){
                 matstats <- subset(matstats, absl2fc >= presetlist$minl2fc)
-                print(paste("After correl filtering", nrow(matstats)))
+                #print(paste("After correl filtering", nrow(matstats)))
                 if (nrow(matstats) < 1){
                     #abort, nothing is left over
                     flog.warn("None of the wanted features were not found in the SummarizedExperiment object when using the current log2 foldchange filtration parameters.")
@@ -295,8 +295,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 phcol[which(names(phcol) == "p__Unclassified")] <- "#000000"
                 phcol <- phcol[!duplicated(phcol)]
 
-        } else {
-            stratify_by_taxlevel = FALSE
         }
 
         for (feat in rownames(countmat)){
@@ -448,8 +446,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             names(gvec)[plotcount] <- paste(maintit, feat, sep = " | ")
             plotcount <- plotcount + 1
 
-            if (stratify_by_taxlevel %in% c("LKT", "Genus", "Family", "Order", "Class", "Phylum", "Kingdom", "Domain")){
-
+            if (!is.null(stratify_by_taxlevel)){
+                #stratify_by_taxlevel %in% c("LKT", "Genus", "Family", "Order", "Class", "Phylum", "Kingdom", "Domain")
                 currtaxsplit <- subset(taxsplit, Accession == feat)
                 for (grp in unique(currtaxsplit$Compareby)){
                     currtaxsplitgrp <- subset(currtaxsplit, Compareby == grp)
