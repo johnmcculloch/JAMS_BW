@@ -448,6 +448,7 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, wantedfeatures = NULL, 
 
     allfeaturesbytaxa_matrix <- metadata(FuncExpObj)$allfeaturesbytaxa_matrix
     allfeaturesbytaxa_index <- metadata(FuncExpObj)$allfeaturesbytaxa_index
+    curr_pt <- colData(FuncExpObj)
 
     #Get appropriate rows
     rowsinterestdf <- subset(allfeaturesbytaxa_index, Sample %in% wantedsamples)
@@ -474,7 +475,7 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, wantedfeatures = NULL, 
         } else {
             totbases <- "TotalBasesSequencedinAnalysis"
         }
-        numbases2sampl <- as.data.frame(t(metadata(currobj)[[totbases]]))
+        numbases2sampl <- as.data.frame(t(metadata(FuncExpObj)[[totbases]]))
         numbases2sampl$Sample <- rownames(numbases2sampl)
         taxsplit <- left_join(taxsplit, numbases2sampl, by = "Sample")
         LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", "NumBases"))]
@@ -487,9 +488,10 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, wantedfeatures = NULL, 
         #Denoise
         LKTsMaxima <-sapply(LKTcolumns, function(x) {max(taxsplit[ , x])})
         LKTsToKeep <- names(which(LKTsMaxima > PPMthreshold))
-        sample2metadata <- as.data.frame(curr_pt[, c("Sample", compareby)])
+        sample2metadata <- as.data.frame(curr_pt)
+        nonSamplecolms <- colnames(sample2metadata)[colnames(sample2metadata) != "Sample"]
         taxsplit <- left_join(taxsplit, sample2metadata, by = "Sample")
-        taxsplit <- taxsplit[ , c("Sample", "Accession", "NumBases", compareby, LKTsToKeep)]
+        taxsplit <- taxsplit[ , c("Sample", "Accession", "NumBases", nonSamplecolms, LKTsToKeep)]
         taxsplit$NumBases <- NULL
 
         return(taxsplit)

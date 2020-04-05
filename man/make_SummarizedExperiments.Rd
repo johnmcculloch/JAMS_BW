@@ -11,7 +11,7 @@ make_SummarizedExperiments(
   minnumsampanalysis = NULL,
   minpropsampanalysis = 0.1,
   restricttoLKTs = NULL,
-  split_functions_by_taxon = TRUE,
+  stratify_functions_by_taxon = TRUE,
   list.data = NULL
 )
 }

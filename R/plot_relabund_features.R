@@ -283,8 +283,9 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 flog.warn("Current SummarizedExperiment object does not contain the necessary data for stratifying this function by taxonomy. Check your input.")
             }
             data(JAMStaxtable)
+            data(Gram)
             tt <- JAMStaxtable
-            LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", "Compareby"))]
+            LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", colnames(curr_pt)))]
             tt <- tt[LKTcolumns, c(stratify_by_taxlevel, "Phylum")]
 
             Gram$Kingdom <- NULL

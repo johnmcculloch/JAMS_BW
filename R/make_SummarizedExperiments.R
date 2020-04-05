@@ -3,7 +3,7 @@
 #' Makes a SummarizedExperiment object for every analysis that is possible to make given loaded jams files in list.data.
 #' @export
 
-make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, split_functions_by_taxon = TRUE, list.data = NULL){
+make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, list.data = NULL){
 
     require(SummarizedExperiment)
     require(Matrix)
@@ -254,7 +254,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         metadata(SEobj)$analysis <- analysis
 
         #Split functions by taxon, if applicable
-        if (split_functions_by_taxon){
+        if (stratify_functions_by_taxon){
             flog.info(paste("Splitting", analysis, "features by taxa. This may take a while."))
 
             featurebytaxonlist <- list()

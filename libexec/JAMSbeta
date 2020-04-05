@@ -84,10 +84,15 @@ option_list <- list(
                 type="logical",
                 help ="Export relative abundance tables and feature data tables in tsv format."),
 
-    make_option(c("-n", "--restrict_plot_analyses"),
+    make_option(c("-n", "--restrict_to_analyses"),
                 action="store", default = NULL,
                 type="character",
-                help ="Only generate reports for the following analyses separated by comma. Example: -n LKT,ECNumber,GO,resfinder will only generate reports for these analyses, if available. If omitted, all available analyses will be used." ),
+                help ="Only generate SummarizedExperiment objects and reports for the following analyses separated by comma. Example: -n LKT,ECNumber,GO,resfinder will only generate reports for these analyses, if available. If omitted, all available analyses will be used." ),
+
+    make_option(c("-u", "--stratify_functions_by_taxon"),
+                action = "store_true", default = FALSE,
+                type = "logical",
+                help = "When building SummarizedExperiment objects, split functional (non-taxonomic) analyses by taxon."),
 
     make_option(c("-d", "--make_ordination_reports"),
                 action="store", default = NULL,
@@ -361,6 +366,7 @@ if (!(exists("list.data"))) {
 
     #IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 }
+
 if (length(opt$dupes) > 0){
     list.data[grep(paste0(opt$dupes, "_"), names(list.data))] <- NULL
     list.data <- list.data[sapply(list.data, function(x){ !(is.null(x)) } )]
@@ -470,10 +476,19 @@ if (!exists("expvec")){
     if ("Metaphlann" %in% subset(projinfodf, Run_info == "Process")[]$Run_value){
         onlyanalyses <- "LKT"
     } else {
-        onlyanalyses <- NULL
+        if (!is.null(opt$restrict_to_analyses)){
+            onlyanalyses <- unique(unlist(strsplit(opt$restrict_to_analyses, split = ",")))
+            flog.info(paste("Building of SummarizedExperiments will be restricted to the following analyses:", paste0(onlyanalyses, collapse = ", ")))
+        } else {
+            onlyanalyses <- NULL
+        }
     }
 
-    expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data, onlyanalyses = onlyanalyses)
+    if (opt$stratify_functions_by_taxon == TRUE){
+        flog.info("Functional (non-taxonomic) SummarizedExperiment objects will be stratified by taxonomy.")
+    }
+
+    expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data, onlyanalyses = onlyanalyses, stratify_functions_by_taxon = stratify_functions_by_taxon)
 
 } else {
     #Expvec exists. Either do nothing, or replace the metadata.
@@ -569,8 +584,8 @@ if (!any(c((!is.null(opt$make_ordination_reports)), (!is.null(opt$run_script)), 
 ## Do optional tasks ##
 #######################
 #Determine analyses to be plot
-if (!is.null(opt$restrict_plot_analyses)){
-    wantedanalyses <- unique(unlist(strsplit(opt$restrict_plot_analyses, split = ",")))
+if (!is.null(opt$restrict_to_analyses)){
+    wantedanalyses <- unique(unlist(strsplit(opt$restrict_to_analyses, split = ",")))
     wantedanalyses <- names(expvec)[(names(expvec) %in% wantedanalyses)]
 } else {
     wantedanalyses <- names(expvec)[(names(expvec) %in% c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM"))]
