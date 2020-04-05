@@ -488,7 +488,7 @@ if (!exists("expvec")){
         flog.info("Functional (non-taxonomic) SummarizedExperiment objects will be stratified by taxonomy.")
     }
 
-    expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data, onlyanalyses = onlyanalyses, stratify_functions_by_taxon = stratify_functions_by_taxon)
+    expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data, onlyanalyses = onlyanalyses, stratify_functions_by_taxon = opt$stratify_functions_by_taxon)
 
 } else {
     #Expvec exists. Either do nothing, or replace the metadata.
