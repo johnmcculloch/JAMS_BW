@@ -282,20 +282,21 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             } else {
                 flog.warn("Current SummarizedExperiment object does not contain the necessary data for stratifying this function by taxonomy. Check your input.")
             }
+
             data(JAMStaxtable)
             data(Gram)
-            tt <- JAMStaxtable
+            tt <- JAMStaxtable[ , which(colnames(JAMStaxtable) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "LKT"))]
+            tt <- tt[!(duplicated(tt$LKT)), ]
             LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", colnames(curr_pt)))]
-            tt <- tt[LKTcolumns, c(stratify_by_taxlevel, "Phylum")]
-
+            tt <- subset(tt, LKT %in% LKTcolumns)
+            tt <- tt[ , c(stratify_by_taxlevel, "Phylum")]
             Gram$Kingdom <- NULL
-            tt <- left_join(tt, Gram)
-                tt$Gram[which(!(tt$Gram %in% c("positive", "negative")))] <- "not_sure"
-                phcol <- colorRampPalette((brewer.pal(9, "Set1")))(length(unique(tt$Phylum)))
-                names(phcol) <- unique(tt$Phylum)
-                phcol[which(names(phcol) == "p__Unclassified")] <- "#000000"
-                phcol <- phcol[!duplicated(phcol)]
-
+            tt <- left_join(tt, Gram, by = "Phylum")
+            tt$Gram[which(!(tt$Gram %in% c("positive", "negative")))] <- "not_sure"
+            phcol <- colorRampPalette((brewer.pal(9, "Set1")))(length(unique(tt$Phylum)))
+            names(phcol) <- unique(tt$Phylum)
+            phcol[which(names(phcol) == "p__Unclassified")] <- "#000000"
+            phcol <- phcol[!duplicated(phcol)]
         }
 
         for (feat in rownames(countmat)){
