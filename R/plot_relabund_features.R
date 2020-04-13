@@ -201,7 +201,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             #Limit number of features to requested number or number available
             rowcutoff <- rowcutoff[1:(min(topcats, length(rowcutoff)))]
 
-            if (length(rowcutoff) == 0){
+            if (any(c(is.na(rowcutoff), (length(rowcutoff) == 0)))){
                 #abort, nothing is left over
                 flog.warn("None of the wanted features were not found in SummarizedExperiment object when using the current p-value filtration parameters.")
 
