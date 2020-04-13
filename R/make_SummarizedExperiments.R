@@ -17,8 +17,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
 
     Samples <- rownames(pheno2)
     if (any(c(is.null(onlyanalyses), !(all(c((length(onlyanalyses) == 1), ("LKT" %in% onlyanalyses))))))) {
-        featureobjects <- paste(Samples, "featuredose", sep="_")
-        featuredoses <- list.data[featureobjects]
+
+        featuredoses <- list.data[paste(Samples, "featuredose", sep="_")]
         names(featuredoses) <- Samples
 
         #Find out which functional analyses can be made
@@ -144,6 +144,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     }
 
     #Now, for the functional analyses
+    featuredoses <- list.data[paste(Samples, "featuredose", sep="_")]
+    names(featuredoses) <- Samples
+    featuredata <- list.data[paste(Samples, "featuredata", sep="_")]
+    names(featuredata) <- Samples
+
     for (a in 1:length(possibleanalyses)) {
         analysis <- possibleanalyses[a]
         flog.info(paste("Making", analysis, "SummarizedExperiment"))
@@ -151,6 +156,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         #subset doses to contain only the analysis wanted
         analysisdoses <- NULL
         analysisdoses <- list()
+        analysisdata <- NULL
+        analysisdata <- list()
 
         #Get names of Samples which have data for the analysis
         SamplesofInterest <- names(anallist)[which(sapply(1:length(anallist), function(x) { (analysis %in% anallist[[x]]) } ) == TRUE)]
@@ -165,6 +172,17 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                 tempanaldose$Description <- as.character(tempanaldose$Description)
                 tempanaldose$NumBases <- as.numeric(tempanaldose$NumBases)
                 analysisdoses[[ad]] <- tempanaldose
+
+                tempanaldata <- featuredata[[ad]]
+                #If possible, get feature count
+                if(analysis %in% colnames(tempanaldata)){
+                    featcount <- as.data.frame(table(tempanaldata[ , analysis]))
+                    colnames(featcount) <- c("Accession", "Count")
+                    rownames(featcount) <- featcount$Accession
+                    analysisdata[[ad]] <- featcount
+                } else {
+                    analysisdata[[ad]] <- NULL
+                }
             }
         } else {
             flog.info(paste("Making counts table restricted to the", length(restricttoLKTs),"LKTs specified."))
@@ -187,7 +205,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
 
                 analysisdoses[[ad]] <- tempanaldose[, c("Accession", "NumBases", "Description")]
             }
-        }
+        } #End conditional of restricting to LKTs
 
         phenoanal <- pheno2
 
@@ -238,14 +256,39 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         sampleorder <- rownames(phenoanal)
         ftt <- ftt[featureorder, ]
         cts <- cts[, sampleorder]
+        cts <- as.matrix(cts)
 
         #Register the total number of bases sequenced for each sample within that analysis
         TotalBasesSequencedinAnalysis <- colSums(cts)
         TotalBasesSequencedinAnalysis <- t(as.matrix(TotalBasesSequencedinAnalysis))
         rownames(TotalBasesSequencedinAnalysis) <- "NumBases"
 
-        assays <- list(as.matrix(cts))
-        names(assays) <- "BaseCounts"
+        #If there is how to count numbers of genes for each accession, then do that.
+        if (length(analysisdata) == length(analysisdoses)){
+            featuredataall <- bind_rows(analysisdata, .id = "id")
+            featuredataall[is.na(featuredataall)] <- 0
+            colnames(featuredataall)[1] <- "Sample"
+
+            featcts <- spread(featuredataall, Sample, Count, fill = 0, drop = TRUE)
+            #Just double check that there are no dupes
+            if (length(which(duplicated(featcts$Accession) == TRUE)) > 0){
+                flog.info(paste("Found", length(which(duplicated(featcts$Accession) == TRUE)), "duplicated accessions. Keeping the first one in each case."))
+                featcts <- featcts[!(duplicated(featcts$Accession)), ]
+            }
+            featcts$Accession[which(featcts$Accession == "none")] <- paste(analysis, "none", sep = "_")
+            rownames(featcts) <- featcts$Accession
+            featcts$Accession <- NULL
+            featcts <- featcts[featureorder, sampleorder]
+            featcts <- as.matrix(featcts)
+        } else {
+            featcts <- NULL
+        }
+
+        assays <- list()
+        assays$BaseCounts <- cts
+        if (!is.null(featcts)){
+            assays$GeneCounts <- featcts
+        }
 
         ##Create SummarizedExperiment
         SEobj <- SummarizedExperiment(assays = assays, rowData = as.matrix(ftt), colData = as.matrix(phenoanal))
