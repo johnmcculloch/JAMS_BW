@@ -260,6 +260,7 @@ declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, feat
                 presetlist$featcutoff <- c(50, 15)
                 presetlist$minl2fc <- 2.5
             }
+            presetlist$minabscorrcoeff <- 0.8
         } else if (applyfilters == "moderate"){
             if (analysis == "LKT"){
                 presetlist$featcutoff <- c(250, 15)
@@ -270,6 +271,7 @@ declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, feat
                 presetlist$featcutoff <- c(10, 5)
                 presetlist$minl2fc <- 1
             }
+            presetlist$minabscorrcoeff <- 0.6
         } else if (applyfilters == "light"){
             if (analysis == "LKT"){
                 presetlist$featcutoff <- c(50, 5)
@@ -280,6 +282,7 @@ declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, feat
                 presetlist$featcutoff <- c(5, 5)
                 presetlist$minl2fc <- 1
             }
+            presetlist$minabscorrcoeff <- 0.4
         }
     }
 
