@@ -109,10 +109,11 @@ option_list <- list(
                 type="logical",
                 help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
 
-    make_option(c("-b", "--make_PA_reports"),
-                action="store_true", default = FALSE,
-                type="logical",
-                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
+    #Will remove this option until sorting out another metagenomeSeq-free way of doing it
+    #make_option(c("-b", "--make_PA_reports"),
+    #            action="store_true", default = FALSE,
+    #            type="logical",
+    #            help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
 
     make_option(c("-r", "--make_correlation_reports"),
                 action="store_true", default = FALSE,
@@ -614,9 +615,10 @@ if (opt$make_correlation_reports){
 if (opt$make_exploratory_reports){
     plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "exploratory") }))
 }
-if (opt$make_PA_reports){
-    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "PA") }))
-}
+#Will remove this option until sorting out another metagenomeSeq-free way of doing it
+#if (opt$make_PA_reports){
+#    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "PA") }))
+#}
 if (opt$make_alpha_reports){
     plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "alpha") }))
 }
