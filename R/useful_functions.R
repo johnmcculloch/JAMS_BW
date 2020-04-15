@@ -348,8 +348,7 @@ spew_heatmap_report <- function(hmcomb){
 
     }  else if (report == "alpha") {
 
-        tryCatch(make_alpha_report(project = project, expvec = expvec, usefulexp = basicexp, variable_list = variable_list, cdict = cdict), error = function(e) whoopsieplot(paste("generating alpha diversity plots for", analysis, "analysis")))
-
+        tryCatch(project = project, expvec = expvec, usefulexp = analysis, variable_list = variable_list, measures = c("Observed", "InvSimpson", "GeneCounts"), cdict = cdict, stratify_by_kingdoms = TRUE, applyfilters = NULL, PPM_normalize_to_bases_sequenced = FALSE, max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = opt$class_to_ignore), error = function(e) whoopsieplot(paste("generating alpha diversity plots for", analysis, "analysis")))
     }
 
     setwd(opt$outdir)
