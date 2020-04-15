@@ -118,7 +118,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 countmat <- countmat[rowsToKeep, ]
                 if (nrow(countmat) < 1){
                     #abort, nothing is left over
-                    flog.info("None of the wanted features were not found in SummarizedExperiment object when using the current filtration parameters.")
+                    flog.info("None of the wanted features were found in SummarizedExperiment object when using the current filtration parameters.")
                     return(NULL)
                 }
             }
@@ -203,7 +203,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             if (any(c(is.na(rowcutoff), (length(rowcutoff) == 0)))){
                 #abort, nothing is left over
-                flog.warn("None of the wanted features were not found in SummarizedExperiment object when using the current p-value filtration parameters.")
+                flog.warn("None of the wanted features were found in SummarizedExperiment object when using the current p-value filtration parameters.")
 
                 return(NULL)
             }
@@ -216,7 +216,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 #print(paste("After correl filtering", nrow(matstats)))
                 if (nrow(matstats) < 1){
                     #abort, nothing is left over
-                    flog.warn("None of the wanted features were not found in the SummarizedExperiment object when using the current log2 foldchange filtration parameters.")
+                    flog.warn("None of the wanted features were found in the SummarizedExperiment object when using the current log2 foldchange filtration parameters.")
 
                     return(NULL)
                 }
@@ -227,7 +227,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 matstats <- subset(matstats, abscorrel >= presetlist$minabscorrcoeff)
                 if (nrow(matstats) < 1){
                     #abort, nothing is left over
-                    flog.warn("None of the wanted features were not found in the SummarizedExperiment object when using the current absolute correlation coefficient filtration parameters.")
+                    flog.warn("None of the wanted features were found in the SummarizedExperiment object when using the current absolute correlation coefficient filtration parameters.")
 
                     return(NULL)
                 }
@@ -265,7 +265,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
         } else {
 
             #abort, nothing is left over
-            flog.warn("None of the wanted features were not found in SummarizedExperiment object when using the current filtration parameters.")
+            flog.warn("None of the wanted features were found in SummarizedExperiment object when using the current filtration parameters.")
 
             return(NULL)
         }

@@ -9,8 +9,22 @@ make_alpha_report(
   expvec = NULL,
   usefulexp = NULL,
   variable_list = NULL,
-  measures = c("Observed", "InvSimpson"),
-  cdict = NULL
+  measures = c("Observed", "InvSimpson", "GeneCounts"),
+  cdict = NULL,
+  stratify_by_kingdoms = TRUE,
+  glomby = NULL,
+  samplesToKeep = NULL,
+  featuresToKeep = NULL,
+  applyfilters = NULL,
+  featcutoff = NULL,
+  GenomeCompletenessCutoff = NULL,
+  PctFromCtgscutoff = NULL,
+  PPM_normalize_to_bases_sequenced = FALSE,
+  addtit = NULL,
+  max_pairwise_cats = 4,
+  ignoreunclassified = TRUE,
+  class_to_ignore = "N_A",
+  ...
 )
 }
 \description{

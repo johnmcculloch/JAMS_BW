@@ -568,7 +568,7 @@ cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, co
 if (any(c("metatranscriptome", "isolate") %in% pheno$JAMS_Run_type)){
     applyfilters <- "none"
 } else {
-    applyfilters <- "moderate"
+    applyfilters <- "light"
 }
 
 #Save image

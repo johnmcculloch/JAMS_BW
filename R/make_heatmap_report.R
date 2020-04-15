@@ -12,9 +12,9 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
     }
     expvec2 <- expvec[usefulexp]
 
-    if (is.null(applyfilters)){
-        applyfilters <- "none"
-    }
+    #if (is.null(applyfilters)){
+    #    applyfilters <- "none"
+    #}
 
     #Set variables
     variables_disc <- variable_list$discrete
