@@ -8,6 +8,7 @@ make_metadata_from_taxtable(
   taxlvlinterest = NULL,
   taxainterest = NULL,
   nobs = TRUE,
+  assembly_upto = NULL,
   metadatafn = NULL
 )
 }
