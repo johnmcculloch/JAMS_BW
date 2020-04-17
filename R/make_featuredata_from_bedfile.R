@@ -13,7 +13,7 @@ make_featuredata_from_bedfile <- function(opt = NULL, bedfile = NULL){
 
     colnames(featuredata) <- c("Contig", "Start", "End", "Feature", "MapQual", "Strand", "Annotby", "FeatType", "Spin", "Annot")
 
-    featuredata <- subset(beddata, FeatType %in% c("CDS", "tRNA",  "rRNA",  "tmRNA"))
+    featuredata <- subset(featuredata, FeatType %in% c("CDS", "tRNA",  "rRNA",  "tmRNA"))
 
 
     split_annot <- function(annot){
