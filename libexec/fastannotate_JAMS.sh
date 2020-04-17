@@ -16,7 +16,7 @@ Use: $(basename "$0") [options] -i contigs.fasta
 -n Do not try and rename contigs if they are larger than 20 characters long. (Default is to rename them.)
 -j Skip tbl2asn when using prokka. This step takes too long when there are over 10000 contigs.
 -p Prefix
--t Number of threads to use. Default is to use all available by setting --cpu prokka option to 0. 
+-t Number of threads to use. Default is to use all available by setting --cpu prokka option to 0.
 
 "
 
@@ -49,7 +49,7 @@ do
     case $option in
         i  ) fasta="$OPTARG" ;;
         p  ) prefix="$OPTARG" ;;
-        t  ) threads="$OPTARG" ;;        
+        t  ) threads="$OPTARG" ;;
         n  ) nflag="true" ;;
         j  ) skiptbl="true" ;;
         v  ) version; exit;;
@@ -72,7 +72,7 @@ then
     die "convert2bed was not found. Exiting now."
 else
     echo "convert2bed is installed."
-fi 
+fi
 
 #Find out size of headers.
 if [ ! "$prefix" ]
@@ -123,7 +123,7 @@ fi
 #Annotate
 if [ "$long" == "true" ]
 then
-    "$prokkaexe" --cpus "$threads" --addgenes --outdir "$prefix"_PROKKA --prefix "$prefix" --locustag "d0e64cW3" --gcode 11 prktmp.fasta 
+    "$prokkaexe" --cpus "$threads" --addgenes --outdir "$prefix"_PROKKA --prefix "$prefix" --locustag "d0e64cW3" --gcode 11 prktmp.fasta
 else
     "$prokkaexe" --cpus "$threads" --addgenes --outdir "$prefix"_PROKKA --prefix "$prefix" --locustag "$prefix" --gcode 11 "$fasta"
 fi
@@ -131,7 +131,7 @@ fi
 #Repair if headers were too long
 if [ "$long" == "true" ]
 then
-    echo "Fixing prefixes in output files."   
+    echo "Fixing prefixes in output files."
     cd "$prefix"_PROKKA
     cat "$prefix".gff | sed s/"d0e64cW3"/"$prefix"/g > tmp.gff
     mv tmp.gff "$prefix".gff
@@ -156,9 +156,9 @@ fi
 #Generate BED file and make maps
 cd "$prefix"_PROKKA/
 convert2bed -i gff < "$prefix".gff | sort -k1,1 -k2,2n | tr -d "\'" > "$prefix".bed
-cat "$prefix".bed | tr -d "\'" | awk -F '[\t]' '{print $4"\t"($3-$2)"\t"$8"\t"$1}' > feature2contig.map
-cat "$prefix".bed | tr -d "\'" | awk -F'[\t;]' '/product/{for(i=1;i<=NF;++i)if($i~/product/)print $4"\t"$i}' | sed s/"product="/""/g | sed s/" "/"_"/g | sed $'s/[^- \tA-Za-z0-9]/_/g' | sed s/"__"/"_"/g | sed s/"__"/"_"/g | sed s/"_-"/"-"/g | sed s/"-_"/"-"/g | sed s/"_$"/""/g > feature2product.map
-cat "$prefix".bed | tr -d "\'" | awk -F'[\t;]' '/eC_number/{for(i=1;i<=NF;++i)if($i~/eC_number/)print $4"\t"$i}' | sed s/"eC_number="/"EC_"/g > CDS2EC.map
+#cat "$prefix".bed | tr -d "\'" | awk -F '[\t]' '{print $4"\t"($3-$2)"\t"$8"\t"$1}' > feature2contig.map
+#cat "$prefix".bed | tr -d "\'" | awk -F'[\t;]' '/product/{for(i=1;i<=NF;++i)if($i~/product/)print $4"\t"$i}' | sed s/"product="/""/g | sed s/" "/"_"/g | sed $'s/[^- \tA-Za-z0-9]/_/g' | sed s/"__"/"_"/g | sed s/"__"/"_"/g | sed s/"_-"/"-"/g | sed s/"-_"/"-"/g | sed s/"_$"/""/g > feature2product.map
+#cat "$prefix".bed | tr -d "\'" | awk -F'[\t;]' '/eC_number/{for(i=1;i<=NF;++i)if($i~/eC_number/)print $4"\t"$i}' | sed s/"eC_number="/"EC_"/g > CDS2EC.map
 
 cd ../
 

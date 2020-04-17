@@ -35,32 +35,10 @@ annotate_contigs <- function(opt = NULL){
     opt$bedfile <- file.path(opt$workdir, annotationfolder, paste(opt$prefix, "bed", sep="."))
 
     #Load feature information into opt
-    feature2contig <- read.table(file = file.path(annotationfolder, "feature2contig.map"), sep = "\t", header = FALSE, skipNul = FALSE, fill = TRUE, colClasses = c("character", "numeric","character", "character"))
-    colnames(feature2contig) <- c("Feature", "LengthDNA", "FeatType", "Contig")
-    feature2product <- read.table(file = file.path(annotationfolder, "feature2product.map"), sep = "\t", header = FALSE, skipNul = FALSE, fill = TRUE, colClasses = c("character", "character"))
-    colnames(feature2product) <- c("Feature", "Product")
-
-    #Consider features and not genes
-    feature2contig <- subset(feature2contig, FeatType %in% c("CDS", "tRNA",  "rRNA",  "tmRNA"))
-    opt$featuredata <- left_join(feature2contig, feature2product)
-    opt$featuredata$Product[is.na(opt$featuredata$Product)] <- "none"
-
-    #Add enzymes if there are any (small contigs may not have any)
-    CDS2EC <- read.table(file = file.path(annotationfolder, "CDS2EC.map"), sep = "\t", header = FALSE, skipNul = FALSE, fill = TRUE, colClasses = c("character", "character"))
-    if (nrow(CDS2EC) > 0){
-        colnames(CDS2EC) <- c("Feature", "ECNumber")
-        opt$featuredata <- left_join(opt$featuredata, CDS2EC)
-        opt$featuredata$ECNumber[is.na(opt$featuredata$ECNumber)] <- "none"
-    } else {
-        opt$featuredata$ECNumber <- "none"
-    }
-
+    opt$featuredata <- make_featuredata_from_bedfile(bedfile = opt$bedfile)
     #Add taxonomy information
     tmpcontigsdata <- opt$contigsdata[, c("Contig", "LKT")]
     opt$featuredata <- left_join(opt$featuredata, tmpcontigsdata)
-
-    #Clean up
-    file.remove(file.path(annotationfolder, c("feature2contig.map", "feature2product.map", "CDS2EC.map")))
 
     #Bank annotation files to project directory
     if (opt$workdir != opt$sampledir){
