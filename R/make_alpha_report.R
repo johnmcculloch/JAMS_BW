@@ -23,10 +23,10 @@ make_alpha_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, v
     variables_disc <- variable_list$discrete
     variables_bin <- variable_list$binary
     variables_cont <- variable_list$continuous
-    variables_cont <- append(variables_cont, readscols, after = length(variables_all))
     variables_subs <- variable_list$subsettable
     variables_all <- unique(c(variables_disc, variables_subs, variables_bin, variables_cont))
     variables_discont <- variables_all[!(variables_all %in% variables_cont)]
+    variables_cont <- append(variables_cont, readscols, after = length(variables_all))
 
     pt <- as.data.frame(colData(expvec2[[1]]))
 
