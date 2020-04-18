@@ -8,6 +8,7 @@ make_alpha_report(
   project = NULL,
   expvec = NULL,
   usefulexp = NULL,
+  appendtofilename = NULL,
   variable_list = NULL,
   measures = c("Observed", "InvSimpson", "GeneCounts"),
   cdict = NULL,

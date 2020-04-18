@@ -202,6 +202,12 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
                         p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0))
                     }
 
+                    if (!(is.null(shapeby))){
+                        p <- add_shape_to_plot_safely(p = p, shapevec = currdat$Shape, cdict = cdict)
+                    }
+
+                    rotang <- 0
+
                     if ((length(unique(currdat$Compareby)) > 1) && (length(unique(currdat$Compareby)) <= max_pairwise_cats)){
                         if (is.null(signiflabel)){
                             signiflabel <- "p.format"

@@ -348,7 +348,8 @@ spew_heatmap_report <- function(hmcomb){
 
     }  else if (report == "alpha") {
 
-        tryCatch(make_alpha_report(project = project, expvec = expvec, usefulexp = analysis, variable_list = variable_list, measures = c("Observed", "InvSimpson", "GeneCounts"), cdict = cdict, stratify_by_kingdoms = TRUE, applyfilters = NULL,  GenomeCompletenessCutoff = c(5, 5), PPM_normalize_to_bases_sequenced = FALSE, max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = opt$class_to_ignore), error = function(e) whoopsieplot(paste("generating alpha diversity plots for", analysis, "analysis")))
+        tryCatch(make_alpha_report(project = project, expvec = expvec, usefulexp = analysis, variable_list = variable_list, measures = c("Observed", "InvSimpson", "GeneCounts"), cdict = cdict, stratify_by_kingdoms = TRUE, applyfilters = NULL, appendtofilename = paste(analysis, report, sep = "_"), GenomeCompletenessCutoff = c(5, 5), PPM_normalize_to_bases_sequenced = FALSE, max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = opt$class_to_ignore), error = function(e) whoopsieplot(paste("generating alpha diversity plots for", analysis, "analysis")))
+
     }
 
     setwd(opt$outdir)
@@ -609,4 +610,29 @@ shrink_perbasecoverage <-function(perbasecoverage = NULL, percentage = 2){
     perbasecoverage_reduced <- perbasecoverage[breaks, ]
 
     return(perbasecoverage_reduced)
+}
+
+#' add_shape_to_plot_safely(p = NULL, shapevec = NULL, cdict = NULL)
+#'
+#' #Given a vector of classes for adding shapes to a ggplot, attributes shapes safely in the presence or absence of a cdict containing shape info
+#' @export
+
+add_shape_to_plot_safely <- function (p = NULL, shapevec = NULL, cdict = NULL){
+
+    shape_pecking_order <- c(19, 18, 17, 15, 8, 12, 13, 10, 3, 4, 11, 0, 1, 2, 5, 6, 7, 6, 35, 36, 38, 64)
+    numshapes <- length(unique(shapevec))
+
+    if (!is.null(cdict)){
+        st <- cdict[[shapeby]]
+        if ("Shape" %in% colnames(st)){
+            groupshapes <- setNames(as.numeric(st$Shape), as.character(st$Name))
+            p <- p + scale_shape_manual(values = groupshapes)
+        } else {
+            p <- p + scale_shape_manual(values = shape_pecking_order[1:numshapes])
+        }
+    } else {
+        p <- p + scale_shape_manual(values = shape_pecking_order[1:numshapes])
+    }
+
+    return(p)
 }

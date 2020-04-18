@@ -3,7 +3,7 @@
 #' Generates standard comparative plots for alpha diversity measures.
 #' @export
 
-make_alpha_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, variable_list = NULL, measures = c("Observed", "InvSimpson", "GeneCounts"), cdict = NULL, stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, addtit = NULL, max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...){
+make_alpha_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, variable_list = NULL, measures = c("Observed", "InvSimpson", "GeneCounts"), cdict = NULL, stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, addtit = NULL, max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...){
 
     if (is.null(usefulexp)){
         usefulexp <- names(expvec)[!(names(expvec) %in% c("FeatType", "vfdb", "SFLD", "Coils", "Gene3D", "Phobius", "ProSitePatterns", "SMART", "resfinder", "ProDom"))]
@@ -38,13 +38,15 @@ make_alpha_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, v
         project <- "MyProject"
     }
 
-
     Pn <- 0
     plotname <- "Alpha_Diversity"
     comparisons <- variables_all
 
-    #Plot heatmaps in tandem to saving dataframes with stats.
-    pdffn <- paste(paste("JAMS", project, plotname, sep="_"), "pdf", sep=".")
+    basepdffn <- paste("JAMS", project, plotname, sep="_")
+    if (!(is.null(appendtofilename))){
+        basepdffn <- paste(basepdffn, appendtofilename, sep = "_")
+    }
+    pdffn <- paste(basepdffn, "pdf", sep=".")
     #Check if fn exists to avoid overwriting.
     ffn=1
     while(file.exists(pdffn)){
