@@ -623,7 +623,7 @@ if (opt$make_alpha_reports){
     plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "alpha") }))
 }
 
-print(RAMbytes_status())
+#print(RAMbytes_status())
 #launch plotting in parallel with an appropriate number of CPUs
 UsedRAM <- RAMbytes_status()[]$ProportionAvail[1]
 appropriatenumcores <- max(1 , (min((opt$threads - 2), length(plotkinds))))
