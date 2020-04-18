@@ -168,8 +168,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (!(is.null(shapeby))){
             p <- p + aes(shape = Shape)
-            numshapes <- length(unique(dford$Shape))
-            p <- p + scale_shape_manual(values = 15:(numshapes + 15))
+            p <- add_shape_to_plot_safely(p = p, shapevec = dford$Shape, shapeby = shapeby, cdict = cdict)
         }
 
         if (!(is.null(sizeby))){
@@ -181,7 +180,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         if (is.numeric(dford$Colours)){
             #Check if there is enough variance in the continuous data to plot a gradient
             if ((max(dford$Colours) - min(dford$Colours)) > 0){
-                p <- p + scale_color_gradient(low="blue", high="red")
+                p <- p + scale_color_gradient(low = "blue", high = "red")
             }
         } else {
             #if there is a colour dictionary, then use that
