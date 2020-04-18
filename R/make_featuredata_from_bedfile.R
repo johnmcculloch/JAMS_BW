@@ -9,7 +9,7 @@ make_featuredata_from_bedfile <- function(opt = NULL, bedfile = NULL){
         bedfile <- opt$bedfile
     }
 
-    featuredata <- fread(file = bedfile, header = FALSE, stringsAsFactors = FALSE, fill = TRUE)
+    featuredata <- fread(file = bedfile, header = FALSE, stringsAsFactors = FALSE, fill = TRUE, sep = "\t")
 
     colnames(featuredata) <- c("Contig", "Start", "End", "Feature", "MapQual", "Strand", "Annotby", "FeatType", "Spin", "Annot")
 
