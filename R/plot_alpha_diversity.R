@@ -203,7 +203,7 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
                     }
 
                     if (!(is.null(shapeby))){
-                        p <- add_shape_to_plot_safely(p = p, shapevec = currdat$Shape, cdict = cdict)
+                        p <- add_shape_to_plot_safely(p = p, shapevec = currdat$Shape, shapeby = shapeby, cdict = cdict)
                     }
 
                     rotang <- 0
