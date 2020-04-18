@@ -4,7 +4,12 @@
 \alias{add_shape_to_plot_safely}
 \title{add_shape_to_plot_safely(p = NULL, shapevec = NULL, cdict = NULL)}
 \usage{
-add_shape_to_plot_safely(p = NULL, shapevec = NULL, cdict = NULL)
+add_shape_to_plot_safely(
+  p = NULL,
+  shapevec = NULL,
+  shapeby = NULL,
+  cdict = NULL
+)
 }
 \description{
 #Given a vector of classes for adding shapes to a ggplot, attributes shapes safely in the presence or absence of a cdict containing shape info
