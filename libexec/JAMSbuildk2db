@@ -110,21 +110,31 @@ defopt$dbname <- "JAMSk2db32"
 defopt$dbqual <- "all"
 defopt$maxsizeGB <- 32
 defopt$threads <- detectBatchCPUs()
-defopt$invertebrates <- FALSE
+defopt$organisms <- "Bacteria,Archaea,Fungi,Viruses,Protozoa,HumanAndMouse"
+defopt$defer_building_database <- FALSE
 
 option_list <- list(
     make_option(c("-o", "--outdir"), default=defopt$outdir, action="store",
                 help = str_c("output directory (default: ", defopt$outdir, ")")),
+
     make_option(c("-n", "--dbname"), default=defopt$dbname, action="store",
                 help = str_c("name for database (default: ", defopt$dbname, ")")),
+
     make_option(c("-q", "--dbqual"), default=defopt$dbqual, action="store",
                 help = str_c("quality of genomes to include in the database. Use ref for including only reference and representative genomes in GenBank, or all for all genomes, except those flagged as low quality by NCBI. (default: ", defopt$dbqual, ")")),
+
     make_option(c("-m", "--maxsizeGB"), default=NULL, action="store",
                 help = str_c("output Maximum size of kraken2 database to be built, in Gb (default: ", defopt$maxsizeGB, ")")),
+
     make_option(c("-t", "--threads"), default=defopt$threads, action="store",
                 help = str_c("number of threads (default: ", defopt$threads, ")")),
-    make_option(c("-i", "--invertebrates"), default=defopt$invertebrates, action="store_true",
-                help = "include invertebrate genomes when building kraken2 database"),
+
+    make_option(c("-g", "--organisms"), default=defopt$organisms, action="store",
+                help = str_c("Comma separated list of organisms to include in database. Choose from Bacteria, Archaea, Fungi, Viruses, Protozoa, HumanAndMouse and Invertebrates (default: ", defopt$dbqual, ")")),
+
+    make_option(c("-d", "--defer_building_database"), action="store_true",
+                help = "Defer actually building the database with kraken2. If this option is used, all genomes will be downloaded, a JAMStaxtable will be computed and saved, genomes will be added to the kraken2 database, but NOT built. All these aforementioned steps take a very long time while not using much RAM memory, so actual building of the kraken2 database can then be launched using a different RAM memory configuration at a later time, manually. This might be useful for not blocking a node with large RAM without using said RAM for most of the time. When using this option, a script will be generated for building the database, that can be launched manually.")
+
     make_option(c("-v", "--version"), action="store_true",
                 help = "report version")
 )
@@ -223,14 +233,28 @@ dir.create(opt$taxonomydb, recursive = TRUE)
 setwd(opt$taxonomydb)
 
 opt$ncbiftp <- "ftp.ncbi.nlm.nih.gov"
-if (opt$invertebrates != TRUE){
-    opt$wantedorganisms <- c("bacteria", "archaea", "fungi", "viral", "protozoa", "vertebrate_mammalian")
-    taxdivisionsorder <- c("Bacteria", "Phages", "Viruses", "Plants and Fungi")
-} else {
-    opt$wantedorganisms <- c("bacteria", "archaea", "fungi", "viral", "protozoa", "invertebrate", "vertebrate_mammalian")
-    taxdivisionsorder <- c("Bacteria", "Phages", "Viruses", "Plants and Fungi", "Invertebrates")
+
+#Define which organisms to include
+opt$organismnames <- unique(unlist(strsplit(opt$organisms, split = ",")))
+#Cull anything unreasonable
+opt$organismnames <- opt$organismnames[opt$organismnames %in% c("Bacteria", "Archaea", "Fungi", "Viruses", "Protozoa", "HumanAndMouse", "Invertebrates")]
+opt$wantedorganisms <- as.character(sapply(1:length(opt$organismnames), function (x) {  switch(opt$organismnames[x], "Bacteria" = "bacteria", "Archaea" = "archaea", "Fungi" = "fungi", "Viruses" = "viral", "Protozoa" = "protozoa", "HumanAndMouse" = "vertebrate_mammalian", "Invertebrates" = "invertebrate") } ))
+
+taxdivisionsorder <- NULL
+if (any(c("bacteria", "archaea") %in% opt$wantedorganisms)){
+    taxdivisionsorder <- "Bacteria"
 }
-flog.info(paste("Kraken2 database will include", paste0(opt$wantedorganisms, collapse = ", "), "genomes"))
+if (("viral" %in% opt$wantedorganisms)){
+    taxdivisionsorder <- c(taxdivisionsorder, "Phages", "Viruses")
+}
+if (any(c("fungi", "protozoa") %in% opt$wantedorganisms)){
+    taxdivisionsorder <- c(taxdivisionsorder, "Plants and Fungi")
+}
+if (("invertebrate" %in% opt$wantedorganisms)){
+    taxdivisionsorder <- c(taxdivisionsorder, "Invertebrates")
+}
+
+flog.info(paste("Kraken2 database will include", paste0(opt$organismnames, collapse = ", "), "genomes"))
 taxdumpfile <- "taxdump.tar.gz"
 taxdumpurl <- paste0("https://", opt$ncbiftp, "/pub/taxonomy/", taxdumpfile)
 
@@ -765,18 +789,25 @@ for(organisms in opt$wantedorganisms){
 
 ##############################################
 # Actually build the database using Kraken2
-setwd(opt$k2db)
-flog.info("Will now build the entire database. Please be VERY patient.")
-flog.info(paste("Maximum size of database will be", format(opt$maxsizebytes, scientific = FALSE), "bytes."))
-buildcmd <- paste("kraken2-build", "--build", "--threads", opt$threads, "--db", opt$k2db, "--max-db-size", format(opt$maxsizebytes, scientific = FALSE))
-system(buildcmd)
+if (opt$defer_building_database == TRUE){
+    setwd(opt$k2db)
+    flog.info("Will now build the entire database. Please be VERY patient.")
+    flog.info(paste("Maximum size of database will be", format(opt$maxsizebytes, scientific = FALSE), "bytes."))
+    buildcmd <- paste("kraken2-build", "--build", "--threads", opt$threads, "--db", opt$k2db, "--max-db-size", format(opt$maxsizebytes, scientific = FALSE))
+    system(buildcmd)
+    flog.info("JAMS kraken2 database building is complete.")
+} else {
+    flog.warn("As requested, building of database will be deferred. To complete the process, please run the following command or launch the Build_JAMSk2db.sh script on a system with appropriate RAM resources.")
+    cat(buildcmd)
+    save.image(opt$projimage)
+    cat('#!/bin/bash', file = "Build_JAMSk2db.sh")
+    cat(buildcmd, file = "Build_JAMSk2db.sh", append = TRUE)
+}
 
 ###############
 ## Add timestamp
-tmstmp <- as.character(as.numeric(as.POSIXct(strptime(Sys.time(), "%Y-%m-%d %H:%M"))))
+tmstmp <- as.character(format(Sys.time(), "%Y%m%d%H%M"))
 verstmp <- as.character(packageVersion("JAMS"))
 JAMSk2dbver <- paste(opt$dbname, verstmp, tmstmp, sep = "_")
 write.table(JAMSk2dbver, file = "JAMSKdb.ver", sep = "", row.names = FALSE, col.names = FALSE, quote = FALSE)
 save.image(opt$projimage)
-
-flog.info("JAMS kraken2 database building is complete.")
