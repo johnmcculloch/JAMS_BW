@@ -46,7 +46,7 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
         #See if colour table exists
         #Get a phenotable
         if (!is.na(unname(table(metadata_types)["ctable"]))) {
-            flog.info("Found a colour table for mapping classes onto colours")
+            flog.info("Found a colour table for mapping classes onto colours (and shapes)")
             ctable <- xlMD[[which(metadata_types == "ctable")[1]]]
             ctable <- trim_whitespace_from_df(ctable)
             fix_hex_cols <- function(colour){
