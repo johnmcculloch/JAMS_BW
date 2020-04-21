@@ -771,6 +771,7 @@ JAMStaxtable$LKT[rowstocorrect] <- sapply(1:length(rowstocorrect), function (n) 
 colnames(JAMStaxtable) <- c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
 
 #Export to system
+setwd(opt$k2db)
 save(JAMStaxtable, file = "JAMStaxtable.rda")
 save(Median_Genome_Sizes, file = "Median_Genome_Sizes.rda")
 write.table(JAMStaxtable, file = "JAMS_taxtable.tsv", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
@@ -791,7 +792,7 @@ for(organisms in opt$wantedorganisms){
 
 ##############################################
 # Actually build the database using Kraken2
-if (opt$defer_building_database == TRUE){
+if (opt$defer_building_database == FALSE){
     setwd(opt$k2db)
     flog.info("Will now build the entire database. Please be VERY patient.")
     flog.info(paste("Maximum size of database will be", format(opt$maxsizebytes, scientific = FALSE), "bytes."))
