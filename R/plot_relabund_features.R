@@ -139,6 +139,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             if (aggregatefeatures == TRUE){
                 #If aggregating features, then cull to wantedfeatures now and aggregate
                 countmat <- countmat[wantedfeatures, ]
+                originalwantedfeatures <- wantedfeatures
                 #Count matrix should not be in log2 at this point
                 aggcountmat <- colSums(countmat)
                 aggcountmat <- t(as.matrix(aggcountmat))
@@ -275,12 +276,42 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             if (stratify_by_taxlevel == TRUE){
                 stratify_by_taxlevel <- "LKT"
             }
+
+            if (stratify_by_taxlevel == FALSE){
+                stratify_by_taxlevel <- NULL
+            }
+
+            if (aggregatefeatures == TRUE){
+                featnamesforsubset <- originalwantedfeatures
+            } else {
+                featnamesforsubset <- rownames(countmat)
+            }
+
             #See if current SummarizedExperiment object allows for stratification by taxa.
             if (all(c("allfeaturesbytaxa_index", "allfeaturesbytaxa_matrix") %in% names(metadata(currobj)))){
-                taxsplit <- retrieve_features_by_taxa(FuncExpObj = currobj, wantedfeatures = rownames(countmat), wantedsamples = colnames(countmat), asPPM = TRUE, PPMthreshold = 0)
+                taxsplit <- retrieve_features_by_taxa(FuncExpObj = currobj, wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, PPMthreshold = 0)
                 colnames(taxsplit)[which(colnames(taxsplit) == compareby)] <- "Compareby"
             } else {
                 flog.warn("Current SummarizedExperiment object does not contain the necessary data for stratifying this function by taxonomy. Check your input.")
+            }
+
+            LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% unique(c(colnames(curr_pt), c("Sample", "Accession", "Compareby"))))]
+
+            #Fix taxsplit, if aggregating
+            if (aggregatefeatures == TRUE){
+                aggtaxsplit <- NULL
+                for (smpl in unique(taxsplit$Sample)){
+                    taxsplitsmpl <- subset(taxsplit, Sample == smpl)
+                    taxvalues <- as.matrix(taxsplitsmpl[ , LKTcolumns])
+                    aggtaxvalues <- colSums(taxvalues)
+                    aggtaxvalues <- t(as.matrix(aggtaxvalues))
+                    rownames(aggtaxvalues) <- aggregatefeatures_label
+                    aggtaxvalues <- as.data.frame(aggtaxvalues)
+                    aggtaxsplitsmpl <- cbind((taxsplitsmpl[1, colnames(taxsplitsmpl)[!(colnames(taxsplitsmpl) %in% LKTcolumns)]]), aggtaxvalues)
+                    aggtaxsplitsmpl[which(colnames(aggtaxsplitsmpl) == "Accession")] <- aggregatefeatures_label
+                    aggtaxsplit <- rbind(aggtaxsplit, aggtaxsplitsmpl)
+                }
+                taxsplit <- aggtaxsplit
             }
 
             data(JAMStaxtable)
@@ -293,10 +324,13 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             Gram$Kingdom <- NULL
             tt <- left_join(tt, Gram, by = "Phylum")
             tt$Gram[which(!(tt$Gram %in% c("positive", "negative")))] <- "not_sure"
-            phcol <- colorRampPalette((brewer.pal(9, "Set1")))(length(unique(tt$Phylum)))
+            phcol <- rainbow(length(unique(tt$Phylum)), alpha = 0.8)[rank(unique(tt$Phylum))]
+            #phcol <- colorRampPalette((brewer.pal(9, "Set1")))(length(unique(tt$Phylum)))
             names(phcol) <- unique(tt$Phylum)
-            phcol[which(names(phcol) == "p__Unclassified")] <- "#000000"
+            phcol[which(names(phcol) == "p__Unclassified")] <- "#C0C0C0"
             phcol <- phcol[!duplicated(phcol)]
+            phcol <- c(phcol, "#000000")
+            names(phcol)[length(phcol)] <- "Remainder"
         }
 
         for (feat in rownames(countmat)){
@@ -329,9 +363,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 p <- p + geom_point()
                 p <- p + geom_smooth(method = lm, aes(group=1), se = FALSE)
                 if (!(is.null(shapeby))){
-                    p <- p + aes(shape = Shape)
-                    numshapes <- length(unique(dat$Shape))
-                    p <- p + scale_shape_manual(values = 15:(numshapes + 15))
+                    p <- add_shape_to_plot_safely(p = p, shapevec = dat$Shape, shapeby = shapeby, cdict = cdict)
                 }
                 rotang <- 0
 
@@ -347,6 +379,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
                 if (!(is.null(shapeby))){
                     p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0), aes(shape = Shape))
+                    p <- add_shape_to_plot_safely(p = p, shapevec = dat$Shape, shapeby = shapeby, cdict = cdict)
                 } else {
                     p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0))
                 }
@@ -449,23 +482,121 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             plotcount <- plotcount + 1
 
             if (!is.null(stratify_by_taxlevel)){
-                #stratify_by_taxlevel %in% c("LKT", "Genus", "Family", "Order", "Class", "Phylum", "Kingdom", "Domain")
                 currtaxsplit <- subset(taxsplit, Accession == feat)
                 for (grp in unique(currtaxsplit$Compareby)){
+                    p <- NULL
+                    dat <- NULL
                     currtaxsplitgrp <- subset(currtaxsplit, Compareby == grp)
-                    LKTcolumns <- colnames(currtaxsplitgrp)[!(colnames(taxsplit) %in% c("Sample", "Accession", "Compareby"))]
+                    LKTcolumns <- colnames(currtaxsplitgrp)[!(colnames(currtaxsplitgrp) %in% unique(c(colnames(curr_pt), c("Sample", "Accession", "Compareby"))))]
+
                     #Eliminate empties
                     LKTsToKeep <- names(which(colSums(currtaxsplitgrp[ , LKTcolumns]) > 0))
                     currtaxsplitgrp <- currtaxsplitgrp[ , c("Sample", LKTsToKeep)]
-                    dat <- currtaxsplitgrp %>% gather(Taxon, PPM, 4:ncol(currtaxsplitgrp))
+                    dat <- currtaxsplitgrp %>% gather(Taxon, PPM, 2:ncol(currtaxsplitgrp))
+
                     #Start building a plot
-                    p <- ggplot(dat, aes(x = Taxon, y = PPM))
+                    dat <- left_join(dat, as.data.frame(curr_pt), by = "Sample")
+                    if (!(is.null(shapeby))){
+                        colnames(dat)[which(colnames(dat) == shapeby)] <- "Shape"
+                    }
+                    if (!(is.null(colourby))){
+                        colnames(dat)[which(colnames(dat) == colourby)] <- "Colour"
+                    }
+
+                    #Colour in by phylum
+                    Taxon2phylum <- tt[which(tt[ , stratify_by_taxlevel] %in% dat$Taxon), ]
+                    colnames(Taxon2phylum)[which(colnames(Taxon2phylum) == stratify_by_taxlevel)] <- "Taxon"
+                    dat <- left_join(dat, Taxon2phylum, by = "Taxon")
+
+                    #Order and aggregate if more than 30
+                    tally <- aggregate(PPM ~ Taxon, data = dat, FUN = "sum")
+                    tally <- tally[order(tally$PPM, decreasing = TRUE), ]
+
+                    maxnumtaxa <- 15
+                    orddat <- NULL
+                    for (Txn in tally$Taxon[1:min(maxnumtaxa, nrow(tally))]){
+                        datsplit <- subset(dat, Taxon == Txn)
+                        orddat <- rbind(orddat, datsplit)
+                    }
+                    #Aggregate if there are leftovers
+                    if (nrow(tally) > maxnumtaxa){
+                        TaxaToAgg <- tally[maxnumtaxa:nrow(tally), ]$Taxon
+                        datremainder <- subset(dat, Taxon %in% TaxaToAgg)
+                        remaindertally <- aggregate(PPM ~ Sample, data = datremainder, FUN = "sum")
+                        remaindertally$Taxon <- "Other_Taxa"
+                        datremainder$Taxon <- NULL
+                        datremainder$PPM <- NULL
+                        datremainder$Phylum <- NULL
+                        datremainder$Gram <- NULL
+                        datremainder <- datremainder[!(duplicated(datremainder)), ]
+                        aggremainder <- left_join(remaindertally, datremainder, by = "Sample")
+                        aggremainder$Phylum <- "Remainder"
+                        aggremainder$Gram <- "Remainder"
+                        orddat <- rbind(orddat, aggremainder)
+                    }
+
+                    dat <- orddat
+
+                    dat$Taxon <- factor(dat$Taxon, levels = unique(dat$Taxon))
+
+                    p <- ggplot(dat, aes(x = Taxon, y = PPM, fill = Phylum))
+                    p <- p + scale_fill_manual(values = phcol[(names(phcol) %in% dat$Phylum)])
+
+                    if ((length(unique(dat$Taxon))) < (nrow(dat))){
+                        jitfact <- -( 0.3 / (nrow(dat))) * (length(unique(dat$Taxon))) + 0.25
+                    } else {
+                        jitfact <- 0
+                    }
+
                     p <- p + geom_boxplot(outlier.shape = NA)
-                    p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0))
+                    #p <- p + geom_violin()
+                    if (!(is.null(shapeby))){
+                        p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0), aes(shape = Shape))
+                        p <- add_shape_to_plot_safely(p = p, shapevec = dat$Shape, shapeby = shapeby, cdict = cdict)
+                    } else {
+                        p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0))
+                    }
+
+                    if (!is.null(colourby)){
+                        p <- p + aes(colour = Colour)
+
+                        if (colourby == "GenomeCompleteness"){
+                            p <- p + scale_fill_gradientn(aesthetics = "colour", colours = c("white", "forestgreen", "blue", "firebrick1", "black"),  values = scales::rescale(c(0, 100, 200, 300, 400), to = c(0, (400/max(dat$Colour)))))
+                        } else {
+                            if (is.numeric(dat$Colour)){
+                                #If it is numeric, check that range is enough for a gradient
+                                #if ((range(dat$colours)[2] - range(dat$colours)[1]) != 0){
+                                #p <- p + scale_color_gradient(low = "blue", high = "red")
+                                #} else {
+                                #dat$colours <- as.character(dat$colours)
+                                #groupcols <- setNames("black", unique(dat$colours))
+                                #p <- p + scale_color_manual(values = groupcols)
+                                #}
+                                p <- p + scale_color_gradient(low = "blue", high = "red")
+                            } else {
+                                #if there is a colour dictionary, then use that
+                                if (!(is.null(cdict))){
+                                    ct <- cdict[[colourby]]
+                                    groupcols <- setNames(as.character(ct$Colour), as.character(ct$Name))
+                                    p <- p + scale_color_manual(values = groupcols)
+                                }
+                            }
+                        }
+                    }
+
                     p <- p + theme_minimal()
+                    p <- p + theme(panel.background = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(colour = "black", fill = NA, size=1))
                     plotitstrat <- paste0(c(maintit, featname, paste("Within", grp)), collapse = "\n")
 
                     p <- p + ggtitle(plotitstrat)
+
+                    if (!(is.null(colourby))){
+                        p <- p + labs(colour = colourby)
+                    }
+
+                    if (!(is.null(shapeby))){
+                        p <- p + labs(shape = shapeby)
+                    }
 
                     if (uselog == TRUE){
                         ytit <- "Relative Abundance in PPM"
@@ -474,8 +605,12 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     } else {
                         ytit <- "Relative Abundance in PPM"
                     }
-                    p <- p + labs(x = compareby, y = ytit)
-                    p <- p + theme(axis.text.x = element_text(angle = rotang, size = rel(1), colour = "black"))
+                    p <- p + labs(x = "Contributing Taxon", y = ytit)
+                    dat$Phcol <- phcol[dat$Phylum]
+                    p <- p + theme(axis.text.x = element_text(colour = "black", angle = rotang, size = rel(1)))
+                    #df <- data.frame(x = factor(levels(dat$Taxon)), colour = factor(dat$Phcol[match(levels(dat$Taxon), dat$Taxon)]))
+                    #p + geom_tile(data = df, aes(x = x, y = 2, fill = colour))
+                    #p <- p + theme(axis.text.x = element_text(colour = phcol[dat$Phylum[!duplicated(dat$Phylum)]]))
                     p <- p + theme(plot.title = element_text(size = 10))
                     gvec[[plotcount]] <- p
                     names(gvec)[plotcount] <- paste(maintit, feat, grp, stratify_by_taxlevel, sep = " | ")
