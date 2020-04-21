@@ -619,7 +619,7 @@ shrink_perbasecoverage <-function(perbasecoverage = NULL, percentage = 2){
 
 add_shape_to_plot_safely <- function (p = NULL, shapevec = NULL, shapeby = NULL, cdict = NULL){
 
-    shape_pecking_order <- c(19, 18, 17, 15, 8, 12, 13, 10, 3, 4, 11, 0, 1, 2, 5, 6, 7, 6, 35, 36, 38, 64)
+    shape_pecking_order <- c(19, 17, 15, 8, 12, 13, 18, 10, 3, 4, 11, 0, 1, 2, 5, 6, 7, 6, 35, 36, 38, 64)
     numshapes <- length(unique(shapevec))
 
     if (!is.null(cdict)){
