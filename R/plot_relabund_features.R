@@ -138,6 +138,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             #Aggregate if appropriate
             if (aggregatefeatures == TRUE){
                 #If aggregating features, then cull to wantedfeatures now and aggregate
+                wantedfeatures <- wantedfeatures[wantedfeatures %in% rownames(countmat)]
                 countmat <- countmat[wantedfeatures, ]
                 originalwantedfeatures <- wantedfeatures
                 #Count matrix should not be in log2 at this point
