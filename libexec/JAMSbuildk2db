@@ -773,7 +773,7 @@ colnames(JAMStaxtable) <- c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Or
 #Export to system
 setwd(opt$k2db)
 save(JAMStaxtable, file = "JAMStaxtable.rda")
-save(Median_Genome_Sizes, file = "Median_Genome_Sizes.rda")
+save(Median_Genome_Sizes, file = "JAMSMedian_Genome_Sizes.rda")
 write.table(JAMStaxtable, file = "JAMS_taxtable.tsv", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
 write.table(Median_Genome_Sizes, file = "JAMS_Median_Genome_Sizes.tsv", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
 
