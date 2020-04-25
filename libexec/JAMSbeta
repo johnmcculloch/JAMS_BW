@@ -354,6 +354,9 @@ if (opt$metadatavetting == TRUE){
     }
 }
 
+#Save in case anything else goes wrong later
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
 #Is there a list.data object? If not, make one.
 Samples_want <- as.character(opt$phenotable[ , ptsampcol])
 if (!(exists("list.data"))) {
@@ -589,7 +592,7 @@ if (!is.null(opt$restrict_to_analyses)){
     wantedanalyses <- unique(unlist(strsplit(opt$restrict_to_analyses, split = ",")))
     wantedanalyses <- names(expvec)[(names(expvec) %in% wantedanalyses)]
 } else {
-    wantedanalyses <- names(expvec)[(names(expvec) %in% c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM"))]
+    wantedanalyses <- names(expvec)[(names(expvec) %in% c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM", "MetaCyc"))]
 }
 
 flog.info(paste("Reports will be restricted to the following analyses:", paste0(wantedanalyses, collapse = ", ")))
