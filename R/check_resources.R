@@ -66,7 +66,7 @@ check_resources <- function(opt = opt){
     }
 
     #Set host species to none if isolates or if using contigs.
-    if (opt$analysis=="isolate"){
+    if (opt$analysis == "isolate"){
         opt$host <- "none"
     }
 

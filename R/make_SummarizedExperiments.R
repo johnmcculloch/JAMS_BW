@@ -7,6 +7,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
 
     require(SummarizedExperiment)
     require(Matrix)
+    data(MetaCycAccession2Description)
 
     #Get data for features
     if (!is.null(onlysamples)){

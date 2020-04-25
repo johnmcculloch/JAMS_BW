@@ -58,7 +58,7 @@ harvest_functions<-function(opt = opt, noninterproanalyses = c("FeatType", "ECNu
     #Add interpro descriptions, if applicable
     if("interproscanoutput" %in% names(opt)){
         #Add GO descriptions
-        descriptions <- GOtermdict$TERM[match(opt$featuredose$Accession, GOtermdict$GOID)]
+        descriptions <- GOtermdict$Description[match(opt$featuredose$Accession, GOtermdict$Accession)]
         opt$featuredose$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
         #Add MetaCyc descriptions
         MetaCycdescriptions <- MetaCycAccession2Description$Description[match(opt$featuredose$Accession, MetaCycAccession2Description$Accession)]
