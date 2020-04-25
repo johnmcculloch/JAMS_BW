@@ -26,7 +26,7 @@ adjust_phenotable <- function(opt = NULL, list.data = NULL, addtaxlevelstoisolat
     if (!is.null(list.data)){
         projdata <- as.data.frame(matrix(data = "unknown", nrow = (length(Samples)), ncol = 3))
         projdata[] <- lapply(projdata, as.character)
-        colnames(projdata) <- c("Sample", "JAMS_Run_type", "JAMS_Process")
+        colnames(projdata) <- c("Sample", "JAMS_Run_type", "JAMS_Process", "JAMS_Kdb_Version")
         projdata$Sample <- Samples
 
         #Fetch data pertaining to each sample
@@ -38,10 +38,11 @@ adjust_phenotable <- function(opt = NULL, list.data = NULL, addtaxlevelstoisolat
             projstats[] <- lapply(projstats, as.character)
             projdata[which(projdata$Sample == Samples[s]), which(colnames(projdata) == "JAMS_Run_type")] <- projstats["Run_type", "Run_value"]
             projdata[which(projdata$Sample == Samples[s]), which(colnames(projdata) == "JAMS_Process")] <- projstats["Process", "Run_value"]
+            projdata[which(projdata$Sample == Samples[s]), which(colnames(projdata) == "JAMS_Kdb_Version")] <- projstats["Process", "Run_value"]
         }
 
         opt$phenotable <- left_join(opt$phenotable, projdata, by = "Sample")
-        phenolabels_projinfo <- data.frame(Var_label = c("JAMS_Run_type", "JAMS_Process"), Var_type = c("discrete", "discrete"), stringsAsFactors = FALSE)
+        phenolabels_projinfo <- data.frame(Var_label = c("JAMS_Run_type", "JAMS_Process", "JAMS_Kdb_Version"), Var_type = c("discrete", "discrete", "discrete"), stringsAsFactors = FALSE)
         opt$phenolabels <- rbind(opt$phenolabels, phenolabels_projinfo)
 
         #add taxonomic information to isolates, if there are any

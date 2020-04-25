@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-harvest_functions<-function(opt = opt, noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb")){
+harvest_functions<-function(opt = opt, noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate")){
 
     data(ECdescmap)
     data(GOtermdict)
@@ -23,9 +23,19 @@ harvest_functions<-function(opt = opt, noninterproanalyses = c("FeatType", "ECNu
     }
     interpronumbaseslist <- NULL
     if("interproscanoutput" %in% names(opt)){
-        opt <- add_interpro_to_featuredata(opt = opt)
+        opt <- add_interpro_to_featuredata(opt = opt, doinparallel = TRUE)
+
         iproanalyses <- sort(unique(opt$interproscanoutput$Analysis))
-        iproanalyses <- c(iproanalyses, "Interpro", "GO")
+        if ("IproAcc" %in% colnames(opt$interproscanoutput)){
+            iproanalyses <- c(iproanalyses, "Interpro")
+        }
+        if ("GOterms" %in% colnames(opt$interproscanoutput)){
+            iproanalyses <- c(iproanalyses, "GO")
+        }
+        if ("Pathways" %in% colnames(opt$interproscanoutput)){
+            iproanalyses <- c(iproanalyses, "MetaCyc")
+        }
+
         flog.info("Creating counts table for Interpro signatures.")
         interpronumbaseslist <- lapply(iproanalyses, function(x) { compute_signature_numbases(featuredata = opt$featuredata, columnname = x) })
         names(interpronumbaseslist) <- iproanalyses

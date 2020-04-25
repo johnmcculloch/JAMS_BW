@@ -537,7 +537,7 @@ if ("fastSave" %in% rownames(installed.packages())) {
 }
 
 list.data <- NULL
-IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 ###################
 ## Export tables ##
