@@ -7,7 +7,7 @@
 harvest_functions(
   opt = opt,
   noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder",
-    "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb")
+    "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate")
 )
 }
 \description{
