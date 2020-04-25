@@ -24,7 +24,7 @@ adjust_phenotable <- function(opt = NULL, list.data = NULL, addtaxlevelstoisolat
 
     #add information regarding sample type
     if (!is.null(list.data)){
-        projdata <- as.data.frame(matrix(data = "unknown", nrow = (length(Samples)), ncol = 3))
+        projdata <- as.data.frame(matrix(data = "unknown", nrow = (length(Samples)), ncol = 4))
         projdata[] <- lapply(projdata, as.character)
         colnames(projdata) <- c("Sample", "JAMS_Run_type", "JAMS_Process", "JAMS_Kdb_Version")
         projdata$Sample <- Samples
