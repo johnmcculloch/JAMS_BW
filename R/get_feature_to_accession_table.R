@@ -28,10 +28,10 @@ get_feature_to_accession_table <- function(opt = NULL, iproanalysis = NULL){
             if (length(nr_annots) < 1){
                 nr_annots <- "none"
             }
+            nr_annots <- gsub("MetaCyc: ", "", nr_annots)
             nr_annots <- paste0(sort(unique(nr_annots)), collapse = "|")
             return(nr_annots)
         }
-
 
         if (iproanalysis == "GO"){
             #get rid of information without GO terms

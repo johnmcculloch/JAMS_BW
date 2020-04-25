@@ -50,7 +50,7 @@ harvest_functions<-function(opt = opt, noninterproanalyses = c("FeatType", "ECNu
     LKTcols <- colnames(opt$featuredose)[4:ncol(opt$featuredose)]
     opt$featuredose$Description <- rep("none", nrow(opt$featuredose))
     #rearrange
-    opt$featuredose<-opt$featuredose[, c("Analysis", "Accession", "Description", "NumBases", LKTcols)]
+    opt$featuredose <- opt$featuredose[, c("Analysis", "Accession", "Description", "NumBases", LKTcols)]
     #Add EC numbers
     descriptions <- ECdescmap$Description[match(opt$featuredose$Accession, ECdescmap$Accession)]
     opt$featuredose$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
