@@ -129,7 +129,8 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
             }
 
             #Rename rows to include description if not taxonomic data or MetaCyc which has enormous descriptions
-            if (!(analysis %in% c("LKT", "MetaCyc"))){
+            #if (!(analysis %in% c("LKT", "MetaCyc"))){
+            if (analysis  != "LKT"){
                 feattable <- rowData(currobj)
                 feattable$Feature <- paste(feattable$Accession, feattable$Description, sep = "-")
                 rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]

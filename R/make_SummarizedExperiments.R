@@ -8,6 +8,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     require(SummarizedExperiment)
     require(Matrix)
     data(MetaCycAccession2Description)
+    data(ECdescmap)
+    data(GOtermdict)
 
     #Get data for features
     if (!is.null(onlysamples)){
@@ -56,6 +58,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         }
     }
 
+    possibleanalyses <- possibleanalyses[possibleanalyses %in% onlyanalyses]
+
     #Make a vector for holding experiment list
     expvec <- list()
     e <- 1
@@ -83,6 +87,12 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         tt <- tt[!(duplicated(tt)), ]
         #get rid of LKT dupes due to NCBI taxonomy names at species level including subspecies nomenclature. Sigh. These are usually unclassified species.
         tt <- tt[!(duplicated(tt$LKT)), ]
+        #Add Gram information
+        data(Gram)
+        phylum2gram <- Gram[,c("Phylum", "Gram")]
+        tt <- left_join(as.data.frame(tt), phylum2gram, by = "Phylum")
+        tt[which(is.na(tt[ , "Gram"])), "Gram"] <- "na"
+        tt <- tt[ , c("Gram", taxlvlspresent)]
         rownames(tt) <- tt$LKT
         tt <- as.matrix(tt)
 
@@ -170,13 +180,23 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
             for (ad in SamplesofInterest){
                 tempanaldose <- subset(featuredoses[[ad]], Analysis == analysis)[, c("Accession", "NumBases", "Description")]
                 tempanaldose$Accession <- as.character(tempanaldose$Accession)
-                tempanaldose$Description <- as.character(tempanaldose$Description)
+                #For ECNumber, GO and MetaCyc, add descriptions safely, based on latest info, later in ftt
+                if (analysis %in% c("ECNumber", "GO", "MetaCyc")){
+                    tempanaldose$Description <- "none"
+                } else {
+                    tempanaldose$Description <- as.character(tempanaldose$Description)
+                }
                 tempanaldose$NumBases <- as.numeric(tempanaldose$NumBases)
                 analysisdoses[[ad]] <- tempanaldose
-
                 tempanaldata <- featuredata[[ad]]
+                tempanaldata <- tempanaldata[ , c("Feature", "LKT", analysis)]
+                #If analysis contains several accessions per gene, repeat rows for each kind
+                if (analysis %in% c("GO", "MetaCyc")){
+                    #flog.info("Analysis contains several accessions per gene, splitting to get number of genes per accession.")
+                    tempanaldata <- tidyr::separate_rows(tempanaldata, all_of(analysis), sep = fixed("\\|"))
+                }
                 #If possible, get feature count
-                if(analysis %in% colnames(tempanaldata)){
+                if (analysis %in% colnames(tempanaldata)){
                     featcount <- as.data.frame(table(tempanaldata[ , analysis]))
                     colnames(featcount) <- c("Accession", "Count")
                     rownames(featcount) <- featcount$Accession
@@ -201,9 +221,12 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                 }
                 tempanaldose <- tempanaldose[ , c("Accession", "Description")]
                 tempanaldose$Accession <- as.character(tempanaldose$Accession)
-                tempanaldose$Description <- as.character(tempanaldose$Description)
+                if (analysis %in% c("ECNumber", "GO", "MetaCyc")){
+                    tempanaldose$Description <- "none"
+                } else {
+                    tempanaldose$Description <- as.character(tempanaldose$Description)
+                }
                 tempanaldose$NumBases <- numbavec
-
                 analysisdoses[[ad]] <- tempanaldose[, c("Accession", "NumBases", "Description")]
             }
         } #End conditional of restricting to LKTs
@@ -237,7 +260,23 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
 
         ftt <- featureall[, c("Accession", "Description")]
         ftt <- ftt[!(duplicated(ftt$Accession)), ]
+        #Fix descriptions if ECNumber, GO or MetaCyc
+        if (analysis == "ECNumber"){
+            ftt$Description <- NULL
+            ftt <- left_join(ftt, ECdescmap, by = "Accession")
+        } else if (analysis == "MetaCyc"){
+            ftt$Description <- NULL
+            ftt <- left_join(ftt, MetaCycAccession2Description, by = "Accession")
+        } else if (analysis == "GO"){
+            ftt$Description <- NULL
+            ftt <- left_join(ftt, GOtermdict, by = "Accession")
+        }
         rownames(ftt) <- ftt$Accession
+
+        #Make sure there is no missing information
+        for (colm in 1:ncol(ftt)){
+            ftt[which(is.na(ftt[ , colm])), colm] <- "none"
+        }
 
         if (analysis == "resfinder"){
             data(resfinderlookup)
