@@ -1,9 +1,9 @@
-#' plot_relabund_heatmap(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...)
+#' plot_relabund_heatmap(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...)
 #'
 #' Plots relative abundance heatmaps annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...){
+plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, ntop = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, mgSeqnorm = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", ...){
 
     #Test for silly stuff
     if ((hmtype %in% c("comparative", "PA")) && (is.null(compareby))){
@@ -89,7 +89,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
             if (hmtype == "exploratory"){
                 stattype <- "variance"
                 if (is.null(ntop)){
-                    ntop <- 50
+                    ntop <- max_rows_in_heatmap
                 }
             } else {
                 stattype <- "auto"
@@ -191,7 +191,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                 }
 
                 #Create a list of matrices each of maximum 50 rows
-                rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
+                rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / max_rows_in_heatmap))
                 matlist <- lapply(1:length(rowlist), function(x){countmat2[rowlist[[x]], ]})
                 statslist <- lapply(1:length(rowlist), function(x){ matstats[rowlist[[x]], ] })
                 rowlblcol_list <- lapply(1:length(rowlist), function(x){ rep("black", length(rowlist[[x]])) })
@@ -251,8 +251,8 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     }
 
                     #Create a list of matrices each of maximum 50 rows
-                    topcats <- min(nrow(countmat2), 50)
-                    rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / 50))
+                    topcats <- min(nrow(countmat2), max_rows_in_heatmap)
+                    rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / max_rows_in_heatmap))
                     matlist <- lapply(1:length(rowlist), function(x){ countmat2[rowlist[[x]], ] })
                     statslist <- lapply(1:length(rowlist), function(x){ matstats[rowlist[[x]], ] })
                     rowlblcol_list <- lapply(1:length(rowlist), function(x){rep("black", length(rowlist[[x]]))})
@@ -307,7 +307,12 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         }
                     }
 
-                    l2fcmeaning <- paste("Positive l2fc means increased in", discretenames[1])
+                    if (invertbinaryorder != TRUE){
+                        l2fcmeaning <- paste("Positive l2fc means increased in", discretenames[1])
+                    } else {
+                        l2fcmeaning <- paste("Positive l2fc means increased in", discretenames[2])
+                    }
+
                     countmat2 <- as.matrix(countmat[rownames(matstats), ])
 
                     #Transform to log2 space
@@ -361,10 +366,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         }
                         countmat2 <- countmat2[1:topcats, ]
                         #Create a list of matrices each of maximum ~50 rows
-                        if((topcats %% 50) == 1){
-                            chunksize <- 48
+                        if((topcats %% max_rows_in_heatmap) == 1){
+                            chunksize <- (max_rows_in_heatmap - 2)
                         } else {
-                            chunksize <- 50
+                            chunksize <- max_rows_in_heatmap
                         }
 
                         rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / chunksize))
@@ -395,10 +400,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         #Must have at least two rows in a matrix to plot a heatmap
                         if (length(rowcutoff) > 1){
                             #Account for the fact that if the remainder of a chunk of 50 is 1 then a heatmap with a single feature cannot be drawn. Oh my, I have seen everything havent I...
-                            if((length(rowcutoff) %% 50) == 1){
-                                chunksize <- 48
+                            if((length(rowcutoff) %% max_rows_in_heatmap) == 1){
+                                chunksize <- (max_rows_in_heatmap - 2)
                             } else {
-                                chunksize <- 50
+                                chunksize <- max_rows_in_heatmap
                             }
 
                             rowlist <- split(rowcutoff, ceiling(seq_along(rowcutoff) / chunksize))
