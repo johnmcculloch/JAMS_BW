@@ -7,6 +7,7 @@ harvest_functions<-function(opt = opt, noninterproanalyses = c("FeatType", "ECNu
 
     data(ECdescmap)
     data(GOtermdict)
+    data(MetaCycAccession2Description)
 
     flog.info("Harvesting functional data.")
     #Harvest common functions
