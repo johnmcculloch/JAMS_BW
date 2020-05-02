@@ -1,9 +1,9 @@
-#' plot_alpha_diversity <- function(ExpObj = NULL, measures=c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson"), stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...)
+#' plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...){
+plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...){
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
@@ -28,6 +28,8 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
     #Initialize Graphics list
     gvec <- list()
     plotcount <- 1
+    svec <- list()
+    svn <- 1
 
     #subset by metadata column
     for (sp in 1:length(subset_points)){
@@ -110,8 +112,10 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             #Compose an appropriate title for the plot
             if (length(unique(subset_points)) > 1){
                 maintit <- paste(hmtypemsg, curranalysis, paste("within", subset_points[sp]), sep = " | ")
+                tablename <- paste("AlphaDiv", curranalysis, paste("within", subset_points[sp]), sep = "_")
             } else {
                 maintit <- paste(hmtypemsg, curranalysis, sep = " | ")
+                tablename <- paste("AlphaDiv", curranalysis, subsetname, sep = "_")
             }
             if (!is.null(addtit)) {
                 maintit <- paste(addtit, maintit, sep = "\n")
@@ -128,7 +132,7 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             #calculate alpha diversity measures
             tmat <- t(currcountmat)
             alphadiv <- estimateR(tmat)
-            for(meas in c("invsimpson", "simpson", "shannon")){
+            for (meas in c("invsimpson", "simpson", "shannon")){
                 alphadiv2 <- diversity(tmat, index = meas)
                 alphadiv <- rbind(alphadiv, alphadiv2[colnames(alphadiv)])
                 rownames(alphadiv)[nrow(alphadiv)] <- meas
@@ -148,6 +152,20 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             alphadiv <- as.data.frame(t(alphadiv))
             alphadiv$Sample <- rownames(alphadiv)
             dat <- left_join(alphadiv, as.data.frame(curr_pt), by = "Sample")
+
+            #Bank dat
+            statsdf <- as.data.frame(dat)
+            statsdf <- statsdf[ , which(colnames(statsdf) != "ACE")]
+            statsdf$Sample_Set <- tablename
+            measurescols <- colnames(statsdf)[!(colnames(statsdf) %in% c("Samples", "Sample_Set", colnames(curr_pt)))]
+            othercols <- colnames(statsdf)[!(colnames(statsdf) %in% c("Samples", "Sample_Set", measurescols))]
+            statsdf <- statsdf[ , c("Sample_Set", "Sample", measurescols, othercols) ]
+            #if (!is.null(presetlist$filtermsg)){
+            #    statsdf$Filtering <- as.character(presetlist$filtermsg)
+            #}
+            svec[[svn]] <- statsdf
+            names(svec)[svn] <- tablename
+            svn <- svn + 1
 
             colnames(dat)[which(colnames(dat) == compareby)] <- "Compareby"
 
@@ -275,6 +293,10 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             }#End loop for plotting each measure
         }#End loop for each valid analysis
     }#End loop for each subset
+
+    if (returnstats){
+        gvec <- merge.list(gvec, svec)
+    }
 
     return(gvec)
 

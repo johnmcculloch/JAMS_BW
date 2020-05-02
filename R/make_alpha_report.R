@@ -3,7 +3,7 @@
 #' Generates standard comparative plots for alpha diversity measures.
 #' @export
 
-make_alpha_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, variable_list = NULL, measures = c("Observed", "InvSimpson", "GeneCounts"), cdict = NULL, stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, addtit = NULL, max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...){
+make_alpha_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, variable_list = NULL, measures = c("Observed", "InvSimpson", "GeneCounts"), cdict = NULL, stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, addtit = NULL, max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", makespreadsheets = FALSE, makeplots = TRUE, ...){
 
     if (is.null(usefulexp)){
         usefulexp <- names(expvec)[!(names(expvec) %in% c("FeatType", "vfdb", "SFLD", "Coils", "Gene3D", "Phobius", "ProSitePatterns", "SMART", "resfinder", "ProDom"))]
@@ -37,6 +37,8 @@ make_alpha_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, a
     if (is.null(project)){
         project <- "MyProject"
     }
+
+    objects_to_return <- list()
 
     Pn <- 0
     plotname <- "Alpha_Diversity"
@@ -72,7 +74,13 @@ make_alpha_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, a
             plot.new()
             grid.table(c(names(expvec2)[a], plotname, paste("between", cmp), "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-            print(plot_alpha_diversity(ExpObj = expvec2[[a]], measures = measures, stratify_by_kingdoms = stratify_by_kingdoms, glomby = glomby, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, subsetby = NULL, compareby = cmp, colourby = NULL, shapeby = NULL, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, cdict = cdict, addtit = addtit, signiflabel = "p.format", max_pairwise_cats = max_pairwise_cats, ignoreunclassified = ignoreunclassified, class_to_ignore = class_to_ignore, ...))
+            currplots <- plot_alpha_diversity(ExpObj = expvec2[[a]], measures = measures, stratify_by_kingdoms = stratify_by_kingdoms, glomby = glomby, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, subsetby = NULL, compareby = cmp, colourby = NULL, shapeby = NULL, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, cdict = cdict, addtit = addtit, signiflabel = "p.format", max_pairwise_cats = max_pairwise_cats, ignoreunclassified = ignoreunclassified, class_to_ignore = class_to_ignore, returnstats = makespreadsheets, ...)
+            objects_to_return <- c(objects_to_return, currplots)
+
+            if (makeplots == TRUE){
+                plotvec <- currplots[sapply(currplots, function(x){(class(x)[1] != "data.frame")})]
+                print(plotvec)
+            }
 
             if (length(variables_subs) > 0){
                 #If there is any subsettable data, then do that.
@@ -82,9 +90,46 @@ make_alpha_report <- function(project = NULL, expvec = NULL, usefulexp = NULL, a
                     plot.new()
                     grid.table(c(names(expvec2)[a], plotname, paste("between", cmp), paste("Subset by", vs)), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
 
-                    print(plot_alpha_diversity(ExpObj = expvec2[[a]], measures = measures, stratify_by_kingdoms = stratify_by_kingdoms, glomby = glomby, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, subsetby = vs, compareby = cmp, colourby = NULL, shapeby = NULL, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, cdict = cdict, addtit = addtit, signiflabel = "p.format", max_pairwise_cats = max_pairwise_cats, ignoreunclassified = ignoreunclassified, class_to_ignore = class_to_ignore, ...))
+                    currplots <- plot_alpha_diversity(ExpObj = expvec2[[a]], measures = measures, stratify_by_kingdoms = stratify_by_kingdoms, glomby = glomby, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, subsetby = vs, compareby = cmp, colourby = NULL, shapeby = NULL, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, cdict = cdict, addtit = addtit, signiflabel = "p.format", max_pairwise_cats = max_pairwise_cats, ignoreunclassified = ignoreunclassified, class_to_ignore = class_to_ignore, returnstats = makespreadsheets, ...)
+                    objects_to_return <- c(objects_to_return, currplots)
+
+                    if (makeplots == TRUE){
+                        plotvec <- currplots[sapply(currplots, function(x){(class(x)[1] != "data.frame")})]
+                        print(plotvec)
+                    }
                 }
             }
+        }
+    }
+
+    if (makespreadsheets == TRUE){
+        #Output statistics to system as spreadsheet.
+        #flush out any plots in list
+
+        compvec <- objects_to_return[sapply(objects_to_return, function(x){(class(x)[1] == "data.frame")})]
+        nr_alphameasures <- unique(names(compvec))
+        compvec <- compvec[nr_alphameasures]
+
+        if (length(compvec) > 1){
+            #Truncate names to 31 chars. Excel does not accept more. Sigh.
+            compvecXL <- compvec
+            names(compvecXL) <- sapply(1:length(compvecXL), function(x){ stringr::str_trunc(names(compvecXL)[x], 30) })
+
+            baseXLfn <- paste("JAMS", project, "Alpha_Diversity_Measures", sep="_")
+            if (!(is.null(appendtofilename))){
+                baseXLfn <- paste(baseXLfn, appendtofilename, sep = "_")
+            }
+            XLfn <- paste(baseXLfn, "xlsx", sep=".")
+            #Ensure no overwriting.
+            xfn <- 1
+            while (file.exists(XLfn)){
+                XLfn <- paste(paste0(baseXLfn, xfn), "xlsx", sep = ".")
+                xfn <- xfn + 1
+                if(xfn > 100){
+                    stop("I think you have enough tables already. May I suggest you try looking through them.")
+                }
+            }
+            write.xlsx(compvecXL, file = XLfn, asTable = TRUE, rowNames = FALSE, colNames = TRUE, borders = "all", colWidths = "auto")
         }
     }
 

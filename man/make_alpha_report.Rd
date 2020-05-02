@@ -25,6 +25,8 @@ make_alpha_report(
   max_pairwise_cats = 4,
   ignoreunclassified = TRUE,
   class_to_ignore = "N_A",
+  makespreadsheets = FALSE,
+  makeplots = TRUE,
   ...
 )
 }
