@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_alpha_diversity.R
 \name{plot_alpha_diversity}
 \alias{plot_alpha_diversity}
-\title{plot_alpha_diversity <- function(ExpObj = NULL, measures=c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson"), stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", ...)}
+\title{plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...)}
 \usage{
 plot_alpha_diversity(
   ExpObj = NULL,
@@ -26,6 +26,7 @@ plot_alpha_diversity(
   max_pairwise_cats = 4,
   ignoreunclassified = TRUE,
   class_to_ignore = "N_A",
+  returnstats = FALSE,
   ...
 )
 }
