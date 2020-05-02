@@ -792,11 +792,12 @@ for(organisms in opt$wantedorganisms){
 
 ##############################################
 # Actually build the database using Kraken2
+buildcmd <- paste("kraken2-build", "--build", "--threads", opt$threads, "--db", opt$k2db, "--max-db-size", format(opt$maxsizebytes, scientific = FALSE))
+
 if (opt$defer_building_database == FALSE){
     setwd(opt$k2db)
     flog.info("Will now build the entire database. Please be VERY patient.")
     flog.info(paste("Maximum size of database will be", format(opt$maxsizebytes, scientific = FALSE), "bytes."))
-    buildcmd <- paste("kraken2-build", "--build", "--threads", opt$threads, "--db", opt$k2db, "--max-db-size", format(opt$maxsizebytes, scientific = FALSE))
     system(buildcmd)
     flog.info("JAMS kraken2 database building is complete.")
 } else {
