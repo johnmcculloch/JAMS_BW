@@ -38,7 +38,7 @@ adjust_phenotable <- function(opt = NULL, list.data = NULL, addtaxlevelstoisolat
             projstats[] <- lapply(projstats, as.character)
             projdata[which(projdata$Sample == Samples[s]), which(colnames(projdata) == "JAMS_Run_type")] <- projstats["Run_type", "Run_value"]
             projdata[which(projdata$Sample == Samples[s]), which(colnames(projdata) == "JAMS_Process")] <- projstats["Process", "Run_value"]
-            projdata[which(projdata$Sample == Samples[s]), which(colnames(projdata) == "JAMS_Kdb_Version")] <- projstats["Process", "Run_value"]
+            projdata[which(projdata$Sample == Samples[s]), which(colnames(projdata) == "JAMS_Kdb_Version")] <- projstats["JAMS_Kdb_Version", "Run_value"]
         }
 
         opt$phenotable <- left_join(opt$phenotable, projdata, by = "Sample")
