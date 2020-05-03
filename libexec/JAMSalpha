@@ -376,9 +376,6 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 #Get feature stats
 opt <- add_blast_results_to_featuredata(opt = opt, blastanalyses = opt$blastanalyses)
 opt <- get_feature_stats(opt = opt)
-objectstoexport <- names(opt)[names(opt) %in% c("featuredata", "ucobias")]
-export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
-IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Make functional analysis
 opt <- harvest_functions(opt = opt)
@@ -391,7 +388,7 @@ if("readsdir" %in% names(opt)){
     bank_reads(opt = opt)
 }
 
-objectstoexport <- names(opt)[names(opt) %in% c("interproscanoutput", "featuredose", "readstats")]
+objectstoexport <- names(opt)[names(opt) %in% c("featuredata", "ucobias", "interproscanoutput", "featuredose", "readstats")]
 export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
