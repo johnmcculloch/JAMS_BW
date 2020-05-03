@@ -189,7 +189,9 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                 tempanaldose$NumBases <- as.numeric(tempanaldose$NumBases)
                 analysisdoses[[ad]] <- tempanaldose
                 tempanaldata <- featuredata[[ad]]
-                tempanaldata <- tempanaldata[ , c("Feature", "LKT", analysis)]
+                #Careful to make it backwards-compatible
+                featdatacolsavail <- colnames(tempanaldata)[colnames(tempanaldata) %in% c("Feature", "LKT", "GeneName", analysis)]
+                tempanaldata <- tempanaldata[ , featdatacolsavail]
                 #If analysis contains several accessions per gene, repeat rows for each kind
                 if (analysis %in% c("GO", "MetaCyc")){
                     #flog.info("Analysis contains several accessions per gene, splitting to get number of genes per accession.")
@@ -203,6 +205,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                     analysisdata[[ad]] <- featcount
                 } else {
                     analysisdata[[ad]] <- NULL
+                }
+                #Add GeneName to description if Product
+                if (all(c((analysis %in% c("Product", "vfdb")), ("GeneName" %in% featdatacolsavail)) )){
+                    tempanaldose$Description <- tempanaldata$GeneName[match(tempanaldose$Accession, tempanaldata$Product)]
+                    analysisdoses[[ad]] <- tempanaldose
                 }
             }
         } else {
@@ -394,12 +401,12 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         e <- e + 1
 
         #Add an extra one if converting resfinder to antibiogram
-        if (analysis == "resfinder"){
-            flog.info("Converting resfinder to antibiogram")
-            expvec[[e]] <- make_antibiogram_experiment(SEobjresfinder = expvec[["resfinder"]])
-            names(expvec)[e] <- "antibiogram"
-            e <- e + 1
-        }
+        #if (analysis == "resfinder"){
+        #    flog.info("Converting resfinder to antibiogram")
+        #    expvec[[e]] <- make_antibiogram_experiment(SEobjresfinder = expvec[["resfinder"]])
+        #    names(expvec)[e] <- "antibiogram"
+        #    e <- e + 1
+        #}
     }
 
     return(expvec)
