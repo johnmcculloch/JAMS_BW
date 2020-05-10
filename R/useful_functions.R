@@ -22,6 +22,37 @@ Pct2log2PPM <- function(Pct){
     return(log2PPM)
 }
 
+#' is.redundant(vec)
+#'
+#' Returns logical for a vector being redundant, i.e. has at least one element repeated in it.
+#' @export
+is.redundant <- function(vec){
+    propunique <- length(unique(vec)) / length(vec)
+    if (propunique < 1){
+        redundant <- TRUE
+    } else {
+        redundant <- FALSE
+    }
+
+    return(redundant)
+}
+
+
+#' is.useful(vec)
+#'
+#' Returns logical for a vector having more than one class in it
+#' @export
+is.useful <- function(vec){
+    numunique <- length(unique(vec))
+    if (numunique < 2){
+        useful <- FALSE
+    } else {
+        useful <- TRUE
+    }
+
+    return(useful)
+}
+
 
 #' convert_matrix_log2(mat = NULL, transformation = NULL)
 #'
