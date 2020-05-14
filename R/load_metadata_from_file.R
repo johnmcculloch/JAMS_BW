@@ -108,6 +108,14 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
 
     #Coerce all of the metadata initially to character.
     phenotable[] <- lapply(phenotable, as.character)
+    if ("date" %in% phenolabels$Var_type){
+        #Adjust metadata to date
+        colsToDate <- phenolabels$Var_label[which(phenolabels$Var_type == "date")]
+        for (colm in 1:length(colsToDate)){
+            phenotable[ , colsToDate[colm]] <- convertToDate(phenotable[ , colsToDate[colm]])
+            phenotable[ , colsToDate[colm]] <- as.character(phenotable[ , colsToDate[colm]])
+        }
+    }
 
     #Check for and eliminate duplicatesq
     sampcolname <- phenolabels$Var_label[which(phenolabels$Var_type == "Sample")]

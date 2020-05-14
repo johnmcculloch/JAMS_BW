@@ -75,7 +75,7 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
     variable_list$subsettable <- as.character(variables_subs)
 
     #Find and validate discrete variables
-    variables_disc <- as.character(phenolabels$Var_label[which((phenolabels$Var_type %in% c("discrete", "subsettable")))])
+    variables_disc <- as.character(phenolabels$Var_label[which((phenolabels$Var_type %in% c("discrete", "subsettable", "date")))])
     if (length(variables_disc) > 0){
         numcl <- NULL
         for(v in 1:length(variables_disc)){
