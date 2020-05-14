@@ -12,7 +12,8 @@ make_SummarizedExperiments(
   minpropsampanalysis = 0.1,
   restricttoLKTs = NULL,
   stratify_functions_by_taxon = TRUE,
-  list.data = NULL
+  list.data = NULL,
+  phenolabels = NULL
 )
 }
 \description{

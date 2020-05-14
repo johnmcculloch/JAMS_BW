@@ -3,7 +3,7 @@
 #' Makes a SummarizedExperiment object for every analysis that is possible to make given loaded jams files in list.data.
 #' @export
 
-make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, list.data = NULL){
+make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, list.data = NULL, phenolabels = NULL){
 
     require(SummarizedExperiment)
     require(Matrix)
@@ -141,6 +141,9 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
         metadata(SEobj)$TotalBasesSequencedinAnalysis <- TotalBasesSequenced #LKT is the special case in which all bases sequenced are for the analysis
         metadata(SEobj)$analysis <- "LKT"
+        if (!is.null(phenolabels)){
+            metadata(SEobj)$phenolabels <- phenolabels
+        }
 
         expvec[[e]] <- SEobj
         names(expvec)[e] <- "LKT"
@@ -193,7 +196,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                 featdatacolsavail <- colnames(tempanaldata)[colnames(tempanaldata) %in% c("Feature", "LKT", "GeneName", analysis)]
                 tempanaldata <- tempanaldata[ , featdatacolsavail]
                 #If analysis contains several accessions per gene, repeat rows for each kind
-                if (analysis %in% c("GO", "MetaCyc")){
+                #Also, make it backwards compatible with older jamsfiles
+                if (all(c((analysis %in% colnames(tempanaldata)), (analysis %in% c("GO", "MetaCyc"))))){
                     #flog.info("Analysis contains several accessions per gene, splitting to get number of genes per accession.")
                     tempanaldata <- tidyr::separate_rows(tempanaldata, all_of(analysis), sep = fixed("\\|"))
                 }
@@ -342,6 +346,9 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
         metadata(SEobj)$TotalBasesSequencedinAnalysis <- TotalBasesSequencedinAnalysis
         metadata(SEobj)$analysis <- analysis
+        if (!is.null(phenolabels)){
+            metadata(SEobj)$phenolabels <- phenolabels
+        }
 
         #Split functions by taxon, if applicable
         if (stratify_functions_by_taxon){
