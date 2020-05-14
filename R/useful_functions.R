@@ -548,3 +548,81 @@ add_shape_to_plot_safely <- function (p = NULL, shapevec = NULL, shapeby = NULL,
 
     return(p)
 }
+
+
+#' find_clusters_in_matrix(input_matrix = NULL, kmeans_split = NULL)
+#'
+#' #Splits a matrix with counts in to k clusters by k-means clustering
+#' @export
+
+find_clusters_in_matrix <- function(input_matrix = NULL, kmeans_split = NULL){
+
+    kmclusters <- stats::kmeans(input_matrix, centers = kmeans_split)
+    clusterdf <- data.frame(Feature = names(fitted(kmclusters, method = "classes")), Cluster_Num = fitted(kmclusters, method = "classes"), stringsAsFactors = FALSE)
+    clusterdf <- clusterdf[order(clusterdf$Cluster_Num), ]
+    clusterdf$Cluster_Name <- paste("Cluster", as.character(sprintf("%02d", clusterdf$Cluster_Num)), sep = "_")
+
+    return(clusterdf)
+
+}
+
+
+#' Author: Phillip Burger
+#' Date: Sept 3, 2014
+#' Purpose: Get the ordinal rank of a number.
+#' http://www.phillipburger.net/wordpress/ordinal-number-suffix-function-in-r
+#' @export
+
+getOrdinalNumber1 <- function(num) {
+    result <- ""
+    if (!(num %% 100 %in% c(11, 12, 13))) {
+        result <- switch(as.character(num %% 10),
+            "1" = {paste0(num, "st")},
+            "2" = {paste0(num, "nd")},
+            "3" = {paste0(num, "rd")},
+            paste0(num, "th"))
+    } else {
+        result <- paste0(num, "th")
+    }
+    result
+}
+
+
+#' install_biocon_deps()
+#'
+#' Installs Bioconductor JAMS dependencies
+#' @export
+
+install_biocon_deps <- function(){
+bioconductordeps <- c("dada2", "ComplexHeatmap", "HybridMTest", "genefilter", "SummarizedExperiment")
+    if (!requireNamespace("BiocManager", quietly = TRUE))
+        install.packages("BiocManager")
+    BiocManager::install(bioconductordeps)
+}
+
+
+#' make_phenolabels_from_phenotable(phenotable = NULL)
+#'
+#' Does exactly what the name says.
+#' @export
+
+make_phenolabels_from_phenotable <- function (phenotable = NULL){
+    Var_label <- colnames(phenotable)
+    infer_column_type <- function(colm){
+        if (colm %in% c("Sample", "sample")){
+            colmtype <- "Sample"
+        } else {
+            if (can_be_made_numeric( (phenotable[, colm] ), cats_to_ignore = class_to_ignore)){
+                colmtype <- "continuous"
+            } else {
+                colmtype <- "discrete"
+            }
+        }
+        return(colmtype)
+    }
+    Var_type <- sapply(Var_label, function (x) { infer_column_type(x) } )
+    phenolabels <- data.frame(Var_label = unname(Var_label), Var_type = unname(Var_type), stringsAsFactors = FALSE)
+
+    return(phenolabels)
+
+}
