@@ -35,10 +35,11 @@ annotate_contigs <- function(opt = NULL){
     opt$bedfile <- file.path(opt$workdir, annotationfolder, paste(opt$prefix, "bed", sep="."))
 
     #Load feature information into opt
+    flog.info("Making featuredata dataframe from bedfile.")
     opt$featuredata <- make_featuredata_from_bedfile(bedfile = opt$bedfile)
     #Add taxonomy information
     tmpcontigsdata <- opt$contigsdata[, c("Contig", "LKT")]
-    opt$featuredata <- left_join(opt$featuredata, tmpcontigsdata)
+    opt$featuredata <- left_join(opt$featuredata, tmpcontigsdata, by = "Contig")
 
     #Bank annotation files to project directory
     if (opt$workdir != opt$sampledir){
