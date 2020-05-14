@@ -5,7 +5,7 @@
 
 make_featuredata_from_bedfile <- function(opt = NULL, bedfile = NULL){
 
-    if(is.null(bedfile)){
+    if (is.null(bedfile)){
         bedfile <- opt$bedfile
     }
 
@@ -15,38 +15,15 @@ make_featuredata_from_bedfile <- function(opt = NULL, bedfile = NULL){
 
     featuredata <- subset(featuredata, FeatType %in% c("CDS", "tRNA",  "rRNA",  "tmRNA"))
 
+    annots <- tidyr::separate_rows(featuredata[ , c("Feature", "Annot")], all_of("Annot"), sep = fixed("\\;")) %>% tidyr::separate("Annot", c("Annot_type", "Annot_value"), sep = "=", remove = TRUE, convert = FALSE)
+    annots <- subset(annots, Annot_type %in% c("product", "Name", "eC_number"))
+    annots <- tidyr::spread(annots, "Annot_type", "Annot_value", fill = "none", convert = FALSE)
 
-    split_annot <- function(annot){
-        annotations <- unlist(strsplit(annot, split = ";"))
+    colnames(annots) <- sapply(colnames(annots), function (x) { switch(x, "Feature" = "Feature", "product" = "Product", "Name" = "GeneNameNR", "eC_number" = "ECNumber") })
 
-        ftypes <- sapply(1:length(annotations), function (x) { unlist(strsplit(annotations[x], split = "="))[1] })
-        fvalues <- sapply(1:length(annotations), function (x) { unlist(strsplit(annotations[x], split = "="))[2] })
-        annotdf <- data.frame(AnnotFeatType = ftypes, AnnotFeatValues = fvalues, stringsAsFactors = FALSE)
-
-
-        return (annotdf)
-    }
-
-    annot_list <- lapply(featuredata$Annot, function (x) { split_annot(x) })
-    names(annot_list) <- featuredata$Feature
-
-    retrieve_annot_value <- function (Feature = NULL, FeatType = NULL){
-        annotvalue <- annot_list[[Feature]][which(annot_list[[Feature]]$AnnotFeatType == FeatType), "AnnotFeatValues"]
-
-        if (length(annotvalue) != 1){
-            annotvalue <- "none"
-        }
-
-        return(annotvalue)
-    }
-
-    featuredata$Product <- sapply(1:nrow(featuredata), function (x) { retrieve_annot_value(Feature = featuredata$Feature[x], FeatType = "product")}  )
-
-    featuredata$GeneNameNR <- sapply(1:nrow(featuredata), function (x) { retrieve_annot_value(Feature = featuredata$Feature[x], FeatType = "gene")}  )
+    featuredata <- left_join(featuredata, annots, by = "Feature")
 
     featuredata$GeneName <- sapply(1:length(featuredata$GeneNameNR), function (x) { unlist(strsplit(featuredata$GeneNameNR[x], split = "_"))[1] } )
-
-    featuredata$ECNumber <- sapply(1:nrow(featuredata), function (x) { retrieve_annot_value(Feature = featuredata$Feature[x], FeatType = "eC_number")}  )
 
     featuredata$ECNumber[which(featuredata$ECNumber != "none")] <- paste("EC", featuredata$ECNumber[which(featuredata$ECNumber != "none")], sep = "_")
 
