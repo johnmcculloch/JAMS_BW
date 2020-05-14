@@ -1,6 +1,6 @@
 #' Convert qiime2 taxonomy table to one compatible with JAMS
-#' 
-#' 
+#'
+#'
 #' @param taxtsv a "taxonomy.tsv" file created by qiime2.
 #' @export
 #' @examples
@@ -43,4 +43,3 @@ fix_qiime2_taxonomy <- function(taxtsv) {
                                                stringsAsFactors = FALSE))$LKT)
   return(data.frame(taxtable))
 }
-	

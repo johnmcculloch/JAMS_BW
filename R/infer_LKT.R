@@ -1,7 +1,7 @@
 #Infer the Last Known Taxon (LKT)
 #' infer_LKT
 #'
-#' Infers the Last Known Taxon (LKT) from a taxonomic table or dataframe containing taxonomic information and adds an LKT column to the dataframe. 
+#' Infers the Last Known Taxon (LKT) from a taxonomic table or dataframe containing taxonomic information and adds an LKT column to the dataframe.
 #' @export
 
 infer_LKT<-function(taxtable){
@@ -32,7 +32,7 @@ infer_LKT<-function(taxtable){
                     }else{
                          #LKT is the Class
                         taxtable[n, which(colnames(taxtable)=="LKT")]<-taxtable[n, which(colnames(taxtable)=="Class")]
-                    }   
+                    }
                 }else{
                     #LKT is the Order
                     taxtable[n, which(colnames(taxtable)=="LKT")]<-taxtable[n, which(colnames(taxtable)=="Order")]
@@ -51,8 +51,3 @@ infer_LKT<-function(taxtable){
 
     return(taxtable)
 }
-
-
-
-
- 
