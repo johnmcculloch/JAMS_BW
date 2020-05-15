@@ -435,6 +435,10 @@ if (adjustmetadata == TRUE){
     #Define kinds of variables
     variable_list <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenotable = opt$phenotable, maxclass = opt$maxnumclasses, maxsubclass = 6, class_to_ignore = opt$class_to_ignore)
 
+    #Make a colour dictionary for plots
+    flog.info("Making a dictionary of colours for consistency throughout plots.")
+    cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, colour_table = opt$ctable, class_to_ignore = opt$class_to_ignore, shuffle = FALSE)
+
     #Now that variables have been defined, plot original assembly and read status to pdf
     if (opt$doreads == TRUE){
         if (length(variable_list$discrete) > 0){
@@ -561,12 +565,6 @@ if (opt$export_tables == TRUE){
 
 #Export as spreadsheet
 #export_expvec_to_XL(expvec = expvec, asPPM = TRUE, includemetadata = TRUE, filename = paste(paste(project, "counts", "PPM", sep = "_"), "xlsx", sep = "."))
-
-########################################
-## Make a colour dictionary for plots ##
-########################################
-flog.info("Making a dictionary of colours for consistency throughout plots.")
-cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, colour_table = opt$ctable, class_to_ignore = opt$class_to_ignore, shuffle = FALSE)
 
 #Determine reasonable cutoff level
 if (any(c("metatranscriptome", "isolate") %in% pheno$JAMS_Run_type)){
