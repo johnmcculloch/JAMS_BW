@@ -23,10 +23,13 @@ make_SummarizedExperiment_from_tables <- function(pheno = NULL, pheno_fn= NULL, 
     }
 
     #Fix countable
-    #Assume first column are feature names
-    colnames(md_list$cts)[1] <- "Accession"
-    rownames(md_list$cts) <- md_list$cts$Accession
-    md_list$cts$Accession <- NULL
+    #Test if first column is of feature names
+    if (!is.numeric(md_list$cts[ , 1])){
+        colnames(md_list$cts)[1] <- "Accession"
+        rownames(md_list$cts) <- md_list$cts$Accession
+        md_list$cts$Accession <- NULL
+    }
+
     #make numeric
     for (colm in 1:ncol(md_list$cts)){
         md_list$cts[ , colm] <- as.numeric(md_list$cts[ , colm])
@@ -34,13 +37,14 @@ make_SummarizedExperiment_from_tables <- function(pheno = NULL, pheno_fn= NULL, 
     md_list$cts <- md_list$cts[order(rowSums(md_list$cts), decreasing = TRUE), ]
     featureorder <- rownames(md_list$cts)
 
+    print(featureorder[1:100])
+
     #Fix feat table
     #Assume first column are feature names
     colnames(md_list$ft)[1] <- "Accession"
     rownames(md_list$ft) <- md_list$ft$Accession
-    md_list$ft$Accession <- NULL
+    #md_list$ft$Accession <- NULL
     md_list$ft <- md_list$ft[(rownames(md_list$ft) %in% featureorder), ]
-
     sampleorder <- rownames(md_list$pheno)
     md_list$ft <- as.matrix(md_list$ft)
     md_list$ft <- md_list$ft[featureorder, ]
