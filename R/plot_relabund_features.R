@@ -1,9 +1,9 @@
-#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, rescale_axis_quantiles = NULL, ...)
+#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, rescale_axis_quantiles = NULL, ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, rescale_axis_quantiles = NULL, ...){
+plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, colourby = NULL, shapeby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, return_plots = TRUE, rescale_axis_quantiles = NULL, ...){
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
@@ -336,6 +336,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             names(phcol)[length(phcol)] <- "Remainder"
         }
 
+        flog.info("Plotting results...")
         for (feat in rownames(countmat)){
             dat <- data.frame(Sample = names(countmat[feat, ]), PPM = as.numeric(countmat[feat, ]), Compareby = cl, stringsAsFactors = FALSE)
             rownames(dat) <- dat$Sample
@@ -494,9 +495,25 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             p <- p + theme(axis.text.x = element_text(angle = rotang, size = rel(1), colour = "black"))
             p <- p + theme(plot.title = element_text(size = 10))
 
+            if (!return_plots){
+                #print plot on the fly
+                print(p)
+            }
+
             gvec[[plotcount]] <- p
             names(gvec)[plotcount] <- paste(maintit, feat, sep = " | ")
             plotcount <- plotcount + 1
+
+            if (all(c(dump_interpro_descriptions_to_plot, analysis == "Interpro"))){
+                data(InterproDict)
+                infotable <- as.data.frame(t(as.data.frame(InterproDict[feat, c("Abstract", "Citations")])))
+                if (nchar(paste0(InterproDict[feat, c("Abstract", "Citations")], collapse = "")) > 2500){
+                    fontsize <- 7
+                } else {
+                    fontsize <- 10
+                }
+                print_table(tb = infotable, tabletitle = paste0(InterproDict[feat, c("Accession", "Description")], collapse = " "), fontsize = fontsize, numrows = 20)
+            }
 
             if (!is.null(stratify_by_taxlevel)){
                 currtaxsplit <- subset(taxsplit, Accession == feat)
@@ -655,6 +672,12 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     #p + geom_tile(data = df, aes(x = x, y = 2, fill = colour))
                     #p <- p + theme(axis.text.x = element_text(colour = phcol[dat$Phylum[!duplicated(dat$Phylum)]]))
                     p <- p + theme(plot.title = element_text(size = 10))
+
+                    if (!return_plots){
+                        #print plot on the fly
+                        print(p)
+                    }
+
                     gvec[[plotcount]] <- p
                     names(gvec)[plotcount] <- paste(maintit, feat, stratify_by_taxlevel, sep = " | ")
                     plotcount <- plotcount + 1
@@ -664,6 +687,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
     }#End loop for each subset
 
-    return(gvec)
-
+    if (return_plots){
+        #Return plots, as nothing was printed
+        return(gvec)
+    }
 }
