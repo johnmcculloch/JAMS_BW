@@ -47,6 +47,7 @@ plot_relabund_features(
   maxnumtaxa = 20,
   horizontal = TRUE,
   plot_points_on_taxonomy = FALSE,
+  return_plots = TRUE,
   rescale_axis_quantiles = NULL,
   ...
 )
