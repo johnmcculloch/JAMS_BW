@@ -11,7 +11,7 @@ classify_16S_from_contigs <- function(opt = NULL){
     #Get only rRNAs
     featuresofinterest <- opt$featuredata[(opt$featuredata$FeatType =="rRNA"), ]
     #Get only 16S features
-    features16S <- featuresofinterest[grep("16S_ribosomal_RNA", featuresofinterest$Product), "Feature"]
+    features16S <- featuresofinterest[grep("16S", featuresofinterest$Product), "Feature"]
 
     #Set 16S database to use
     db16S <- file.path(opt$dbdir, "16Sdbs")

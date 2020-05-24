@@ -7,8 +7,8 @@
 print_jams_report(
   opt = opt,
   outputdir = NULL,
-  elements = c("readplots", "taxonomy", "SixteenSid", "resfinder", "plasmidfinder",
-    "vfdb", "func"),
+  elements = c("readplots", "taxonomy", "SixteenSid", "resfinder", "abricate",
+    "plasmidfinder", "vfdb", "func"),
   plotucobias = FALSE
 )
 }

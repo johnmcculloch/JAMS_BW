@@ -34,7 +34,15 @@ blast_databases <- function(opt = NULL, blastanalyses = NULL, QcovThreshold = 75
             if(file.exists(file.path(blastdbori, "lookup.tsv"))){
                 lookup <- read.table(file = file.path(blastdbori, "lookup.tsv"), sep = "\t", header = TRUE, stringsAsFactors = FALSE)
             } else {
-                lookup <- NULL
+                #Try the newer rda lookups
+                lookuprdaobject <- paste(blastanalysis, "lookup", sep = "_")
+                rdalookup <- file.path(blastdbori, paste(lookuprdaobject, "rda", sep = "."))
+                if (file.exists(rdalookup)){
+                    load(rdalookup)
+                    lookup <- get(lookuprdaobject)
+                } else {
+                    lookup <- NULL
+                }
             }
 
             #Find out if db is protein or DNA
@@ -49,12 +57,9 @@ blast_databases <- function(opt = NULL, blastanalyses = NULL, QcovThreshold = 75
             }
             #Blast query sequences against database
             system2(blastprog, args = blastargs, stdout = TRUE, stderr = TRUE)
-            #remove risky characters from hit results
-            system("cat blast.out | tr -d \"\'\" > tmp")
-            system("mv tmp blast.out")
             numlinblast <- as.numeric(system2('cat', args=c("blast.out", "|", "wc", "-l"), stdout = TRUE, stderr = FALSE))
             if (numlinblast > 0){
-                blastout <- read.table(file="blast.out", header=FALSE, sep="\t", colClasses = c("character", "numeric", "numeric", "numeric", "character", "numeric", "numeric", "numeric", "numeric","numeric", "numeric", "numeric"))
+                blastout <- fread(file = "blast.out", header = FALSE, sep = "\t", colClasses = c("character", "numeric", "numeric", "numeric", "character", "numeric", "numeric", "numeric", "numeric","numeric", "numeric", "numeric"))
                 colnames(blastout) <- c("Feature", "qstart", "qend", "qlen", "Accession", "sstart", "send", "slen", "evalue", "length", "Pident", "gaps")
                 file.remove("blast.out")
 
@@ -68,8 +73,9 @@ blast_databases <- function(opt = NULL, blastanalyses = NULL, QcovThreshold = 75
                 if (nrow(blastout) > 0){
                     blastout <- left_join(blastout, opt$featuredata)
                     blastout$LKT <- opt$contigsdata$LKT[match(blastout$Contig, opt$contigsdata$Contig)]
-                    if (blastanalysis == "resfinder" & !is.null(lookup)){
-                        blastout <- left_join(blastout, lookup, by="Accession")
+                    if (!is.null(lookup)){
+                        lookup$Feature <- NULL
+                        blastout <- left_join(blastout, lookup, by = "Accession")
                         blastout[is.na(blastout[])] <- "none"
                     }
                     nextopt <- (length(names(opt)) + 1)

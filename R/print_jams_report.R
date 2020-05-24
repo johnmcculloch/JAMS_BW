@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-print_jams_report <- function(opt=opt, outputdir=NULL, elements=c("readplots", "taxonomy", "SixteenSid", "resfinder", "plasmidfinder", "vfdb", "func"), plotucobias=FALSE){
+print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplots", "taxonomy", "SixteenSid", "resfinder", "abricate", "plasmidfinder", "vfdb", "func"), plotucobias = FALSE){
 
     #See what is available
     elementsinopt <- elements[elements %in% names(opt)]
@@ -18,8 +18,8 @@ print_jams_report <- function(opt=opt, outputdir=NULL, elements=c("readplots", "
         outputdir <- opt$outdir
     }
 
-    pdffn <- file.path(outputdir, paste(paste(opt$prefix, "JAMSalpha", "report", sep="_"), "pdf", sep="."))
-    pdf(pdffn, paper="a4r")
+    pdffn <- file.path(outputdir, paste(paste(opt$prefix, "JAMSalpha", "report", sep="_"), "pdf", sep = "."))
+    pdf(pdffn, paper = "a4r")
 
     #Header with run info
     plot.new()
@@ -37,10 +37,10 @@ print_jams_report <- function(opt=opt, outputdir=NULL, elements=c("readplots", "
     if (("taxonomy" %in% elements)){
         taxlvlspresent <- colnames(opt$LKTdose)[colnames(opt$LKTdose) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
         for (taxl in taxlvlspresent){
-            print(pareto_abundance(LKTdose=opt$LKTdose, samplename=samplename, taxlevel=taxl, assemblystats=opt$assemblystats, showcompletenesstext=TRUE, showcompletenessline=FALSE, showcontigline=FALSE, showparetocurve=TRUE, showpercentagetext=TRUE))
+            print(pareto_abundance(LKTdose = opt$LKTdose, samplename = samplename, taxlevel = taxl, assemblystats = opt$assemblystats, showcompletenesstext = TRUE, showcompletenessline = FALSE, showcontigline = FALSE, showparetocurve = TRUE, showpercentagetext = TRUE))
         }
         #Print an extra pareto chart for LKT with genome completeness
-        print(pareto_abundance(LKTdose=opt$LKTdose, assemblystats=opt$assemblystats, samplename=samplename, taxlevel="LKT", showcompletenesstext=TRUE, showcompletenessline=TRUE, showcontigline=FALSE, showparetocurve=TRUE, showpercentagetext=TRUE))
+        print(pareto_abundance(LKTdose = opt$LKTdose, assemblystats = opt$assemblystats, samplename = samplename, taxlevel = "LKT", showcompletenesstext = TRUE, showcompletenessline = TRUE, showcontigline = FALSE, showparetocurve = TRUE, showpercentagetext = TRUE))
         if ("ucoplots" %in% names(opt)){
             print(opt$ucoplots)
         }
@@ -85,12 +85,18 @@ print_jams_report <- function(opt=opt, outputdir=NULL, elements=c("readplots", "
     batp <- NULL
     for (ba in availblastanalyses){
         batp <- opt[[ba]]
-        if(ba == "resfinder"){
+        if (ba == "resfinder"){
             contig2length <- opt$contigsdata[, c("Contig","Length")]
             batp <- batp[ , c("Accession","Class","Pident","Contig","LKT")]
-            batp <- left_join(batp, contig2length, by="Contig")
+            batp <- left_join(batp, contig2length, by = "Contig")
             colnames(batp) <- c("DB_Hit","Function","Percent_ID","Contig","LKT", "Length")
             batp <- batp[,c("DB_Hit","Function","Percent_ID","Contig","Length","LKT")]
+        } else if (ba == "abricate"){
+            contig2length <- opt$contigsdata[, c("Contig","Length")]
+            batp <- batp[ , c("Database", "Accession", "Phenotype", "Pident", "Contig", "LKT")]
+            batp <- left_join(batp, contig2length, by = "Contig")
+            colnames(batp) <- c("Database", "DB_Hit", "Phenotype", "Percent_ID", "Contig", "LKT", "Length")
+            batp <- batp[ , c("Database", "DB_Hit", "Phenotype", "Percent_ID", "Contig", "Length", "LKT")]
         } else {
             batp <- batp[ , c("Accession","Product","Pident","LKT")]
             colnames(batp) <- c("DB_Hit","Function","Percent_ID","LKT")
@@ -99,7 +105,7 @@ print_jams_report <- function(opt=opt, outputdir=NULL, elements=c("readplots", "
         #Shorten hit because it is too verbose from resfinder and vfdb
         batp$DB_Hit <- gsub(":.*", "", batp$DB_Hit)
         ti <- switch(ba, "resfinder" = "Known antibiotic resistance genes", "vfdb" = "Virulence factors present in VFDB \n www.ncbi.nlm.nih.gov/pubmed/15608208", "plasmidfinder" = "Plasmid Replicon-associated genes present in PlasmidFinder \n https://www.ncbi.nlm.nih.gov/pubmed/24777092")
-        print_table(tb=batp, tabletitle=ti, fontsize=6, numrows=20)
+        print_table(tb = batp, tabletitle = ti, fontsize = 6, numrows = 20)
     }
 
     if("func" %in% elements){
