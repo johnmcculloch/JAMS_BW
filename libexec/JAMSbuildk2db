@@ -810,7 +810,7 @@ if (opt$defer_building_database == FALSE){
 
 ###############
 ## Add timestamp
-tmstmp <- as.character(format(Sys.time(), "%Y%m%d%H%M"))
+tmstmp <- as.character(format(Sys.time(), "%Y%m%d"))
 verstmp <- as.character(packageVersion("JAMS"))
 JAMSk2dbver <- paste(opt$dbname, verstmp, tmstmp, sep = "_")
 write.table(JAMSk2dbver, file = "JAMSKdb.ver", sep = "", row.names = FALSE, col.names = FALSE, quote = FALSE)
