@@ -9,7 +9,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
     flog.info("Using kraken2 with JAMStaxtable")
     JAMStaxtablefile <- file.path(opt$workingkrakendb, "JAMS_taxtable.tsv")
     if (file.exists(JAMStaxtablefile)){
-        JAMStaxtable <- read.table(file = JAMStaxtablefile, sep = "\t", fill = TRUE, stringsAsFactors = FALSE, quote = NULL, header = TRUE)
+        JAMStaxtable <- fread(file = JAMStaxtablefile, sep = "\t", fill = TRUE, stringsAsFactors = FALSE, quote = NULL, header = TRUE)
     } else {
         #Fall back on generic taxonomy table and warn user
         flog.info("JAMS taxonomy table not found. Falling back on generic JAMS taxtable.")
@@ -170,7 +170,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
         flog.info("Calculating base coverage depth in contigs.")
         coverageargs <- c("-ibam", coveragebamfile, "-d", ">", "perbasecoverage.map")
         system2('genomeCoverageBed', args = coverageargs, stdout = TRUE, stderr = TRUE)
-        contigcoverage <- read.table(file="perbasecoverage.map", sep="\t", header=FALSE)
+        contigcoverage <- fread(file = "perbasecoverage.map", sep = "\t", header = FALSE, nThread = opt$threads)
         colnames(contigcoverage) <- c("Contig", "Position", "Depth")
         contigcoverage$Position <- as.numeric(contigcoverage$Position)
         contigcoverage$Depth <- as.numeric(contigcoverage$Depth)
@@ -186,7 +186,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
         system(bedcmd)
         bedfeatargs <- c("coverage", "-hist", "-sorted", "-b", sortedbed, "-a", opt$bedfile, ">", "featuredep.tsv")
         system2('bedtools', args = bedfeatargs, stdout = TRUE, stderr = FALSE)
-        featuredep <- read.table("featuredep.tsv", sep="\t", stringsAsFactors = FALSE, fill=TRUE)
+        featuredep <- fread(file = "featuredep.tsv", sep = "\t", stringsAsFactors = FALSE, fill = TRUE, nThread = opt$threads)
         colnames(featuredep) <- c("Contig", "Start", "End", "Feature", "MapQual", "Strand", "Annotby", "FeatType", "Spin", "Annot", "Depth", "PartNumBasesofFeature", "LenghtofFeat", "PctofAatdep")
         featuredep <- subset(featuredep, FeatType %in% c("CDS", "tRNA",  "rRNA",  "tmRNA"))
         featuredep$PartDepthofFeature <- (featuredep$Depth * featuredep$PartNumBasesofFeature)
