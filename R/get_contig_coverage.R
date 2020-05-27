@@ -9,7 +9,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
     flog.info("Using kraken2 with JAMStaxtable")
     JAMStaxtablefile <- file.path(opt$workingkrakendb, "JAMS_taxtable.tsv")
     if (file.exists(JAMStaxtablefile)){
-        JAMStaxtable <- fread(file = JAMStaxtablefile, sep = "\t", fill = TRUE, stringsAsFactors = FALSE, quote = NULL, header = TRUE)
+        JAMStaxtable <- fread(file = JAMStaxtablefile, sep = "\t", fill = TRUE, stringsAsFactors = FALSE, quote = FALSE, header = TRUE)
     } else {
         #Fall back on generic taxonomy table and warn user
         flog.info("JAMS taxonomy table not found. Falling back on generic JAMS taxtable.")
