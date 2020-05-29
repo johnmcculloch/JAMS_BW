@@ -35,7 +35,8 @@ get_reads <- function(opt = NULL){
         #Download reads from accession
         opt$readorigin <- "sraaccession"
         flog.info(paste("Downloading from NCBI SRA reads pertaining to run", opt$sraaccession))
-        commandtorun <- paste("fastq-dump --readids --split-files --accession", opt$sraaccession, collapse = " ")
+        #commandtorun <- paste("fastq-dump --readids --split-files --accession", opt$sraaccession, collapse = " ")
+        commandtorun <- paste("fastq-dump --readids --split-files", opt$sraaccession, sep =  " ")
         system(commandtorun)
 
     } else {
