@@ -24,7 +24,7 @@ harvest_functions<-function(opt = opt, noninterproanalyses = c("FeatType", "ECNu
     }
     interpronumbaseslist <- NULL
     if("interproscanoutput" %in% names(opt)){
-        opt <- add_interpro_to_featuredata(opt = opt, doinparallel = FALSE)
+        opt <- add_interpro_to_featuredata(opt = opt, doinparallel = TRUE)
 
         iproanalyses <- sort(unique(opt$interproscanoutput$Analysis))
         if ("IproAcc" %in% colnames(opt$interproscanoutput)){
