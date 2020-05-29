@@ -27,10 +27,10 @@ get_reads <- function(opt = NULL){
 
         #If in Biowulf, module load sra-toolkit
         slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
-        if(nchar(slurmjobid) < 3){
+        #if(nchar(slurmjobid) < 3){
             flog.info("You are probably on Biowulf. Will use NIH HPC version of SRA toolkit to avoid caching issues.")
             system("module load sratoolkit")
-        }
+        #}
 
         #Download reads from accession
         opt$readorigin <- "sraaccession"
