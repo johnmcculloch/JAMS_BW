@@ -203,7 +203,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                 }
                 #If possible, get feature count
                 if (analysis %in% colnames(tempanaldata)){
-                    featcount <- as.data.frame(table(tempanaldata[ , analysis]))
+                    featcount <- as.data.frame(table(tempanaldata[ , analysis]), stringsAsFactors = FALSE)
                     colnames(featcount) <- c("Accession", "Count")
                     rownames(featcount) <- featcount$Accession
                     analysisdata[[ad]] <- featcount
