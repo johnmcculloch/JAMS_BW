@@ -456,6 +456,15 @@ if (adjustmetadata == TRUE){
     }
 }
 
+#Export list.data to system and set it as NULL, to decrease RAM burden.
+flog.info("Saving list.data.rda to system. Please be patient...")
+list.data_fn <- file.path(opt$outdir, "list_data.rda")
+if ("fastSave" %in% rownames(installed.packages())) {
+    save.pigz(list.data, file = list.data_fn, envir = .GlobalEnv, n.cores = opt$threads)
+} else {
+    save(list.data, file = list.data_fn)
+}
+
 pheno <- opt$phenotable
 phenolabels <- opt$phenolabels
 #Make a colour dictionary for plots
@@ -533,15 +542,7 @@ if (!exists("expvec")){
     } #End conditional for replacing metadata
 }
 
-#Export list.data to system and set it as NULL, to decrease RAM burden.
-flog.info("Saving list.data.rda to system. Please be patient...")
-list.data_fn <- file.path(opt$outdir, "list_data.rda")
-if ("fastSave" %in% rownames(installed.packages())) {
-    save.pigz(list.data, file = list.data_fn, envir = .GlobalEnv, n.cores = opt$threads)
-} else {
-    save(list.data, file = list.data_fn)
-}
-
+#Get rid of list.data to save RAM
 list.data <- NULL
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
