@@ -1,4 +1,4 @@
-#' load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, loadfromscratch = TRUE, list.data = NULL, threads = 8))
+#' load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE)
 #' JAMSbeta function
 #'
 #' Loads all JAMS files from system
@@ -66,8 +66,6 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     flwp <- file.path(jamstempfilespath, fl)
 
     flog.info("Please be patient. Depending on how much data you have this might take a while.")
-
-    lastpos <- length(names(list.data))
 
     flog.info(paste("There are", length(fl), "objects to load."))
 
