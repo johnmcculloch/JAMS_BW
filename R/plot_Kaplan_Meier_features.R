@@ -1,4 +1,4 @@
-#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...)
+#' plot_Kaplan_Meier_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
@@ -187,19 +187,23 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
             pheno_survival <- left_join(pheno_survival, wantedfeatures_PPM_per_Sample, by = "Sample")
             rownames(pheno_survival) <- pheno_survival$Sample
 
-            surv_object <- Surv(time = pheno_survival[ , survivaltime], event = pheno_survival$Censoring)
-
             #Not the most elegant way of doing it, but being safe.
             fitlist <- list()
             pvals <- NULL
             validfeats <- colnames(pheno_survival)[!(colnames(pheno_survival) %in% c("Sample", survivaltime, "Censoring"))]
             for (nfeat in 1:length(validfeats)){
                 feat <- validfeats[nfeat]
+                #print(feat)
                 #Use the old trick of regenerating the dataframe and changing variable to common name
+                surv_object <- Surv(time = pheno_survival[ , survivaltime], event = pheno_survival$Censoring)
                 curr_pheno_survival <- pheno_survival[ ,c(survivaltime, "Censoring", feat)]
                 colnames(curr_pheno_survival)[which(colnames(curr_pheno_survival) == feat)] <- "FeatStratum"
+                #colnames(curr_pheno_survival)[which(colnames(curr_pheno_survival) == survivaltime)] <- "survivaltime"
                 featfit <- NULL
-                featfit <- survfit(surv_object ~ FeatStratum, data = curr_pheno_survival)
+                #featfit <- survfit(Surv(time = curr_pheno_survival[ , survivaltime], event = curr_pheno_survival$Censoring) ~ FeatStratum, data = curr_pheno_survival)
+                featfitform <- as.formula("surv_object ~ FeatStratum")
+                featfit <- survfit(featfitform, data = curr_pheno_survival)
+                featfit$call$formula <- featfitform
                 fitlist[[nfeat]] <- featfit
                 names(fitlist)[nfeat] <- feat
                 pv <- surv_pvalue(featfit, data = curr_pheno_survival, method = "survdiff", test.for.trend = FALSE)[]$pval

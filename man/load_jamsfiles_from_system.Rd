@@ -9,8 +9,6 @@ load_jamsfiles_from_system(
   path = ".",
   recursive = TRUE,
   onlysamples = NULL,
-  loadfromscratch = TRUE,
-  list.data = NULL,
   threads = 8,
   multithread_decomp = TRUE
 )

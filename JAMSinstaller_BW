@@ -172,7 +172,7 @@ bytesRAM <- detectAvailRAM()
 cat(paste0("You have ~", round(bytesRAM/1E9, 1), " Gbytes of RAM available\n"))
 
 #Install Bioconductor packages
-bioconductordeps <- c("dada2", "SummarizedExperiment", "metagenomeSeq", "HybridMTest", "genefilter", "ComplexHeatmap")
+bioconductordeps <- c("dada2", "SummarizedExperiment", "HybridMTest", "genefilter", "ComplexHeatmap")
 BiocManager::install(pkgs = bioconductordeps, update = TRUE, ask = FALSE, site_repository = repos)
 #devtools::install_github("jokergoo/ComplexHeatmap")
 devtools::install_github('barkasn/fastSave')

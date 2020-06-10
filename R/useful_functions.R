@@ -65,7 +65,7 @@ convert_matrix_log2 <- function(mat = NULL, transformation = NULL){
         stop("Please choose either \"to_log2\", or \"from_log2\" as transformation to apply to matrix.")
     }
 
-    if (class(mat) != "matrix"){
+    if (class(mat)[1] != "matrix"){
         stop("Object to transform must be a matrix.")
     }
 
@@ -189,7 +189,7 @@ filetype <- function(path){
 
 trim_whitespace_from_df <- function(df = NULL){
     #check if input is reasonable
-    if (class(df) != "data.frame"){
+    if (class(df)[1] != "data.frame"){
         stop("Input must be a data.frame")
     }
 
@@ -378,7 +378,7 @@ RAMbytes_status <- function(RAMbytesavail = NULL){
 update_ExpObj_metadata <- function(ExpObj = NULL, phenotable = NULL){
 
         #Get appropriate object to work with
-        if (as.character(class(ExpObj)) != "SummarizedExperiment"){
+        if (as.character(class(ExpObj)[1]) != "SummarizedExperiment"){
             stop("This function can only take a SummarizedExperiment object as input.")
         }
 

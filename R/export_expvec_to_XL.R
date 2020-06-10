@@ -66,5 +66,5 @@ export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL
     countvec <- countvec[sapply(countvec, function(x){ !(is.null(x)) })]
 
     print(paste("Saving spreadsheet as", filename))
-    write.xlsx(countvec, file = filename, asTable = TRUE, rowNames = TRUE, colNames = TRUE, borders = "surrounding", colWidths = "auto")
+    write.xlsx(countvec, file = filename, asTable = TRUE, rowNames = TRUE, colNames = TRUE, borders = "all", colWidths = "auto")
 }

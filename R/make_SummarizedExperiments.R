@@ -10,6 +10,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     data(MetaCycAccession2Description)
     data(ECdescmap)
     data(GOtermdict)
+    data(InterproDict)
 
     #Get data for features
     if (!is.null(onlysamples)){
@@ -17,6 +18,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     } else {
         pheno2 <- pheno
     }
+
+    blastanalyses <- c("abricate", "vfdb", "resfinder", "plasmidfinder")
 
     Samples <- rownames(pheno2)
     if (any(c(is.null(onlyanalyses), !(all(c((length(onlyanalyses) == 1), ("LKT" %in% onlyanalyses))))))) {
@@ -58,7 +61,9 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         }
     }
 
-    possibleanalyses <- possibleanalyses[possibleanalyses %in% onlyanalyses]
+    if (!is.null(onlyanalyses)){
+        possibleanalyses <- possibleanalyses[possibleanalyses %in% onlyanalyses]
+    }
 
     #Make a vector for holding experiment list
     expvec <- list()
@@ -148,6 +153,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         expvec[[e]] <- SEobj
         names(expvec)[e] <- "LKT"
         e <- e + 1
+        #Clean memory up
+        gc()
     }
 
     if (!is.null(onlyanalyses)){
@@ -178,69 +185,69 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
 
         cts <- NULL
 
-        if (is.null(restricttoLKTs)){
-            #Dose of each analysis is total number of bases attributed to it
-            for (ad in SamplesofInterest){
-                tempanaldose <- subset(featuredoses[[ad]], Analysis == analysis)[, c("Accession", "NumBases", "Description")]
-                tempanaldose$Accession <- as.character(tempanaldose$Accession)
-                #For ECNumber, GO and MetaCyc, add descriptions safely, based on latest info, later in ftt
-                if (analysis %in% c("ECNumber", "GO", "MetaCyc")){
-                    tempanaldose$Description <- "none"
-                } else {
-                    tempanaldose$Description <- as.character(tempanaldose$Description)
-                }
-                tempanaldose$NumBases <- as.numeric(tempanaldose$NumBases)
-                analysisdoses[[ad]] <- tempanaldose
-                tempanaldata <- featuredata[[ad]]
-                #Careful to make it backwards-compatible
-                featdatacolsavail <- colnames(tempanaldata)[colnames(tempanaldata) %in% c("Feature", "LKT", "GeneName", analysis)]
-                tempanaldata <- tempanaldata[ , featdatacolsavail]
-                #If analysis contains several accessions per gene, repeat rows for each kind
-                #Also, make it backwards compatible with older jamsfiles
-                if (all(c((analysis %in% colnames(tempanaldata)), (analysis %in% c("GO", "MetaCyc"))))){
-                    #flog.info("Analysis contains several accessions per gene, splitting to get number of genes per accession.")
-                    tempanaldata <- tidyr::separate_rows(tempanaldata, all_of(analysis), sep = fixed("\\|"))
-                }
-                #If possible, get feature count
-                if (analysis %in% colnames(tempanaldata)){
-                    featcount <- as.data.frame(table(tempanaldata[ , analysis]), stringsAsFactors = FALSE)
-                    colnames(featcount) <- c("Accession", "Count")
-                    rownames(featcount) <- featcount$Accession
-                    analysisdata[[ad]] <- featcount
-                } else {
-                    analysisdata[[ad]] <- NULL
-                }
-                #Add GeneName to description if Product
-                if (all(c((analysis %in% c("Product", "vfdb")), ("GeneName" %in% featdatacolsavail)) )){
-                    tempanaldose$Description <- tempanaldata$GeneName[match(tempanaldose$Accession, tempanaldata$Product)]
+            if (is.null(restricttoLKTs)){
+                #Dose of each analysis is total number of bases attributed to it
+                for (ad in SamplesofInterest){
+                    tempanaldose <- subset(featuredoses[[ad]], Analysis == analysis)[, c("Accession", "NumBases", "Description")]
+                    tempanaldose$Accession <- as.character(tempanaldose$Accession)
+                    #For ECNumber, GO and MetaCyc, add descriptions safely, based on latest info, later in ftt
+                    if (analysis %in% c("ECNumber", "GO", "MetaCyc")){
+                        tempanaldose$Description <- "none"
+                    } else {
+                        tempanaldose$Description <- as.character(tempanaldose$Description)
+                    }
+                    tempanaldose$NumBases <- as.numeric(tempanaldose$NumBases)
                     analysisdoses[[ad]] <- tempanaldose
+                    tempanaldata <- featuredata[[ad]]
+                    #Careful to make it backwards-compatible
+                    featdatacolsavail <- colnames(tempanaldata)[colnames(tempanaldata) %in% c("Feature", "LKT", "GeneName", analysis)]
+                    tempanaldata <- tempanaldata[ , featdatacolsavail]
+                    #If analysis contains several accessions per gene, repeat rows for each kind
+                    #Also, make it backwards compatible with older jamsfiles
+                    if (all(c((analysis %in% colnames(tempanaldata)), (analysis %in% c("GO", "MetaCyc"))))){
+                        #flog.info("Analysis contains several accessions per gene, splitting to get number of genes per accession.")
+                        tempanaldata <- tidyr::separate_rows(tempanaldata, all_of(analysis), sep = fixed("\\|"))
+                    }
+                    #If possible, get feature count
+                    if (analysis %in% colnames(tempanaldata)){
+                        featcount <- as.data.frame(table(tempanaldata[ , analysis]), stringsAsFactors = FALSE)
+                        colnames(featcount) <- c("Accession", "Count")
+                        rownames(featcount) <- featcount$Accession
+                        analysisdata[[ad]] <- featcount
+                    } else {
+                        analysisdata[[ad]] <- NULL
+                    }
+                    #Add GeneName to description if Product
+                    if (all(c((analysis %in% c("Product", "vfdb")), ("GeneName" %in% featdatacolsavail)) )){
+                        tempanaldose$Description <- tempanaldata$GeneName[match(tempanaldose$Accession, tempanaldata$Product)]
+                        analysisdoses[[ad]] <- tempanaldose
+                    }
                 }
-            }
-        } else {
-            flog.info(paste("Making counts table restricted to the", length(restricttoLKTs),"LKTs specified."))
-            #Dose of each analysis is sum of bases present in LKTs to restrict to
-            for (ad in SamplesofInterest){
-                #First, find out if taxa exist. If so, get numbers, else, write down 0.
-                tempanaldose <- subset(featuredoses[[ad]], Analysis == analysis)
-                taxapresent <- restricttoLKTs[restricttoLKTs %in% colnames(tempanaldose)]
-                if (length(taxapresent) > 1){
-                    numbavec <- as.numeric(rowSums(tempanaldose[ , taxapresent]))
-                } else if (length(taxapresent) == 1) {
-                    numbavec <- as.numeric(tempanaldose[ , taxapresent])
-                } else {
-                    numbavec <- rep(0,  nrow(tempanaldose))
+            } else {
+                flog.info(paste("Making counts table restricted to the", length(restricttoLKTs),"LKTs specified."))
+                #Dose of each analysis is sum of bases present in LKTs to restrict to
+                for (ad in SamplesofInterest){
+                    #First, find out if taxa exist. If so, get numbers, else, write down 0.
+                    tempanaldose <- subset(featuredoses[[ad]], Analysis == analysis)
+                    taxapresent <- restricttoLKTs[restricttoLKTs %in% colnames(tempanaldose)]
+                    if (length(taxapresent) > 1){
+                        numbavec <- as.numeric(rowSums(tempanaldose[ , taxapresent]))
+                    } else if (length(taxapresent) == 1) {
+                        numbavec <- as.numeric(tempanaldose[ , taxapresent])
+                    } else {
+                        numbavec <- rep(0,  nrow(tempanaldose))
+                    }
+                    tempanaldose <- tempanaldose[ , c("Accession", "Description")]
+                    tempanaldose$Accession <- as.character(tempanaldose$Accession)
+                    if (analysis %in% c("ECNumber", "GO", "MetaCyc")){
+                        tempanaldose$Description <- "none"
+                    } else {
+                        tempanaldose$Description <- as.character(tempanaldose$Description)
+                    }
+                    tempanaldose$NumBases <- numbavec
+                    analysisdoses[[ad]] <- tempanaldose[, c("Accession", "NumBases", "Description")]
                 }
-                tempanaldose <- tempanaldose[ , c("Accession", "Description")]
-                tempanaldose$Accession <- as.character(tempanaldose$Accession)
-                if (analysis %in% c("ECNumber", "GO", "MetaCyc")){
-                    tempanaldose$Description <- "none"
-                } else {
-                    tempanaldose$Description <- as.character(tempanaldose$Description)
-                }
-                tempanaldose$NumBases <- numbavec
-                analysisdoses[[ad]] <- tempanaldose[, c("Accession", "NumBases", "Description")]
-            }
-        } #End conditional of restricting to LKTs
+            } #End conditional of restricting to LKTs
 
         phenoanal <- pheno2
 
@@ -406,6 +413,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         expvec[[e]] <- SEobj
         names(expvec)[e] <- analysis
         e <- e + 1
+        #clean memory up
+        gc()
 
         #Add an extra one if converting resfinder to antibiogram
         #if (analysis == "resfinder"){

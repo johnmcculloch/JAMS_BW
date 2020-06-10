@@ -10,7 +10,7 @@ export_from_list <- function(objlist = opt, objnames = NULL, destination = NULL)
         if (length(wantedobjnum) > 0){
             wantedobj <- objlist[[wantedobjnum]]
             #Ok, it exists, but what is it
-            if (class(wantedobj) == "data.frame"){
+            if (class(wantedobj)[1] == "data.frame"){
                 flog.info(paste("Exporting", objname))
                 expfn = file.path(destination, paste(paste(opt$prefix, objname, sep = "_"), "tsv", sep = "."))
                 write.table(wantedobj, file = expfn, quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)

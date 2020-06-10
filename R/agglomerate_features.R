@@ -6,7 +6,7 @@
 agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
 
     #Get appropriate object to work with
-    if (as.character(class(ExpObj)) != "SummarizedExperiment"){
+    if (as.character(class(ExpObj)[1]) != "SummarizedExperiment"){
         stop("This function can only take a SummarizedExperiment object as input.")
     }
 

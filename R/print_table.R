@@ -5,7 +5,7 @@
 
 print_table <- function(tb = NULL, tabletitle = NULL, fontsize = 6, numrows = 20){
 
-    if (class(tb) != "data.frame"){
+    if (class(tb)[1] != "data.frame"){
         stop("Table must be a data frame")
     }
 

@@ -35,7 +35,7 @@ compose_metadata <- function(metadatafolder = NULL, recursive = FALSE, prefixsub
     for (varb in varstoguess){
 
         colinterest <- phenolabels$Var_label[varb]
-        vartypeguess <- class(phenotable[ , which(colnames(phenotable) == colinterest)][!is.na(phenotable[ , which(colnames(phenotable) == colinterest)])])
+        vartypeguess <- class(phenotable[ , which(colnames(phenotable) == colinterest)][!is.na(phenotable[ , which(colnames(phenotable) == colinterest)])])[1]
         if (vartypeguess == "character"){
             vartype <- "discrete"
         } else if (vartypeguess %in% c("numeric", "integer")){

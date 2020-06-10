@@ -39,7 +39,7 @@ randomize_experiment <- function (mgseqobj = NULL, newname = "Noise", shufflecla
             dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")
             classifiedrows <- which(!(rownames(cts) %in% dunno))
             unclasscts <- cts[(rownames(cts) %in% dunno), ]
-            if(class(unclasscts) == "numeric"){
+            if(class(unclasscts)[1] == "numeric"){
                 unclasscts <- t(unclasscts)
                 rownames(unclasscts) <- rownames(cts)[(rownames(cts) %in% dunno)]
             }

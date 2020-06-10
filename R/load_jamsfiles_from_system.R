@@ -4,7 +4,7 @@
 #' Loads all JAMS files from system
 #' @export
 
-load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, loadfromscratch = TRUE, list.data = NULL, threads = 8, multithread_decomp = TRUE){
+load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE){
     fljams <- list.files(path = path, pattern = "*.jams$", full.names = TRUE, recursive = recursive)
 
     if (length(fljams) < 1){
@@ -17,13 +17,6 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     if (!(dir.exists(jamstempfilespath))){
         flog.info("Creating directory to hold raw data.")
         dir.create(jamstempfilespath, showWarnings = FALSE, recursive = FALSE)
-    }
-
-    #If not loading from scratch, check for existing data to append to.
-    if (loadfromscratch != TRUE){
-        if (is.null(list.data)){
-            stop("If you want to append data to an existing project, you must supply a list.data object to append to.  If you want to load everything from scratch, then set loadfromscratch = TRUE.")
-        }
     }
 
     #Make a dataframe with jamsfiles whereabouts
@@ -72,23 +65,26 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     on <- gsub("*.tsv$", "", fl)
     flwp <- file.path(jamstempfilespath, fl)
 
-    if (is.null(list.data)){
-        list.data <- list()
-    }
-
     flog.info("Please be patient. Depending on how much data you have this might take a while.")
 
     lastpos <- length(names(list.data))
 
     flog.info(paste("There are", length(fl), "objects to load."))
-    for (i in 1:length(fl)){
-        flog.info(paste("Loading ", fl[i], ", file ", i, "/", length(fl), "...", sep = ""))
-        #list.data[[i+lastpos]] <- read.table(file = flwp[i], sep = "\t", header = TRUE, quote = "", skipNul = FALSE, fill = TRUE, stringsAsFactors = FALSE)
-        list.data[[i+lastpos]] <- fread(data.table = FALSE, file = flwp[i], sep = "\t", header = TRUE, quote = "", fill = TRUE, integer64 = "numeric", logical01 = FALSE, stringsAsFactors = FALSE, nThread = threads)
-        names(list.data)[i + lastpos] <- on[i]
+
+    loadtsv <- function(tsvfn = NULL){
+        jamsdf <- fread(data.table = FALSE, file = tsvfn, sep = "\t", header = TRUE, quote = "", fill = TRUE, integer64 = "numeric", logical01 = FALSE, stringsAsFactors = FALSE, nThread = 1)
+
+        return(jamsdf)
     }
 
+    appropriatenumcores <- max(1 , (min((opt$threads - 2), length(flwp))))
+    flog.info(paste("Using", appropriatenumcores, "CPUs to load objects."))
+    list.data <- mclapply(1:length(flwp), function (x) { loadtsv(tsvfn = flwp[x]) }, mc.cores = appropriatenumcores)
+
+    names(list.data) <- on
     unlink(jamstempfilespath, recursive = TRUE)
+
+    flog.info("Finished loading all objects.")
 
     return(list.data)
 }

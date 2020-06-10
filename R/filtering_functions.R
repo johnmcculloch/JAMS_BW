@@ -12,7 +12,7 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
     }
 
     #Get appropriate object with which to work
-    if (as.character(class(ExpObj)) == "SummarizedExperiment"){
+    if (as.character(class(ExpObj)[1]) == "SummarizedExperiment"){
         rawcts <- as.matrix(assays(ExpObj)$BaseCounts)
         if (PPM_normalize_to_bases_sequenced) {
             totbases <- metadata(ExpObj)$TotalBasesSequenced
@@ -96,7 +96,7 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
     }
 
     #Allow for filtering by genomecompleteness or percent from contigs, if SummarizedExperiment
-    if (as.character(class(ExpObj)) == "SummarizedExperiment"){
+    if (as.character(class(ExpObj)[1]) == "SummarizedExperiment"){
 
         if (all(c(("PctFromCtgs" %in% names(assays(ExpObj))), (!is.null(PctFromCtgscutoff))))){
             if(length(PctFromCtgscutoff) != 2){
@@ -164,7 +164,7 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
 ExpObjVetting <- function(ExpObj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, glomby = NULL, variables_to_fix = NULL, class_to_ignore = NULL){
 
         #Get appropriate object to work with
-        if (as.character(class(ExpObj)) != "SummarizedExperiment"){
+        if (as.character(class(ExpObj)[1]) != "SummarizedExperiment"){
             stop("This function can only take a SummarizedExperiment object as input. For using a metagenomeSeq object (deprecated), please use plot_relabund_heatmap_mgseq.")
         }
         obj <- ExpObj

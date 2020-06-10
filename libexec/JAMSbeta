@@ -367,7 +367,7 @@ if (!(exists("list.data"))) {
         flog.info("Crikey! There are over 200 samples to load. Go grab a coffee, this will take some time.")
     }
     list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = Samples_want, threads = opt$threads)
-
+    gc()
     #IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 }
 
@@ -543,7 +543,7 @@ if (!exists("expvec")){
 }
 
 #Get rid of list.data to save RAM
-list.data <- NULL
+rm(list.data)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 ###################
