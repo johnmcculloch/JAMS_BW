@@ -156,7 +156,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     genomecompletenessdf$SDGenomeComp <- rowSds(genomecompletenessmat)
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
                     genomecompletenessdfmedians <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
-                    matstatsbank <- left_join(matstatsbank, genomecompletenessdfmedians)
+                    matstatsbank <- left_join(matstatsbank, genomecompletenessdfmedians, by = "Taxa")
                     rownames(matstatsbank) <- matstatsbank$Taxa
                     matstatsbank$Taxa <- NULL
                 }
@@ -185,11 +185,6 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     matstats <- matstats[rownames(countmat2), ]
                 }
 
-                if (scaled == TRUE) {
-                    countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "from_log2")
-                    countmat2 <- t(apply(countmat2, 1, scale))
-                }
-
                 #Create a list of matrices each of maximum 50 rows
                 rowlist <- split(1:topcats, ceiling(seq_along(1:topcats) / max_rows_in_heatmap))
                 matlist <- lapply(1:length(rowlist), function(x){countmat2[rowlist[[x]], ]})
@@ -216,7 +211,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     genomecompletenessdf$SDGenomeComp <- rowSds(genomecompletenessmat)
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
                     genomecompletenessdfmedians <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
-                    matstatsbank <- left_join(matstatsbank, genomecompletenessdfmedians)
+                    matstatsbank <- left_join(matstatsbank, genomecompletenessdfmedians, by = "Taxa")
                     rownames(matstatsbank) <- matstatsbank$Taxa
                     matstatsbank$Taxa <- NULL
                 }
@@ -229,7 +224,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     #Transform to log2 space
                     countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
 
-                    if (any(!(c(cluster_samples_per_heatmap, cluster_features_per_heatmap)))){
+                    if (all(c(cluster_rows, (any(!(c(cluster_samples_per_heatmap, cluster_features_per_heatmap))))))){
                         flog.info("Clustering samples and features using entire matrix to obtain sample and feature order for all heatmaps.")
                         #create a heatmap from the entire count matrix for getting column order.
                         htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"), use_raster = TRUE)
@@ -240,14 +235,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         fullheatmap_row_dend <- row_dend(htfull)
                     }
 
-                    if (!cluster_features_per_heatmap){
+                    if (all(c(cluster_rows, (!cluster_features_per_heatmap)))){
                         countmat2 <- countmat2[fullheatmap_row_order, ]
                         matstats <- matstats[rownames(countmat2), ]
-                    }
-
-                    if (scaled == TRUE) {
-                        #countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "from_log2")
-                        countmat2 <- t(apply(countmat2, 1, scale))
                     }
 
                     #Create a list of matrices each of maximum 50 rows
@@ -318,7 +308,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     #Transform to log2 space
                     countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
 
-                    if (any(!(c(cluster_samples_per_heatmap, cluster_features_per_heatmap)))){
+                    if (all(c(cluster_rows, (any(!(c(cluster_samples_per_heatmap, cluster_features_per_heatmap))))))){
                         flog.info("Clustering samples and features using entire matrix to obtain sample and feature order for all heatmaps.")
                         #create a heatmap from the entire count matrix for getting column order.
                         htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"), use_raster = TRUE)
@@ -329,14 +319,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         fullheatmap_row_dend <- row_dend(htfull)
                     }
 
-                    if (!cluster_features_per_heatmap){
+                    if (all(c(cluster_rows, (!cluster_features_per_heatmap)))) {
                         countmat2 <- countmat2[fullheatmap_row_order, ]
                         matstats <- matstats[rownames(countmat2), ]
-                    }
-
-                    if (scaled == TRUE) {
-                        countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "from_log2")
-                        countmat2 <- t(apply(countmat2, 1, scale))
                     }
 
                     #If adjustpval is set to auto, then find out which is best and re-set it to either TRUE or FALSE
@@ -459,7 +444,6 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     mhm <- length(matlist)
                 }
 
-
                 for (hm in 1:mhm){
                     #Regenerate the current matrix being plot from matrix list
                     mathm <- matlist[[hm]]
@@ -509,11 +493,17 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     #Make colour scale for relabund heatmap
                     if (hmasPA == FALSE) {
                         if (scaled == TRUE) {
+                            #Scale the matrix
+                            sampordernames <- colnames(mathm)
+                            mathm <- t(apply(mathm, 1, scale))
+                            colnames(mathm) <- sampordernames
+
                             #This is the colour spectrum we are aiming to span
-                            PctHmColours <- c("blue4", "khaki", "red")
+                            PctHmColours <- c("#1307FC", "#FFFFFF", "#F70C00")
                             #Let us see what the distribution looks like to fit it to the colour spectrum
                             #Transform to PPM
-                            RelabundBreakPts <- c(min(mathm), ((min(mathm) + max(mathm)) / 2), max(mathm))
+                            #RelabundBreakPts <- c(min(mathm), ((min(mathm) + max(mathm)) / 2), max(mathm))
+                            RelabundBreakPts <- c(min(mathm), 0, max(mathm))
                             relabundscalename <- "scaling"
                             RelabundBreakPtsLbls <- round(RelabundBreakPts, 2)
                             HMrelabundBreaks <- RelabundBreakPtsLbls
@@ -581,7 +571,6 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         secondaryheatmap <- FALSE
                     }
 
-
                     if (secondaryheatmap == "GenomeCompleteness") {
                         if ("GenomeCompleteness" %in% names(assays(currobj))){
                             gchmdf <- genomecompletenessdf[rownames(mathm), colnames(mathm)]
@@ -631,7 +620,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
 
                     #This is not the most eficient way of doing it, but will keep it like this for now as it is working.
                     if (all(c(("pval" %in% colnames(stathm)), showpval))){
-                        statannot <- as.character(signif(stathm[, sigmeas], 2))
+                        statannotnonadj <- as.character(signif(stathm[, "padj_none"], 2))
+                        statannotadj <- as.character(signif(stathm[, "padj_fdr"], 2))
+                        statannot <- paste(statannotnonadj, statannotadj, sep = " | ")
+
                         #If showing Log2FC then do so
                         if (all(c(("l2fc" %in% colnames(stathm)), (showl2fc %in% c("text", "plot"))))) {
                             if (showl2fc == "text"){
@@ -686,7 +678,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
 
                     } else {
 
-                        if (cluster_samples_per_heatmap == TRUE){
+                        if (any(cluster_samples_per_heatmap, !cluster_rows)){
 
                             ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
 
@@ -741,7 +733,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     #}
                     if (all(c(("pval" %in% colnames(stathm)), showpval))) {
                         decorate_annotation("Pval", {
-                            grid.text(sigmeas, y = unit(1, "npc") + unit(5, "mm"), just = "bottom", gp = gpar(fontsize = 5, col = "black"))
+                            grid.text("p | FDR p", y = unit(1, "npc") + unit(5, "mm"), just = "bottom", gp = gpar(fontsize = 5, col = "black"))
                         })
                     }
                     if (all(c(("l2fc" %in% colnames(stathm)), (showl2fc %in% c("text", "plot", TRUE))))) {
