@@ -1,9 +1,9 @@
-#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, addtit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...)
+#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...)
 #'
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, mgSeqnorm = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, addtit = NULL, plot3D = FALSE, theta = 130, phi = 60, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
 
     #Remove samples bearing categories within class_to_ignore
     valid_vars <- c(colourby, shapeby, sizeby, subsetby)[which(!is.na(c(colourby, shapeby, sizeby, subsetby)))]
@@ -119,13 +119,13 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             } else {
                 n_neighbors <- 20
             }
+
             tumap_out <- tumap(countmat, n_components = 2, n_neighbors = n_neighbors, verbose = FALSE, n_threads = threads)
             dford <- as.data.frame(tumap_out)
             rownames(dford) <- rownames(currpt)
-            colnames(dford)[1:2] <- c("PC1", "PC2")
+            colnames(dford) <- c("PC1", "PC2")
             xl <- "tUMAP 1"
             yl <- "tUMAP 2"
-            #zl <- "tSNE 3"
 
         } else {
             #Not tSNE or tUMAP, so use PCA
@@ -150,16 +150,12 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         dford$Size <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == sizeby)]
         dford$Shape <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == shapeby)]
         dford$Pair <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == pairby)]
+        centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford, mean)
+        colnames(centroids)[c(2, 3)] <- c("meanPC1", "meanPC2")
+        centroiddf <- left_join(dford, centroids, by = "Colours")
+        rownames(centroids) <- centroids$Colours
 
-        #centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford, mean)
-        #colnames(centroids)[c(2,3)] <- c("meanx", "meany")
-        #dford <- left_join(dford, centroids)
-
-        if (plot3D == TRUE) {
-            aesthetic <- aes(x=PC1, y=PC2, z=PC3)
-        } else {
-            aesthetic <- aes(x=PC1, y=PC2)
-        }
+        aesthetic <- aes(x = PC1, y = PC2)
         p <- ggplot(dford, aesthetic)
 
         if (!is.null(colourby)) {
@@ -203,10 +199,6 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             p <- p + stat_ellipse(show.legend = TRUE, type = "norm")
         }
 
-        #if (plotcentroids == TRUE){
-        #    p <- p + geom_point(data = centroids, size = 5) + geom_segment(aes(x=dford$meanx, y=dford$meany, xend=dford$PC1, yend=dford$PC2))
-        #}
-
         if (!(is.null(addtit))){
             pcatit <- paste(c(pcatit, addtit), collapse = "\n")
         }
@@ -220,9 +212,6 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             pcatit <- paste(c(pcatit, distmessage), collapse = "\n")
         }
 
-        p <- p + ggtitle(pcatit)
-        p <- p + labs(colour = colourby)
-
         if (!(is.null(shapeby))){
             p <- p + labs(shape = shapeby)
         }
@@ -232,20 +221,30 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
 
         p <- p + theme(plot.title = element_text(size = 12), plot.subtitle = element_text(size = 10))
-        if (plot3D == TRUE) {
-            p <- p + axes_3D(theta = theta, phi = phi) + stat_3D()
-            p <- p + labs_3D(labs = c(xl,yl,zl), hjust = c(-0.25, 1,0.25)) + labs(x = "", y = "")
-            p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.ticks = element_blank(), axis.text.x = element_blank(), axis.text.y = element_blank())
-        } else {
-            p <- p + geom_point(size = dotsize) + labs(x = xl, y = yl)
-            if (!(is.null(forceaspectratio))){
-                p <- p + theme(aspect.ratio = (1 / forceaspectratio))
-            }
+        p <- p + geom_point(size = dotsize) + labs(x = xl, y = yl)
+        if (!(is.null(forceaspectratio))){
+            p <- p + theme(aspect.ratio = (1 / forceaspectratio))
         }
+
+        if (plotcentroids){
+            p <- p + geom_segment(aes(x = meanPC1, y = meanPC2, xend = PC1, yend = PC2, colour = Colours), data = centroiddf)
+            p <- p + geom_point(aes(x = meanPC1, y = meanPC2, colour = Colours), data = centroids, size = dotsize)
+        }
+
+        p <- p + ggtitle(pcatit)
+        p <- p + labs(colour = colourby)
 
         if (grid == FALSE ){
             p <- p + theme(panel.background = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(colour = "black", fill = NA, size=1))
         }
+
+        if (all(c(plotcentroids, show_centroid_distances))){
+            centroiddist <- as.matrix(dist(centroids[ , c("meanPC1", "meanPC2")], method = "euclidean"))
+            centroiddist <- round(centroiddist, 3)
+            centroiddistshow <- ggtexttable(centroiddist, theme = ttheme(base_style = "classic", base_size = 8))
+            p <- ggarrange(p, centroiddistshow, ncol = 1, nrow = 2, heights = c(3, 1), labels = list("", "Euclidean distance between centroids"), font.label = list(size = 10, face = "italic"), vjust = 1, hjust = -1)
+        }
+
         gvec[[sp]] <- p
     }
 

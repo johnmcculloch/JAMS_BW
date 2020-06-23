@@ -4,7 +4,11 @@
 \alias{compute_signature_numbases}
 \title{compute_signature_numbases}
 \usage{
-compute_signature_numbases(featuredata = NULL, columnname = NULL)
+compute_signature_numbases(
+  featuredata = NULL,
+  columnname = NULL,
+  blastanalyses = c("abricate", "plasmidfinder", "vfdb")
+)
 }
 \description{
 JAMSalpha function

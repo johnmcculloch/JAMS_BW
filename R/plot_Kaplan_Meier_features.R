@@ -1,9 +1,9 @@
-#' plot_Kaplan_Meier_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...)
+#' plot_Kaplan_Meier_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, include_risk_table = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...){
+plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, include_risk_table = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...){
 
     flog.warn("This function is experimental in JAMS. Use at your own risk.")
     require(survival)
@@ -145,6 +145,8 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
                 wantedfeatures <- aggregatefeatures_label
             }
 
+            wantedfeatures <- wantedfeatures[wantedfeatures %in% rownames(countmat)]
+
             matrixSamples <- colnames(countmat)
             matrixRows <- rownames(countmat)
 
@@ -163,14 +165,16 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
                     for (bn in 1:length(bin_names)){
                         Breakinfo[bn] <- paste(bin_names[bn], paste(paste(PPMbreaks[bn], "PPM"), paste(PPMbreaks[(bn + 1)], "PPM"), sep = " to "), sep = " = ")
                     }
+                    densdat <- data.frame(PPM = wantedfeatures_PPM_per_Sample[ , feat])
+                    densplot <- ggplot(densdat, aes(x=PPM)) + geom_density()
                 }
                 discretelist <- list()
                 discretelist$TaxonPPMcats <- TaxonPPMcats
                 discretelist$Breakinfo <- Breakinfo
+                discretelist$densplot <- densplot
 
                 return(discretelist)
             }
-
             #Make a list of Break infos
             wantedfeatures_Breakinfos <- as.data.frame(t(countmat[wantedfeatures, ]))
             wantedfeatures_Breakinfos_list <- lapply(colnames(wantedfeatures_Breakinfos), function (x) { continuous2discrete(wantedfeatures_PPM_per_Sample = wantedfeatures_Breakinfos, feat = x, bin_names = bin_names)[]$Breakinfo } )
@@ -279,7 +283,7 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
             overalladjp <- paste0("padj_fdr=", signif(matstats[feat, "padj_fdr"], digits = 3))
             stattit <- paste(overallpmeth, overallp, overalladjp, ffeatmsg, sep = " | ")
 
-            p <- ggsurvplot(fit1, data = curr_pheno_survival, pval = overallp, conf.int = conf.int, ggtheme = theme_minimal(), legend = "right", legend.title = feat, legend.labs = breakinfo, risk.table = FALSE)
+            p <- ggsurvplot(fit1, data = curr_pheno_survival, pval = overallp, conf.int = conf.int, ggtheme = theme_minimal(), legend = "right", legend.title = feat, legend.labs = breakinfo, risk.table = include_risk_table, tables.height = 0.2, tables.theme = theme_cleantable(),)
 
             #Add description to feature, if applicable
             if (analysis != "LKT"){

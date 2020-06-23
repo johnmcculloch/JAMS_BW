@@ -126,7 +126,7 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
     rownames(featurenumbaseslist) <- featurenumbaseslist$Accession
 
     #Harvest interpro functions, if applicable
-    if(opt$skipipro != TRUE){
+    if (opt$skipipro != TRUE){
         opt <- fix_interproscanoutput(opt = opt)
     }
     interpronumbaseslist <- NULL
@@ -193,8 +193,13 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
 #' JAMSalpha function
 #' @export
 
-compute_signature_numbases <- function (featuredata = NULL, columnname = NULL){
-    numbasesdf <- tidyr::separate_rows(featuredata, columnname, sep = fixed("\\|")) %>% dplyr::group_by(get(columnname),LKT) %>% dplyr::summarise(NumBases = sum(as.integer(NumBases)))
+compute_signature_numbases <- function (featuredata = NULL, columnname = NULL, blastanalyses = c("abricate", "plasmidfinder", "vfdb")){
+
+    if (columnname %in% blastanalyses){
+        numbasesdf <- featuredata %>% dplyr::group_by(get(all_of(columnname)), LKT) %>% dplyr::summarise(NumBases = sum(as.integer(NumBases)))
+    } else {
+        numbasesdf <- tidyr::separate_rows(featuredata, all_of(columnname), sep = fixed("\\|")) %>% dplyr::group_by(get(columnname), LKT) %>% dplyr::summarise(NumBases = sum(as.integer(NumBases)))
+    }
     colnames(numbasesdf) <- c("Accession", "LKT", "NumBases")
     numbasesdf <- numbasesdf[ , c("Accession", "LKT", "NumBases")]
     numbasesdf <- numbasesdf %>% dplyr::arrange(-NumBases) %>% tidyr::spread(LKT,NumBases)
@@ -215,14 +220,14 @@ compute_signature_numbases <- function (featuredata = NULL, columnname = NULL){
 }
 
 
-#' fix_interproscanoutput
+#' fix_interproscanoutput(opt = NULL, check_ipro_jobs_status = TRUE)
 #'
 #' JAMSalpha function
 #' @export
 
-fix_interproscanoutput <- function(opt = NULL){
+fix_interproscanoutput <- function(opt = NULL, check_ipro_jobs_status = TRUE){
 
-    if ("iprodir" %in% names(opt)){
+    if (all(c(check_ipro_jobs_status, ("iprodir" %in% names(opt))))){
         #Get interprojob
         opt$iprojob <- system2('cat', args=file.path(opt$iprodir, "ipro.job"), stdout = TRUE, stderr = FALSE)
         #See if job finished
@@ -264,7 +269,7 @@ fix_interproscanoutput <- function(opt = NULL){
 
         flog.info("Harvesting and integrating Interproscan data.")
 
-        interprotsvs<-file.path(opt$iprodir, list.files(path=opt$iprodir, pattern=".tsv"))
+        interprotsvs <- file.path(opt$iprodir, list.files(path = opt$iprodir, pattern=".tsv"))
         #load tsvs into a single object in memory
         readipro<-function(x){
             read.table(file=x, sep="\t", header=FALSE, quote="", skipNul=FALSE, fill=TRUE, colClasses = "character", col.names=c("Feature","MD5","AALength","Analysis","Accession","Description","Start","Stop","Score","Status","Date","IproAcc","IproDesc","GOterms","Pathways"))

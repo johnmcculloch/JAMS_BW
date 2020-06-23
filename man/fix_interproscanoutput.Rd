@@ -2,9 +2,9 @@
 % Please edit documentation in R/harvesting_functions.R
 \name{fix_interproscanoutput}
 \alias{fix_interproscanoutput}
-\title{fix_interproscanoutput}
+\title{fix_interproscanoutput(opt = NULL, check_ipro_jobs_status = TRUE)}
 \usage{
-fix_interproscanoutput(opt = NULL)
+fix_interproscanoutput(opt = NULL, check_ipro_jobs_status = TRUE)
 }
 \description{
 JAMSalpha function
