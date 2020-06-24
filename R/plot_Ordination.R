@@ -5,6 +5,8 @@
 
 plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
 
+    set.seed(4140)
+
     #Remove samples bearing categories within class_to_ignore
     valid_vars <- c(colourby, shapeby, sizeby, subsetby)[which(!is.na(c(colourby, shapeby, sizeby, subsetby)))]
 
@@ -102,7 +104,6 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
                 perplx <- round(nrow(currpt) * 0.3, 0)
             }
 
-            set.seed(4140)
             tsne_out <- Rtsne(countmat, dims = 3, initial_dims = 500, perplexity = perplx, theta = 0.5, check_duplicates = FALSE, pca = TRUE, max_iter = 1000)
             dford <- as.data.frame(tsne_out$Y)
             rownames(dford) <- rownames(currpt)
@@ -113,7 +114,6 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         } else if (algorithm == "tUMAP"){
 
-            set.seed(4140)
             if (nrow(countmat) < 20){
                 n_neighbors <- (nrow(countmat) - 1)
             } else {
