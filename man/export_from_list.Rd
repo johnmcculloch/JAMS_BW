@@ -4,7 +4,12 @@
 \alias{export_from_list}
 \title{export_from_list}
 \usage{
-export_from_list(objlist = opt, objnames = NULL, destination = NULL)
+export_from_list(
+  objlist = opt,
+  objnames = NULL,
+  destination = NULL,
+  asRDS = TRUE
+)
 }
 \description{
 JAMSalpha function

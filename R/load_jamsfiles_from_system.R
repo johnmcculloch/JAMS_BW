@@ -61,23 +61,35 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         }
     }
 
-    fl <- list.files(path = jamstempfilespath, pattern = "*.tsv$")
+    fl <- list.files(path = jamstempfilespath, pattern = "\\.tsv$|\\.rds$")
     on <- gsub("*.tsv$", "", fl)
+    on <- gsub("*.rds$", "", on)
+    if (length(which(duplicated(on) == TRUE)) > 0){
+        stop("There are duplicated object names. Were different versions of the same jams file loaded? Check files and try again. Aborting now.")
+        q()
+    }
     flwp <- file.path(jamstempfilespath, fl)
 
     flog.info("Please be patient. Depending on how much data you have this might take a while.")
 
     flog.info(paste("There are", length(fl), "objects to load."))
 
-    loadtsv <- function(tsvfn = NULL){
-        jamsdf <- fread(data.table = FALSE, file = tsvfn, sep = "\t", header = TRUE, quote = "", fill = TRUE, integer64 = "numeric", logical01 = FALSE, stringsAsFactors = FALSE, nThread = 1)
+    loadobj <- function(objfn = NULL){
+        #decide whether it is a TSV or RDS file and load appropriately.
+        if ((length(grep("\\.rds$", objfn)) > 0)){
+            #file is rds
+            jamsdf <- readRDS(objfn)
+        } else {
+            #assume tsv
+            jamsdf <- fread(data.table = FALSE, file = objfn, sep = "\t", header = TRUE, quote = "", fill = FALSE, integer64 = "numeric", logical01 = FALSE, stringsAsFactors = FALSE, nThread = 1)
+        }
 
         return(jamsdf)
     }
 
     appropriatenumcores <- max(1 , (min((opt$threads - 2), length(flwp))))
     flog.info(paste("Using", appropriatenumcores, "CPUs to load objects."))
-    list.data <- mclapply(1:length(flwp), function (x) { loadtsv(tsvfn = flwp[x]) }, mc.cores = appropriatenumcores)
+    list.data <- mclapply(1:length(flwp), function (x) { loadobj(objfn = flwp[x]) }, mc.cores = appropriatenumcores)
 
     names(list.data) <- on
     unlink(jamstempfilespath, recursive = TRUE)
