@@ -336,6 +336,14 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
             featcts$Accession[which(featcts$Accession == "none")] <- paste(analysis, "none", sep = "_")
             rownames(featcts) <- featcts$Accession
             featcts$Accession <- NULL
+
+            if (length(emptySamples) > 0){
+                complementarycts <- matrix(ncol = length(emptySamples), nrow = nrow(featcts), data = 0)
+                complementarycts <- as.data.frame(complementarycts, stringsAsFactors = FALSE)
+                colnames(complementarycts) <- emptySamples
+                rownames(complementarycts) <- rownames(featcts)
+                featcts <- cbind(featcts, complementarycts)
+            }
             featcts <- featcts[featureorder, sampleorder]
             featcts <- as.matrix(featcts)
         } else {
