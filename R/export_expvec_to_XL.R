@@ -1,9 +1,9 @@
-#' export_expvec_to_XL(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, asPA = FALSE, PPM_normalize_to_bases_sequenced = FALSE, includemetadata = TRUE)
+#' export_expvec_to_XL(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, includemetadata = TRUE)
 #'
 #' Exports counts and featuredata in a SummarizedExperiment vector into a single spreadsheet.
 #' @export
 
-export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, includemetadata = TRUE){
+export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, includemetadata = TRUE){
 
     if (!(is.null(usefulexp))){
         usefulexp <- names(expvec)[(names(expvec) %in% usefulexp)]
@@ -24,16 +24,23 @@ export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL
         cvn <- cvn + 1
     }
 
-    if (asPPM == TRUE){
+    if (any(c((asPPM == TRUE), !is.null(applyfilters), !is.null(featcutoff), !is.null(GenomeCompletenessCutoff), !is.null(PctFromCtgscutoff)))){
+        flog.info("Counts will be exported as PPM")
         countunits <- "PPM"
     } else {
+        flog.info("Counts will be exported as raw number of bases")
         countunits <- "NumBases"
     }
 
     #Get counts
     for (x in 1:length(expvec2)){
-        flog.info(paste("Exporting", names(expvec2)[x]))
-        exp_filt <- filter_experiment(ExpObj = expvec2[[x]], asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced)
+        analysis <- metadata(expvec2[[x]])$analysis
+        flog.info(paste("Exporting", analysis))
+
+        presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
+
+        exp_filt <- filter_experiment(ExpObj = expvec2[[analysis]], featcutoff = presetlist$featcutoff, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
+
         cts <- assays(exp_filt)$BaseCounts
         ctsname <- paste(names(expvec2)[x], countunits, sep="_")
         countvec[[cvn]] <- as.data.frame(cts)

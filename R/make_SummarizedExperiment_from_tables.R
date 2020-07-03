@@ -37,12 +37,16 @@ make_SummarizedExperiment_from_tables <- function(pheno = NULL, pheno_fn= NULL, 
     md_list$cts <- md_list$cts[order(rowSums(md_list$cts), decreasing = TRUE), ]
     featureorder <- rownames(md_list$cts)
 
-    print(featureorder[1:100])
-
     #Fix feat table
-    #Assume first column are feature names
-    colnames(md_list$ft)[1] <- "Accession"
-    rownames(md_list$ft) <- md_list$ft$Accession
+    if (!("LKT" %in% colnames(md_list$ft))) {
+        #Assume first column are feature names
+        colnames(md_list$ft)[1] <- "Accession"
+        rownames(md_list$ft) <- md_list$ft$Accession
+    } else {
+        #Must have an LKT in it because it is taxonomic
+        rownames(md_list$ft) <- md_list$ft$LKT
+    }
+
     #md_list$ft$Accession <- NULL
     md_list$ft <- md_list$ft[(rownames(md_list$ft) %in% featureorder), ]
     sampleorder <- rownames(md_list$pheno)
