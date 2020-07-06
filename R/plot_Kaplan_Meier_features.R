@@ -1,9 +1,9 @@
-#' plot_Kaplan_Meier_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, include_risk_table = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...)
+#' plot_Kaplan_Meier_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, multi_linetype = FALSE, palette = "lancet", include_risk_table = FALSE, include_density_plot = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, include_risk_table = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...){
+plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, multi_linetype = FALSE, palette = "lancet", include_risk_table = FALSE, include_density_plot = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...){
 
     flog.warn("This function is experimental in JAMS. Use at your own risk.")
     require(survival)
@@ -180,6 +180,10 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
             wantedfeatures_Breakinfos_list <- lapply(colnames(wantedfeatures_Breakinfos), function (x) { continuous2discrete(wantedfeatures_PPM_per_Sample = wantedfeatures_Breakinfos, feat = x, bin_names = bin_names)[]$Breakinfo } )
             names(wantedfeatures_Breakinfos_list) <- colnames(wantedfeatures_Breakinfos)
 
+            #Make a list of density plots
+            wantedfeatures_densplot_list <- lapply(colnames(wantedfeatures_Breakinfos), function (x) { continuous2discrete(wantedfeatures_PPM_per_Sample = wantedfeatures_Breakinfos, feat = x, bin_names = bin_names)[]$densplot } )
+            names(wantedfeatures_densplot_list) <- colnames(wantedfeatures_Breakinfos)
+
             #Bin PPM into discrete
             wantedfeatures_PPM_per_Sample <- as.data.frame(t(countmat[wantedfeatures, ]))
             for (colm in colnames(wantedfeatures_PPM_per_Sample)){
@@ -277,13 +281,21 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
 
             fit1 <- fitlist[[feat]]
             breakinfo <- wantedfeatures_Breakinfos_list[[feat]]
+            densinfo <- wantedfeatures_densplot_list[[feat]]
+            densinfo <- densinfo + ggtitle(feat)
             #Build plot title
             overallpmeth <- matstats[feat, "Method"]
             overallp <- paste0("pval=", signif(matstats[feat, "pval"], digits = 3))
             overalladjp <- paste0("padj_fdr=", signif(matstats[feat, "padj_fdr"], digits = 3))
             stattit <- paste(overallpmeth, overallp, overalladjp, ffeatmsg, sep = " | ")
 
-            p <- ggsurvplot(fit1, data = curr_pheno_survival, pval = overallp, conf.int = conf.int, ggtheme = theme_minimal(), legend = "right", legend.title = feat, legend.labs = breakinfo, risk.table = include_risk_table, tables.height = 0.2, tables.theme = theme_cleantable(),)
+            if (multi_linetype){
+                linetype <- "strata"
+            } else {
+                linetype <- NULL
+            }
+
+            p <- ggsurvplot(fit1, data = curr_pheno_survival, pval = overallp, conf.int = conf.int, ggtheme = theme_minimal(), legend = "right", legend.title = feat, legend.labs = breakinfo, risk.table = include_risk_table, tables.height = 0.2, tables.theme = theme_cleantable(), linetype = linetype, palette = palette)
 
             #Add description to feature, if applicable
             if (analysis != "LKT"){
@@ -305,6 +317,10 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
             if (!return_plots){
                 #print plot on the fly
                 print(p)
+            }
+
+            if (include_density_plot == TRUE){
+                print(densinfo)
             }
 
             gvec[[plotcount]] <- p
