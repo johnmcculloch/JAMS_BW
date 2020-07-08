@@ -166,12 +166,16 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
                         Breakinfo[bn] <- paste(bin_names[bn], paste(paste(PPMbreaks[bn], "PPM"), paste(PPMbreaks[(bn + 1)], "PPM"), sep = " to "), sep = " = ")
                     }
                     densdat <- data.frame(PPM = wantedfeatures_PPM_per_Sample[ , feat])
-                    densplot <- ggplot(densdat, aes(x=PPM)) + geom_density()
+                    if (include_density_plot){
+                        densplot <- ggplot(densdat, aes(x=PPM)) + geom_density()
+                    } else {
+                        densplot <- NULL
+                    }
                 }
                 discretelist <- list()
                 discretelist$TaxonPPMcats <- TaxonPPMcats
                 discretelist$Breakinfo <- Breakinfo
-                discretelist$densplot <- densplot
+                #discretelist$densplot <- densplot
 
                 return(discretelist)
             }
@@ -181,8 +185,10 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
             names(wantedfeatures_Breakinfos_list) <- colnames(wantedfeatures_Breakinfos)
 
             #Make a list of density plots
-            wantedfeatures_densplot_list <- lapply(colnames(wantedfeatures_Breakinfos), function (x) { continuous2discrete(wantedfeatures_PPM_per_Sample = wantedfeatures_Breakinfos, feat = x, bin_names = bin_names)[]$densplot } )
-            names(wantedfeatures_densplot_list) <- colnames(wantedfeatures_Breakinfos)
+            if (include_density_plot){
+                wantedfeatures_densplot_list <- lapply(colnames(wantedfeatures_Breakinfos), function (x) { continuous2discrete(wantedfeatures_PPM_per_Sample = wantedfeatures_Breakinfos, feat = x, bin_names = bin_names)[]$densplot } )
+                names(wantedfeatures_densplot_list) <- colnames(wantedfeatures_Breakinfos)
+            }
 
             #Bin PPM into discrete
             wantedfeatures_PPM_per_Sample <- as.data.frame(t(countmat[wantedfeatures, ]))
@@ -281,8 +287,10 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
 
             fit1 <- fitlist[[feat]]
             breakinfo <- wantedfeatures_Breakinfos_list[[feat]]
-            densinfo <- wantedfeatures_densplot_list[[feat]]
-            densinfo <- densinfo + ggtitle(feat)
+            if (include_density_plot){
+                #densinfo <- wantedfeatures_densplot_list[[feat]]
+                #densinfo <- densinfo + ggtitle(feat)
+            }
             #Build plot title
             overallpmeth <- matstats[feat, "Method"]
             overallp <- paste0("pval=", signif(matstats[feat, "pval"], digits = 3))

@@ -137,7 +137,8 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
         metadata <- list()
         metadata[[1]] <- phenotable
         metadata[[2]] <- phenolabels
-        names(metadata) <- c("phenotable", "phenolabels")
+        metadata[[3]] <- ctable
+        names(metadata) <- c("phenotable", "phenolabels", "ctable")[!is.null(c(phenotable, phenolabels, ctable))]
 
         return(metadata)
     }

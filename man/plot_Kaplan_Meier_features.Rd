@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_Kaplan_Meier_features.R
 \name{plot_Kaplan_Meier_features}
 \alias{plot_Kaplan_Meier_features}
-\title{plot_Kaplan_Meier_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, include_risk_table = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...)}
+\title{plot_Kaplan_Meier_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, multi_linetype = FALSE, palette = "lancet", include_risk_table = FALSE, include_density_plot = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...)}
 \usage{
 plot_Kaplan_Meier_features(
   ExpObj = NULL,
@@ -16,7 +16,10 @@ plot_Kaplan_Meier_features(
   survivaltime = NULL,
   Samples_to_censor = NULL,
   conf.int = FALSE,
+  multi_linetype = FALSE,
+  palette = "lancet",
   include_risk_table = FALSE,
+  include_density_plot = FALSE,
   facetby = NULL,
   wrap_facet = FALSE,
   applyfilters = NULL,
