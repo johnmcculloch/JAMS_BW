@@ -88,6 +88,34 @@ convert_matrix_log2 <- function(mat = NULL, transformation = NULL){
 }
 
 
+#' convert_matrix_PA(mat = NULL, threshPA = 0)
+#'
+#' Wrapper for transforming a matrix to and from log2 formats
+#' @export
+
+convert_matrix_PA <- function(mat = NULL, threshPA = 0){
+
+    if (class(mat)[1] != "matrix"){
+        stop("Object to transform must be a matrix.")
+    }
+
+    PAvec <- NULL
+    for (rownum in 1:nrow(mat)){
+        PAvec <- mat[rownum, ]
+        if (threshPA != 0){
+            PAvec[which(PAvec < threshPA)] <- 0
+            PAvec[which(PAvec >= threshPA)] <- 1
+        } else {
+            PAvec[which(PAvec > 0)] <- 1
+        }
+        mat[rownum, ] <- PAvec
+    }
+
+    return(mat)
+
+}
+
+
 #' detectHardwareResources()
 #' Generic function for getting number of CPUs and total memory on Biowulf or otherwise
 #' Returns a named vector with available CPUs and Memory in bytes

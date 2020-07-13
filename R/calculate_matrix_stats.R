@@ -4,7 +4,7 @@
 #'
 #' @export
 
-calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, numthreads = 1, nperm = 99){
+calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, threshPA = 0, numthreads = 1, nperm = 99){
 
     #Test for silly stuff
     if ((stattype %in% c("binary", "permanova", "anova", "PA")) && (is.null(classesvector))){
@@ -141,26 +141,50 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         matstats$Method <- rep(stattype, nrow(matstats))
 
     } else if (stattype == "PA"){
-        require(parallel)
         if (numclass == 2){
-            flog.info("Calculating p-values for presence/absence testing with Fisher s exact test.")
+            flog.info(paste("Calculating p-values for presence/absence testing with Fisher's exact test. Threshold for presence is any value >", threshPA))
         } else {
             stop("To calculate p-values for presence/absence testing, the comparison variable must have exactly two classes.")
         }
 
-        matstats <- metagenomeSeq::fitPA(obj = countmatrix, cores = numthreads, cl = classesvector)
-        matstats$adjPvalues <- NULL
-        colnames(matstats)[which(colnames(matstats) == "pvalues")] <- "pval"
+        discretenames <- sort(unique(classesvector))
+        nClass1 = sum(cl == discretenames[1])
+        nClass2 = sum(cl == discretenames[2])
+
+        getPAstats <- function(rownum = NULL, countmatrix = NULL, nClass1 = NULL, nClass2 = NULL, threshPA = threshPA){
+            PAvec <- countmatrix[rownum, ]
+            if (threshPA != 0){
+                PAvec[which(PAvec < threshPA)] <- 0
+                PAvec[which(PAvec >= threshPA)] <- 1
+            } else {
+                PAvec[which(PAvec > 0)] <- 1
+            }
+            contingencytable <- matrix(ncol = 2, nrow = 2, data = 0)
+            contingencytable[1, 1] = sum(PAvec[cl == discretenames[1]])
+            contingencytable[1, 2] = sum(PAvec[cl == discretenames[2]])
+            contingencytable[2, 1] = (nClass1 - contingencytable[1, 1])
+            contingencytable[2, 2] = (nClass2 - contingencytable[1, 2])
+            fisht <- fisher.test(contingencytable, alternative = "two.sided", conf.int = TRUE, conf.level = 0.95)
+            fishmat <- cbind(OddsRatio = fisht$estimate, OR95lwr = fisht$conf.int[1], OR95upr = fisht$conf.int[2], pval = fisht$p.value)
+            rownames(fishmat) <- rownames(countmatrix)[rownum]
+
+            return(fishmat)
+        }
+
+        comparisons <- lapply(1:nrow(countmatrix), function(x) { getPAstats(rownum = x, countmatrix = countmatrix, nClass1 = nClass1, nClass2 = nClass2, threshPA = threshPA) })
+        matstats <- do.call(rbind, comparisons)
+        matstats <- as.data.frame(matstats)
+
         #Adjust p-values
         adjlist <- lapply(p.adjust.methods, function(x){ p.adjust(matstats$pval, method = x, n = length(matstats$pval)) })
-        names(adjlist) <- paste("padj", p.adjust.methods, sep="_")
+        names(adjlist) <- paste("padj", p.adjust.methods, sep = "_")
         adjdf <- as.data.frame(adjlist)
         matstats <- cbind(matstats, adjdf)
         matstats <- matstats[order(matstats$pval, decreasing = FALSE), ]
         if (invertbinaryorder == TRUE){
-            matstats$oddsRatio <- 1 / matstats$oddsRatio
-            matstats$lower <- 1 / matstats$lower
-            matstats$upper <- 1 / matstats$upper
+            matstats$OddsRatio <- (1 / matstats$OddsRatio)
+            matstats$OR95lwr <- (1 / matstats$OR95lwr)
+            matstats$OR95upr <- (1 / matstats$OR95upr)
         }
         matstats$Method <- rep("fisher", nrow(matstats))
 
