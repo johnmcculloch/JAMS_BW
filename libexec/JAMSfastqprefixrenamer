@@ -135,7 +135,7 @@ option_list <- list(
                 action="store_true", help = str_c("Original prefixes are in Basespace format, i.e. OldPrefix_S264_R1_001.fastq.gz. (default: FALSE. Prefixes are in OldPrefix_R1.fastq format.)")),
 
     make_option(c("-m", "--move"), default = defopt$move, action="store_true",
-                help = str_c("Copy to destination rather than move. (default: FALSE. Prefixes are in OldPrefix_R1.fastq format.)")),
+                help = str_c("Move to destination rather than copy. (default: FALSE.)")),
 
     make_option(c("-c", "--checkprefixexists"), default = NULL,
                 action="store", help = str_c("Optional path to folder with banked .jams files. If prefix already exists, a warning is issued, will abort before start of renaming.")),

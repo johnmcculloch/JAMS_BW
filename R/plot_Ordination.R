@@ -225,7 +225,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         if (plotcentroids){
             p <- p + geom_segment(aes(x = meanPC1, y = meanPC2, xend = PC1, yend = PC2, colour = Colours), data = centroiddf)
             if (highlight_centroids){
-                p <- p + geom_point(aes(x = meanPC1, y = meanPC2), colour = "black", data = centroids, size = (dotsize * 3)) + geom_point(aes(x = meanPC1, y = meanPC2, colour = Colours), data = centroids, size = dotsize)
+                p <- p + geom_point(aes(x = meanPC1, y = meanPC2), colour = "black", data = centroids, size = (dotsize * 4)) + geom_point(aes(x = meanPC1, y = meanPC2, colour = Colours), data = centroids, size = (dotsize * 2))
             }
         }
 
