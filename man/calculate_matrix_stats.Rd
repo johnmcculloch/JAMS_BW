@@ -11,6 +11,7 @@ calculate_matrix_stats(
   stattype = NULL,
   classesvector = NULL,
   invertbinaryorder = FALSE,
+  threshPA = 0,
   numthreads = 1,
   nperm = 99
 )
