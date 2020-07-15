@@ -326,14 +326,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             tt <- tt[ , c(stratify_by_taxlevel, "Phylum")]
             Gram$Kingdom <- NULL
             tt <- left_join(tt, Gram, by = "Phylum")
-            tt$Gram[which(!(tt$Gram %in% c("positive", "negative")))] <- "not_sure"
-            phcol <- rainbow(length(unique(tt$Phylum)), alpha = 0.8)[rank(unique(tt$Phylum))]
-            #phcol <- colorRampPalette((brewer.pal(9, "Set1")))(length(unique(tt$Phylum)))
-            names(phcol) <- unique(tt$Phylum)
-            phcol[which(names(phcol) == "p__Unclassified")] <- "#C0C0C0"
-            phcol <- phcol[!duplicated(phcol)]
-            phcol <- c(phcol, "#000000")
-            names(phcol)[length(phcol)] <- "Remainder"
+            phycols <- setNames(as.character(tt$PhylumColour), as.character(tt$Phylum))[unique(tt$Phylum)]
+            phycols <- c(phycols, Remainder = "#000000")
         }
 
         flog.info("Plotting results...")
@@ -486,7 +480,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             if (uselog == TRUE){
                 ytit <- "Relative Abundance in PPM"
                 #p <- p + coord_trans(y = "log2", clip = "off")
-                p <- p + scale_y_continuous(trans = scales::log2_trans(), breaks = scales::trans_breaks("log2", function(x) {2^x}), labels = scales::trans_format("log2", function(x) {2^x}))
+                p <- p + scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::trans_breaks("log2", function(x) {((2 ^ x) - 1)}), labels = scales::trans_format("log2", function(x) {((2 ^ x) - 1)}))
             } else {
                 ytit <- "Relative Abundance in PPM"
             }
@@ -549,7 +543,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     tally <- aggregate(PPM ~ Taxon, data = dat, FUN = "sum")
                     tally <- tally[order(tally$PPM, decreasing = TRUE), ]
 
-
                     orddat <- NULL
                     for (Txn in tally$Taxon[1:min(maxnumtaxa, nrow(tally))]){
                         datsplit <- subset(dat, Taxon == Txn)
@@ -583,7 +576,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     if (!is.null(rescale_axis_quantiles)){
                         p <- p + scale_y_continuous(limits = quantile(dat$PPM, rescale_axis_quantiles))
                     }
-                    p <- p + scale_fill_manual(values = phcol[(names(phcol) %in% dat$Phylum)])
+                    p <- p + scale_fill_manual(values = phycols[(names(phycols) %in% dat$Phylum)])
 
                     if ((length(unique(dat$Taxon))) < (nrow(dat))){
                         jitfact <- -( 0.3 / (nrow(dat))) * (length(unique(dat$Taxon))) + 0.25
@@ -658,12 +651,12 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     if (uselog == TRUE){
                         ytit <- "Relative Abundance in PPM"
                         #p <- p + coord_trans(y = "log2", clip = "off")
-                        p <- p + scale_y_continuous(trans = scales::log2_trans(), breaks = scales::trans_breaks("log2", function(x) {2^x}), labels = scales::trans_format("log2", function(x) {2^x}))
+                        p <- p + scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::trans_breaks("log2", function(x) {((2 ^ x) - 1)}), labels = scales::trans_format("log2", function(x) {((2 ^ x) - 1)}))
+
                     } else {
                         ytit <- "Relative Abundance in PPM"
                     }
                     p <- p + labs(x = "Contributing Taxon", y = ytit)
-                    dat$Phcol <- phcol[dat$Phylum]
 
                     if (!horizontal){
                         p <- p + theme(axis.text.x = element_text(colour = "black", angle = rotang, size = rel(1)))

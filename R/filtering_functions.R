@@ -1,9 +1,9 @@
-#' filter_experiment(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL)
+#' filter_experiment(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), discard_SDoverMean_below = NULL, samplesToKeep = NULL, featuresToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL)
 #'
 #' Filters a SummarizedExperiment object by several criteria.
 #' @export
 
-filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), samplesToKeep = NULL, featuresToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, mgSeqnorm = FALSE){
+filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), discard_SDoverMean_below = NULL, samplesToKeep = NULL, featuresToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL){
 
     #Get only samples you asked for
     if (!(is.null(samplesToKeep))){
@@ -95,50 +95,54 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
         flog.info(minPPMmsg)
     }
 
-    #Allow for filtering by genomecompleteness or percent from contigs, if SummarizedExperiment
-    if (as.character(class(ExpObj)[1]) == "SummarizedExperiment"){
+    if (!is.null(discard_SDoverMean_below)){
+        dfm <- (rowSds(countmatrix) / rowMeans(countmatrix))
+        featuresToKeepSDflt <- names(dfm[dfm > discard_SDoverMean_below])
+        ExpObj <- ExpObj[featuresToKeepSDflt, ]
+        countmatrix <- countmatrix[featuresToKeepSDflt, ]
+        SDoverMeanmsg <- paste("Feature must have >", discard_SDoverMean_below, "SDs over mean", sep=" ")
+        flog.info(SDoverMeanmsg)
+    }
 
-        if (all(c(("PctFromCtgs" %in% names(assays(ExpObj))), (!is.null(PctFromCtgscutoff))))){
-            if(length(PctFromCtgscutoff) != 2){
-                stop("Please specify the minimum percentage of information coming from contigs in what percentage of the samples you want with a numerical vector of size two. For example, PctFromCtgscutoff = c(90, 10) would discard features whose taxonomic information does not come at least 90% from contigs in at least 10% of samples.")
-            }
-            minPctFromCtgs <- PctFromCtgscutoff[1]
-            sampcutoffpct <- min(PctFromCtgscutoff[2], 100)
-            PctFromCtgsmatrix <- assays(ExpObj)[["PctFromCtgs"]]
+    if (all(c(("PctFromCtgs" %in% names(assays(ExpObj))), (!is.null(PctFromCtgscutoff))))){
+        if(length(PctFromCtgscutoff) != 2){
+            stop("Please specify the minimum percentage of information coming from contigs in what percentage of the samples you want with a numerical vector of size two. For example, PctFromCtgscutoff = c(90, 10) would discard features whose taxonomic information does not come at least 90% from contigs in at least 10% of samples.")
+        }
+        minPctFromCtgs <- PctFromCtgscutoff[1]
+        sampcutoffpct <- min(PctFromCtgscutoff[2], 100)
+        PctFromCtgsmatrix <- assays(ExpObj)[["PctFromCtgs"]]
 
-            prop_above_minCtg <- function(x) {
-                validsamples <- names(which(countmatrix[x, ] > 0))
-                proportionPassing <- length(which(PctFromCtgsmatrix[x, validsamples] >= minPctFromCtgs)) / length(validsamples)
-                return(proportionPassing)
-            }
-
-            featuresToKeep3 <- rownames(PctFromCtgsmatrix)[which((sapply(1:nrow(PctFromCtgsmatrix), function(x) { prop_above_minCtg(x) })) > (sampcutoffpct / 100))]
-
-            ExpObj <- ExpObj[featuresToKeep3, ]
-            countmatrix <- countmatrix[featuresToKeep3, ]
+        prop_above_minCtg <- function(x) {
+            validsamples <- names(which(countmatrix[x, ] > 0))
+            proportionPassing <- length(which(PctFromCtgsmatrix[x, validsamples] >= minPctFromCtgs)) / length(validsamples)
+            return(proportionPassing)
         }
 
-        if (all(c(("GenomeCompleteness" %in% names(assays(ExpObj))), (!is.null(GenomeCompletenessCutoff))))){
-            if(length(GenomeCompletenessCutoff) != 2){
-                stop("Please specify the minimum Genome Completeness in what percentage of the samples you want with a numerical vector of size two. For example, GenomeCompletenessCutoff = c(10, 5) would discard features whose genome completeness is smaller than 10% from contigs in at least 5% of samples.")
-            }
-            minGenomeCompleteness <- (GenomeCompletenessCutoff[1] / 100)
-            sampcutoffpct <- min(GenomeCompletenessCutoff[2], 100)
-            GenomeCompletenessmatrix <- assays(ExpObj)[["GenomeCompleteness"]]
+        featuresToKeep3 <- rownames(PctFromCtgsmatrix)[which((sapply(1:nrow(PctFromCtgsmatrix), function(x) { prop_above_minCtg(x) })) > (sampcutoffpct / 100))]
 
-            prop_above_minGComp <- function(x) {
-                validsamples <- names(which(countmatrix[x, ] > 0))
-                proportionPassing <- length(which(GenomeCompletenessmatrix[x, validsamples] >= minGenomeCompleteness)) / length(validsamples)
-                return(proportionPassing)
-            }
+        ExpObj <- ExpObj[featuresToKeep3, ]
+        countmatrix <- countmatrix[featuresToKeep3, ]
+    }
 
-            featuresToKeep4 <- rownames(GenomeCompletenessmatrix)[which((sapply(1:nrow(GenomeCompletenessmatrix), function(x) { prop_above_minGComp(x) })) > (sampcutoffpct / 100))]
+    if (all(c(("GenomeCompleteness" %in% names(assays(ExpObj))), (!is.null(GenomeCompletenessCutoff))))){
+        if(length(GenomeCompletenessCutoff) != 2){
+            stop("Please specify the minimum Genome Completeness in what percentage of the samples you want with a numerical vector of size two. For example, GenomeCompletenessCutoff = c(10, 5) would discard features whose genome completeness is smaller than 10% from contigs in at least 5% of samples.")
+        }
+        minGenomeCompleteness <- (GenomeCompletenessCutoff[1] / 100)
+        sampcutoffpct <- min(GenomeCompletenessCutoff[2], 100)
+        GenomeCompletenessmatrix <- assays(ExpObj)[["GenomeCompleteness"]]
 
-            ExpObj <- ExpObj[featuresToKeep4, ]
-            countmatrix <- countmatrix[featuresToKeep4, ]
+        prop_above_minGComp <- function(x) {
+            validsamples <- names(which(countmatrix[x, ] > 0))
+            proportionPassing <- length(which(GenomeCompletenessmatrix[x, validsamples] >= minGenomeCompleteness)) / length(validsamples)
+            return(proportionPassing)
         }
 
-    }#End conditional that object is a SummarizedExperiment
+        featuresToKeep4 <- rownames(GenomeCompletenessmatrix)[which((sapply(1:nrow(GenomeCompletenessmatrix), function(x) { prop_above_minGComp(x) })) > (sampcutoffpct / 100))]
+
+        ExpObj <- ExpObj[featuresToKeep4, ]
+        countmatrix <- countmatrix[featuresToKeep4, ]
+    }
 
     #Get only features you asked for
     if (!(is.null(featuresToKeep))){
@@ -165,7 +169,7 @@ ExpObjVetting <- function(ExpObj = NULL, samplesToKeep = NULL, featuresToKeep = 
 
         #Get appropriate object to work with
         if (as.character(class(ExpObj)[1]) != "SummarizedExperiment"){
-            stop("This function can only take a SummarizedExperiment object as input. For using a metagenomeSeq object (deprecated), please use plot_relabund_heatmap_mgseq.")
+            stop("This function can only take a SummarizedExperiment object as input.")
         }
         obj <- ExpObj
 

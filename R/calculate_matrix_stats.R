@@ -148,10 +148,10 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         }
 
         discretenames <- sort(unique(classesvector))
-        nClass1 = sum(cl == discretenames[1])
-        nClass2 = sum(cl == discretenames[2])
+        nClass1 = sum(classesvector == discretenames[1])
+        nClass2 = sum(classesvector == discretenames[2])
 
-        getPAstats <- function(rownum = NULL, countmatrix = NULL, nClass1 = NULL, nClass2 = NULL, threshPA = threshPA){
+        getPAstats <- function(rownum = NULL, countmatrix = NULL, nClass1 = NULL, nClass2 = NULL, classesvector = NULL, threshPA = threshPA){
             PAvec <- countmatrix[rownum, ]
             if (threshPA != 0){
                 PAvec[which(PAvec < threshPA)] <- 0
@@ -160,8 +160,8 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
                 PAvec[which(PAvec > 0)] <- 1
             }
             contingencytable <- matrix(ncol = 2, nrow = 2, data = 0)
-            contingencytable[1, 1] = sum(PAvec[cl == discretenames[1]])
-            contingencytable[1, 2] = sum(PAvec[cl == discretenames[2]])
+            contingencytable[1, 1] = sum(PAvec[classesvector == discretenames[1]])
+            contingencytable[1, 2] = sum(PAvec[classesvector == discretenames[2]])
             contingencytable[2, 1] = (nClass1 - contingencytable[1, 1])
             contingencytable[2, 2] = (nClass2 - contingencytable[1, 2])
             fisht <- fisher.test(contingencytable, alternative = "two.sided", conf.int = TRUE, conf.level = 0.95)
@@ -171,7 +171,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
             return(fishmat)
         }
 
-        comparisons <- lapply(1:nrow(countmatrix), function(x) { getPAstats(rownum = x, countmatrix = countmatrix, nClass1 = nClass1, nClass2 = nClass2, threshPA = threshPA) })
+        comparisons <- lapply(1:nrow(countmatrix), function(x) { getPAstats(rownum = x, countmatrix = countmatrix, nClass1 = nClass1, nClass2 = nClass2, classesvector = classesvector, threshPA = threshPA) })
         matstats <- do.call(rbind, comparisons)
         matstats <- as.data.frame(matstats)
 
