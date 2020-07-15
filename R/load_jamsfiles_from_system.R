@@ -77,8 +77,8 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     loadobj <- function(objfn = NULL){
         #decide whether it is a TSV or RDS file and load appropriately.
         if ((length(grep("\\.rds$", objfn)) > 0)){
+            tryCatch((jamsdf <- readRDS(objfn)), error = function() { flog.warn(paste("Unable to read file", objfn)) } )
             #file is rds
-            jamsdf <- readRDS(objfn)
         } else {
             #assume tsv
             jamsdf <- fread(data.table = FALSE, file = objfn, sep = "\t", header = TRUE, quote = "", fill = FALSE, integer64 = "numeric", logical01 = FALSE, stringsAsFactors = FALSE, nThread = 1)
