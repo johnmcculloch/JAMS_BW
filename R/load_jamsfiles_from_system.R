@@ -1,15 +1,25 @@
-#' load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE)
+#' load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE)
 #' JAMSbeta function
 #'
 #' Loads all JAMS files from system
 #' @export
 
-load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE){
-    fljams <- list.files(path = path, pattern = "*.jams$", full.names = TRUE, recursive = recursive)
+load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE){
 
+    require(parallel)
+
+    flog.info("Searching for jams files.")
+    fljams <- list.files(path = path, pattern = "*.jams$", full.names = TRUE, recursive = recursive, include.dirs = TRUE)
     if (length(fljams) < 1){
         stop("There are no .jams files in the specified path.")
     }
+
+    fljamsnames <- sapply(1:length(fljams), function(x) { tail(unlist(strsplit(fljams[x], split = "/")), n = 1) })
+
+    #Make a dataframe with all the info
+    jamsfilesdf <- data.frame(Filename = fljamsnames, FullPath = fljams, stringsAsFactors = FALSE)
+    jamsfilesdf$FullPath <- sapply(1:length(jamsfilesdf$FullPath), function(x) { fixrelpath(jamsfilesdf$FullPath[x]) })
+    jamsfilesdf$Prefix <- gsub(".jams$", "", jamsfilesdf$Filename)
 
     currpath <- getwd()
     #Create temp files directory if needed.
@@ -19,25 +29,18 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         dir.create(jamstempfilespath, showWarnings = FALSE, recursive = FALSE)
     }
 
-    #Make a dataframe with jamsfiles whereabouts
-    extract_prefix <- function(fullpath){
-        prefix <- tail(unlist(strsplit(fullpath, split = "/")), n = 1)
-        prefix <- gsub(".jams", "", prefix)
-
-        return(prefix)
-    }
-    jamsfilesdf <- data.frame(Prefix = sapply(1:length(fljams), function(x) { extract_prefix(fljams[x]) }), FullPath = fljams, stringsAsFactors = FALSE)
-
     #Restrict loading to only certain samples if required.
     if (!is.null(onlysamples)){
         flog.info(paste("There are", length(onlysamples), "samples to load."))
         flog.info(paste("Will only load .jams files for samples", paste0(onlysamples, collapse = ", ")))
         jamsfilesdfwant <- subset(jamsfilesdf, Prefix %in% onlysamples)
         samplesIhavejams <- jamsfilesdfwant$Prefix
-        if (length(onlysamples %in% samplesIhavejams) < length (onlysamples)){
+        if (sum(onlysamples %in% samplesIhavejams) < length (onlysamples)){
             missingjamsfiles <- paste0(onlysamples[which(!(onlysamples %in% samplesIhavejams))], collapse = ", ")
-            stop(paste("Could not find .jams files for samples", missingjamsfiles))
+            flog.warn(paste("Could not find .jams files for sample(s):", missingjamsfiles))
         }
+    } else {
+        jamsfilesdfwant <- jamsfilesdf
     }
 
     fpfljams <- jamsfilesdfwant$FullPath
@@ -87,11 +90,42 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         return(jamsdf)
     }
 
-    appropriatenumcores <- max(1 , (min((opt$threads - 2), length(flwp))))
-    flog.info(paste("Using", appropriatenumcores, "CPUs to load objects."))
-    list.data <- mclapply(1:length(flwp), function (x) { loadobj(objfn = flwp[x]) }, mc.cores = appropriatenumcores)
+    if (threads < 16){
+        flog.warn("It is ill-advised to load JAMS objects with multiple threads with less than 16 CPUs. Defaulting to single threaded loading. Please be patient while all objects are loaded into memory.")
+        multithread_load <- FALSE
+    }
+
+    if (multithread_load) {
+        appropriatenumcores <- max(1 , (min((threads - 2), length(flwp))))
+        flog.info(paste("Using", appropriatenumcores, "CPUs to load objects."))
+        list.data <- mclapply(flwp, function (x) { loadobj(objfn = x) }, mc.cores = appropriatenumcores, mc.preschedule = TRUE)
+    } else {
+        list.data <- lapply(1:length(flwp), function (x) { loadobj(objfn = flwp[x]) })
+    }
 
     names(list.data) <- on
+    #Flush out any object that was not loaded properly
+    empties <- sapply(1:length(on), function(x){ is.null(list.data[[on[x]]])})
+    if(sum(empties) > 0){
+        flog.warn(paste("Unable to load the following objects:", paste0(on[empties], collapse = ", ")))
+    }
+    validon <- on[!empties]
+    list.data <- list.data[[validon]]
+    #Check if objects were loaded into list correctly. Not necessary, but one is better safe than sorry.
+    prefixespresent <- sapply(validon, function (x) { tail(rev(unlist(strsplit(x, split = "_"))), n = 1)} )
+    prefixespresent <- unique(unname(prefixespresent))
+    minobjlist <- as.vector(sapply(c("projinfo", "contigsdata", "featuredata", "LKTdose", "featuredose"), function(x) { paste(prefixespresent, x, sep = "_") }))
+
+    if (!all(minobjlist %in% names(list.data))){
+        missingobjects <- minobjlist[!minobjlist %in% names(list.data)]
+        incompleteprefixes <- unique(unname(sapply(missingobjects, function (x) { tail(rev(unlist(strsplit(x, split = "_"))), n = 1)} )))
+        flog.warn(paste("Sample(s)", paste0(incompleteprefixes, collapse = ", "), "will be omitted because the following necessary objects are missing:", paste0(missingobjects, collapse = ", "), ". Please check the integrity of your jams files and try again."))
+        objectstoremove <- as.vector(sapply(c("projinfo", "contigsdata", "featuredata", "LKTdose", "featuredose"), function(x) { paste(incompleteprefixes, x, sep = "_") }))
+        validon <- validon[!(validon %in% objectstoremove)]
+        minobjlist <- minobjlist[minobjlist %in% validon]
+        list.data <- list.data[validon]
+    }
+
     unlink(jamstempfilespath, recursive = TRUE)
 
     flog.info("Finished loading all objects.")
