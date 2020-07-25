@@ -69,7 +69,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     expvec <- list()
     e <- 1
 
-    if (is.null(restricttoLKTs)){
+    if (TRUE){
         #Start by making LKT experiment
         flog.info("Making LKT SummarizedExperiment")
         LKTobjects <- paste(Samples, "LKTdose", sep="_")
@@ -149,12 +149,13 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         if (!is.null(phenolabels)){
             metadata(SEobj)$phenolabels <- phenolabels
         }
-
-        expvec[[e]] <- SEobj
-        names(expvec)[e] <- "LKT"
-        e <- e + 1
-        #Clean memory up
-        gc()
+        if (is.null(restricttoLKTs)){
+            expvec[[e]] <- SEobj
+            names(expvec)[e] <- "LKT"
+            e <- e + 1
+            #Clean memory up
+            gc()
+        }
     }
 
     if (!is.null(onlyanalyses)){
