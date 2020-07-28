@@ -154,7 +154,7 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
             continuous2discrete <- function(wantedfeatures_PPM_per_Sample = NULL, feat = NULL, bin_names = NULL){
                 wantedtaxon_PPM_per_Sample_distrib <- quantile(wantedfeatures_PPM_per_Sample[ , feat], probs = round(((1:length(bin_names)) * (1 / length(bin_names))), 2))
                 if (is.redundant(c(0, as.numeric(wantedtaxon_PPM_per_Sample_distrib)))){
-                    flog.info(paste("Feaure", feat, "doesn't have enough variance for being binned into", length(bin_names), "categories and will be discarded."))
+                    flog.info(paste("Feature", feat, "doesn't have enough variance for being binned into", length(bin_names), "categories and will be discarded."))
                     TaxonPPMcats <- NULL
                     Breakinfo <- NULL
                 } else {
@@ -180,7 +180,18 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
                 return(discretelist)
             }
             #Make a list of Break infos
+            #Bin PPM into discrete
+            if (!aggregatefeatures){
+                wantedfeatures_Breakinfos <- as.data.frame(t(countmat[wantedfeatures, ]))
+            } else {
+                wantedfeatures_Breakinfos <- as.data.frame(t(countmat))
+            }
+
             wantedfeatures_Breakinfos <- as.data.frame(t(countmat[wantedfeatures, ]))
+            if (nrow(wantedfeatures_Breakinfos) == 1){
+                rownames(wantedfeatures_Breakinfos) <- wantedfeatures
+            }
+
             wantedfeatures_Breakinfos_list <- lapply(colnames(wantedfeatures_Breakinfos), function (x) { continuous2discrete(wantedfeatures_PPM_per_Sample = wantedfeatures_Breakinfos, feat = x, bin_names = bin_names)[]$Breakinfo } )
             names(wantedfeatures_Breakinfos_list) <- colnames(wantedfeatures_Breakinfos)
 
@@ -191,7 +202,16 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
             }
 
             #Bin PPM into discrete
-            wantedfeatures_PPM_per_Sample <- as.data.frame(t(countmat[wantedfeatures, ]))
+            if (!aggregatefeatures){
+                wantedfeatures_PPM_per_Sample <- as.data.frame(t(countmat[wantedfeatures, ]))
+            } else {
+                wantedfeatures_PPM_per_Sample <- as.data.frame(t(countmat))
+            }
+
+            if (nrow(wantedfeatures_PPM_per_Sample) == 1){
+                rownames(wantedfeatures_PPM_per_Sample) <- wantedfeatures
+            }
+
             for (colm in colnames(wantedfeatures_PPM_per_Sample)){
                 wantedfeatures_PPM_per_Sample[ , colm] <- continuous2discrete(wantedfeatures_PPM_per_Sample = wantedfeatures_PPM_per_Sample, feat = colm, bin_names = bin_names)[]$TaxonPPMcats
             }
@@ -339,7 +359,7 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
                 data(InterproDict)
                 infotable <- as.data.frame(t(as.data.frame(InterproDict[feat, c("Abstract", "Citations")])))
                 if (nchar(paste0(InterproDict[feat, c("Abstract", "Citations")], collapse = "")) > 2500){
-                    fontsize <- 7
+                    fontsize <- 6
                 } else {
                     fontsize <- 10
                 }
