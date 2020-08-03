@@ -2,7 +2,7 @@
 % Please edit documentation in R/load_jamsfiles_from_system.R
 \name{load_jamsfiles_from_system}
 \alias{load_jamsfiles_from_system}
-\title{load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE)
+\title{load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE)
 JAMSbeta function}
 \usage{
 load_jamsfiles_from_system(
@@ -10,7 +10,8 @@ load_jamsfiles_from_system(
   recursive = TRUE,
   onlysamples = NULL,
   threads = 8,
-  multithread_decomp = TRUE
+  multithread_decomp = TRUE,
+  multithread_load = TRUE
 )
 }
 \description{
