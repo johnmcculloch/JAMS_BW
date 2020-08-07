@@ -109,8 +109,10 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     if(sum(empties) > 0){
         flog.warn(paste("Unable to load the following objects:", paste0(on[empties], collapse = ", ")))
     }
+
     validon <- on[!empties]
-    list.data <- list.data[[validon]]
+    list.data <- list.data[validon]
+
     #Check if objects were loaded into list correctly. Not necessary, but one is better safe than sorry.
     prefixespresent <- sapply(validon, function (x) { tail(rev(unlist(strsplit(x, split = "_"))), n = 1)} )
     prefixespresent <- unique(unname(prefixespresent))
