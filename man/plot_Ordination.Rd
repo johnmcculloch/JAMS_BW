@@ -22,6 +22,7 @@ plot_Ordination(
   shapeby = NULL,
   sizeby = NULL,
   pairby = NULL,
+  textby = NULL,
   dotsize = 2,
   dotborder = NULL,
   log2tran = TRUE,
