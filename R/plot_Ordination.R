@@ -1,9 +1,9 @@
-#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...)
+#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...)
 #'
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
 
     set.seed(4140)
 
@@ -85,9 +85,15 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             countmat <- t(countmat)
         }
 
-        if (permanova == TRUE){
+        if (!is.null(samplesToHighlight)){
+            d <- vegdist(countmat[(rownames(countmat) %in% samplesToHighlight), ], method = distmethod, na.rm = TRUE)
+            cats <- currpt[(rownames(currpt) %in% samplesToHighlight), colourby]
+        } else {
             d <- vegdist(countmat, method = distmethod, na.rm = TRUE)
             cats <- currpt[, colourby]
+        }
+
+        if (permanova == TRUE){
             if (!(is.numeric(cats))){
                 permanovap <- vegan::adonis(as.formula(paste("d ~ ", colourby)), data = currpt)$aov.tab$`Pr(>F)`[1]
             } else {
@@ -126,11 +132,6 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         } else {
             #Not tSNE or tUMAP, so use PCA
             #distfun <- stats::dist
-            if (permanova == FALSE){
-                #get distance if missing
-                #d <- distfun(mat, method = "euclidian")
-                d <- vegdist(countmat, method = distmethod, na.rm = TRUE)
-            }
             pcaRes <- prcomp(d)
             ord <- pcaRes$x
             vars <- pcaRes$sdev^2
@@ -141,6 +142,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             zl <- sprintf("%s: %.2f%% variance", colnames(ord)[comp[3]], vars[comp[3]])
             dford <- as.data.frame(ord[, comp])
         }
+
         #Add colour, size, shape, text
         dford$Colours <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == colourby)]
         dford$Size <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == sizeby)]
@@ -148,12 +150,28 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         dford$Pair <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == pairby)]
         dford$Text <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == textby)]
 
-        centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford, mean)
-        colnames(centroids)[c(2, 3)] <- c("meanPC1", "meanPC2")
-        centroiddf <- left_join(dford, centroids, by = "Colours")
-        rownames(centroids) <- centroids$Colours
+        if (!is.null(samplesToHighlight)){
+            dford$Alpha <- 0.05
+            dford[samplesToHighlight, "Alpha"] <- 1
+        } else {
+            dford$Alpha <- 1
+        }
 
-        aesthetic <- aes(x = PC1, y = PC2)
+        if (!(is.numeric(cats))){
+            if (!is.null(samplesToHighlight)){
+                centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford[samplesToHighlight, ], mean)
+                colnames(centroids)[c(2, 3)] <- c("meanPC1", "meanPC2")
+                centroiddf <- left_join(dford[samplesToHighlight, ], centroids, by = "Colours")
+                rownames(centroids) <- centroids$Colours
+            } else {
+                centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford, mean)
+                colnames(centroids)[c(2, 3)] <- c("meanPC1", "meanPC2")
+                centroiddf <- left_join(dford, centroids, by = "Colours")
+                rownames(centroids) <- centroids$Colours
+            }
+        }
+
+        aesthetic <- aes(x = PC1, y = PC2, alpha = Alpha)
         p <- ggplot(dford, aesthetic)
 
         if (!is.null(colourby)) {
@@ -225,11 +243,12 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         p <- p + theme(plot.title = element_text(size = 12), plot.subtitle = element_text(size = 10))
         p <- p + geom_point(size = dotsize) + labs(x = xl, y = yl)
+
         if (!(is.null(forceaspectratio))){
             p <- p + theme(aspect.ratio = (1 / forceaspectratio))
         }
 
-        if (plotcentroids){
+        if (all(c((!(is.numeric(cats))), plotcentroids))) {
             p <- p + geom_segment(aes(x = meanPC1, y = meanPC2, xend = PC1, yend = PC2, colour = Colours), data = centroiddf)
             if (highlight_centroids){
                 p <- p + geom_point(aes(x = meanPC1, y = meanPC2), colour = "black", data = centroids, size = (dotsize * 4)) + geom_point(aes(x = meanPC1, y = meanPC2, colour = Colours), data = centroids, size = (dotsize * 2))
@@ -238,12 +257,13 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         p <- p + ggtitle(pcatit)
         p <- p + labs(colour = colourby)
+        p <- p + guides(alpha = FALSE)
 
         if (grid == FALSE ){
             p <- p + theme(panel.background = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(colour = "black", fill = NA, size=1))
         }
 
-        if (all(c(plotcentroids, show_centroid_distances))){
+        if (all(c((!(is.numeric(cats))), plotcentroids, show_centroid_distances))){
             centroiddist <- as.matrix(dist(centroids[ , c("meanPC1", "meanPC2")], method = "euclidean"))
             centroiddist <- round(centroiddist, 3)
             centroiddistshow <- ggtexttable(centroiddist, theme = ttheme(base_style = "classic", base_size = 8))
