@@ -86,16 +86,19 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
 
         if (!is.null(samplesToHighlight)){
+            samplesToHighlight <- samplesToHighlight[samplesToHighlight %in% rownames(countmat)]
+            currpt_stat <- currpt[(rownames(currpt) %in% samplesToHighlight), ]
             d <- vegdist(countmat[(rownames(countmat) %in% samplesToHighlight), ], method = distmethod, na.rm = TRUE)
-            cats <- currpt[(rownames(currpt) %in% samplesToHighlight), colourby]
+            cats <- currpt_stat[ , colourby]
         } else {
+            currpt_stat <- currpt
             d <- vegdist(countmat, method = distmethod, na.rm = TRUE)
-            cats <- currpt[, colourby]
+            cats <- currpt_stat[, colourby]
         }
 
         if (permanova == TRUE){
             if (!(is.numeric(cats))){
-                permanovap <- vegan::adonis(as.formula(paste("d ~ ", colourby)), data = currpt)$aov.tab$`Pr(>F)`[1]
+                permanovap <- vegan::adonis(as.formula(paste("d ~ ", colourby)), data = currpt_stat)$aov.tab$`Pr(>F)`[1]
             } else {
                 flog.info("Impossible to get permanova because colourby is continuous")
                 permanovap <- NULL
@@ -161,14 +164,18 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             if (!is.null(samplesToHighlight)){
                 centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford[samplesToHighlight, ], mean)
                 colnames(centroids)[c(2, 3)] <- c("meanPC1", "meanPC2")
-                centroiddf <- left_join(dford[samplesToHighlight, ], centroids, by = "Colours")
                 rownames(centroids) <- centroids$Colours
+                centroiddf <- left_join(dford[samplesToHighlight, ], centroids, by = "Colours")
             } else {
                 centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford, mean)
                 colnames(centroids)[c(2, 3)] <- c("meanPC1", "meanPC2")
                 centroiddf <- left_join(dford, centroids, by = "Colours")
                 rownames(centroids) <- centroids$Colours
             }
+            centroidmeandf <- centroiddf
+            centroidmeandf$PC1 <- NULL
+            centroidmeandf$PC2 <- NULL
+            centroidmeandf <- centroidmeandf[!duplicated(centroidmeandf$meanPC1), ]
         }
 
         aesthetic <- aes(x = PC1, y = PC2, alpha = Alpha)
@@ -251,7 +258,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         if (all(c((!(is.numeric(cats))), plotcentroids))) {
             p <- p + geom_segment(aes(x = meanPC1, y = meanPC2, xend = PC1, yend = PC2, colour = Colours), data = centroiddf)
             if (highlight_centroids){
-                p <- p + geom_point(aes(x = meanPC1, y = meanPC2), colour = "black", data = centroids, size = (dotsize * 4)) + geom_point(aes(x = meanPC1, y = meanPC2, colour = Colours), data = centroids, size = (dotsize * 2))
+                p <- p + geom_point(aes(x = meanPC1, y = meanPC2), colour = "black", data = centroidmeandf, size = (dotsize * 4)) + geom_point(aes(x = meanPC1, y = meanPC2, colour = Colours), data = centroidmeandf, size = (dotsize * 2))
             }
         }
 
@@ -264,7 +271,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
 
         if (all(c((!(is.numeric(cats))), plotcentroids, show_centroid_distances))){
-            centroiddist <- as.matrix(dist(centroids[ , c("meanPC1", "meanPC2")], method = "euclidean"))
+            centroiddist <- as.matrix(dist(centroidmeandf[ , c("meanPC1", "meanPC2")], method = "euclidean"))
             centroiddist <- round(centroiddist, 3)
             centroiddistshow <- ggtexttable(centroiddist, theme = ttheme(base_style = "classic", base_size = 8))
             p <- ggarrange(p, centroiddistshow, ncol = 1, nrow = 2, heights = c(3, 1), labels = list("", "Euclidean distance between centroids"), font.label = list(size = 10, face = "italic"), vjust = 1, hjust = -1)
