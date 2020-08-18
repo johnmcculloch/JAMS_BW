@@ -1,6 +1,9 @@
 #!/usr/bin/env Rscript
 if ((.Platform$OS.type) != "unix"){
-    stop("JAMS only works on UNIX. Install Linux and try again.")
+    cat("JAMS was written for UNIX systems. It looks like you may be on Windows. Will try installing JAMSbeta. For JAMSalpha, use a Unix system.")
+    OnUnix <- FALSE
+} else {
+    OnUnix <- TRUE
 }
 
 print_help <- function(){
