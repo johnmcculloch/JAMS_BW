@@ -321,6 +321,14 @@ if (!(is.null(opt$substitutionmap))){
     q()
 }
 
+# Make sure class of all columns are characters
+for (colm in 1:ncol(rawfastqsdf)){
+    rawfastqsdf[ , colm] <- as.character(rawfastqsdf[ , colm])
+}
+for (colm in 1:ncol(submap)){
+    submap[ , colm] <- as.character(submap[ , colm])
+}
+
 #Test for redundancy in substitution map.
 redtestsubmap <- apply(submap, is.redundant, MARGIN = 2)
 if (any(redtestsubmap)){
