@@ -462,7 +462,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     ht1fs <- 10
 
                     #Plot the heatmap
-                    fontsizey <- min(6, round((((-1 / 150) * (nrow(mathm))) + 1) * 6, 0))
+                    fontsizey <- min(6, round((((-1 / 150) * (nrow(mathm))) + 1) * 5, 1))
                     fontsizex <- as.numeric(unlist(round((((-1 / 150) * (ncol(mathm))) + 1) * 5, 0)))
 
                     hmdf <- as.data.frame(matrix(data = 0, nrow = nrow(colData(currobj)), ncol = length(colcategories)))
@@ -574,7 +574,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
 
                     #Switch plot title if doing a dual heatmap with either genome completeness or percentage from contigs
                     #Get genome completeness hmdf if in taxonomic space
-                    ht1fs <- 10
+                    ht1fs <- 8
                     hm1tit <- plotit
 
                     if (is.null(secondaryheatmap)) {
@@ -692,19 +692,19 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         colgroups <- sort(unique(ordercl))
                         column_split <- factor(ordercl, levels = colgroups)
 
-                        ht1 <- Heatmap(mathm, name = relabundscalename, cluster_columns = TRUE, column_split = column_split, cluster_column_slices = FALSE, show_column_dend = TRUE, column_dend_side = "top", column_gap = unit(3, "mm"), column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, left_annotation = hatax, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                        ht1 <- Heatmap(mathm, name = relabundscalename, cluster_columns = TRUE, column_split = column_split, cluster_column_slices = FALSE, show_column_dend = TRUE, column_dend_side = "top", column_gap = unit(3, "mm"), column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = row_ha, left_annotation = hatax, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol),  row_names_max_width = unit(6, "cm"), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)))
 
                     } else {
 
                         column_split <- NULL
                         if (any(cluster_samples_per_heatmap, !cluster_rows)){
 
-                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, left_annotation = hatax, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, left_annotation = hatax, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 4)), row_names_max_width = unit(6, "cm"))
 
                         } else {
 
                             #Coerce column order to the order obtained using the full countmatrix
-                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), cluster_columns = fullheatmap_column_dend, column_dend_height = unit(5, "mm"), right_annotation = row_ha, left_annotation = hatax, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), cluster_columns = fullheatmap_column_dend, column_dend_height = unit(5, "mm"), right_annotation = row_ha, left_annotation = hatax, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 4)), row_names_max_width = unit(6, "cm"))
 
                         }
                     }
@@ -717,19 +717,19 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                             GCheatmapCols <- colorRamp2(c(0, 100, 200, 300, 400), c("white", "forestgreen", "blue", "firebrick1", "black"))
                             GCha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
                             RelabundRowOrder <- row_order(ht1)
-                            ht2 <- Heatmap(gchmdf, name = "GenComp", column_split = column_split, column_title = "% Genome completeness", column_title_gp = gpar(fontsize = ht1fs), top_annotation = GCha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, left_annotation = hatax, cluster_rows = FALSE, column_order = unlist(column_order(ht1)), row_order = RelabundRowOrder, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = "% GenComp", labels = c("0%", "100%", "200%", "300%", "> 400%"), title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                            ht2 <- Heatmap(gchmdf, name = "GenComp", column_split = column_split, column_title = "% Genome completeness", column_title_gp = gpar(fontsize = ht1fs), top_annotation = GCha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, left_annotation = hatax, cluster_rows = FALSE, column_order = unlist(column_order(ht1)), row_order = RelabundRowOrder, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = "% GenComp", labels = c("0%", "100%", "200%", "300%", "> 400%"), title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 4)), row_names_max_width = unit(6, "cm"))
                         } else if (secondaryheatmap == "PctFromCtgs"){
                             #Draw heatmap with percentage from contigs
                             GCheatmapCols <- colorRamp2(c(0, 100), c("white", "midnightblue"))
                             GCha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
                             RelabundRowOrder <- row_order(ht1)
-                            ht2 <- Heatmap(gchmdf, name = "PctFromCtgs", column_split = column_split, column_title = "% Taxonomic info from Contigs", column_title_gp = gpar(fontsize = ht1fs), top_annotation = GCha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, left_annotation = hatax, cluster_rows = FALSE, column_order = unlist(column_order(ht1)), row_order = RelabundRowOrder, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = "PctFromCtgs", title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 6)), row_names_max_width = unit(6, "cm"))
+                            ht2 <- Heatmap(gchmdf, name = "PctFromCtgs", column_split = column_split, column_title = "% Taxonomic info from Contigs", column_title_gp = gpar(fontsize = ht1fs), top_annotation = GCha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, left_annotation = hatax, cluster_rows = FALSE, column_order = unlist(column_order(ht1)), row_order = RelabundRowOrder, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol), heatmap_legend_param = list(direction = "horizontal", title = "PctFromCtgs", title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 4)), row_names_max_width = unit(6, "cm"))
                         }
 
                         #Plot heatmaps side by side if there are 50 samples or less. Else plot one on each page.
                         if (ncol(mathm) < 51){
                             ht_list = ht1 + ht2
-                            draw(ht_list, heatmap_legend_side = "bottom", annotation_legend_side = "right", ht_gap = unit(0.2, "cm"), padding = unit(c(2, 2, 2, 2), "mm"), column_title = dualHMtit, column_title_gp = gpar(fontsize = 10))
+                            draw(ht_list, heatmap_legend_side = "bottom", annotation_legend_side = "right", ht_gap = unit(0.2, "cm"),padding = unit(c(2, 2, 2, 2), "mm"), column_title = dualHMtit, column_title_gp = gpar(fontsize = ht1fs))
                             drawseparateGChm <- FALSE
                         } else {
                             par(oma = c(10, 7, 3, 10) + 0.1, xpd = TRUE)
