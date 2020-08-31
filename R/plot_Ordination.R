@@ -122,7 +122,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             zl <- "tSNE 3"
 
         } else if (algorithm == "tUMAP"){
-
+            set.seed(4140)
             n_neighbors <- min((nrow(countmat) - 1), max_neighbors)
 
             tumap_out <- tumap(countmat, n_components = 2, n_neighbors = n_neighbors, verbose = FALSE, n_threads = threads, init = "spca")
@@ -216,7 +216,8 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (!is.null(textby)){
             require(ggrepel)
-            p <- p + geom_text_repel(aes(label = Text), size = dotsize, segment.color = 'transparent')
+            #p <- p + geom_text_repel(aes(label = Text), size = dotsize, segment.color = 'transparent')
+            p <- p + geom_text_repel(aes(label = Text), size = (dotsize * 0.9), segment.size = 0.2)
         }
 
         if (ellipse == "auto"){
