@@ -9,7 +9,7 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_
 
     JAMSpalette <- paste0("#", atoms)
 
-    offsets <- c(64, 128)
+    offsets <- c(64, 128, 32, 256)
     for(offsetamplitude in offsets){
         offset <- as.hexmode(offsetamplitude)
         atomsoff <- as.character(as.hexmode(atoms) + offset)
