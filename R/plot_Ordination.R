@@ -1,14 +1,22 @@
-#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...)
+#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, class_to_ignore = "N_A", ...)
 #'
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", colourby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, ellipse = FALSE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 1, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, class_to_ignore = "N_A", ...){
 
-    set.seed(4140)
+    set.seed(2138)
+    #Consider orthography of the word "colour"
+    if (is.null(colourby)){
+        colourby <- colorby
+    }
 
+    #Define what is being compared for permanova
+    if (is.null(compareby)){
+        compareby <- c(colourby, shapeby, ellipseby, textby, sizeby, pairby)[1]
+    }
     #Remove samples bearing categories within class_to_ignore
-    valid_vars <- c(colourby, subsetby)[which(!is.na(c(colourby, subsetby)))]
+    valid_vars <- c(compareby, subsetby)[which(!is.na(c(compareby, subsetby)))]
 
     #Vet experiment object
     obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = valid_vars, class_to_ignore = class_to_ignore)
@@ -89,11 +97,11 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             samplesToHighlight <- samplesToHighlight[samplesToHighlight %in% rownames(countmat)]
             currpt_stat <- currpt[(rownames(currpt) %in% samplesToHighlight), ]
             d <- vegdist(countmat[(rownames(countmat) %in% samplesToHighlight), ], method = distmethod, na.rm = TRUE)
-            cats <- currpt_stat[ , colourby]
+            cats <- currpt_stat[ , compareby]
         } else {
             currpt_stat <- currpt
             d <- vegdist(countmat, method = distmethod, na.rm = TRUE)
-            cats <- currpt_stat[, colourby]
+            cats <- currpt_stat[, compareby]
         }
 
         if (permanova == TRUE){
@@ -122,7 +130,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             zl <- "tSNE 3"
 
         } else if (algorithm == "tUMAP"){
-            set.seed(4140)
+            set.seed(2138)
             n_neighbors <- min((nrow(countmat) - 1), max_neighbors)
 
             tumap_out <- tumap(countmat, n_components = 2, n_neighbors = n_neighbors, verbose = FALSE, n_threads = threads, init = "spca")
@@ -146,12 +154,14 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             dford <- as.data.frame(ord[, comp])
         }
 
-        #Add colour, size, shape, text
+        #Add colour, size, shape, text, ellipse and pair
+        dford$Comparison <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == compareby)]
         dford$Colours <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == colourby)]
-        dford$Size <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == sizeby)]
         dford$Shape <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == shapeby)]
-        dford$Pair <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == pairby)]
+        dford$Ellipse <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == ellipseby)]
         dford$Text <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == textby)]
+        dford$Size <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == sizeby)]
+        dford$Pair <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == pairby)]
 
         if (!is.null(samplesToHighlight)){
             dford$Alpha <- 0.05
@@ -162,15 +172,15 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (!(is.numeric(cats))){
             if (!is.null(samplesToHighlight)){
-                centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford[samplesToHighlight, ], mean)
+                centroids <- aggregate(cbind(PC1, PC2) ~ Comparison, dford[samplesToHighlight, ], mean)
                 colnames(centroids)[c(2, 3)] <- c("meanPC1", "meanPC2")
-                rownames(centroids) <- centroids$Colours
-                centroiddf <- left_join(dford[samplesToHighlight, ], centroids, by = "Colours")
+                rownames(centroids) <- centroids[ , "Comparison"]
+                centroiddf <- left_join(dford[samplesToHighlight, ], centroids, by = "Comparison")
             } else {
-                centroids <- aggregate(cbind(PC1, PC2) ~ Colours, dford, mean)
+                centroids <- aggregate(cbind(PC1, PC2) ~ Comparison, dford, mean)
                 colnames(centroids)[c(2, 3)] <- c("meanPC1", "meanPC2")
-                centroiddf <- left_join(dford, centroids, by = "Colours")
-                rownames(centroids) <- centroids$Colours
+                centroiddf <- left_join(dford, centroids, by = "Comparison")
+                rownames(centroids) <- centroids[ , "Comparison"]
             }
             centroidmeandf <- centroiddf
             centroidmeandf$PC1 <- NULL
@@ -178,7 +188,11 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             centroidmeandf <- centroidmeandf[!duplicated(centroidmeandf$meanPC1), ]
         }
 
-        aesthetic <- aes(x = PC1, y = PC2, alpha = Alpha)
+        if (!is.null(samplesToHighlight)){
+            aesthetic <- aes(x = PC1, y = PC2, alpha = Alpha)
+        } else {
+            aesthetic <- aes(x = PC1, y = PC2)
+        }
         p <- ggplot(dford, aesthetic)
 
         if (!is.null(colourby)) {
@@ -220,12 +234,15 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             p <- p + geom_text_repel(aes(label = Text), size = (dotsize * 0.9), segment.size = 0.2)
         }
 
-        if (ellipse == "auto"){
-            if (all(c(!is.null(permanovap), (permanovap < 0.05)))){
-                p <- p + stat_ellipse(show.legend = TRUE, type = "norm")
+        p <- p + geom_point(size = dotsize) + labs(x = xl, y = yl)
+
+        if (!is.null(ellipseby)){
+            #p <- p + stat_ellipse(show.legend = TRUE, type = "norm")
+            if (!is.null(colourby)){
+                p <- p + stat_ellipse(aes(color = Colours, group = Ellipse), type = "norm")
+            } else {
+                p <- p + stat_ellipse(aes(group = Ellipse), type = "norm")
             }
-        } else if (ellipse == TRUE) {
-            p <- p + stat_ellipse(show.legend = TRUE, type = "norm")
         }
 
         if (!(is.null(addtit))){
@@ -250,7 +267,6 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
 
         p <- p + theme(plot.title = element_text(size = 12), plot.subtitle = element_text(size = 10))
-        p <- p + geom_point(size = dotsize) + labs(x = xl, y = yl)
 
         if (!(is.null(forceaspectratio))){
             p <- p + theme(aspect.ratio = (1 / forceaspectratio))
