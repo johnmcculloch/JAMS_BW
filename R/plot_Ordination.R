@@ -1,9 +1,9 @@
-#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, class_to_ignore = "N_A", ...)
+#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)
 #'
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
     #Consider orthography of the word "colour"
@@ -37,8 +37,8 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     }
 
     #Create list vector to hold plots
-    gvec <- NULL
-    gvec <- vector("list", length = length(subset_points))
+    gvec <- list()
+    plotnum <- 1
     pcatitbase <- paste(algorithm, "of", analysisname)
 
     for (sp in 1:length(subset_points)){
@@ -156,12 +156,24 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         #Add colour, size, shape, text, ellipse and pair
         dford$Comparison <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == compareby)]
-        dford$Colours <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == colourby)]
-        dford$Shape <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == shapeby)]
-        dford$Ellipse <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == ellipseby)]
-        dford$Text <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == textby)]
-        dford$Size <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == sizeby)]
-        dford$Pair <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == pairby)]
+        if (!is.null(colourby)){
+            dford$Colours <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == colourby)]
+        }
+        if (!is.null(shapeby)){
+            dford$Shape <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == shapeby)]
+        }
+        if (!is.null(ellipseby)){
+            dford$Ellipse <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == ellipseby)]
+        }
+        if (!is.null(textby)){
+            dford$Text <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == textby)]
+        }
+        if (!is.null(sizeby)){
+            dford$Size <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == sizeby)]
+        }
+        if (!is.null(pairby)){
+            dford$Pair <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == pairby)]
+        }
 
         if (!is.null(samplesToHighlight)){
             dford$Alpha <- 0.05
@@ -194,6 +206,11 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             aesthetic <- aes(x = PC1, y = PC2)
         }
         p <- ggplot(dford, aesthetic)
+
+        if (return_coordinates_matrix){
+            gvec[[plotnum]] <- dford
+            plotnum <- plotnum + 1
+        }
 
         if (!is.null(colourby)) {
             p <- p + aes(col = Colours)
@@ -294,10 +311,9 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             p <- ggarrange(p, centroiddistshow, ncol = 1, nrow = 2, heights = c(3, 1), labels = list("", "Euclidean distance between centroids"), font.label = list(size = 10, face = "italic"), vjust = 1, hjust = -1)
         }
 
-        gvec[[sp]] <- p
+        gvec[[plotnum]] <- dford
+        plotnum <- plotnum + 1
     }
-
-    gvec <- gvec[sapply(gvec, function(x){ !(is.null(x)) } )]
 
     return(gvec)
 }
