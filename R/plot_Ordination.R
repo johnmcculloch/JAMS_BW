@@ -311,7 +311,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             p <- ggarrange(p, centroiddistshow, ncol = 1, nrow = 2, heights = c(3, 1), labels = list("", "Euclidean distance between centroids"), font.label = list(size = 10, face = "italic"), vjust = 1, hjust = -1)
         }
 
-        gvec[[plotnum]] <- dford
+        gvec[[plotnum]] <- p
         plotnum <- plotnum + 1
     }
 
