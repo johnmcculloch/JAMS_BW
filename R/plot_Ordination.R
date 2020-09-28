@@ -106,7 +106,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (permanova == TRUE){
             if (!(is.numeric(cats))){
-                permanovap <- vegan::adonis(as.formula(paste("d ~ ", colourby)), data = currpt_stat)$aov.tab$`Pr(>F)`[1]
+                permanovap <- vegan::adonis(as.formula(paste("d ~ ", compareby)), data = currpt_stat)$aov.tab$`Pr(>F)`[1]
             } else {
                 flog.info("Impossible to get permanova because colourby is continuous")
                 permanovap <- NULL
@@ -255,11 +255,11 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (!is.null(ellipseby)){
             #p <- p + stat_ellipse(show.legend = TRUE, type = "norm")
-            if (!is.null(colourby)){
-                p <- p + stat_ellipse(aes(color = Colours, group = Ellipse), type = "norm")
-            } else {
+            #if (!is.null(colourby)){
+                #p <- p + stat_ellipse(aes(color = Colours, group = Ellipse), type = "norm")
+            #} else {
                 p <- p + stat_ellipse(aes(group = Ellipse), type = "norm")
-            }
+            #}
         }
 
         if (!(is.null(addtit))){
