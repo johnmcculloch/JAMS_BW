@@ -105,6 +105,11 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
         #There must be at least two samples for a heatmap and at least two features
         if ((nrow(currobj) * ncol(currobj)) >= 4){
 
+            fullheatmap_column_order <- NULL
+            fullheatmap_column_dend <- NULL
+            fullheatmap_row_order <- NULL
+            fullheatmap_row_dend <- NULL
+
             #Compose an appropriate title for the plot
             if (length(unique(subset_points)) > 1){
                 maintit <- paste(hmtypemsg, analysisname, paste("within", subset_points[sp]), sep = " | ")
@@ -550,7 +555,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         relabundscalename <- "Pres/Abs"
                     }
 
-                    if (!is.null(textby)){
+                    if (all(c((!is.null(textby)), (fontsizex > 0.5)))){
                         hmdf_txt <- as.character(colData(currobj)[ , which(colnames(colData(currobj)) == textby[1])])
                         ha_column <- HeatmapAnnotation(which = "column", df = hmdf, col = cores, textby = anno_text(hmdf_txt, gp = gpar(fontsize = fontsizex, col = "black")), annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"))
                     } else {
@@ -694,6 +699,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     if (!is.null(ordercolsby)) {
                         column_order <- order(colData(currobj)[ , which(colnames(colData(currobj)) == ordercolsby)])
                         cluster_column_slices <- FALSE
+                        fullheatmap_column_dend <- FALSE
                     } else {
                         column_order <- NULL
                         cluster_column_slices <- TRUE
@@ -728,8 +734,8 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
 
                         } else {
 
-                            #Coerce column order to the order obtained using the full countmatrix
-                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), cluster_columns = fullheatmap_column_dend, column_dend_height = unit(5, "mm"), right_annotation = row_ha, left_annotation = hatax, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol, fontface = hmfontface), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 4)), row_names_max_width = unit(6, "cm"))
+                            #Coerce column order to the order obtained using the full countmatrix, or explicitly by ordercolsby
+                            ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_order = column_order, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), cluster_columns = fullheatmap_column_dend, column_dend_height = unit(5, "mm"), right_annotation = row_ha, left_annotation = hatax, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol, fontface = hmfontface), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 4)), row_names_max_width = unit(6, "cm"))
 
                         }
                     }
