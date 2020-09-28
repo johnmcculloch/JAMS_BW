@@ -179,7 +179,7 @@ assemble_contigs <- function(opt = NULL){
         }
 
         if(opt$analysis == "isolate"){
-            otherargs <- c("--careful", "--cov-cutoff", "auto")
+            otherargs <- c("--isolate", "--careful", "--cov-cutoff", "auto")
         } else {
             otherargs<-NULL
         }
