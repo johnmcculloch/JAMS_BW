@@ -36,10 +36,13 @@ get_reads <- function(opt = NULL){
         #Download reads from accession
         opt$readorigin <- "sraaccession"
         flog.info(paste("Downloading from NCBI SRA reads pertaining to run", opt$sraaccession))
-        #commandtorun <- paste("fastq-dump --readids --split-files --accession", opt$sraaccession, collapse = " ")
-        commandtorun <- paste("fastq-dump --readids --split-files", opt$sraaccession, sep =  " ")
+        commandtorun <- paste("fastq-dump --split-e", opt$sraaccession, sep =  " ")
         system(commandtorun)
-        if(nchar(slurmjobid) > 3){
+        #Eliminate unpaired read because split-e was used. This means that unpaired reads from a paired Run will be dumped into a third file.
+        if (length(list.files(pattern = "fastq") > 2)){
+            file.remove(paste(opt$sraaccession, "fastq", sep = "."))
+        }
+        if (nchar(slurmjobid) > 3){
             system("module unload perl")
         }
     } else {
