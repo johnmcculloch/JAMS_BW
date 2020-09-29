@@ -4,7 +4,12 @@
 \alias{make_jams_file}
 \title{make_jams_file}
 \usage{
-make_jams_file(opt = opt, outdir = opt$outdir, asRDS = TRUE)
+make_jams_file(
+  opt = opt,
+  outdir = opt$outdir,
+  asRDS = TRUE,
+  export_to_XL = FALSE
+)
 }
 \description{
 JAMSalpha function

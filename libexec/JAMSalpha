@@ -434,7 +434,7 @@ if(opt$analysis == "isolate") {
 }
 
 #Make a .jams file
-make_jams_file(opt = opt, outdir = opt$outdir)
+make_jams_file(opt = opt, outdir = opt$outdir, export_to_XL = (opt$analysis == "isolate"))
 
 #Plot report
 print_jams_report(opt = opt, elements = c("readplots", "taxonomy", "SixteenSid", opt$blastanalyses, "func"))

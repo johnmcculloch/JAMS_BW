@@ -64,10 +64,11 @@ option_list <- list(
                 type="character",
                 help ="path to where all .jams files are"),
 
-    make_option(c("-w", "--load_workspace"),
-                action="store", default = NULL,
-                type="character",
-                help ="/path/to/.RData  -  Continue or change the JAMSbeta pipeline from a previous workspace with an .RData file"),
+#Discontinuing loading previous workspace until this gets sorted and becomes useful again
+#    make_option(c("-w", "--load_workspace"),
+#                action="store", default = NULL,
+#                type="character",
+#                help ="/path/to/.RData  -  Continue or change the JAMSbeta pipeline from a previous workspace with an .RData file"),
 
     make_option(c("-g", "--minGbNAHS"),
                 action="store", default = 0,
@@ -109,11 +110,10 @@ option_list <- list(
                 type="logical",
                 help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
 
-    #Will remove this option until sorting out another metagenomeSeq-free way of doing it
-    #make_option(c("-b", "--make_PA_reports"),
-    #            action="store_true", default = FALSE,
-    #            type="logical",
-    #            help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
+    make_option(c("-b", "--make_PA_reports"),
+                action="store_true", default = FALSE,
+                type="logical",
+                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
 
     make_option(c("-r", "--make_correlation_reports"),
                 action="store_true", default = FALSE,
@@ -161,11 +161,13 @@ authorshipmessage <- c(packageDescription("JAMS")$Title, paste("JAMS version", p
 #Fix path relativity
 fixrelpath <- function(JAMSpath = NULL){
     require(R.utils)
-    if(!(isAbsolutePath(JAMSpath))){
+    if (!(isAbsolutePath(JAMSpath))){
         fixedpath <- getAbsolutePath(JAMSpath)
     } else {
         fixedpath <- JAMSpath
     }
+    #Chomp a "/" from the end of paths
+    fixedpath <- gsub("/$", "", fixedpath)
 
     return(fixedpath)
 }
@@ -196,67 +198,9 @@ if (!is.null(opt$outdir)) {
 flog.info(paste("Content will be output to", opt$outdir))
 
 # give help if needed input option not provided
-if (all(c((is.null(opt$load_workspace)), (is.null(opt$jamsfiles_path))))) {
+if (is.null(opt$jamsfiles_path)) {
     parse_args(OptionParser(option_list = option_list), c("-h"))
-    stop("You must supply .jams files with the -y option to build experiments. If you want to use a previous R session image, use --load_workspace")
-} else {
-    if (!is.null(opt$load_workspace)){
-        flog.info("Attempting to continue from a previous JAMSbeta R session.")
-        #Decide if workspace supplied is a folder or an image file itself.
-        if(file.info(as.character(opt$load_workspace))$isdir == TRUE){
-            opt$load_workspace <- file.path(opt$load_workspace, ".RData")
-        }
-        if (file.exists(opt$load_workspace)) {
-            suppressMessages(suppressPackageStartupMessages(library(JAMS)))
-            projimagesize <- file.size(opt$load_workspace)
-            flog.info(paste("Found previous R session file with", projimagesize, "bytes at", as.character(opt$load_workspace)))
-            saveRDS(opt, file = "preloadopt.rds") #Save current options, or else it will be substituted when loading workspace image.
-            #IO_jams_workspace_image(workspaceimage = opt$load_workspace, operation = "load")
-            flog.info("Random Access Memory (RAM) status")
-            print(RAMbytes_status())
-            flog.info("Loading previous R session. Please be patient.")
-            load(opt$load_workspace)
-            flog.info("Random Access Memory (RAM) status")
-            print(RAMbytes_status())
-            preloadopt <- readRDS("preloadopt.rds")
-            #change name of ordination report option, for backwards compatibility. This patch will be phased out by July2020.
-            if ("ordination" %in% names(opt)){
-                names(opt)[which(names(opt) == "ordination")] <- "make_ordination_report"
-            }
-            rm(list = c("phenotable", "phenolabels")[c("phenotable", "phenolabels") %in% ls()])
-            #Replace old options with new ones
-            opt$replaced <- NULL
-            optstosub <- names(preloadopt)[!(names(preloadopt) %in% c("jamsfiles_path", "load_workspace", "projimage", "projimagesize"))]
-            optstoreset <- c("excel_metadata", "make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "make_correlation_reports", "make_ordination_report", "export_tables")[(!(c("excel_metadata", "make_alpha_reports", "make_PA_reports", "make_comparative_reports", "make_exploratory_reports", "make_correlation_reports", "make_ordination_report", "export_tables") %in% opt$replaced))]
-            for (resetopt in optstoreset){
-                #flog.info(paste("Option", resetopt, "is set to FALSE."))
-                opt[[resetopt]] <- FALSE
-            }
-            #Reset dupes
-            opt$dupes <- NULL
-            #May be missing in some old JAMS beta images
-            if (is.null(opt[["outdir"]])){
-                opt[["outdir"]] <- getwd()
-            }
-            missingopts <- optstosub[which(optstosub %in% names(opt) == FALSE)]
-            for (missingopt in missingopts){
-                opt[[missingopt]] <- FALSE
-            }
-
-            for (nametosub in optstosub){
-                if (opt[[nametosub]] != preloadopt[[nametosub]]){
-                    flog.info(paste0("For ", nametosub, ", ", opt[[nametosub]], " has been replaced with ", preloadopt[[nametosub]]))
-                    opt[[nametosub]] <- preloadopt[[nametosub]]
-                    opt$replaced <- append(opt$replaced, nametosub)
-                }
-            }
-            file.remove("preloadopt.rds")
-
-        } else {
-            parse_args(OptionParser(option_list = option_list), c("-h"))
-            stop("Unable to find a previous R session file in the output folder. If you want to build experiments from scratch, do not use the --continue (-u) option.")
-        }
-    }
+    stop("You must supply .jams files with the -y option to build experiments.")
 }
 
 #Set defaults
@@ -277,17 +221,6 @@ flog.info(paste("You have", opt$threads, "CPUs available."))
 ## Get metadata ##
 ##################
 
-#keep metadata if it has changed from a previous version.
-if (!is.null(opt$replaced)){
-    if (!("excel_metadata" %in% opt$replaced)){
-        opt$excel_metadata <- NULL
-    }
-    if (!("phenotable_tsv" %in% opt$replaced)){
-        opt$phenotable_tsv <- NULL
-        opt$phenolabels_tsv <- NULL
-    }
-}
-
 #Get metadata
 opt <- load_metadata_from_file(opt = opt)
 
@@ -301,11 +234,6 @@ if ((is.null(opt$phenotable)) || (nrow(opt$phenotable) < 1)){
 ##########
 ## Will keep this running in all cases. Not sure of the consequences for when loading a workspace and NOT changing metadata.
 opt$metadatavetting <- TRUE
-if (!is.null(opt$replaced)){
-    if (!any((c("excel_metadata", "phenotable_tsv") %in% opt$replaced))) {
-        opt$metadatavetting <- FALSE
-    }
-}
 
 if (opt$metadatavetting == TRUE){
     #If phenolabels exists, make sure that phenotable contains only data described in phenolabels.
