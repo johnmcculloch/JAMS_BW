@@ -442,9 +442,12 @@ fixrelpath <- function(JAMSpath = NULL){
     } else {
         fixedpath <- JAMSpath
     }
+    #Chomp a "/" from the end of paths
+    fixedpath <- gsub("/$", "", fixedpath)
 
     return(fixedpath)
 }
+
 
 #' name_samples(list.data = NULL)
 #'

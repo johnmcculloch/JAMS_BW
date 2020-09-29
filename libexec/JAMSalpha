@@ -232,10 +232,11 @@ fixrelpath <- function(JAMSpath = NULL){
     } else {
         fixedpath <- JAMSpath
     }
+    #Chomp a "/" from the end of paths
+    fixedpath <- gsub("/$", "", fixedpath)
 
     return(fixedpath)
 }
-
 for (pathtofix in c("R1", "R2", "SE", "contigs", "readstarball", "outdir", "explicitspecies", "dbdir")){
     if (!is.null(opt[[pathtofix]])){
         opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])

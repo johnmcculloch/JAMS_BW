@@ -164,6 +164,8 @@ fixrelpath <- function(JAMSpath = NULL){
     } else {
         fixedpath <- JAMSpath
     }
+    #Chomp a "/" from the end of paths
+    fixedpath <- gsub("/$", "", fixedpath)
 
     return(fixedpath)
 }
@@ -320,5 +322,11 @@ for (currsamp in OriPrefixes){
         }
     }
 }
+
+#Remove temporary folder if downloading from BaseSpace
+if (all(c((!is.null(opt$basespace_projectID)), (file.exists(file.path(opt$destination, "BaseSpaceReads")))))){
+    unlink(file.path(opt$destination, "BaseSpaceReads"))
+}
+
 flog.info("Joining of lanes completed. Thank you for using JAMSjoinlanes.")
 save.image(opt$projimage)
