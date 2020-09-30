@@ -2,6 +2,7 @@
 #'
 #' Converts an SRA Run Table to JAMS-style metadata (phenotable, phenolabels).
 #' @export
+
 SraRunTable_to_metadata <- function(SraRunTable = NULL, Sample = "Run", discrete = NULL, subsettable = NULL, continuous = NULL){
     allvariables <- c(Sample, subsettable, discrete, continuous)
     phenotable <- SraRunTable[ , allvariables]

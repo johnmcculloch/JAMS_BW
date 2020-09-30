@@ -4,12 +4,15 @@
 #' @export
 
 assemble_contigs <- function(opt = NULL){
+
     #Obtain reads to use for assembly
     opt <- get_reads(opt = opt)
     save.image(file = opt$projimage)
+
     #Filter reads if necessary
     opt <- trim_reads(opt = opt)
     save.image(file = opt$projimage)
+
     #Eliminate host reads if applicable
     opt <- filter_host(opt = opt)
     #Check if reads are in tmpdir
@@ -179,9 +182,9 @@ assemble_contigs <- function(opt = NULL){
         }
 
         if(opt$analysis == "isolate"){
-            otherargs <- c("--isolate", "--careful", "--cov-cutoff", "auto")
+            otherargs <- c("--isolate", "--cov-cutoff", "auto")
         } else {
-            otherargs<-NULL
+            otherargs <- NULL
         }
 
         if(opt$analysis == "metagenome"){

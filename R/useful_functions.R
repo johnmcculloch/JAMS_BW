@@ -42,6 +42,7 @@ is.redundant <- function(vec){
 #'
 #' Returns logical for a vector having more than one class in it
 #' @export
+
 is.useful <- function(vec){
     numunique <- length(unique(vec))
     if (numunique < 2){
@@ -554,6 +555,8 @@ shrink_perbasecoverage <-function(perbasecoverage = NULL, percentage = 2){
 
     return(perbasecoverage_reduced)
 }
+
+
 
 #' add_shape_to_plot_safely(p = NULL, shapevec = NULL, cdict = NULL)
 #'

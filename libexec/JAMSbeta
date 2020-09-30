@@ -206,6 +206,7 @@ if (is.null(opt$jamsfiles_path)) {
 #Set defaults
 asPA <- FALSE
 opt$projimage <- file.path(opt$outdir, ".RData")
+
 ###################
 ## Start project ##
 ###################
@@ -384,6 +385,7 @@ if (adjustmetadata == TRUE){
     }
 }
 
+
 #Export list.data to system and set it as NULL, to decrease RAM burden.
 flog.info("Saving list.data.rda to system. Please be patient...")
 list.data_fn <- file.path(opt$outdir, "list_data.rda")
@@ -491,9 +493,6 @@ if (opt$export_tables == TRUE){
     export_expvec_to_XL(expvec = expvec, asPPM = FALSE, filename = paste(paste(project, "Base_counts", sep = "_"), "xlsx", sep = "."))
 }
 
-#Export as spreadsheet
-#export_expvec_to_XL(expvec = expvec, asPPM = TRUE, includemetadata = TRUE, filename = paste(paste(project, "counts", "PPM", sep = "_"), "xlsx", sep = "."))
-
 #Determine reasonable cutoff level
 if (any(c("metatranscriptome", "isolate") %in% pheno$JAMS_Run_type)){
     applyfilters <- "none"
@@ -544,10 +543,9 @@ if (opt$make_correlation_reports){
 if (opt$make_exploratory_reports){
     plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "exploratory") }))
 }
-#Will remove this option until sorting out another metagenomeSeq-free way of doing it
-#if (opt$make_PA_reports){
-#    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "PA") }))
-#}
+if (opt$make_PA_reports){
+    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "PA") }))
+}
 if (opt$make_alpha_reports){
     plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "alpha") }))
 }
@@ -559,7 +557,7 @@ appropriatenumcores <- max(1 , (min((opt$threads - 2), length(plotkinds))))
 #Not sure if this is the calculation, but will use it to temper RAM use at the cost of CPU use and time.
 appropriatenumcores <- round((appropriatenumcores * (1 - UsedRAM)), 0)
 
-if(opt$plot_in_parallel == TRUE){
+if (opt$plot_in_parallel == TRUE){
     flog.info(paste("Using", appropriatenumcores, "CPUs for generating plots in parallel."))
     mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) }, mc.cores = appropriatenumcores)
 } else {
