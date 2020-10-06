@@ -340,7 +340,7 @@ if (!is.null(opt$checkprefixexists)){
 
 if (!(is.null(opt$readsfolder))){
     flog.info("Searching for reads files in reads folder.")
-    rawfastqpaths <- list.files(path = opt$readsfolder, pattern = "fastq|gz$", full.names = TRUE, recursive = TRUE)
+    rawfastqpaths <- list.files(path = opt$readsfolder, pattern = "fastq$|gz$", full.names = TRUE, recursive = TRUE)
     rawfastqnames <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 1) })
     datasetids <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 2)[1] })
 
