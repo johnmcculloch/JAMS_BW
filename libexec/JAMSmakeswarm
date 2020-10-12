@@ -222,6 +222,9 @@ option_list <- list(
     make_option(c("-e", "--appendtoprefix"),
                 default = NULL, action="store", help = str_c("Append this string to prefix. Example: -e Bis would generate a prefix in the form of PrefixBis")),
 
+    make_option(c("-d", "--prependtoprefix"),
+                default = NULL, action="store", help = str_c("Append this string to prefix. Example: -e Bis would generate a prefix in the form of PrefixBis")),
+
     make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
                 help = str_c("Use -n option in swarm file, for skipping InterproScan, even if available.)")),
 
@@ -378,7 +381,7 @@ if (!(is.null(opt$readsfolder))){
                 readsinput <- paste("-U", relevantfiles$Filepaths[1])
             }
         }
-        swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", paste0(prefix, opt$appendtoprefix), collapse = " ")
+        swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", paste0(opt$prependtoprefix, prefix, opt$appendtoprefix), collapse = " ")
     }
     finalswarm <- append(swarm, finalswarm)
 }
@@ -399,7 +402,7 @@ if (any(c((!is.null(opt$sralist)), (!is.null(opt$gcalist))))) {
                 prefix <- opt$prefixestouse[p]
                 accession <- opt$wantedaccessions[p]
                 readsinput <- paste(flag, accession)
-                swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", paste0(prefix, opt$appendtoprefix), collapse = " ")
+                swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", paste0(opt$prependtoprefix, prefix, opt$appendtoprefix), collapse = " ")
             }
             finalswarm <- append(swarm, finalswarm)
         }
