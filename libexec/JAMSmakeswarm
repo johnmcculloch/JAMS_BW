@@ -219,10 +219,10 @@ option_list <- list(
     make_option(c("-a", "--gcalist"),
                 default = NULL, action="store", help = str_c("List of GCA accessions to get assembly contigs from GenBank (example: GCA_000969225.1).")),
 
-    make_option(c("-e", "--appendtoprefix"),
+    make_option(c("-z", "--appendtoprefix"),
                 default = NULL, action="store", help = str_c("Append this string to prefix. Example: -e Bis would generate a prefix in the form of PrefixBis")),
 
-    make_option(c("-d", "--prependtoprefix"),
+    make_option(c("-b", "--prependtoprefix"),
                 default = NULL, action="store", help = str_c("Append this string to prefix. Example: -e Bis would generate a prefix in the form of PrefixBis")),
 
     make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
