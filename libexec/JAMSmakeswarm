@@ -220,10 +220,10 @@ option_list <- list(
                 default = NULL, action="store", help = str_c("List of GCA accessions to get assembly contigs from GenBank (example: GCA_000969225.1).")),
 
     make_option(c("-z", "--appendtoprefix"),
-                default = NULL, action="store", help = str_c("Append this string to prefix. Example: -e Bis would generate a prefix in the form of PrefixBis")),
+                default = NULL, action="store", help = str_c("Append this string to prefix. Example: -z Bis would generate a prefix in the form of PrefixBis")),
 
     make_option(c("-b", "--prependtoprefix"),
-                default = NULL, action="store", help = str_c("Append this string to prefix. Example: -e Bis would generate a prefix in the form of PrefixBis")),
+                default = NULL, action="store", help = str_c("Prepend this string to prefix. Example: -b New123 would generate a prefix in the form of New123Prefix")),
 
     make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
                 help = str_c("Use -n option in swarm file, for skipping InterproScan, even if available.)")),
