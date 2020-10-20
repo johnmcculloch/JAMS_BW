@@ -213,6 +213,12 @@ option_list <- list(
     make_option(c("-p", "--prefixlist"), default = NULL, action="store",
                 help = str_c("Text file with a list of read prefixes to restrict swarm to.")),
 
+    make_option(c("-t", "--substitutionmap"), default = NULL, action="store",
+                help = str_c("Tab limited text file for sample name substitution in the format: oldname[TAB]newname")),
+
+    make_option(c("-x", "--substitutionspreadsheet"), default = NULL, action="store",
+                help = str_c("Tab limited xlsx spreadsheet for sample name substitution. Will look for a column named OriPrefix and substitute that value for the corresponding one on the Sample column.")),
+
     make_option(c("-g", "--sralist"),
                 default = NULL, action="store", help = str_c("List of SRA accessions to get reads for assembly.")),
 
@@ -233,6 +239,9 @@ option_list <- list(
 
     make_option(c("-s", "--swarmfile"), default = defopt$swarmfile, action="store",
                 help = str_c("File name for swarm file to be created (default: ", defopt$swarmfile, ")")),
+
+    make_option(c("-l", "--split_swarmfile"), default = NULL, action="store",
+                help = str_c("Split swarm into multiple files with this number of lines each. Filenames will be appended with numbers (Example: Project.swarm001, Project.swarm002, etc...). Omit for no splitting.")),
 
     make_option(c("-c", "--checkprefixexists"), default = NULL,
                 action="store", help = str_c("Optional path to folder with banked .jams files. If prefix already exists a warning is issued.")),
@@ -260,7 +269,7 @@ if (!is.null(opt$version)) {
 #Get Script path
 opt$bindir <- getScriptPath()
 
-for (pathtofix in c("readsfolder", "outputfolder", "prefixlist", "swarmfile", "jamsdb")){
+for (pathtofix in c("readsfolder", "outputfolder", "prefixlist", "swarmfile", "jamsdb", "substitutionmap", "substitutionspreadsheet")){
     if (!is.null(opt[[pathtofix]])){
         opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
     }
@@ -316,10 +325,47 @@ check_prefixes <- function(opt = NULL){
 ## Main Function ##
 ###################
 #suppressPackageStartupMessages(library(JAMS))
-#Load prefix list if present
-if (!(is.null(opt$prefixlist))){
+
+#Evaluate prefix restrictions. Order of precedence is spreadsheet, substitutionmap, prefixlist.
+
+if (!(is.null(opt$substitutionspreadsheet))){
+
+    #Get spreadsheet
+    substitutiondf <- read.xlsx(opt$substitutionspreadsheet)
+    #Check for wanted columns
+    if (!all(c("Sample", "OriPrefix") %in% colnames(substitutiondf))){
+        missingcols <- c("Sample", "OriPrefix")[!(c("Sample", "OriPrefix") %in% colnames(substitutiondf))]
+        flog.info(paste("Unable to find the", paste0(missingcols, collapse = ", "), "column(s) in the spreadsheet."))
+        if ("Sample" %in% colnames(substitutiondf)){
+            flog.info("Found a Sample column in the spreadsheet. Prefixes will be restricted to those in this column.")
+            wantedprefixes <- as.character(substitutiondf$Sample)
+        }
+    } else {
+        substitutiondf <- substitutiondf[ , c("Sample", "OriPrefix")]
+        substitutiondf$Sample <- as.character(substitutiondf$Sample)
+        substitutiondf$OriPrefix <- as.character(substitutiondf$OriPrefix)
+        wantedprefixes <- substitutiondf$OriPrefix
+    }
+
+} else if (!(is.null(opt$substitutionmap))){
+
+    #Get substitutionmap
+    substitutiondf <- data.table::fread(opt$substitutionmap, stringsAsFactors = FALSE, data.table = FALSE, header = FALSE)
+    substitutiondf <- substitutiondf[ , 1:2]
+    colnames(substitutiondf) <- c("Sample", "OriPrefix")
+    wantedprefixes <- as.character(substitutiondf$OriPrefix)
+
+} else if (!(is.null(opt$prefixlist))){
+
     wantedprefixes <- read.table(opt$prefixlist, header = FALSE, sep = " ", stringsAsFactors = FALSE)
     wantedprefixes <- as.character(wantedprefixes[, 1])
+    substitutiondf <- NULL
+
+} else {
+
+    substitutiondf <- NULL
+    wantedprefixes <- NULL
+
 }
 
 commonoptions <- paste("-d", opt$jamsdb, "-A", opt$analysis, "-o", opt$outputfolder, "-H", opt$hostspecies, collapse = " ")
@@ -337,8 +383,8 @@ swarm <- NULL
 if (!is.null(opt$checkprefixexists)){
     cat("Checking if prefixes in swarm file coincide with prefixes in:\n")
     cat(paste(as.character(opt$checkprefixexists), "\n"))
-    jamsfns <- list.files(path = opt$checkprefixexists, pattern = ".jams$")
-    opt$usedprefixes <- sapply(1:length(jamsfns), function(x) { unlist(strsplit(jamsfns[x], split = "\\."))[1] } )
+    jamsfns <- list.files(path = opt$checkprefixexists, pattern = ".jams$", full.names = FALSE, recursive = TRUE, include.dirs = FALSE)
+    opt$usedprefixes <- sapply(1:length(jamsfns), function(x) { tail(unlist(strsplit(unlist(strsplit(jamsfns[x], split = "\\."))[1], split = "\\/")), n = 1) } )
 }
 
 if (!(is.null(opt$readsfolder))){
@@ -354,14 +400,21 @@ if (!(is.null(opt$readsfolder))){
     rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { analyze_fastq_filename(fn = rawfastqsdf$Filenames[x])[["Read"]] } )
     rawfastqsdf$Container <- sapply(1:nrow(rawfastqsdf), function(x) { find_container(x) } )
     #rawfastqsdf$Prefix <- sapply(1:nrow(rawfastqsdf), function(x) { paste(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_"))[1:((which(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")) == tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 4)[1])) - 1)], collapse = "_") } )
-    rawfastqsdf$Prefix <- sapply(1:nrow(rawfastqsdf), function(x) { analyze_fastq_filename(fn = rawfastqsdf$Filenames[x])[["OriPrefix"]] } )
+    rawfastqsdf$OriPrefix <- sapply(1:nrow(rawfastqsdf), function(x) { analyze_fastq_filename(fn = rawfastqsdf$Filenames[x])[["OriPrefix"]] } )
 
-    if (!(is.null(opt$prefixlist))){
-         rawfastqsdf <- subset(rawfastqsdf, Prefix %in% wantedprefixes)
+    if (!(is.null(wantedprefixes))){
+         rawfastqsdf <- subset(rawfastqsdf, OriPrefix %in% wantedprefixes)
          if (nrow(rawfastqsdf) < 1){
              flog.info("Could not find a single prefix requested in the reads folder supplied.")
              q()
          }
+    }
+
+    if (!is.null(substitutiondf)){
+        rawfastqsdf <- left_join(rawfastqsdf, substitutiondf, by = "OriPrefix")
+        colnames(rawfastqsdf)[which(colnames(rawfastqsdf) == "Sample")] <- "Prefix"
+    } else {
+        colnames(rawfastqsdf)[which(colnames(rawfastqsdf) == "OriPrefix")] <- "Prefix"
     }
 
     opt$prefixestouse <- unique(rawfastqsdf$Prefix)
@@ -410,4 +463,12 @@ if (any(c((!is.null(opt$sralist)), (!is.null(opt$gcalist))))) {
 }
 
 #Write swarm file to system
-write.table(finalswarm, file = opt$swarmfile, sep = "\n", row.names = FALSE, col.names = FALSE, quote = FALSE)
+if (!is.null(opt$split_swarmfile)){
+    swarmlist <- split(finalswarm, ceiling(seq_along(finalswarm) / as.numeric(opt$split_swarmfile)))
+    for (swm in 1:length(swarmlist)){
+        appendix <- str_pad(swm, nchar(length(swarmlist)), pad = "0")
+        cat(swarmlist[[swm]], file = paste0(opt$swarmfile, appendix), sep = "\n")
+    }
+} else {
+    cat(finalswarm, file = opt$swarmfile, sep = "\n")
+}
