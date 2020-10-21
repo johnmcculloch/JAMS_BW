@@ -1,9 +1,9 @@
-#' make_heatmap_report(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, PPM_normalize_to_bases_sequenced = FALSE, minabscorrcoeff = NULL, heatpalette = "smart", variable_list = NULL, max_annot_legends = 4, includereaddata = TRUE, adjustpval = NULL, hmasPA = FALSE, scaled = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, class_to_ignore = NULL, ...)
+#' make_heatmap_report(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, PPM_normalize_to_bases_sequenced = FALSE, no_underscores = FALSE, hmasPA = FALSE, threshPA = 0, splitcolsby = NULL, splitcolsbycomp = FALSE, ordercolsby = NULL, textby = NULL, cluster_rows = TRUE, max_rows_in_heatmap = 50, secondaryheatmap = "GenomeCompleteness", minabscorrcoeff = NULL, variable_list = NULL, max_annot_legends = 4, includereaddata = TRUE, adjustpval = FALSE, scaled = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, class_to_ignore = NULL, ...)
 #'
 #' Generates standard comparative heatmaps and spreadsheet based on relative abundance difference between categories for analyses named in expvectors.
 #' @export
 
-make_heatmap_report <- function(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, PPM_normalize_to_bases_sequenced = FALSE, minabscorrcoeff = NULL, heatpalette = "smart", variable_list = NULL, max_annot_legends = 4, includereaddata = TRUE, adjustpval = NULL, hmasPA = FALSE, scaled = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, class_to_ignore = NULL, ...){
+make_heatmap_report <- function(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, PPM_normalize_to_bases_sequenced = FALSE, no_underscores = FALSE, hmasPA = FALSE, threshPA = 0, splitcolsby = NULL, splitcolsbycomp = FALSE, ordercolsby = NULL, textby = NULL, cluster_rows = TRUE, max_rows_in_heatmap = 50, secondaryheatmap = "GenomeCompleteness", minabscorrcoeff = NULL, variable_list = NULL, max_annot_legends = 4, includereaddata = TRUE, adjustpval = FALSE, scaled = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, class_to_ignore = NULL, ...){
 
     if (is.null(usefulexp)){
         usefulexp <- names(expvec)[!(names(expvec) %in% c("FeatType", "vfdb", "SFLD", "Coils", "Gene3D", "Phobius", "ProSitePatterns", "SMART", "resfinder", "ProDom"))]
@@ -94,7 +94,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
     XLn <- 0
     HMn <- 0
 
-    basepdffn <- paste("JAMS", project, plotname, sep="_")
+    basepdffn <- paste("JAMS", project, plotname, sep = "_")
     if (!(is.null(appendtofilename))){
         basepdffn <- paste(basepdffn, appendtofilename, sep = "_")
     }
@@ -152,21 +152,27 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                         grid.table(c(names(expvec2)[a], "Features most different", paste("between", cmp), "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
                     }
 
-                    mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, hmtype = report, hmasPA = FALSE, compareby = cmp, ntop = topcats, invertbinaryorder = FALSE, colcategories = colcategories, cluster_rows = TRUE, applyfilters = applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, adjustpval = adjustpval, showonlypbelow = showonlypbelow, showpval = TRUE, showl2fc = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, numthreads = numthreads, nperm = nperm, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled)
+                    if (splitcolsbycomp) {
+                        splitby <- cmp
+                    } else {
+                        splitby <- splitcolsby
+                    }
+
+                    mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, hmtype = report, hmasPA = hmasPA, compareby = cmp, ntop = topcats, invertbinaryorder = FALSE, colcategories = colcategories, applyfilters = applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, adjustpval = adjustpval, showonlypbelow = showonlypbelow, showpval = TRUE, showl2fc = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, numthreads = numthreads, nperm = nperm, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled, no_underscores = no_underscores, threshPA = threshPA, splitcolsby = splitby, ordercolsby = ordercolsby, textby = textby, cluster_rows = cluster_rows, max_rows_in_heatmap = max_rows_in_heatmap, secondaryheatmap = secondaryheatmap)
 
                     if (annotcnk < 2){
                         compvec <- append(compvec, mycomp, after = length(compvec))
                     }
 
                 } else if (report == "exploratory"){
-                    flog.info(paste("Plotting", names(expvec2)[a], "relabund heatmaps of features with higest variance."))
+                    flog.info(paste("Plotting", names(expvec2)[a], "relabund heatmaps of features with highest variance."))
                     flog.info(paste("Using legend annotations:", paste0(colcategories, collapse = ", ")))
 
                     if (annotcnk < 2){
                         plot.new()
                         grid.table(c("Features with highest variance", names(expvec2)[a], "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
                     }
-                    mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, hmtype = report, hmasPA = FALSE, compareby = cmp, ntop = topcats, colcategories = colcategories, cluster_rows = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled)
+                    mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, hmtype = report, hmasPA = hmasPA, compareby = cmp, ntop = topcats, colcategories = colcategories, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled, no_underscores = no_underscores, threshPA = threshPA, splitcolsby = splitcolsby, ordercolsby = ordercolsby, textby = textby, cluster_rows = cluster_rows, max_rows_in_heatmap = max_rows_in_heatmap, secondaryheatmap = secondaryheatmap)
 
                     if (annotcnk < 2){
                         compvec <- append(compvec, mycomp, after=length(compvec))
@@ -180,7 +186,14 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                         plot.new()
                         grid.table(c(names(expvec2)[a], "Features present or absent", paste("between", cmp), "No subsetting"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
                     }
-                    mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, hmtype = report, hmasPA = FALSE, compareby = cmp, ntop = topcats, invertbinaryorder = FALSE, colcategories = colcategories, cluster_rows = TRUE, applyfilters = applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, adjustpval = adjustpval, showonlypbelow = showonlypbelow, showpval = TRUE, showl2fc = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, numthreads = numthreads, nperm = nperm, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled)
+
+                    if (splitcolsbycomp) {
+                        splitby <- cmp
+                    } else {
+                        splitby <- splitcolsby
+                    }
+
+                    mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, hmtype = report, hmasPA = hmasPA, compareby = cmp, ntop = topcats, invertbinaryorder = FALSE, colcategories = colcategories, applyfilters = applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, adjustpval = adjustpval, showonlypbelow = showonlypbelow, showpval = TRUE, showl2fc = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, numthreads = numthreads, nperm = nperm, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled, no_underscores = no_underscores, threshPA = threshPA, splitcolsby = splitby, ordercolsby = ordercolsby, textby = textby, cluster_rows = cluster_rows, max_rows_in_heatmap = max_rows_in_heatmap, secondaryheatmap = secondaryheatmap)
 
                     if (annotcnk < 2){
                         compvec <- append(compvec, mycomp, after=length(compvec))
@@ -220,7 +233,13 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                                 grid.table(c(names(expvec2)[a], "Features most different", paste("between", cmp), paste("Subset by", vs)), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
                             }
 
-                            mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, subsetby = vs, hmtype = report, hmasPA = FALSE, compareby = cmp, ntop = topcats, invertbinaryorder = FALSE, colcategories = colcategories, cluster_rows = TRUE, applyfilters = applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, adjustpval = adjustpval, showonlypbelow = showonlypbelow, showpval = TRUE, showl2fc = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, numthreads = numthreads, nperm = nperm, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled)
+                            if (splitcolsbycomp) {
+                                splitby <- cmp
+                            } else {
+                                splitby <- splitcolsby
+                            }
+
+                            mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, subsetby = vs, hmtype = report, hmasPA = hmasPA, compareby = cmp, ntop = topcats, invertbinaryorder = FALSE, colcategories = colcategories, applyfilters = applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, adjustpval = adjustpval, showonlypbelow = showonlypbelow, showpval = TRUE, showl2fc = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, numthreads = numthreads, nperm = nperm, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled, no_underscores = no_underscores, threshPA = threshPA, splitcolsby = splitby, ordercolsby = ordercolsby, textby = textby, cluster_rows = cluster_rows, max_rows_in_heatmap = max_rows_in_heatmap, secondaryheatmap = secondaryheatmap)
 
                             if (annotcnk < 2){
                                 compvec <- append(compvec, mycomp, after = length(compvec))
@@ -236,7 +255,7 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                                 grid.table(c("Features with highest variance", names(expvec2)[a], "Subsetting by group"), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
                             }
 
-                            mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, subsetby = vs, hmtype = report, hmasPA = FALSE, compareby = cmp, ntop = topcats, colcategories = colcategories, cluster_rows = TRUE, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled)
+                            mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, subsetby = vs, hmtype = report, hmasPA = hmasPA, compareby = cmp, ntop = topcats, colcategories = colcategories, applyfilters = applyfilters, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled, no_underscores = no_underscores, threshPA = threshPA, splitcolsby = splitcolsby, ordercolsby = ordercolsby, textby = textby, cluster_rows = cluster_rows, max_rows_in_heatmap = max_rows_in_heatmap, secondaryheatmap = secondaryheatmap)
 
                             if (annotcnk < 2){
                                 compvec <- append(compvec, mycomp, after = length(compvec))
@@ -249,7 +268,13 @@ make_heatmap_report <- function(report = "comparative", project = NULL, expvec =
                                 grid.table(c(names(expvec2)[a], "Features present or absent", paste("between", cmp), paste("Subset by", vs)), rows = NULL, cols = NULL, theme = ttheme_default(base_size = 20))
                             }
 
-                            mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, subsetby = vs, hmtype = report, hmasPA = FALSE, compareby = cmp, ntop = topcats, invertbinaryorder = FALSE, colcategories = colcategories, cluster_rows = TRUE, applyfilters = applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, adjustpval = adjustpval, showonlypbelow = showonlypbelow, showpval = TRUE, showl2fc = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, numthreads = numthreads, nperm = nperm, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled)
+                            if (splitcolsbycomp) {
+                                splitby <- cmp
+                            } else {
+                                splitby <- splitcolsby
+                            }
+
+                            mycomp <- plot_relabund_heatmap(ExpObj = expvec2[[a]], glomby = glomby, subsetby = vs, hmtype = report, hmasPA = hmasPA, compareby = cmp, ntop = topcats, invertbinaryorder = FALSE, colcategories = colcategories, applyfilters = applyfilters, minl2fc = minl2fc, featcutoff = featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, ignoreunclassified = TRUE, adjustpval = adjustpval, showonlypbelow = showonlypbelow, showpval = TRUE, showl2fc = TRUE, cdict = cdict, maxnumheatmaps = maxnumheatmaps, numthreads = numthreads, nperm = nperm, returnstats = makespreadsheets, cluster_samples_per_heatmap = cluster_samples_per_heatmap, cluster_features_per_heatmap = cluster_features_per_heatmap, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, class_to_ignore = class_to_ignore, scaled = scaled, no_underscores = no_underscores, threshPA = threshPA, splitcolsby = splitby, ordercolsby = ordercolsby, textby = textby, cluster_rows = cluster_rows, max_rows_in_heatmap = max_rows_in_heatmap, secondaryheatmap = secondaryheatmap)
 
                             if (annotcnk < 2){
                                 compvec <- append(compvec, mycomp, after = length(compvec))

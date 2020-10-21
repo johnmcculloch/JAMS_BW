@@ -2,7 +2,7 @@
 % Please edit documentation in R/make_heatmap_report.R
 \name{make_heatmap_report}
 \alias{make_heatmap_report}
-\title{make_heatmap_report(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, PPM_normalize_to_bases_sequenced = FALSE, minabscorrcoeff = NULL, heatpalette = "smart", variable_list = NULL, max_annot_legends = 4, includereaddata = TRUE, adjustpval = NULL, hmasPA = FALSE, scaled = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, class_to_ignore = NULL, ...)}
+\title{make_heatmap_report(report = "comparative", project = NULL, expvec = NULL, usefulexp = NULL, appendtofilename = NULL, glomby = NULL, featcutofftaxa = NULL, featcutofffunct = NULL, l2fchmtaxa = NULL, l2fchmfunc = NULL, samplesToKeep = NULL, featuresToKeep = NULL, applyfilters = NULL, absolutemaxfeats = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, PPM_normalize_to_bases_sequenced = FALSE, no_underscores = FALSE, hmasPA = FALSE, threshPA = 0, splitcolsby = NULL, splitcolsbycomp = FALSE, ordercolsby = NULL, textby = NULL, cluster_rows = TRUE, max_rows_in_heatmap = 50, secondaryheatmap = "GenomeCompleteness", minabscorrcoeff = NULL, variable_list = NULL, max_annot_legends = 4, includereaddata = TRUE, adjustpval = FALSE, scaled = FALSE, cdict = NULL, showonlypbelow = 0.05, makespreadsheets = FALSE, makeheatmaps = TRUE, maxnumheatmaps = NULL, numthreads = 4, nperm = 99, class_to_ignore = NULL, ...)}
 \usage{
 make_heatmap_report(
   report = "comparative",
@@ -24,13 +24,21 @@ make_heatmap_report(
   cluster_samples_per_heatmap = FALSE,
   cluster_features_per_heatmap = FALSE,
   PPM_normalize_to_bases_sequenced = FALSE,
+  no_underscores = FALSE,
+  hmasPA = FALSE,
+  threshPA = 0,
+  splitcolsby = NULL,
+  splitcolsbycomp = FALSE,
+  ordercolsby = NULL,
+  textby = NULL,
+  cluster_rows = TRUE,
+  max_rows_in_heatmap = 50,
+  secondaryheatmap = "GenomeCompleteness",
   minabscorrcoeff = NULL,
-  heatpalette = "smart",
   variable_list = NULL,
   max_annot_legends = 4,
   includereaddata = TRUE,
-  adjustpval = NULL,
-  hmasPA = FALSE,
+  adjustpval = FALSE,
   scaled = FALSE,
   cdict = NULL,
   showonlypbelow = 0.05,
