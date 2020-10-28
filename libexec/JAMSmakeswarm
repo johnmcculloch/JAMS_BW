@@ -129,7 +129,7 @@ analyze_fastq_filename <- function(fn = NULL, maintain_Illumina_format = FALSE){
 
     #Now delve into fnbody and see what it it about
     #Does it have lane info? Must have L00X in the last 4 elements.
-    contains_lane_info <- any(c("L001", "L002", "L003", "L004") %in% tail(unlist(strsplit(fnbody, split = "_")), n = 4))
+    contains_lane_info <- any(c("L001", "L002", "L003", "L004", "L005", "L006", "L007", "L008") %in% tail(unlist(strsplit(fnbody, split = "_")), n = 4))
     #Does it have paired read info? Must have RX in the last 4 elements.
     contains_paired_read_info <- any(c("R1", "R2") %in% tail(unlist(strsplit(fnbody, split = "_")), n = 4))
     #Is it Illumina output filename style?
