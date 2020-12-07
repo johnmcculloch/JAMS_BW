@@ -1,10 +1,10 @@
 #' Creates bar graph of relative taxonomic abundance from metagenomeSeq object
-#' 
-#' 
+#'
+#'
 #' @param mgseqobj a metagenomeSeq object.
 #' @param glomby string giving taxonomic level (from tax_table) to plot at.
 #' @param samplesToKeep vector with samples to plot.
-#' @param featuresToKeep vector with features to plot. 
+#' @param featuresToKeep vector with features to plot.
 #' @param units unit to normalize data to -- default percentage (100).
 #' @param threshold minimum value to include as separate entry (below is Misc_Low_Abundance).
 #' @param title plot title
@@ -18,7 +18,7 @@
 #' @examples
 #' plot_bar_graph(mrexp1, glomby = "Phylum", category = "Group")
 
-plot_bar_graph<-function(mgseqobj=NULL, glomby=NULL, samplesToKeep=NULL, featuresToKeep=NULL, units=100, threshold = 2, title="", category=NULL, cat_pos = -2, cat_text_size=3, border_color="white", cdict=NULL, colors=NULL, grid = TRUE, ...) {
+plot_bar_graph <- function(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, class_to_ignore = class_to_ignore, units = 100, threshold = 2, title = "", category = NULL, cat_pos = -2, cat_text_size =  3, border_color = "white", cdict = NULL, colors = NULL, grid = TRUE, ...) {
 
     require(reshape2)
 
@@ -41,9 +41,57 @@ plot_bar_graph<-function(mgseqobj=NULL, glomby=NULL, samplesToKeep=NULL, feature
         tax_name <- glomby
     }
 
+
+
+
+
+
+        #Define what is being compared for permanova
+        if (is.null(compareby)){
+            compareby <- c(colourby, shapeby, ellipseby, textby, sizeby, pairby)[1]
+        }
+        #Remove samples bearing categories within class_to_ignore
+        valid_vars <- c(compareby, subsetby)[which(!is.na(c(compareby, subsetby)))]
+
+        #Vet experiment object
+        obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = valid_vars, class_to_ignore = class_to_ignore)
+
+        analysis <- metadata(obj)$analysis
+        if (!is.null(glomby)){
+            analysisname <- glomby
+        } else {
+            analysisname <- analysis
+        }
+
+        presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
+
+        if (!(is.null(subsetby))){
+            subset_points <- sort(unique(colData(obj)[, which(colnames(colData(obj)) == subsetby)]))
+        } else {
+            subset_points <- "none"
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     #Define analysis type
     analysis<-attr(obj, "analysis")
-    
+
     new_counts <- apply(MRcounts(obj), 2, function(x) units * x/(sum(x) + 0.01))
     if (threshold > 0) {
       new_counts <- new_counts[rowMeans(new_counts) > threshold, ]
@@ -52,25 +100,25 @@ plot_bar_graph<-function(mgseqobj=NULL, glomby=NULL, samplesToKeep=NULL, feature
     }
     mdf <- melt(new_counts)
     colnames(mdf) <- c(tax_name,"Sample","Abundance")
-    fill_sum <- aggregate(as.formula(paste("Abundance ~", tax_name)), 
+    fill_sum <- aggregate(as.formula(paste("Abundance ~", tax_name)),
                           mdf, sum)
-    mdf[, tax_name] <- factor(mdf[, tax_name], 
-                              levels = 
-                                fill_sum[order(-fill_sum$Abundance), 
+    mdf[, tax_name] <- factor(mdf[, tax_name],
+                              levels =
+                                fill_sum[order(-fill_sum$Abundance),
                                                          tax_name])
     mdf$Sample <- factor(mdf$Sample, levels = colnames(new_counts))
-    p <- ggplot(mdf, aes_string(x = "Sample", y = "Abundance", 
+    p <- ggplot(mdf, aes_string(x = "Sample", y = "Abundance",
                                 fill = tax_name))
-    p <- p + geom_bar(stat = "identity", position = "stack", 
+    p <- p + geom_bar(stat = "identity", position = "stack",
                       color = border_color, size = 0)
-    p <- p + theme(axis.title.x = element_blank(), 
-                   axis.text.x = element_blank(), 
+    p <- p + theme(axis.title.x = element_blank(),
+                   axis.text.x = element_blank(),
                    axis.ticks.x = element_blank())
     p <- p + theme(plot.margin = unit(c(0, 1, 1, 0.5), "lines"))
-    p <- p + theme(strip.background = element_rect(fill = "white", 
+    p <- p + theme(strip.background = element_rect(fill = "white",
                                                    colour = NA))
-   
-    p <- p + theme(panel.background = element_rect(fill = "white", 
+
+    p <- p + theme(panel.background = element_rect(fill = "white",
                                                    colour = "white"))
     p <- p + theme(plot.margin = margin(c(1, 1, 3, 1), unit = "lines"))
     p <- p + theme(axis.line = element_blank())
@@ -88,11 +136,11 @@ plot_bar_graph<-function(mgseqobj=NULL, glomby=NULL, samplesToKeep=NULL, feature
       for(level in levels(cat_values)) {
         startx <- min(which(cat_values==level))
         endx <- max(which(cat_values==level))
-        p <- p + annotate("segment", x=startx, 
-                          xend=endx, y = cat_pos, 
-                          yend = cat_pos) 
-        p <- p + annotate("text", label = level, 
-                   x = startx + (endx - startx)/2, 
+        p <- p + annotate("segment", x=startx,
+                          xend=endx, y = cat_pos,
+                          yend = cat_pos)
+        p <- p + annotate("text", label = level,
+                   x = startx + (endx - startx)/2,
                    y = 2*cat_pos, cex = cat_text_size)
       }
     }
