@@ -3,7 +3,7 @@
 #' Makes .jams files from Metaphlann output files. This function is experimental, use at your own risk and peril.
 #' @export
 
-mpa2JAMS <- function(mpa_folder = NULL, only_prefixes = NULL, output_folder = NULL, mpa_file_suffix = "_profile.txt", return_mpa_list.data = TRUE, verbose = TRUE){
+mpa2JAMS <- function(mpa_folder = NULL, only_prefixes = NULL, output_folder = NULL, mpa_file_suffix = "_profile.txt", return_mpa_list.data = TRUE, verbose = TRUE, asRDS = TRUE){
 
     flog.warn("This function is experimental, use at your own risk and peril.")
     mpa_list.data <- list()
@@ -39,11 +39,11 @@ mpa2JAMS <- function(mpa_folder = NULL, only_prefixes = NULL, output_folder = NU
         if (verbose){
             flog.info(paste("Processing sample", curr_prefix))
         }
-        curr_mpa_output <- read.table(file = mpa_files_df$MPA_path[mpan], header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+        curr_mpa_output <- read.table(file = mpa_files_df$MPA_path[mpan], header = FALSE, sep = "\t", stringsAsFactors = FALSE, comment.char = "#")
         curr_mpa_output <- curr_mpa_output[ , 1:3]
         colnames(curr_mpa_output)<- c("Taxinfo", "Taxids", "PctRelabund")
 
-        #Find how many taxlevels are present in this obnoxious format
+        #Find how many taxlevels are present
         curr_mpa_output$NumTaxLevels <- sapply(1:nrow(curr_mpa_output), function (x) { length(unlist(strsplit(curr_mpa_output[x, "Taxinfo"], split = "\\|"))) } )
 
         #Consider LKT to be the level which has the largest number of levels
@@ -55,6 +55,9 @@ mpa2JAMS <- function(mpa_folder = NULL, only_prefixes = NULL, output_folder = NU
         for(curr_mpa_taxlevel in 1:maxlvlnum){
             curr_mpa_output[ , mpa_taxlevel_names[curr_mpa_taxlevel]] <- sapply(1:nrow(curr_mpa_output), function(x) { unlist(strsplit( curr_mpa_output[x, "Taxinfo"], split = "\\|"))[curr_mpa_taxlevel] } )
         }
+
+        #Add final Taxid to a column
+        curr_mpa_output$Taxid <- sapply(1:nrow(curr_mpa_output), function (x) { tail(unlist(strsplit(curr_mpa_output$Taxids[x], split = "\\|")), n = 1) } )
 
         curr_mpa_output$LKT <- paste("LKT", curr_mpa_output[ , mpa_taxlevel_names[maxlvlnum]], sep = "__")
         curr_mpa_output$Domain <- curr_mpa_output$Kingdom
@@ -74,7 +77,7 @@ mpa2JAMS <- function(mpa_folder = NULL, only_prefixes = NULL, output_folder = NU
         #Make sampleinfo df
         mpa_dbase <- system2("head", args = c("-1", mpa_files_df$MPA_path[mpan]), stdout = TRUE, stderr = FALSE)
         mpa_dbase <- gsub("#", "", mpa_dbase)
-        projinfo <- data.frame(Run_info = c("Sample_name", "Run_type", "Process", "Metaphlann_Version"), Run_value = c(curr_prefix, "metagenome", "Metaphlann", mpa_dbase), stringsAsFactors = FALSE)
+        projinfo <- data.frame(Run_info = c("Sample_name", "Run_type", "Process", "Metaphlann_Version", "JAMS_Kdb_Version"), Run_value = c(curr_prefix, "metagenome", "Metaphlann", mpa_dbase, mpa_dbase), stringsAsFactors = FALSE)
         rownames(projinfo) <- projinfo$Run_info
 
         mpa_list.data[[list_elem]] <- projinfo
@@ -91,15 +94,26 @@ mpa2JAMS <- function(mpa_folder = NULL, only_prefixes = NULL, output_folder = NU
         setwd(output_folder)
         dir.create("jamstempfiles")
         setwd("jamstempfiles")
+
+        if (asRDS){
+            filesuffix <- "rds"
+        } else {
+            filesuffix <- "tsv"
+        }
+
         #loop through prefixes and write tsvs to temp folder
         for (prefix in mpa_files_df$Prefix){
-            for(objname in c("LKTdose", "projinfo")){
+            for (objname in c("LKTdose", "projinfo")){
                 wantedobj <- paste(prefix, objname, sep="_")
-                expfn <- file.path(getwd(), paste(wantedobj, "tsv", sep = "."))
-                write.table(mpa_list.data[[wantedobj]], file = expfn, quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
+                expfn <- file.path(getwd(), paste(wantedobj, filesuffix, sep = "."))
+                if (asRDS){
+                    saveRDS(mpa_list.data[[wantedobj]], file = expfn)
+                } else {
+                    write.table(mpa_list.data[[wantedobj]], file = expfn, quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
+                }
             }
             #Tar them up
-            JAMStsvs <- paste(paste(prefix, c("LKTdose", "projinfo"), sep = "_"), "tsv", sep=".")
+            JAMStsvs <- paste(paste(prefix, c("LKTdose", "projinfo"), sep = "_"), filesuffix, sep = ".")
             jamsfile <- paste(prefix, "jams", sep=".")
             jamsargs <- c("-zcvf", jamsfile, JAMStsvs)
             system2('tar', args = jamsargs, stdout = FALSE, stderr = FALSE)

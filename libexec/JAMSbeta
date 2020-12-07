@@ -420,7 +420,9 @@ if (!exists("expvec")){
     projinfodf <- bind_rows(projinfolist, .id = "id")
     colnames(projinfodf)[which(colnames(projinfodf) == "id")] <- "Sample"
     if ("Metaphlann" %in% subset(projinfodf, Run_info == "Process")[]$Run_value){
+        flog.warn("JAMSfiles found contain MetaPhlAnn data so analysis will be restricted to taxonomy only.")
         onlyanalyses <- "LKT"
+        opt$stratify_functions_by_taxon <- FALSE
     } else {
         if (!is.null(opt$restrict_to_analyses)){
             onlyanalyses <- unique(unlist(strsplit(opt$restrict_to_analyses, split = ",")))

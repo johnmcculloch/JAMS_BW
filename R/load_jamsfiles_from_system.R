@@ -100,7 +100,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         flog.info(paste("Using", appropriatenumcores, "CPUs to load objects."))
         list.data <- mclapply(flwp, function (x) { loadobj(objfn = x) }, mc.cores = appropriatenumcores, mc.preschedule = TRUE)
     } else {
-        list.data <- lapply(1:length(flwp), function (x) { loadobj(objfn = flwp[x]) })
+        list.data <- lapply(flwp, function (x) { loadobj(objfn = x) })
     }
 
     names(list.data) <- on
@@ -116,7 +116,9 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     #Check if objects were loaded into list correctly. Not necessary, but one is better safe than sorry.
     prefixespresent <- sapply(validon, function (x) { tail(rev(unlist(strsplit(x, split = "_"))), n = 1)} )
     prefixespresent <- unique(unname(prefixespresent))
-    minobjlist <- as.vector(sapply(c("projinfo", "contigsdata", "featuredata", "LKTdose", "featuredose"), function(x) { paste(prefixespresent, x, sep = "_") }))
+    #minobjlist <- as.vector(sapply(c("projinfo", "contigsdata", "featuredata", "LKTdose", "featuredose"), function(x) { paste(prefixespresent, x, sep = "_") }))
+    #Because of MetaPhlAnn
+    minobjlist <- as.vector(sapply(c("projinfo", "LKTdose"), function(x) { paste(prefixespresent, x, sep = "_") }))
 
     if (!all(minobjlist %in% names(list.data))){
         missingobjects <- minobjlist[!minobjlist %in% names(list.data)]
