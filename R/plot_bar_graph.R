@@ -1,14 +1,14 @@
-#' Creates bar graph of relative taxonomic abundance from metagenomeSeq object
+#' Creates bar graph of relative taxonomic abundance from SummarizedExperiment object
 #'
 #'
-#' @param mgseqobj a metagenomeSeq object.
+#' @param mgseqobj a SummarizedExperiment object.
 #' @param glomby string giving taxonomic level (from tax_table) to plot at.
 #' @param samplesToKeep vector with samples to plot.
 #' @param featuresToKeep vector with features to plot.
 #' @param units unit to normalize data to -- default percentage (100).
 #' @param threshold minimum value to include as separate entry (below is Misc_Low_Abundance).
 #' @param title plot title
-#' @param category pData category to use for labels
+#' @param category colData category to use for labels
 #' @param cat_pos position of category line (change if ugly in plot)
 #' @param cat_text_size text size of category labels
 #' @param border_color color of bar borders
@@ -18,7 +18,7 @@
 #' @examples
 #' plot_bar_graph(mrexp1, glomby = "Phylum", category = "Group")
 
-plot_bar_graph <- function(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, class_to_ignore = class_to_ignore, units = 100, threshold = 2, title = "", category = NULL, cat_pos = -2, cat_text_size =  3, border_color = "white", cdict = NULL, colors = NULL, grid = TRUE, ...) {
+plot_bar_graph<-function(mgseqobj=NULL, glomby=NULL, samplesToKeep=NULL, featuresToKeep=NULL, units=100, threshold = 2, title="", category=NULL, cat_pos = -2, cat_text_size=3, border_color="white", cdict=NULL, colors=NULL, grid = TRUE, ...) {
 
     require(reshape2)
 
@@ -37,62 +37,14 @@ plot_bar_graph <- function(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featu
 
     #Aggregate if required
     if(!(is.null(glomby))){
-        obj <- aggTax(obj, lvl = glomby, out = 'MRexperiment', norm = FALSE)
+        obj <- agglomerate_features(obj, glomby)
         tax_name <- glomby
     }
-
-
-
-
-
-
-        #Define what is being compared for permanova
-        if (is.null(compareby)){
-            compareby <- c(colourby, shapeby, ellipseby, textby, sizeby, pairby)[1]
-        }
-        #Remove samples bearing categories within class_to_ignore
-        valid_vars <- c(compareby, subsetby)[which(!is.na(c(compareby, subsetby)))]
-
-        #Vet experiment object
-        obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = valid_vars, class_to_ignore = class_to_ignore)
-
-        analysis <- metadata(obj)$analysis
-        if (!is.null(glomby)){
-            analysisname <- glomby
-        } else {
-            analysisname <- analysis
-        }
-
-        presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
-
-        if (!(is.null(subsetby))){
-            subset_points <- sort(unique(colData(obj)[, which(colnames(colData(obj)) == subsetby)]))
-        } else {
-            subset_points <- "none"
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     #Define analysis type
     analysis<-attr(obj, "analysis")
 
-    new_counts <- apply(MRcounts(obj), 2, function(x) units * x/(sum(x) + 0.01))
+    new_counts <- apply(assay(obj), 2, function(x) units * x/(sum(x) + 0.01))
     if (threshold > 0) {
       new_counts <- new_counts[rowMeans(new_counts) > threshold, ]
       misc_counts <- units - colSums(new_counts)
@@ -132,7 +84,7 @@ plot_bar_graph <- function(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featu
       p <- p + scale_fill_manual(values = colors)
     }
     if (!is.null(category)) {
-      cat_values <- as.factor(pData(obj)[,category])
+      cat_values <- as.factor(colData(obj)[,category])
       for(level in levels(cat_values)) {
         startx <- min(which(cat_values==level))
         endx <- max(which(cat_values==level))
