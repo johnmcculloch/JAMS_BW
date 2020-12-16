@@ -2,7 +2,7 @@
 % Please edit documentation in R/harvesting_functions.R
 \name{add_blast_results_to_featuredata}
 \alias{add_blast_results_to_featuredata}
-\title{add_interpro_to_featuredata}
+\title{add_blast_results_to_featuredata}
 \usage{
 add_blast_results_to_featuredata(opt = opt, blastanalyses = NULL)
 }
