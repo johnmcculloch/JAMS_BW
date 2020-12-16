@@ -1,9 +1,9 @@
-#' plot_Kaplan_Meier_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, multi_linetype = FALSE, palette = "lancet", include_risk_table = FALSE, include_density_plot = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...)
+#' plot_Kaplan_Meier_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, featurethresholdlist = NULL, OptimalCutpoints_method = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Event_Variable = NULL, conf.int = FALSE, multi_linetype = FALSE, palette = "lancet", include_risk_table = FALSE, include_density_plot = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Samples_to_censor = NULL, conf.int = FALSE, multi_linetype = FALSE, palette = "lancet", include_risk_table = FALSE, include_density_plot = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...){
+plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, featurethresholdlist = NULL, OptimalCutpoints_method = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, bin_names = NULL, survivaltime = NULL, Event_Variable = NULL, conf.int = FALSE, multi_linetype = FALSE, palette = "lancet", include_risk_table = FALSE, include_density_plot = FALSE, facetby = NULL, wrap_facet = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, dump_interpro_descriptions_to_plot = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, ...){
 
     flog.warn("This function is experimental in JAMS. Use at your own risk.")
     require(survival)
@@ -68,13 +68,11 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
         }
 
         curr_pt <- as.data.frame(colData(currobj))
-        pheno_survival <- curr_pt[ , unique(c("Sample", survivaltime))]
+        pheno_survival <- curr_pt[ , unique(c("Sample", survivaltime, Event_Variable))]
 
         #Add censoring data
-        pheno_survival$Censoring <- 1
-        if (!is.null(Samples_to_censor)){
-            pheno_survival$Censoring[which(pheno_survival$Sample %in% Samples_to_censor)] <- 0
-        }
+        colnames(pheno_survival)[which(colnames(pheno_survival) == Event_Variable)] <- "Event_Variable"
+        pheno_survival$Event_Variable <- as.numeric(pheno_survival$Event_Variable)
 
         #There must be at least one feature requested in the object
         if (is.null(featuresToKeep)){
@@ -150,17 +148,74 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
             matrixSamples <- colnames(countmat)
             matrixRows <- rownames(countmat)
 
+
+            #Make a list of Break infos
+            #Bin PPM into discrete
+            if (!aggregatefeatures){
+                wantedfeatures_Breakinfos <- as.data.frame(t(countmat[wantedfeatures, ]))
+            } else {
+                wantedfeatures_Breakinfos <- as.data.frame(t(countmat))
+            }
+
+            wantedfeatures_Breakinfos <- as.data.frame(t(countmat[wantedfeatures, ]))
+            if (nrow(wantedfeatures_Breakinfos) == 1){
+                rownames(wantedfeatures_Breakinfos) <- wantedfeatures
+            }
+
+            #If explicit cutoff points are specified and OptimalCutpoints_method is requested, generate featurethresholdlist
+            if (all(c(is.null(featurethresholdlist), !is.null(OptimalCutpoints_method)))){
+                flog.info(paste("Generating optimal cutpoints for each feature using OptimalCutpoints method", OptimalCutpoints_method))
+
+                #Declare function
+                find_cutoffs <- function(wantedfeatures_Breakinfos = NULL, pheno_survival = NULL, method = NULL){
+                    require("OptimalCutpoints")
+                    featsofinterest <- colnames(wantedfeatures_Breakinfos)
+                    wantedfeatures_Breakinfos$Sample <- rownames(wantedfeatures_Breakinfos)
+                    #Left join PPM
+                    pheno_survival_with_counts <- left_join(pheno_survival, wantedfeatures_Breakinfos, by = "Sample")
+                    rownames(pheno_survival_with_counts) <- pheno_survival_with_counts$Sample
+
+                    featurethresholdlist <- list()
+
+                    for (foin in 1:length(featsofinterest)){
+
+                        optimal.cutpoint.obj <- optimal.cutpoints(X = featsofinterest[foin], status = "Event_Variable", tag.healthy = 0, methods = method, data = pheno_survival_with_counts, pop.prev = NULL, control = control.cutpoints(), ci.fit = FALSE,conf.level = 0.95, trace = FALSE)
+
+                        Rocptable <- summary(optimal.cutpoint.obj)$p.table$Global
+                        cutpoint <- Rocptable[[method]][[1]][[1]]
+
+                        featurethresholdlist[[foin]] <- cutpoint
+                        names(featurethresholdlist)[foin] <- featsofinterest[foin]
+
+                    }
+
+                    return(featurethresholdlist)
+                }
+
+                featurethresholdlist <- find_cutoffs(wantedfeatures_Breakinfos = wantedfeatures_Breakinfos, pheno_survival = pheno_survival, method = OptimalCutpoints_method)
+            }
+
+
             #Transform continuous into categorical
-            continuous2discrete <- function(wantedfeatures_PPM_per_Sample = NULL, feat = NULL, bin_names = NULL){
+            continuous2discrete <- function(wantedfeatures_PPM_per_Sample = NULL, feat = NULL, bin_names = NULL, featurethresholdlist = NULL){
+
                 wantedtaxon_PPM_per_Sample_distrib <- quantile(wantedfeatures_PPM_per_Sample[ , feat], probs = round(((1:length(bin_names)) * (1 / length(bin_names))), 2))
-                if (is.redundant(c(0, as.numeric(wantedtaxon_PPM_per_Sample_distrib)))){
+
+                if (all(c((is.redundant(c(0, as.numeric(wantedtaxon_PPM_per_Sample_distrib)))), is.null(featurethresholdlist)))){
                     flog.info(paste("Feature", feat, "doesn't have enough variance for being binned into", length(bin_names), "categories and will be discarded."))
                     TaxonPPMcats <- NULL
                     Breakinfo <- NULL
                 } else {
-                    TaxonPPMcats <- cut(wantedfeatures_PPM_per_Sample[ , feat], breaks = c(0, as.numeric(wantedtaxon_PPM_per_Sample_distrib)), include.lowest = TRUE, labels = bin_names)
+                    if (is.null(featurethresholdlist)){
+                        breaks <- c(0, as.numeric(wantedtaxon_PPM_per_Sample_distrib))
+                    } else {
+                        breaks <- c(0, as.numeric(featurethresholdlist[feat]), max(wantedfeatures_PPM_per_Sample[ , feat]))
+                        #breaks <- c(0, max(as.numeric(featurethresholdlist[feat]), 1), max(wantedfeatures_PPM_per_Sample[ , feat]))
+                    }
+
+                    TaxonPPMcats <- cut(wantedfeatures_PPM_per_Sample[ , feat], breaks = unique(breaks), include.lowest = TRUE, labels = bin_names[1:(length(unique(breaks)) - 1)])
                     TaxonPPMcats <- as.factor(TaxonPPMcats)
-                    PPMbreaks <- c(0, round(as.numeric(wantedtaxon_PPM_per_Sample_distrib), 0))
+                    PPMbreaks <- round(breaks, 0)
                     Breakinfo <- NULL
                     for (bn in 1:length(bin_names)){
                         Breakinfo[bn] <- paste(bin_names[bn], paste(paste(PPMbreaks[bn], "PPM"), paste(PPMbreaks[(bn + 1)], "PPM"), sep = " to "), sep = " = ")
@@ -179,20 +234,8 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
 
                 return(discretelist)
             }
-            #Make a list of Break infos
-            #Bin PPM into discrete
-            if (!aggregatefeatures){
-                wantedfeatures_Breakinfos <- as.data.frame(t(countmat[wantedfeatures, ]))
-            } else {
-                wantedfeatures_Breakinfos <- as.data.frame(t(countmat))
-            }
 
-            wantedfeatures_Breakinfos <- as.data.frame(t(countmat[wantedfeatures, ]))
-            if (nrow(wantedfeatures_Breakinfos) == 1){
-                rownames(wantedfeatures_Breakinfos) <- wantedfeatures
-            }
-
-            wantedfeatures_Breakinfos_list <- lapply(colnames(wantedfeatures_Breakinfos), function (x) { continuous2discrete(wantedfeatures_PPM_per_Sample = wantedfeatures_Breakinfos, feat = x, bin_names = bin_names)[]$Breakinfo } )
+            wantedfeatures_Breakinfos_list <- lapply(colnames(wantedfeatures_Breakinfos), function (x) { continuous2discrete(wantedfeatures_PPM_per_Sample = wantedfeatures_Breakinfos, feat = x, featurethresholdlist = featurethresholdlist, bin_names = bin_names)[]$Breakinfo } )
             names(wantedfeatures_Breakinfos_list) <- colnames(wantedfeatures_Breakinfos)
 
             #Make a list of density plots
@@ -213,7 +256,7 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
             }
 
             for (colm in colnames(wantedfeatures_PPM_per_Sample)){
-                wantedfeatures_PPM_per_Sample[ , colm] <- continuous2discrete(wantedfeatures_PPM_per_Sample = wantedfeatures_PPM_per_Sample, feat = colm, bin_names = bin_names)[]$TaxonPPMcats
+                wantedfeatures_PPM_per_Sample[ , colm] <- continuous2discrete(wantedfeatures_PPM_per_Sample = wantedfeatures_PPM_per_Sample, feat = colm, featurethresholdlist = featurethresholdlist, bin_names = bin_names)[]$TaxonPPMcats
             }
 
             wantedfeatures_PPM_per_Sample$Sample <- rownames(wantedfeatures_PPM_per_Sample)
@@ -224,17 +267,17 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
             #Not the most elegant way of doing it, but being safe.
             fitlist <- list()
             pvals <- NULL
-            validfeats <- colnames(pheno_survival)[!(colnames(pheno_survival) %in% c("Sample", survivaltime, "Censoring"))]
+            validfeats <- colnames(pheno_survival)[!(colnames(pheno_survival) %in% c("Sample", survivaltime, "Event_Variable"))]
             for (nfeat in 1:length(validfeats)){
                 feat <- validfeats[nfeat]
                 #print(feat)
                 #Use the old trick of regenerating the dataframe and changing variable to common name
-                surv_object <- Surv(time = pheno_survival[ , survivaltime], event = pheno_survival$Censoring)
-                curr_pheno_survival <- pheno_survival[ ,c(survivaltime, "Censoring", feat)]
+                surv_object <- Surv(time = pheno_survival[ , survivaltime], event = pheno_survival$Event_Variable)
+                curr_pheno_survival <- pheno_survival[ ,c(survivaltime, "Event_Variable", feat)]
                 colnames(curr_pheno_survival)[which(colnames(curr_pheno_survival) == feat)] <- "FeatStratum"
                 #colnames(curr_pheno_survival)[which(colnames(curr_pheno_survival) == survivaltime)] <- "survivaltime"
                 featfit <- NULL
-                #featfit <- survfit(Surv(time = curr_pheno_survival[ , survivaltime], event = curr_pheno_survival$Censoring) ~ FeatStratum, data = curr_pheno_survival)
+                #featfit <- survfit(Surv(time = curr_pheno_survival[ , survivaltime], event = curr_pheno_survival$Event_Variable) ~ FeatStratum, data = curr_pheno_survival)
                 featfitform <- as.formula("surv_object ~ FeatStratum")
                 featfit <- survfit(featfitform, data = curr_pheno_survival)
                 featfit$call$formula <- featfitform
@@ -302,7 +345,7 @@ plot_Kaplan_Meier_features <- function(ExpObj = NULL, glomby = NULL, samplesToKe
         feat <- NULL
         for (feat in rownames(matstats)){
             flog.info(paste("Plotting", feat))
-            curr_pheno_survival <- pheno_survival[ ,c(survivaltime, "Censoring", feat)]
+            curr_pheno_survival <- pheno_survival[ ,c(survivaltime, "Event_Variable", feat)]
             colnames(curr_pheno_survival)[which(colnames(curr_pheno_survival) == feat)] <- "FeatStratum"
 
             fit1 <- fitlist[[feat]]
