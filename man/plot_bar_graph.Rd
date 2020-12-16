@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_bar_graph.R
 \name{plot_bar_graph}
 \alias{plot_bar_graph}
-\title{Creates bar graph of relative taxonomic abundance from metagenomeSeq object}
+\title{Creates bar graph of relative taxonomic abundance from SummarizedExperiment object}
 \usage{
 plot_bar_graph(
   mgseqobj = NULL,
@@ -23,7 +23,7 @@ plot_bar_graph(
 )
 }
 \arguments{
-\item{mgseqobj}{a metagenomeSeq object.}
+\item{mgseqobj}{a SummarizedExperiment object.}
 
 \item{glomby}{string giving taxonomic level (from tax_table) to plot at.}
 
@@ -37,7 +37,7 @@ plot_bar_graph(
 
 \item{title}{plot title}
 
-\item{category}{pData category to use for labels}
+\item{category}{colData category to use for labels}
 
 \item{cat_pos}{position of category line (change if ugly in plot)}
 
@@ -50,7 +50,7 @@ plot_bar_graph(
 \item{colors}{use named list of taxon colors}
 }
 \description{
-Creates bar graph of relative taxonomic abundance from metagenomeSeq object
+Creates bar graph of relative taxonomic abundance from SummarizedExperiment object
 }
 \examples{
 plot_bar_graph(mrexp1, glomby = "Phylum", category = "Group")

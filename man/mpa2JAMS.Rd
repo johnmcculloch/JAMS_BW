@@ -10,7 +10,8 @@ mpa2JAMS(
   output_folder = NULL,
   mpa_file_suffix = "_profile.txt",
   return_mpa_list.data = TRUE,
-  verbose = TRUE
+  verbose = TRUE,
+  asRDS = TRUE
 )
 }
 \description{
