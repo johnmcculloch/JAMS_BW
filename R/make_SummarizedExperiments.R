@@ -22,6 +22,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     blastanalyses <- c("abricate", "vfdb", "resfinder", "plasmidfinder")
 
     Samples <- rownames(pheno2)
+    possibleanalyses <- NULL
     if (any(c(is.null(onlyanalyses), !(all(c((length(onlyanalyses) == 1), ("LKT" %in% onlyanalyses))))))) {
 
         featuredoses <- list.data[paste(Samples, "featuredose", sep="_")]
@@ -64,9 +65,14 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     if (all(c(!is.null(onlyanalyses), !(all(c((length(onlyanalyses) == 1), ("LKT" %in% onlyanalyses))))))){
         possibleanalyses <- possibleanalyses[possibleanalyses %in% onlyanalyses]
     } else {
-        if (!is.null(onlyanalyses)){
-            possibleanalyses <- possibleanalyses[possibleanalyses %in% onlyanalyses]
+        if (!is.null(possibleanalyses)) {
+            if (!is.null(onlyanalyses)){
+                possibleanalyses <- possibleanalyses[possibleanalyses %in% onlyanalyses]
+            }
+        } else {
+            possibleanalyses <- onlyanalyses
         }
+
     }
 
     #Make a vector for holding experiment list
