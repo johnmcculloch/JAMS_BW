@@ -64,7 +64,9 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     if (all(c(!is.null(onlyanalyses), !(all(c((length(onlyanalyses) == 1), ("LKT" %in% onlyanalyses))))))){
         possibleanalyses <- possibleanalyses[possibleanalyses %in% onlyanalyses]
     } else {
-        possibleanalyses <- onlyanalyses
+        if (!is.null(onlyanalyses)){
+            possibleanalyses <- possibleanalyses[possibleanalyses %in% onlyanalyses]
+        }
     }
 
     #Make a vector for holding experiment list
