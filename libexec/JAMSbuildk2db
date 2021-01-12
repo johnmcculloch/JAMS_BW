@@ -325,7 +325,8 @@ for (organisms in opt$wantedorganisms){
 
     #Get list of what to download
     if(organisms == "bacteria"){
-        assembly_upto <- "Scaffold"
+        #assembly_upto <- "Scaffold"
+        assembly_upto <- "Contig"
     } else {
         assembly_upto <- "Contig"
     }
@@ -357,6 +358,8 @@ for (organisms in opt$wantedorganisms){
     flog.info(paste("Genome deposit categories for", organisms,"are:", paste0(paste(bugprop$Quality, bugprop$pct, "%"), collapse = ", ")))
 
     #Rename output files for brevity
+    save.image(opt$projimage)
+
     bugstodownload$destfn <- file.path(opt$currbugdir, paste(bugstodownload$assembly_accession, "fna.gz", sep = "."))
     #Download files
     flog.info(paste("Downloading all", organisms, "genomes matching criteria. Please be patient."))
