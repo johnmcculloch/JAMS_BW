@@ -379,7 +379,7 @@ opt <- add_blast_results_to_featuredata(opt = opt, blastanalyses = opt$blastanal
 opt <- get_feature_stats(opt = opt)
 
 #Make functional analysis
-opt <- harvest_functions(opt = opt)
+opt <- harvest_functions(opt = opt, doinparallel = TRUE)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Compute readcounts if there are any reads

@@ -154,7 +154,7 @@ get_feature_to_accession_table <- function(opt = NULL, iproanalysis = NULL){
 #' JAMSalpha function
 #' @export
 
-harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate")){
+harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate"), doinparallel = TRUE){
 
     data(ECdescmap)
     data(GOtermdict)
@@ -175,7 +175,7 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
     }
     interpronumbaseslist <- NULL
     if("interproscanoutput" %in% names(opt)){
-        opt <- add_interpro_to_featuredata(opt = opt, doinparallel = FALSE)
+        opt <- add_interpro_to_featuredata(opt = opt, doinparallel = doinparallel)
 
         iproanalyses <- sort(unique(opt$interproscanoutput$Analysis))
         if ("IproAcc" %in% colnames(opt$interproscanoutput)){
