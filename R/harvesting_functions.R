@@ -154,7 +154,7 @@ get_feature_to_accession_table <- function(opt = NULL, iproanalysis = NULL){
 #' JAMSalpha function
 #' @export
 
-harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate"), doinparallel = TRUE){
+harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate"), doinparallel = TRUE, check_ipro_jobs_status = TRUE){
 
     data(ECdescmap)
     data(GOtermdict)
@@ -171,7 +171,7 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
 
     #Harvest interpro functions, if applicable
     if (opt$skipipro != TRUE){
-        opt <- fix_interproscanoutput(opt = opt)
+        opt <- fix_interproscanoutput(opt = opt, check_ipro_jobs_status = check_ipro_jobs_status)
     }
     interpronumbaseslist <- NULL
     if("interproscanoutput" %in% names(opt)){
@@ -271,35 +271,11 @@ compute_signature_numbases <- function (featuredata = NULL, columnname = NULL, b
 
 fix_interproscanoutput <- function(opt = NULL, check_ipro_jobs_status = TRUE){
 
-    if (all(c(check_ipro_jobs_status, ("iprodir" %in% names(opt))))){
-        #Get interprojob
-        opt$iprojob <- system2('cat', args=file.path(opt$iprodir, "ipro.job"), stdout = TRUE, stderr = FALSE)
-        #See if job finished
-        iprojobstatus <- system2('sacct', args=c("-j", opt$iprojob), stdout = TRUE)
-        #eliminate header
-        iprojobstatus <- iprojobstatus[3:length(iprojobstatus)]
-        iprojobstatus <- iprojobstatus[grep("quick", iprojobstatus)]
-        totaljobs <- length(iprojobstatus)
-        completedjobs <- length(grep("COMPLETED", iprojobstatus))
-        ratiojobscomplete <- completedjobs/totaljobs
-        runningjobs <- length(grep("RUNNING", iprojobstatus))
+    if ("iprodir" %in% names(opt)){
 
-        #Delay if there still are jobs to complete
-        nattempt <- 1
-        if (opt$analysis %in% c("metagenome", "metatranscriptome")){
-            requirediprocompleteness <- 0.9
-        } else {
-            requirediprocompleteness <- 0.97
-        }
-
-        #Wait until jobs are close to complete
-        while ((ratiojobscomplete < requirediprocompleteness) && nattempt < 50) {
-            flog.info("Interproscan analysis of proteome is still incomplete.")
-            flog.info(paste("There are", runningjobs, " Interpro jobs running for this sample."))
-            flog.info(paste("The proportion of Interpro jobs complete is currently", round(ratiojobscomplete, 2)))
-            flog.info(paste("Will check again in 5 minutes time. This is attempt", nattempt, "of 50 before giving up."))
-            Sys.sleep(300)
-            nattempt <- nattempt + 1
+        if (check_ipro_jobs_status){
+            #Get interprojob
+            opt$iprojob <- system2('cat', args=file.path(opt$iprodir, "ipro.job"), stdout = TRUE, stderr = FALSE)
             #See if job finished
             iprojobstatus <- system2('sacct', args=c("-j", opt$iprojob), stdout = TRUE)
             #eliminate header
@@ -309,6 +285,33 @@ fix_interproscanoutput <- function(opt = NULL, check_ipro_jobs_status = TRUE){
             completedjobs <- length(grep("COMPLETED", iprojobstatus))
             ratiojobscomplete <- completedjobs/totaljobs
             runningjobs <- length(grep("RUNNING", iprojobstatus))
+
+            #Delay if there still are jobs to complete
+            nattempt <- 1
+            if (opt$analysis %in% c("metagenome", "metatranscriptome")){
+                requirediprocompleteness <- 0.9
+            } else {
+                requirediprocompleteness <- 0.97
+            }
+
+            #Wait until jobs are close to complete
+            while ((ratiojobscomplete < requirediprocompleteness) && nattempt < 50) {
+                flog.info("Interproscan analysis of proteome is still incomplete.")
+                flog.info(paste("There are", runningjobs, " Interpro jobs running for this sample."))
+                flog.info(paste("The proportion of Interpro jobs complete is currently", round(ratiojobscomplete, 2)))
+                flog.info(paste("Will check again in 5 minutes time. This is attempt", nattempt, "of 50 before giving up."))
+                Sys.sleep(300)
+                nattempt <- nattempt + 1
+                #See if job finished
+                iprojobstatus <- system2('sacct', args=c("-j", opt$iprojob), stdout = TRUE)
+                #eliminate header
+                iprojobstatus <- iprojobstatus[3:length(iprojobstatus)]
+                iprojobstatus <- iprojobstatus[grep("quick", iprojobstatus)]
+                totaljobs <- length(iprojobstatus)
+                completedjobs <- length(grep("COMPLETED", iprojobstatus))
+                ratiojobscomplete <- completedjobs/totaljobs
+                runningjobs <- length(grep("RUNNING", iprojobstatus))
+            }
         }
 
         flog.info("Harvesting and integrating Interproscan data.")

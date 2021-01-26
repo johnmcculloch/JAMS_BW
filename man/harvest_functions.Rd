@@ -7,7 +7,9 @@
 harvest_functions(
   opt = opt,
   noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder",
-    "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate")
+    "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate"),
+  doinparallel = TRUE,
+  check_ipro_jobs_status = TRUE
 )
 }
 \description{
