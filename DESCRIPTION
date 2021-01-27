@@ -1,9 +1,9 @@
 Package: JAMS
 Title: Just A Microbiology System
-Version: 1.5.6
+Version: 1.5.7
 Authors@R: c(person("John", "McCulloch", email = "john.mcculloch@nih.gov", role = c("aut", "cre")), person("Jonathan", "Badger", email = "jonathan.badger@nih.gov", role = "aut"), person("Nikki", "Cannon", email = "nikkicannon7@gmail.com", role = "ctb"), person("Ascharya", "Balaji", email = "ascharya.balaji@nih.gov", role = "ctb"), person("Lisa", "Thammavong", email = "lisa.thammavong@nih.gov", role = "ctb"), person("Amiran", "Dzutsev", email = "amiran.dzutsev@nih.gov", role = "ctb"), person("Giorgio", "Trinchieri", email = "trinchig@niaid.nih.gov", role = "ctb"))
 Description: Package for analysis of the alpha and beta diversity of microbial (meta)genomic samples
-Depends: R (>= 3.5.0), R.utils, parallel, optparse, futile.logger, benchmarkme, RCurl, Rtsne, uwot, circlize, openxlsx, grid, gridExtra, tidyverse, ggplot2, ggrepel, wordcloud, colorfulVennPlot, gplots, vegan, matrixStats, seqinr, dada2, survival, survminer, SummarizedExperiment, ComplexHeatmap, HybridMTest, ggpubr, combinat, data.table, genefilter, gg3D, gtools, gtable, fastSave, Matrix
+Depends: R (>= 3.5.0), R.utils, parallel, optparse, futile.logger, benchmarkme, RCurl, Rtsne, uwot, circlize, magick, openxlsx, grid, gridExtra, tidyverse, ggplot2, ggrepel, wordcloud, colorfulVennPlot, gplots, vegan, matrixStats, seqinr, dada2, survival, survminer, SummarizedExperiment, ComplexHeatmap, HybridMTest, ggpubr, combinat, data.table, genefilter, gg3D, gtools, gtable, fastSave, Matrix
 License: GPL
 Encoding: UTF-8
 Remotes: AckerDWM/gg3D

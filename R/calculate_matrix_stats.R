@@ -1,10 +1,10 @@
-#' calculate_matrix_stats(countmatrix=NULL, uselog=NULL, statsonlog=TRUE, stattype=c("variance", "binary", "permanova", "PA", "auto"), classesvector=NULL, invertbinaryorder=FALSE, numthreads=4, nperm=99)
+#' calculate_matrix_stats(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 99)
 #'
 #' Returns a data frame with the statistics for a feature count matrix ordered by highest variance or lowest Mann-Whitney-Wilcoxon test between binary categories.
 #'
 #' @export
 
-calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, threshPA = 0, numthreads = 1, nperm = 99){
+calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 99){
 
     #Test for silly stuff
     if ((stattype %in% c("binary", "permanova", "anova", "PA")) && (is.null(classesvector))){
@@ -68,6 +68,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
     } else if (stattype == "binary"){
         if (numclass == 2){
             flog.info("Calculating p-values with Mann-Whitney-Wilcoxon test.")
+            flog.info(paste("Log2 fold change will be calculated with the", fun_for_l2fc, "of values within each group."))
         } else {
             stop("To calculate p-values with Mann-Whitney-Wilcoxon test, the comparison variable must have exactly two classes.")
         }
@@ -78,7 +79,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         mwpval <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$p.value) } )
 
         #Get Log2 Fold Change (l2fc)
-        getl2fc <- function(countsvec = NULL, classesvector = NULL, discretenames= NULL, method = "median", countsinlog = NULL){
+        getl2fc <- function(countsvec = NULL, classesvector = NULL, discretenames= NULL, method = NULL, countsinlog = NULL){
             #If counts are in log space, transform them back
             if (countsinlog == TRUE){
                 countsvecNL <- as.numeric(sapply(countsvec, function (x) { ((2 ^ x) - 1) }))
@@ -86,9 +87,15 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
                 countsvecNL <- as.numeric(countsvec)
             }
             countsvecG1 <- countsvecNL[which(classesvector == discretenames[1])]
-            statscountsvecG1 <- get(method)(countsvecG1)
             countsvecG2 <- countsvecNL[which(classesvector == discretenames[2])]
-            statscountsvecG2 <- get(method)(countsvecG2)
+            if(method == "geom_mean"){
+                statscountsvecG1 <- exp(mean(log(as.numeric(countsvecG1 + 1))))
+                statscountsvecG2 <- exp(mean(log(as.numeric(countsvecG2 + 1))))
+            } else {
+                statscountsvecG1 <- get(method)(countsvecG1)
+                statscountsvecG2 <- get(method)(countsvecG2)
+            }
+
             l2fc <- foldchange2logratio(foldchange(statscountsvecG1, statscountsvecG2), base = 2)
             if (is.na(l2fc)){
                 l2fc <- 0
@@ -98,7 +105,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         }
 
         #l2fc <- sapply(1:nrow(countmatrix), function(x) { getl2fc(countsvec = countmatrix[x, ], classesvector = classesvector, discretenames = discretenames, countsinlog = uselog, method = "median") })
-        l2fc <- sapply(1:nrow(countmatrix), function(x) { getl2fc(countsvec = countmatrix[x, ], classesvector = classesvector, discretenames = discretenames, countsinlog = uselog, method = "mean") })
+        l2fc <- sapply(1:nrow(countmatrix), function(x) { getl2fc(countsvec = countmatrix[x, ], classesvector = classesvector, discretenames = discretenames, countsinlog = uselog, method = fun_for_l2fc) })
 
         if (invertbinaryorder == TRUE){
             l2fc <- (l2fc * -1)

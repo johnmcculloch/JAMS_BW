@@ -2,7 +2,7 @@
 % Please edit documentation in R/calculate_matrix_stats.R
 \name{calculate_matrix_stats}
 \alias{calculate_matrix_stats}
-\title{calculate_matrix_stats(countmatrix=NULL, uselog=NULL, statsonlog=TRUE, stattype=c("variance", "binary", "permanova", "PA", "auto"), classesvector=NULL, invertbinaryorder=FALSE, numthreads=4, nperm=99)}
+\title{calculate_matrix_stats(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 99)}
 \usage{
 calculate_matrix_stats(
   countmatrix = NULL,
@@ -11,6 +11,7 @@ calculate_matrix_stats(
   stattype = NULL,
   classesvector = NULL,
   invertbinaryorder = FALSE,
+  fun_for_l2fc = "geom_mean",
   threshPA = 0,
   numthreads = 1,
   nperm = 99
