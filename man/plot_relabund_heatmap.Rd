@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_relabund_heatmap.R
 \name{plot_relabund_heatmap}
 \alias{plot_relabund_heatmap}
-\title{plot_relabund_heatmap(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, showGram = TRUE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...)}
+\title{plot_relabund_heatmap(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showl2fc = TRUE, showGram = FALSE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...)}
 \usage{
 plot_relabund_heatmap(
   ExpObj = NULL,
@@ -37,7 +37,7 @@ plot_relabund_heatmap(
   showonlypbelow = NULL,
   showpval = TRUE,
   showl2fc = TRUE,
-  showGram = TRUE,
+  showGram = FALSE,
   secondaryheatmap = "GenomeCompleteness",
   addtit = NULL,
   asPPM = TRUE,
