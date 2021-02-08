@@ -144,7 +144,7 @@ if (nchar(currslurmjobid) > 3){
 if (onbiowulf == TRUE){
     cat("Checking for non-R dependencies before attempting to install the JAMS package.")
     system("brew update")
-    system("brew install gcc@8 libxml2")
+    system("brew install gcc libxml2")
 }
 
 #cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
