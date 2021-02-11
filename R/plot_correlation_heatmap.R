@@ -1,9 +1,9 @@
-#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE)
+#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, asPPM = TRUE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE)
 #'
 #' Plots correlation heatmaps annotated by the metadata or a correlelogram of features
 #' @export
 
-plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE) {
+plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, asPPM = TRUE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE) {
 
     #Vet experiment object
     obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, class_to_ignore = class_to_ignore)
@@ -35,7 +35,7 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
             subsetname <- "no_sub"
         }
 
-        currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, asPPM = TRUE, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
+        currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
 
         numfeats <- nrow(currobj)
 
