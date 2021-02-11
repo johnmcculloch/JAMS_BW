@@ -24,26 +24,22 @@ get_reads <- function(opt = NULL){
     setwd(readsworkdir)
     #If there is an accession number supplied, get reads from there
     if (!(is.null(opt$sraaccession))){
-
+        #Download reads from accession
+        opt$readorigin <- "sraaccession"
+        flog.info(paste("Downloading from NCBI SRA reads pertaining to run", opt$sraaccession))
         #If in Biowulf, module load sra-toolkit
         slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
         if(nchar(slurmjobid) > 3){
             flog.info("You are probably on Biowulf. Will use NIH HPC version of SRA toolkit to avoid caching issues.")
-            system("module load perl")
-            system("module load sratoolkit")
+            commandtorun <- paste(file.path(opt$bindir, "getreadsSRAonBW.sh"), opt$sraaccession, sep =  " ")
+        } else {
+            commandtorun <- paste("fastq-dump --split-e", opt$sraaccession, sep =  " ")
         }
-
-        #Download reads from accession
-        opt$readorigin <- "sraaccession"
-        flog.info(paste("Downloading from NCBI SRA reads pertaining to run", opt$sraaccession))
-        commandtorun <- paste("fastq-dump --split-e", opt$sraaccession, sep =  " ")
         system(commandtorun)
+
         #Eliminate unpaired read because split-e was used. This means that unpaired reads from a paired Run will be dumped into a third file.
         if (length(list.files(pattern = "fastq") > 2)){
             file.remove(paste(opt$sraaccession, "fastq", sep = "."))
-        }
-        if (nchar(slurmjobid) > 3){
-            system("module unload perl")
         }
     } else {
         opt$readorigin <- "supplied"
