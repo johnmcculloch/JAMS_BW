@@ -1,9 +1,9 @@
-#' get_contig_coverage
+#' get_contig_coverage(opt = NULL, markduplicates = FALSE, align_as_unpaired_reads = TRUE)
 #'
 #' JAMSalpha function
 #' @export
 
-get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
+get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unpaired_reads = TRUE){
     setwd(opt$workdir)
 
     flog.info("Using kraken2 with JAMStaxtable")
@@ -68,8 +68,16 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE){
             bowtiecommonargs <- c(bowtiecommonargs, "--rf", "--maxins", "10000")
         }
         bowtiereadargs <- list("-U", c("-1", "-2"), c("-1", "-2", "-U"))
+
+        if (align_as_unpaired_reads){
+            flog.info("Aligning reads back to contigs as unpaired reads.")
+            inputreads <- paste0(inputreads, collapse = ",")
+        }
+
         bowtiereadinput <- as.vector(rbind(bowtiereadargs[[length(inputreads)]], inputreads))
-        bowtiereadoutput <- c("--un", (paste(opt$prefix, "NAss_SE.fastq", sep="_")), "--un-conc", (paste(opt$prefix, "NAss_PE.fastq", sep="_")))[1:(2 * length(opt$rawreads))]
+
+        bowtiereadoutput <- c("--un", (paste(opt$prefix, "NAss_SE.fastq", sep="_")), "--un-conc", (paste(opt$prefix, "NAss_PE.fastq", sep="_")))[1:(2 * min(length(inputreads), 2))]
+
         samfile <- paste(paste(opt$prefix, "contigs", sep = "_"), "sam", sep = ".")
         bowtiesam <- c("-S", samfile)
         bowtieargs <- c(bowtiecommonargs, bowtiereadinput, bowtiereadoutput, bowtiesam)

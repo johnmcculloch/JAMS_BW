@@ -1,10 +1,10 @@
-#' calculate_matrix_stats(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 99)
+#' calculate_matrix_stats(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 999)
 #'
 #' Returns a data frame with the statistics for a feature count matrix ordered by highest variance or lowest Mann-Whitney-Wilcoxon test between binary categories.
 #'
 #' @export
 
-calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 99){
+calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 999){
 
     #Test for silly stuff
     if ((stattype %in% c("binary", "permanova", "anova", "PA")) && (is.null(classesvector))){

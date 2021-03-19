@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_Ordination.R
 \name{plot_Ordination}
 \alias{plot_Ordination}
-\title{plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)}
+\title{plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...)}
 \usage{
 plot_Ordination(
   ExpObj = NULL,
@@ -44,6 +44,7 @@ plot_Ordination(
   forceaspectratio = NULL,
   threads = 8,
   return_coordinates_matrix = FALSE,
+  permanova_permutations = 10000,
   class_to_ignore = "N_A",
   ...
 )

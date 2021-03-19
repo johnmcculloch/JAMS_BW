@@ -660,3 +660,21 @@ make_phenolabels_from_phenotable <- function (phenotable = NULL){
     return(phenolabels)
 
 }
+
+#' generate_filename(title = "ABC_look_at_me", add_date = TRUE, suffix = "pdf")
+#'
+#' Wrapper for generating file names.
+#' @export
+
+generate_filename <- function(title = "ABC_look_at_me", add_date = TRUE, suffix = "pdf"){
+
+    if (add_date){
+        dte <- Sys.Date()
+    } else {
+        dte <- NULL
+    }
+
+    fn <- paste(paste(title, dte, sep = "_"), suffix, sep = ".")
+
+    return(fn)
+}

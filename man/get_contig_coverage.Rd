@@ -2,9 +2,13 @@
 % Please edit documentation in R/get_contig_coverage.R
 \name{get_contig_coverage}
 \alias{get_contig_coverage}
-\title{get_contig_coverage}
+\title{get_contig_coverage(opt = NULL, markduplicates = FALSE, align_as_unpaired_reads = TRUE)}
 \usage{
-get_contig_coverage(opt = NULL, markduplicates = FALSE)
+get_contig_coverage(
+  opt = NULL,
+  markduplicates = FALSE,
+  align_as_unpaired_reads = TRUE
+)
 }
 \description{
 JAMSalpha function

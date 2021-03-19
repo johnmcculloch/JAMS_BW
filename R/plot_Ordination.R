@@ -1,9 +1,9 @@
-#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)
+#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...)
 #'
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
     #Consider orthography of the word "colour"
@@ -44,18 +44,18 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     for (sp in 1:length(subset_points)){
 
         if (!(is.null(subsetby))){
-            samplesToKeep <- rownames(colData(obj))[which(colData(obj)[ , subsetby] == subset_points[sp])]
+            sp_samplesToKeep <- rownames(colData(obj))[which(colData(obj)[ , subsetby] == subset_points[sp])]
             flog.info(paste("Plotting within", subset_points[sp]))
             subsetname <- subset_points[sp]
             pcatit <- paste(pcatitbase, "within", subset_points[sp])
         } else {
-            samplesToKeep <- rownames(colData(obj))
+            sp_samplesToKeep <- rownames(colData(obj))
             subsetname <- "no_sub"
             pcatit <- pcatitbase
         }
         pcatit <- paste(c(pcatit, presetlist$filtermsg), collapse = "\n")
 
-        currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
+        currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = sp_samplesToKeep, featuresToKeep = featuresToKeep, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
 
         currpt <- as.data.frame(colData(currobj))
 
@@ -93,6 +93,8 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             countmat <- t(countmat)
         }
 
+        sampsizemsg <- paste0("Number of samples = ", ncol(countmat), "; Number of features = ", nrow(countmat))
+
         if (!is.null(samplesToHighlight)){
             samplesToHighlight <- samplesToHighlight[samplesToHighlight %in% rownames(countmat)]
             currpt_stat <- currpt[(rownames(currpt) %in% samplesToHighlight), ]
@@ -106,7 +108,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (permanova == TRUE){
             if (!(is.numeric(cats))){
-                permanovap <- vegan::adonis(as.formula(paste("d ~ ", compareby)), data = currpt_stat)$aov.tab$`Pr(>F)`[1]
+                permanovap <- vegan::adonis(as.formula(paste("d ~ ", compareby)), data = currpt_stat, permutations = permanova_permutations)$aov.tab$`Pr(>F)`[1]
             } else {
                 flog.info("Impossible to get permanova because colourby is continuous")
                 permanovap <- NULL
@@ -267,7 +269,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
 
         if (!is.null(permanovap)) {
-            pcatit <- paste(c(pcatit, (paste("PERMANOVA p <", permanovap))), collapse = "\n")
+            pcatit <- paste(c(pcatit, (paste("PERMANOVA p <", round(permanovap, 4)))), collapse = "\n")
         }
 
         if(any(c((!is.null(permanovap)), (algorithm == "PCA")))){
@@ -295,6 +297,8 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
                 p <- p + geom_point(aes(x = meanPC1, y = meanPC2), colour = "black", data = centroidmeandf, size = (dotsize * 4)) + geom_point(aes(x = meanPC1, y = meanPC2, colour = Colours), data = centroidmeandf, size = (dotsize * 2))
             }
         }
+
+        #pcatit <- paste(pcatit, sampsizemsg, sep = "\n")
 
         p <- p + ggtitle(pcatit)
         p <- p + labs(colour = colourby)
