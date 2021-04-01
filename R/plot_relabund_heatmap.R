@@ -177,7 +177,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                 if (all(c(cluster_rows, (any(!(c(cluster_samples_per_heatmap, cluster_features_per_heatmap))))))){
                     flog.info("Clustering samples and features using entire matrix to obtain sample and feature order for all heatmaps.")
                     #create a heatmap from the entire count matrix for getting column order.
-                    htfull <- Heatmap(countmat2, name = "FullHM", column_title = "FullHM", column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"), use_raster = TRUE)
+                    htfull <- suppressMessages(Heatmap(countmat2, name = "FullHM", column_title = "FullHM", column_names_gp = gpar(fontsize = 1), cluster_rows = TRUE, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = 1, col = "black"), use_raster = TRUE))
 
                     fullheatmap_column_order <- suppressWarnings(column_order(htfull))
                     fullheatmap_column_dend <- suppressWarnings(column_dend(htfull))
