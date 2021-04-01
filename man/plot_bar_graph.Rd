@@ -5,25 +5,33 @@
 \title{Creates bar graph of relative taxonomic abundance from SummarizedExperiment object}
 \usage{
 plot_bar_graph(
-  mgseqobj = NULL,
+  ExpObj = NULL,
   glomby = NULL,
   samplesToKeep = NULL,
   featuresToKeep = NULL,
-  units = 100,
+  groupby = NULL,
+  colourby = NULL,
+  subsetby = NULL,
+  applyfilters = NULL,
+  featcutoff = NULL,
+  GenomeCompletenessCutoff = NULL,
+  PctFromCtgscutoff = NULL,
+  PPM_normalize_to_bases_sequenced = FALSE,
+  ignoreunclassified = FALSE,
+  total_units = 100,
   threshold = 2,
-  title = "",
-  category = NULL,
   cat_pos = -2,
   cat_text_size = 3,
   border_color = "white",
   cdict = NULL,
-  colors = NULL,
+  feature_cdict = NULL,
   grid = TRUE,
+  class_to_ignore = "N_A",
   ...
 )
 }
 \arguments{
-\item{mgseqobj}{a SummarizedExperiment object.}
+\item{ExpObj}{a SummarizedExperiment object.}
 
 \item{glomby}{string giving taxonomic level (from tax_table) to plot at.}
 
@@ -31,13 +39,11 @@ plot_bar_graph(
 
 \item{featuresToKeep}{vector with features to plot.}
 
-\item{units}{unit to normalize data to -- default percentage (100).}
+\item{groupby}{colData category to use for labels}
+
+\item{total_units}{unit to normalize data to -- default percentage (100).}
 
 \item{threshold}{minimum value to include as separate entry (below is Misc_Low_Abundance).}
-
-\item{title}{plot title}
-
-\item{category}{colData category to use for labels}
 
 \item{cat_pos}{position of category line (change if ugly in plot)}
 
@@ -47,11 +53,11 @@ plot_bar_graph(
 
 \item{cdict}{use JAMS colour dictionary}
 
-\item{colors}{use named list of taxon colors}
+\item{feature_cdict}{use named list of taxon colors}
 }
 \description{
 Creates bar graph of relative taxonomic abundance from SummarizedExperiment object
 }
 \examples{
-plot_bar_graph(mrexp1, glomby = "Phylum", category = "Group")
+plot_bar_graph(ExpObj = mrexp1, glomby = "Phylum", groupby = "Group")
 }
