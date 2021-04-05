@@ -9,6 +9,8 @@ then
     mv "$accession"_1.fastq "$accession"_R1.fastq
     mv "$accession"_2.fastq "$accession"_R2.fastq
     rm "$accession".fastq
+else
+    mv "$accession".fastq "$accession"_SE.fastq
 fi
 
 module unload sratoolkit
