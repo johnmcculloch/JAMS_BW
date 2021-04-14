@@ -255,13 +255,8 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         p <- p + geom_point(size = dotsize) + labs(x = xl, y = yl)
 
-        if (all(c((!is.null(ellipseby)), (ellipseby == FALSE)))){
-            #p <- p + stat_ellipse(show.legend = TRUE, type = "norm")
-            #if (!is.null(colourby)){
-                #p <- p + stat_ellipse(aes(color = Colours, group = Ellipse), type = "norm")
-            #} else {
-                p <- p + stat_ellipse(aes(group = Ellipse), type = "norm")
-            #}
+        if (any(c((!is.null(ellipseby)), (ellipseby != FALSE)))){
+            p <- p + stat_ellipse(aes(group = Ellipse), type = "norm")
         }
 
         if (!(is.null(addtit))){
