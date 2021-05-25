@@ -160,7 +160,7 @@ if (onbiowulf == TRUE){
 repos <- "https://cloud.r-project.org"
 
 if(!(all((c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits") %in% rownames(installed.packages()))))){
-    install.packages(c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits"), repos = repos, update = TRUE)
+    install.packages(c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits"), repos = repos, update = TRUE, lib = libs)
 }
 #Make sure we have the correct version of Bioconductor
 BiocManager::install(version = "3.12", ask = FALSE)
