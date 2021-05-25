@@ -216,6 +216,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             #Filter by l2fc if applicable
             if (all(c((!is.null(presetlist$minl2fc)), ("absl2fc" %in% colnames(matstats))))){
+
                 matstats <- subset(matstats, absl2fc >= presetlist$minl2fc)
 
                 if (nrow(matstats) < 1){
@@ -239,6 +240,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             #Redefine countmat to include only features matching filtering criteria
             countmat <- countmat[rownames(matstats), ]
+
             if (class(countmat)[1] != "matrix"){
                 countmat <- t(as.matrix(countmat))
                 rownames(countmat) <- rownames(matstats)
@@ -331,6 +333,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
         }
 
         flog.info("Plotting results...")
+        flog.info(paste("There are", nrow(countmat), "features to plot."))
+
         for (feat in rownames(countmat)){
             dat <- data.frame(Sample = names(countmat[feat, ]), PPM = as.numeric(countmat[feat, ]), Compareby = cl, stringsAsFactors = FALSE)
             rownames(dat) <- dat$Sample
