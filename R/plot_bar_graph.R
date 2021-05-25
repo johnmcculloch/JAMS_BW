@@ -10,14 +10,16 @@
 #' @param groupby colData category to use for labels
 #' @param cat_pos position of category line (change if ugly in plot)
 #' @param cat_text_size text size of category labels
+#' @param legend_text_size text size of legend labels
 #' @param border_color color of bar borders
 #' @param cdict use JAMS colour dictionary
 #' @param feature_cdict use named list of taxon colors
+#' @param addtit optional string to add more text to title
 #' @export
 #' @examples
 #' plot_bar_graph(ExpObj = mrexp1, glomby = "Phylum", groupby = "Group")
 
-plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, groupby = NULL, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, border_color = "white", cdict = NULL, feature_cdict = NULL, grid = TRUE, class_to_ignore = "N_A", ...) {
+plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, groupby = NULL, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, class_to_ignore = "N_A", ...) {
 
     require(reshape2)
     require(Polychrome)
@@ -107,6 +109,9 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, f
 
         p <- ggplot(mdf, aes_string(x = "Sample", y = "Abundance", fill = analysisname))
         p <- p + geom_bar(stat = "identity", position = "stack", color = border_color, size = 0)
+        if(!is.null(addtit)) {
+          bartit <- str_c(bartit, " ", addtit)
+        }
         p <- p + ggtitle(bartit)
         p <- p + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
         p <- p + theme(plot.margin = unit(c(0, 1, 1, 0.5), "lines"))
@@ -115,8 +120,8 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, f
         p <- p + theme(plot.margin = margin(c(1, 1, 3, 1), unit = "lines"))
         p <- p + theme(axis.line = element_blank())
         p <- p + theme(legend.position = "bottom")
-        p <- p + theme(legend.text = element_text(colour = "black", size = 4, face="italic"))
-        p <- p + theme(legend.title = element_text(colour = "black", size = 5))
+        p <- p + theme(legend.text = element_text(colour = "black", size = legend_text_size, face="italic"))
+        p <- p + theme(legend.title = element_text(colour = "black", size = legend_text_size))
         p <- p + theme(title = element_text(size = 8))
 
         if(!(is.null(cdict))) {
