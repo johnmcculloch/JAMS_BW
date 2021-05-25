@@ -67,8 +67,10 @@ if (!file.exists(linkto)){
 jamsdir <- getScriptPath()
 
 #Make sure we are writing to the right place
-#rlibs <- as.character(Sys.getenv("R_LIBS"))
-rlibs <- .libPaths()[1]
+rlibs <- as.character(Sys.getenv("R_LIBS"))
+if(nchar(rlibs) == 0){
+    rlibs <- .libPaths()[1]
+}
 
 #Decide which kind of system you are on.
 currslurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
@@ -142,9 +144,9 @@ if (nchar(currslurmjobid) > 3){
 }
 
 if (onbiowulf == TRUE){
-    cat("Checking for non-R dependencies before attempting to install the JAMS package.")
-    system("brew update")
-    system("brew install gcc libxml2")
+    #cat("Checking for non-R dependencies before attempting to install the JAMS package.")
+    #system("brew update")
+    #system("brew install gcc libxml2")
 }
 
 #cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
