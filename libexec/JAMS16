@@ -1,0 +1,459 @@
+#!/usr/bin/env Rscript
+suppressMessages(suppressPackageStartupMessages(library(optparse)))
+
+#####################################
+# Define System-specific Functions ##
+#####################################
+if ((.Platform$OS.type) != "unix"){
+    stop("JAMS only works on UNIX. Install Linux and try again.")
+}
+
+#Get slurm job ID
+slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+
+#Decide which kind of system you are on.
+if(nchar(slurmjobid) < 3){
+    cat("You are not on a Slurm Workload Cluster\n")
+} else {
+    cat(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid, "\n"))
+}
+
+#################
+## Get options ##
+#################
+
+option_list <- list(
+    make_option(c("-p", "--projectname"),
+                action="store", default = "MyProject",
+                type="character",
+                help="Name of project to be used as prefix for output files (required)"),
+
+    make_option(c("-o", "--outdir"),
+                action="store", default = getwd(),
+                type="character",
+                help ="path to where you want the output."),
+
+    make_option(c("-x", "--excel_metadata"),
+                action="store", default = NULL,
+                type="character",
+                help="Metadata file in Excel format, with sheet_1 for phenotable and sheet_2 for phenolabels"),
+
+    make_option(c("-t", "--phenotable_tsv"),
+                action="store", default = NULL,
+                type="character",
+                help="Metadata file in tsv format, with headers"),
+
+    make_option(c("-l", "--phenolabels_tsv"),
+                action="store", default = NULL,
+                type="character",
+                help="Phenolabels file in tsv format, describing metadata file headers"),
+
+    make_option(c("-c", "--maxnumclasses"),
+                action="store", default = 15,
+                type="numeric",
+                help="Maximum number of classes for a discrete variable to be kept. Default=15"),
+
+    make_option(c("-i", "--class_to_ignore"),
+                action="store", default = "N_A",
+                type="character",
+                help="Ignore cells containing this text in the metadata. Samples bearing this class of text when comparing within a variable will be omitted from an analysis. Default = N_A"),
+
+    make_option(c("-y", "--reads_files_path"),
+                action="store", default = NULL,
+                type="character",
+                help ="path to where all fastq files are"),
+
+    make_option(c("-a", "--taxonomy_database"),
+                action="store", default = NULL,
+                type="character",
+                help ="path to the taxonomy database."),
+
+    make_option(c("-e", "--export_tables"),
+                action="store_true", default = FALSE,
+                type="logical",
+                help ="Export relative abundance tables and feature data tables in tsv format."),
+
+    make_option(c("-d", "--make_ordination_reports"),
+                action="store", default = NULL,
+                type="character",
+                help ="Generate ordination plots with this algorithm. Choose between PCA, tSNE or tUMAP, or more than one separated by a comma. Example: -d PCA,tUMAP"),
+
+    make_option(c("-f", "--make_exploratory_reports"),
+                action="store_true", default = FALSE,
+                type="logical",
+                help ="Generate Relative Abundace heatmaps and spreadsheets based on variance analysis."),
+
+    make_option(c("-k", "--make_comparative_reports"),
+                action="store_true", default = FALSE,
+                type="logical",
+                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
+
+    make_option(c("-b", "--make_PA_reports"),
+                action="store_true", default = FALSE,
+                type="logical",
+                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
+
+    make_option(c("-r", "--make_correlation_reports"),
+                action="store_true", default = FALSE,
+                type="logical",
+                help ="Generate Pairwise Feature Correlation heatmaps."),
+
+    make_option(c("-z", "--make_alpha_reports"),
+                action = "store_true", default = FALSE,
+                type = "logical",
+                help = "Generate alpha diversity plots."),
+
+    make_option(c("-m", "--plot_in_parallel"),
+                action = "store_true", default = FALSE,
+                type = "logical",
+                help = "Use multiple CPUs when generating plots. This option is experimental, and is not guaranteed to not crash."),
+
+    make_option(c("-s", "--run_script"),
+                action="store", default = NULL,
+                type="character",
+                help ="Path to an R script to run after all other options have been executed. Example: -s /path/to/make_these_specific_plots.R will execute the commands in this script at the end of JAMSbeta."),
+
+    make_option(c("-v", "--version"),
+                action="store_true", help = "report version")
+ )
+
+# get the cmd line options to the script
+args <- commandArgs(trailingOnly = TRUE)
+
+# parse the options
+opt <- parse_args(OptionParser(option_list = option_list), args)
+
+#Add version from package to opt
+opt$verstr <- paste0("JAMS v", packageVersion("JAMS"))
+
+# print version & exit if -v
+if (!is.null(opt$version)) {
+    print(opt$verstr)
+    quit()
+}
+
+#Load flogger package
+suppressMessages(suppressPackageStartupMessages(library(futile.logger)))
+
+#Authorship message
+authors <- as.character(as.person(packageDescription("JAMS")$Author))
+authorshipmessage <- c(packageDescription("JAMS")$Title, paste("JAMS version", packageVersion("JAMS")), authors, paste("Contact:", "john.mcculloch@nih.gov"), "National Cancer Institute", "National Institutes of Health", "Bethesda, MD, USA")
+
+#Fix path relativity
+fixrelpath <- function(JAMSpath = NULL){
+    require(R.utils)
+    if (!(isAbsolutePath(JAMSpath))){
+        fixedpath <- getAbsolutePath(JAMSpath)
+    } else {
+        fixedpath <- JAMSpath
+    }
+    #Chomp a "/" from the end of paths
+    fixedpath <- gsub("/$", "", fixedpath)
+
+    return(fixedpath)
+}
+
+for (pathtofix in c("outdir", "excel_metadata", "phenotable_tsv", "phenolabels_tsv", "reads_files_path", "taxonomy_database", "run_script")){
+    if (!is.null(opt[[pathtofix]])){
+        opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
+    }
+}
+
+if (!is.null(opt$run_script)){
+    #Check that file exists
+    if (!file.exists(opt$run_script)){
+        flog.info(paste("Unable to find file", opt$run_script))
+        q()
+    }
+}
+
+# Determine output directory
+if (!is.null(opt$outdir)) {
+    if (!file.exists(opt$outdir)){
+        dir.create(opt$outdir, recursive = TRUE)
+    }
+    setwd(opt$outdir)
+} else {
+    opt$outdir <- getwd()
+}
+flog.info(paste("Content will be output to", opt$outdir))
+
+# give help if needed input option not provided
+#if (is.null(opt$reads_files_path)) {
+#    parse_args(OptionParser(option_list = option_list), c("-h"))
+#    stop("You must supply fastq files with the -r option to build experiments.")
+#}
+
+#Set defaults
+asPA <- FALSE
+opt$projimage <- file.path(opt$outdir, ".RData")
+
+###################
+## Start project ##
+###################
+suppressMessages(suppressPackageStartupMessages(library(JAMS)))
+flog.info("JAMS16 start. Gathering information...")
+project <- as.character(opt$projectname)
+flog.info(paste("Using", project, "for name of project"))
+
+opt$threads <- as.numeric(detectHardwareResources()["threads"])
+flog.info(paste("You have", opt$threads, "CPUs available."))
+
+opt$silva_trainset <- file.path(opt$taxonomy_database, "silva_nr_v132_train_set.fa.gz")
+opt$silva_species_assignment <- file.path(opt$taxonomy_database, "silva_species_assignment_v132.fa.gz")
+
+
+##################
+## Get metadata ##
+##################
+
+###
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
+#Get metadata
+opt <- load_metadata_from_file(opt = opt)
+
+#Stop if something went wrong
+if ((is.null(opt$phenotable)) || (nrow(opt$phenotable) < 1)){
+    stop("No data found in the metadata file supplied. Please check file.")
+} else {
+    flog.info(paste("Metadata has", ncol(opt$phenotable), "columns."))
+}
+
+##########
+## Will keep this running in all cases. Not sure of the consequences for when loading a workspace and NOT changing metadata.
+opt$metadatavetting <- TRUE
+
+if (opt$metadatavetting == TRUE){
+    #If phenolabels exists, make sure that phenotable contains only data described in phenolabels.
+    if (!is.null(opt$phenolabels)){
+        if (!all(colnames(opt$phenolabels) %in% c("Var_label", "Var_type"))) {
+            stop("Could not find the Var_label and/or Var_type columns in phenolabels table. Consult documentation and check metadata file(s).")
+        }
+
+        validcols <- as.character(opt$phenolabels$Var_label)
+        flog.info(paste("Phenolabels contains", length(validcols), "categories."))
+
+        #Stop if you are asking for more than you have.
+        if (length(validcols) > ncol(opt$phenotable)){
+            stop("Phenolabels has more categories than the metadata in phenotable. Review and try again.")
+        }
+
+        ptsampcol <- as.character(opt$phenolabels$Var_label[which(opt$phenolabels$Var_type == "Sample")])
+        if (length(ptsampcol) != 1){
+             stop("You must define exactly one column as being the Sample column in your metadata. Please see documenation.")
+        } else {
+             flog.info(paste("Samples are in the", ptsampcol, "column in the metadata."))
+        }
+
+        flog.info(paste("Metadata classes specified in phenolabels are:", paste0(validcols, collapse = ", ")))
+        flog.info("Adjusting metadata to contain only these columns.")
+
+        #Stop if the classes you want in phenolabels do not exist in phenotable.
+        if (all(validcols %in% colnames(opt$phenotable))){
+            opt$phenotable <- opt$phenotable[ , validcols]
+        } else {
+            stop("One or more classes specified in phenolabels is missing as (a) column(s) in phenotable. Please check files.")
+        }
+
+    } else {
+        #No phenolabels, so try and find at least a Sample column in the metadata.
+        flog.info("Phenolabels not found. Will attempt to find which column is the Sample data.")
+        ptsampcol <- colnames(opt$phenotable)[which(colnames(opt$phenotable) %in% c("Sample", "sample"))]
+        if (length(ptsampcol) != 1){
+            stop("You must define exactly one column as being the Sample column in your metadata. Please see documenation.")
+        }
+    }
+
+    #Stop if something went wrong after subsetting phenotable to desired columns in phenolabels.
+    if (nrow(opt$phenotable) < 1){
+        stop("No data found in the metadata file supplied. Please check file.")
+    }
+}
+
+#Save in case anything else goes wrong later
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
+Samples_want <- as.character(opt$phenotable[ , ptsampcol])
+#Look for corresponding fastqs with the wanted sample prefixes
+#Get a list of fastq files
+rawfastqpaths <- list.files(path = opt$reads_files_path, pattern = "fastq.gz", full.names = TRUE, recursive = TRUE)
+rawfastqnames <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 1) })
+rawfastqsdf <- data.frame(Filenames = rawfastqnames, Filepaths = rawfastqpaths, stringsAsFactors = FALSE)
+rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { analyze_fastq_filename(fn=rawfastqsdf$Filenames[x])$Read } )
+rawfastqsdf$Lane <- sapply(1:nrow(rawfastqsdf), function(x) { analyze_fastq_filename(fn=rawfastqsdf$Filenames[x])$Lane } )
+rawfastqsdf$OriPrefix <- sapply(1:nrow(rawfastqsdf), function(x) { analyze_fastq_filename(fn=rawfastqsdf$Filenames[x])$OriPrefix } )
+
+#Subset them to wanted samples from metadata
+Samples_have <- intersect(unique(rawfastqsdf$OriPrefix), unique(Samples_want))
+#Report if anything is MISSING
+if (length(Samples_have) < length(Samples_want)){
+    flog.warn(paste("Fastq files for", (length(Samples_want) - length(Samples_have)), "of the samples on the metadata were not found in", opt$reads_files_path))
+    flog.warn(paste("MISSING:", paste0(Samples_want[!(Samples_want %in% Samples_have)], collapse = ", ")))
+    flog.warn("Check your metadata and fastq file path!")
+}
+
+#Subset fastqs to only the ones wanted from the metadata
+rawfastqsdf <- subset(rawfastqsdf, OriPrefix %in% Samples_have)
+
+#Check forward and reverse for each sample
+Samples_have_R1R2 <- intersect(subset(rawfastqsdf, Read == "R1")[]$OriPrefix, subset(rawfastqsdf, Read == "R2")[]$OriPrefix)
+
+if (length(Samples_have_R1R2) < length(Samples_have)){
+    flog.warn(paste("Sample(s)", paste0(Samples_have[!(Samples_have %in% Samples_have_R1R2)], collapse = ", "), "is MISSING a file for one of the reads."))
+    flog.warn("Check your metadata and fastq file path!")
+}
+rawfastqsdf <- subset(rawfastqsdf, OriPrefix %in% Samples_have_R1R2)
+
+#Check each sample has two files
+if(length(Samples_have_R1R2) != (nrow(rawfastqsdf) / 2)){
+    flog.warn("Some samples have more than two fastq files. Check your metadata and fastq file path! Aborting now.")
+    q()
+}
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
+require("Rqc")
+qa <- rqcQA(rawfastqsdf$Filepaths, workers = opt$threads)
+
+find_phred_cutoff <- function(qa = NULL, SampName = NULL){
+    CyclePhreddf <- rqcCycleAverageQualityCalc(qa[[SampName]])
+    CyclePhreddf$cycle <- as.numeric(CyclePhreddf$cycle)
+    loess_out <- loess(quality ~ cycle, data = CyclePhreddf)
+    CyclePhreddf$Fitted <- fitted(loess_out)
+    cyclecutoffs <- sapply(10:30, function (x){ CyclePhreddf$cycle[max(which(CyclePhreddf$Fitted >= x))] })
+    names(cyclecutoffs) <- paste0("Q", 10:30)
+
+    return(cyclecutoffs)
+
+}
+
+CyclePhred_list <- lapply(names(qa), function(x){ find_phred_cutoff(qa = qa, SampName = x)} )
+names(CyclePhred_list) <- names(qa)
+CyclePhreddf_per_Sample <- as.data.frame(bind_rows(CyclePhred_list, .id = "id"))
+colnames(CyclePhreddf_per_Sample)[which(colnames(CyclePhreddf_per_Sample) == "id")] <- "Filenames"
+for (colm in 1:ncol(CyclePhreddf_per_Sample)){
+    if (any(is.na(CyclePhreddf_per_Sample[ , colm]))){
+        CyclePhreddf_per_Sample[is.na(CyclePhreddf_per_Sample[ , colm]), colm] <- 1
+    }
+}
+
+rawfastqsdf <- left_join(rawfastqsdf, CyclePhreddf_per_Sample, by = "Filenames")
+rownames(rawfastqsdf) <- rawfastqsdf$Filenames
+
+quantile75cutoff_R1 <- sapply(paste0("Q", 10:30), function(x) { as.numeric(quantile(subset(rawfastqsdf, Read == "R1")[ , x], probs = seq(0, 1, 0.1))["90%"]) })
+quantile75cutoff_R2 <- sapply(paste0("Q", 10:30), function(x) { as.numeric(quantile(subset(rawfastqsdf, Read == "R2")[ , x], probs = seq(0, 1, 0.1))["90%"]) })
+
+phredcutoff <- 18
+trunclen_cutoffs_R1_R2 <- unname(c(quantile75cutoff_R1[paste0("Q", phredcutoff)], quantile75cutoff_R2[paste0("Q", phredcutoff)]))
+flog.info(paste("For R1 reads, on read cycle", trunclen_cutoffs_R1_R2[1], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
+flog.info(paste("For R2 reads, on read cycle", trunclen_cutoffs_R1_R2[2], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
+
+#Flag samples which will not pass quality control
+flagR1_Samples <- rownames(subset(rawfastqsdf, Read == "R1"))[which(subset(rawfastqsdf, Read == "R1")[ , paste0("Q", phredcutoff)] <  trunclen_cutoffs_R1_R2[1])]
+
+flagR2_Samples <- rownames(subset(rawfastqsdf, Read == "R2"))[which(subset(rawfastqsdf, Read == "R2")[ , paste0("Q", phredcutoff)] <  trunclen_cutoffs_R1_R2[2])]
+
+##########################
+## Start dada2 pipeline ##
+##########################
+#https://benjjneb.github.io/dada2/tutorial_1_8.html
+
+flog.info("Starting dada2 pipeline according to https://benjjneb.github.io/dada2/tutorial_1_8.html")
+
+fnFs <- subset(rawfastqsdf, Read == "R1")[]$Filepaths
+fnRs <- subset(rawfastqsdf, Read == "R2")[]$Filepaths
+sample.names <- subset(rawfastqsdf, Read == "R1")[]$OriPrefix
+
+pdf(paste0(opt$projectname, "Quality_plots.pdf", sep = "_"), paper = "a4r")
+for(x in 1:length(fnFs)){
+    print(plotQualityProfile(c(fnFs[x],fnRs[x])))
+}
+dev.off()
+
+
+# Place filtered files in filtered/ subdirectory
+filtFs <- file.path("filteredreads", paste0(sample.names, "_F_filt.fastq.gz"))
+filtRs <- file.path("filteredreads", paste0(sample.names, "_R_filt.fastq.gz"))
+
+out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen = trunclen_cutoffs_R1_R2, maxN = 0, maxEE = c(2,2), truncQ = 2, rm.phix = TRUE, compress = TRUE, multithread = max((opt$threads - 2), 1))
+
+errF <- learnErrors(filtFs, multithread = max((opt$threads - 2), 1))
+errR <- learnErrors(filtRs, multithread = max((opt$threads - 2), 1))
+
+derepFs <- derepFastq(filtFs, verbose = TRUE)
+derepRs <- derepFastq(filtRs, verbose = TRUE)
+# Name the derep-class objects by the sample names
+names(derepFs) <- sample.names
+names(derepRs) <- sample.names
+
+dadaFs <- dada(derepFs, err = errF, multithread = max((opt$threads - 2), 1))
+dadaRs <- dada(derepRs, err = errR, multithread = max((opt$threads - 2), 1))
+
+mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose = TRUE)
+
+seqtab <- makeSequenceTable(mergers)
+
+seqtab.nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = max((opt$threads - 2), 1), verbose = TRUE)
+
+getN <- function(x) { sum(getUniques(x)) }
+track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
+colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
+rownames(track) <- sample.names
+
+taxa <- assignTaxonomy(seqtab.nochim, opt$silva_trainset, multithread = max((opt$threads - 2), 1))
+taxa <- addSpecies(taxa, opt$silva_species_assignment)
+
+tt <- as.data.frame(taxa)
+tt$Domain <- tt$Kingdom
+tt <- tt[ , c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")]
+taxlvls <- c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus")
+taxtags <- c("d__", "k__", "p__", "c__", "o__", "f__", "g__")
+
+for(lvl in 1:length(taxlvls)){
+    taxlvl <- taxlvls[lvl]
+    tt[which(is.na(tt[ , taxlvl]) == FALSE) , taxlvl] <- paste0(taxtags[lvl], tt[which(is.na(tt[ , taxlvl]) == FALSE) , taxlvl])
+    tt[which(is.na(tt[ , taxlvl]) == TRUE) , taxlvl] <- "Unclassified"
+}
+
+#Add genus-species to species column, like kraken does it so infer_LKT will work as is.
+#tt[which(is.na(tt[ , "Species"]) == FALSE) , "Species"] <- paste(tt[which(is.na(tt[ , "Species"]) == FALSE), "Genus"], tt[which(is.na(tt[ , "Species"]) == FALSE) , "Species"], sep = "_")
+#tt$Species <- gsub("^g__", "s__", tt$Species)
+
+tt[which(is.na(tt[ , "Species"]) == TRUE) , "Species"] <- "Unclassified"
+tt <- infer_LKT(tt)
+tt$Species <- tt$LKT
+tt$LKT <- make.unique(tt$LKT)
+
+#Get counts table
+cts <- t(seqtab.nochim)
+cts <- as.data.frame(cts)
+
+#Maintain same order as cts
+tt <- tt[rownames(cts), ]
+
+#Call ASVs as non-redundant LKTs
+rownames(tt) <- tt$LKT
+rownames(cts) <- tt$LKT
+
+rownames(opt$phenotable) <- opt$phenotable$Sample
+pheno <- opt$phenotable
+
+rownames(pheno) <- pheno$Sample
+pheno <- pheno[colnames(cts), ]
+
+variable_list <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenotable = pheno, maxclass = 15, maxsubclass = 4, class_to_ignore = "N_A", verbose = TRUE)
+
+cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE)
+
+exp <- make_SummarizedExperiment_from_tables(pheno = pheno, counttable = cts, featuretable = tt, analysisname = "LKT")
+
+#Save image
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
+
+#Stop here and save if nothing else is required.
+if (!any(c((!is.null(opt$make_ordination_reports)), (!is.null(opt$run_script)), opt$make_exploratory_reports, opt$make_comparative_reports, opt$make_PA_reports, opt$make_correlation_reports, opt$make_alpha_reports))){
+    flog.info("Thank you for using JAMSbeta")
+    q()
+}
+
+q()
