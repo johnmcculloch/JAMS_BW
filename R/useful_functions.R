@@ -678,3 +678,76 @@ generate_filename <- function(title = "ABC_look_at_me", add_date = TRUE, suffix 
 
     return(fn)
 }
+
+#' analyze_fastq_filename(fn = NULL, maintain_Illumina_format = FALSE)
+#'
+#' Given a fastq filename, will return a list with facts about its anatomy.
+#' @export
+
+analyze_fastq_filename <- function(fn = NULL, maintain_Illumina_format = FALSE){
+
+    filefacts <- list()
+    fnsplit <- unlist(strsplit(fn, split = "\\."))
+    #find out if gzipped and what the filename body is
+    if (tail(fnsplit, n = 1) == "gz"){
+        filefacts$gunzipped <- TRUE
+        fnbody <- paste0(rev(rev(fnsplit)[3:length(fnsplit)]), collapse = ".")
+        filefacts$suffix <- paste0(tail(fnsplit, n = 2), collapse = ".")
+    } else {
+        filefacts$gunzipped <- FALSE
+        fnbody <- paste0(rev(rev(fnsplit)[2:length(fnsplit)]), collapse = ".")
+        filefacts$suffix <- tail(fnsplit, n = 1)
+    }
+
+    #Now delve into fnbody and see what it it about
+    #Does it have lane info? Must have L00X in the last 4 elements.
+    contains_lane_info <- any(c("L001", "L002", "L003", "L004", "L005", "L006", "L007", "L008") %in% tail(unlist(strsplit(fnbody, split = "_")), n = 4))
+    #Does it have paired read info? Must have RX in the last 4 elements.
+    contains_paired_read_info <- any(c("R1", "R2") %in% tail(unlist(strsplit(fnbody, split = "_")), n = 4))
+    #Is it Illumina output filename style?
+    is_Illumina_output <- (tail(unlist(strsplit(fnbody, split = "_")), n = 1) == "001")
+    #Get number of body segments
+    numfnbodysegments <- length(unlist(strsplit(fnbody, split = "_")))
+
+    #Determine the orgininal sample prefix
+    #Case 1, not Illumina style
+    if (!is_Illumina_output){
+        if (contains_paired_read_info){
+            filefacts$OriPrefix <- paste0(unlist(strsplit(fnbody, split = "_"))[1:(numfnbodysegments - 1)], collapse = "_")
+            filefacts$Read <- tail(unlist(strsplit(fnbody, split = "_")), n = 1)
+        } else {
+            filefacts$OriPrefix <- fnbody
+            filefacts$Read <- ""
+        }
+        filefacts$Appendage <- paste0(".", filefacts$suffix)
+    } else {
+        #OK, is Illumina style prefix
+        #Das Read ist immer an zweiter position
+        filefacts$Read <- tail(unlist(strsplit(fnbody, split = "_")), n = 2)[1]
+
+        if (contains_lane_info){
+            #Case 2, is MiSeq, HiSeq or NextSeq file
+            filefacts$OriPrefix <- paste0(unlist(strsplit(fnbody, split = "_"))[1:(numfnbodysegments - 4)], collapse = "_")
+            filefacts$Lane <- tail(unlist(strsplit(fnbody, split = "_")), n = 3)[1]
+            filefacts$SampNum <- tail(unlist(strsplit(fnbody, split = "_")), n = 4)[1]
+            if (maintain_Illumina_format){
+                filefacts$Appendage <- paste(paste(filefacts$SampNum, filefacts$Lane, filefacts$Read, "001", sep = "_"), filefacts$Container, sep = ".")
+            } else {
+                filefacts$Appendage <- paste(filefacts$Read, filefacts$suffix, sep = ".")
+            }
+        } else {
+            #Case 3, is NovaSeq joined file, or contains no lane info
+            filefacts$OriPrefix <- paste0(unlist(strsplit(fnbody, split = "_"))[1:(numfnbodysegments - 3)], collapse = "_")
+            filefacts$Lane <- ""
+            filefacts$SampNum <- tail(unlist(strsplit(fnbody, split = "_")), n = 3)[1]
+            if (maintain_Illumina_format){
+                filefacts$Appendage <- paste(paste(filefacts$SampNum, filefacts$Read, "001", sep = "_"), filefacts$suffix, sep = ".")
+            } else {
+                filefacts$Appendage <- paste(filefacts$Read, filefacts$suffix, sep = ".")
+            }
+        }
+    }
+
+    return(filefacts)
+
+}
