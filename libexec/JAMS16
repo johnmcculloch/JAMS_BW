@@ -318,10 +318,13 @@ flog.info("Analyzing read qualities")
 qa <- list()
 filelist <- split(1:length(rawfastqsdf$Filepaths), ceiling(seq_along(1:length(rawfastqsdf$Filepaths)) / 50))
 for (fls in 1:length(filelist)){
-    qatmp <- suppressWarnings(Rqc::rqcQA(rawfastqsdf$Filepaths[[fls]], workers = max((opt$threads - 2), 1)))
+    qatmp <- suppressWarnings(Rqc::rqcQA(rawfastqsdf$Filepaths[filelist[[fls]]], workers = max((opt$threads - 2), 1)))
     qa <- c(qa, qatmp)
-    closeAllConnections()
 }
+
+#closeAllConnections()
+#Sys.sleep(5)
+
 
 find_phred_cutoff <- function(qa = NULL, SampName = NULL){
     CyclePhreddf <- rqcCycleAverageQualityCalc(qa[[SampName]])
@@ -336,6 +339,7 @@ find_phred_cutoff <- function(qa = NULL, SampName = NULL){
 }
 
 CyclePhred_list <- lapply(names(qa), function(x){ find_phred_cutoff(qa = qa, SampName = x)} )
+
 names(CyclePhred_list) <- names(qa)
 CyclePhreddf_per_Sample <- as.data.frame(bind_rows(CyclePhred_list, .id = "id"))
 colnames(CyclePhreddf_per_Sample)[which(colnames(CyclePhreddf_per_Sample) == "id")] <- "Filenames"
