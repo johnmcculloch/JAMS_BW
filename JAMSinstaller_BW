@@ -149,7 +149,7 @@ if (onbiowulf == TRUE){
     #system("brew install gcc libxml2")
 }
 
-#cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
+cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
 if (onbiowulf == TRUE){
     system("export TMP=/scratch/$USER")
 } else {
