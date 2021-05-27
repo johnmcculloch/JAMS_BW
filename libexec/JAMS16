@@ -313,7 +313,15 @@ if(length(Samples_have_R1R2) != (nrow(rawfastqsdf) / 2)){
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 require("Rqc")
-qa <- rqcQA(rawfastqsdf$Filepaths, workers = opt$threads)
+flog.info("Analyzing read qualities")
+#Deal with the "all connections are in use" open by doing them in batches
+qa <- list()
+filelist <- split(1:length(rawfastqsdf$Filepaths), ceiling(seq_along(1:length(rawfastqsdf$Filepaths)) / 50))
+for (fls in 1:length(filelist)){
+    qatmp <- suppressWarnings(Rqc::rqcQA(rawfastqsdf$Filepaths[[fls]], workers = max((opt$threads - 2), 1)))
+    qa <- c(qa, qatmp)
+    closeAllConnections()
+}
 
 find_phred_cutoff <- function(qa = NULL, SampName = NULL){
     CyclePhreddf <- rqcCycleAverageQualityCalc(qa[[SampName]])
