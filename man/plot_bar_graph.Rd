@@ -22,9 +22,11 @@ plot_bar_graph(
   threshold = 2,
   cat_pos = -2,
   cat_text_size = 3,
+  legend_text_size = 4,
   border_color = "white",
   cdict = NULL,
   feature_cdict = NULL,
+  addtit = NULL,
   grid = TRUE,
   class_to_ignore = "N_A",
   ...
@@ -49,11 +51,15 @@ plot_bar_graph(
 
 \item{cat_text_size}{text size of category labels}
 
+\item{legend_text_size}{text size of legend labels}
+
 \item{border_color}{color of bar borders}
 
 \item{cdict}{use JAMS colour dictionary}
 
 \item{feature_cdict}{use named list of taxon colors}
+
+\item{addtit}{optional string to add more text to title}
 }
 \description{
 Creates bar graph of relative taxonomic abundance from SummarizedExperiment object
