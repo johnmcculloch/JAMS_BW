@@ -23,7 +23,7 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
     #Get classes for novel features
     glomby_feats <- unique(ftt[ , glomby])
     #Get a novel feature table
-    glom_ftt <- ftt[(!duplicated(ftt[, glomby])), 1:(which(colnames(ftt) == glomby))]
+    glom_ftt <- ftt[(!duplicated(ftt[, glomby])), 1:(which(colnames(ftt) == glomby)), drop = FALSE]
     rownames(glom_ftt) <- glom_ftt[, glomby]
 
     #Aggregate counts by summing
