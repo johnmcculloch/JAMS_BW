@@ -113,6 +113,11 @@ option_list <- list(
                 type="character",
                 help ="Path to an R script to run after all other options have been executed. Example: -s /path/to/make_these_specific_plots.R will execute the commands in this script at the end of JAMSbeta."),
 
+    make_option(c("-L", "--create_logfile"),
+                action = "store_true", default = FALSE,
+                type = "logical",
+                help = "If set, this option will append messages to a log file within the output folder named [ProjectName]_JAMS.log."),
+
     make_option(c("-v", "--version"),
                 action="store_true", help = "report version")
  )
@@ -133,7 +138,7 @@ if (!is.null(opt$version)) {
 }
 
 #Load flogger package
-suppressMessages(suppressPackageStartupMessages(library(futile.logger)))
+#suppressMessages(suppressPackageStartupMessages(library(futile.logger)))
 
 #Authorship message
 authors <- as.character(as.person(packageDescription("JAMS")$Author))
@@ -176,7 +181,7 @@ if (!is.null(opt$outdir)) {
 } else {
     opt$outdir <- getwd()
 }
-flog.info(paste("Content will be output to", opt$outdir))
+
 
 # give help if needed input option not provided
 #if (is.null(opt$reads_files_path)) {
@@ -192,6 +197,14 @@ opt$projimage <- file.path(opt$outdir, ".RData")
 ## Start project ##
 ###################
 suppressMessages(suppressPackageStartupMessages(library(JAMS)))
+if (opt$create_logfile){
+    opt$logfile <- file.path(opt$outdir, paste0(opt$projectname, "_JAMS.log"))
+    flog.appender(appender.tee(opt$logfile))
+}
+
+flog.info("JAMS - Just A Microbiology System")
+flog.info(authorshipmessage)
+
 flog.info("JAMS16 start. Gathering information...")
 project <- as.character(opt$projectname)
 flog.info(paste("Using", project, "for name of project"))
@@ -202,6 +215,7 @@ flog.info(paste("You have", opt$threads, "CPUs available."))
 opt$silva_trainset <- file.path(opt$taxonomy_database, "silva_nr_v132_train_set.fa.gz")
 opt$silva_species_assignment <- file.path(opt$taxonomy_database, "silva_species_assignment_v132.fa.gz")
 
+flog.info(paste("Content will be output to", opt$outdir))
 
 ##################
 ## Get metadata ##
@@ -315,17 +329,14 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 require("Rqc")
 flog.info("Analyzing read qualities")
 #Deal with the "all connections are in use" open by doing them in batches
-qa <- list()
+quality_list <- list()
 filelist <- split(1:length(rawfastqsdf$Filepaths), ceiling(seq_along(1:length(rawfastqsdf$Filepaths)) / 50))
 for (fls in 1:length(filelist)){
-    qatmp <- suppressWarnings(Rqc::rqcQA(rawfastqsdf$Filepaths[filelist[[fls]]], workers = max((opt$threads - 2), 1)))
-    qa <- c(qa, qatmp)
+    quality_list_tmp <- suppressWarnings(Rqc::rqcQA(rawfastqsdf$Filepaths[filelist[[fls]]], workers = max((opt$threads - 2), 1)))
+    quality_list <- c(quality_list, quality_list_tmp)
 }
 
-#closeAllConnections()
-#Sys.sleep(5)
-
-
+flog.info("Determining the best truncation length for reads")
 find_phred_cutoff <- function(qa = NULL, SampName = NULL){
     CyclePhreddf <- rqcCycleAverageQualityCalc(qa[[SampName]])
     CyclePhreddf$cycle <- as.numeric(CyclePhreddf$cycle)
@@ -338,9 +349,9 @@ find_phred_cutoff <- function(qa = NULL, SampName = NULL){
 
 }
 
-CyclePhred_list <- lapply(names(qa), function(x){ find_phred_cutoff(qa = qa, SampName = x)} )
+CyclePhred_list <- lapply(names(quality_list), function(x){ find_phred_cutoff(qa = quality_list, SampName = x)} )
 
-names(CyclePhred_list) <- names(qa)
+names(CyclePhred_list) <- names(quality_list)
 CyclePhreddf_per_Sample <- as.data.frame(bind_rows(CyclePhred_list, .id = "id"))
 colnames(CyclePhreddf_per_Sample)[which(colnames(CyclePhreddf_per_Sample) == "id")] <- "Filenames"
 for (colm in 1:ncol(CyclePhreddf_per_Sample)){
@@ -357,13 +368,15 @@ quantile75cutoff_R2 <- sapply(paste0("Q", 10:30), function(x) { as.numeric(quant
 
 phredcutoff <- 18
 trunclen_cutoffs_R1_R2 <- unname(c(quantile75cutoff_R1[paste0("Q", phredcutoff)], quantile75cutoff_R2[paste0("Q", phredcutoff)]))
+
 flog.info(paste("For R1 reads, on read cycle", trunclen_cutoffs_R1_R2[1], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
 flog.info(paste("For R2 reads, on read cycle", trunclen_cutoffs_R1_R2[2], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
 
 #Flag samples which will not pass quality control
-flagR1_Samples <- rownames(subset(rawfastqsdf, Read == "R1"))[which(subset(rawfastqsdf, Read == "R1")[ , paste0("Q", phredcutoff)] <  trunclen_cutoffs_R1_R2[1])]
+#flagR1_Samples <- rownames(subset(rawfastqsdf, Read == "R1"))[which(subset(rawfastqsdf, Read == "R1")[ , paste0("Q", phredcutoff)] <  trunclen_cutoffs_R1_R2[1])]
+#flagR2_Samples <- rownames(subset(rawfastqsdf, Read == "R2"))[which(subset(rawfastqsdf, Read == "R2")[ , paste0("Q", phredcutoff)] <  trunclen_cutoffs_R1_R2[2])]
 
-flagR2_Samples <- rownames(subset(rawfastqsdf, Read == "R2"))[which(subset(rawfastqsdf, Read == "R2")[ , paste0("Q", phredcutoff)] <  trunclen_cutoffs_R1_R2[2])]
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 ##########################
 ## Start dada2 pipeline ##
@@ -371,93 +384,122 @@ flagR2_Samples <- rownames(subset(rawfastqsdf, Read == "R2"))[which(subset(rawfa
 #https://benjjneb.github.io/dada2/tutorial_1_8.html
 
 flog.info("Starting dada2 pipeline according to https://benjjneb.github.io/dada2/tutorial_1_8.html")
-
-fnFs <- subset(rawfastqsdf, Read == "R1")[]$Filepaths
-fnRs <- subset(rawfastqsdf, Read == "R2")[]$Filepaths
 sample.names <- subset(rawfastqsdf, Read == "R1")[]$OriPrefix
 
-pdf(paste0(opt$projectname, "Quality_plots.pdf", sep = "_"), paper = "a4r")
-for(x in 1:length(fnFs)){
-    print(plotQualityProfile(c(fnFs[x],fnRs[x])))
+flog.info("Plotting raw read qualities using dada2")
+pdf(paste(paste(project, "Dada2_Read_Quality_Plots", sep = "_"), "pdf", sep = "."), paper = "a4r")
+for(smp in sample.names){
+    print(plotQualityProfile(subset(rawfastqsdf, OriPrefix == smp)[order(subset(rawfastqsdf, OriPrefix == smp)$Read) , c("Filepaths")]))
 }
 dev.off()
 
+rawfastqsdf$FilteredFilePaths <- sapply(1:nrow(rawfastqsdf), function(x){ file.path(opt$outdir, "filteredreads", paste0(paste(paste(rawfastqsdf[x , c("OriPrefix", "Read")], collapse = "_"), "filt", sep = "_"), ".fastq.gz")) })
 
-# Place filtered files in filtered/ subdirectory
-filtFs <- file.path("filteredreads", paste0(sample.names, "_F_filt.fastq.gz"))
-filtRs <- file.path("filteredreads", paste0(sample.names, "_R_filt.fastq.gz"))
+#Be double sure to have the same order always
+rawfastqsdfR1 <- subset(rawfastqsdf, Read == "R1")
+rownames(rawfastqsdfR1) <- rawfastqsdfR1$OriPrefix
+rawfastqsdfR2 <- subset(rawfastqsdf, Read == "R2")
+rownames(rawfastqsdfR2) <- rawfastqsdfR2$OriPrefix
+rawfastqsdfR2 <- rawfastqsdfR2[rownames(rawfastqsdfR1) , ]
 
-out <- filterAndTrim(fnFs, filtFs, fnRs, filtRs, truncLen = trunclen_cutoffs_R1_R2, maxN = 0, maxEE = c(2,2), truncQ = 2, rm.phix = TRUE, compress = TRUE, multithread = max((opt$threads - 2), 1))
 
+flog.info("Filtering and trimming reads")
+out <- filterAndTrim(fwd = rawfastqsdfR1$Filepaths, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$Filepaths, filt.rev = rawfastqsdfR2$FilteredFilePaths, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1))
+filtFs <- rawfastqsdfR1$FilteredFilePaths
+filtRs <- rawfastqsdfR2$FilteredFilePaths
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
+
+flog.info("Learning errors")
 errF <- learnErrors(filtFs, multithread = max((opt$threads - 2), 1))
 errR <- learnErrors(filtRs, multithread = max((opt$threads - 2), 1))
 
+pdf(paste(paste(project, "Dada2_Error_Rate_Plots", sep = "_"), "pdf", sep = "."), paper = "a4r")
+plotErrors(errF, nominalQ=TRUE)
+plotErrors(errR, nominalQ=TRUE)
+dev.off()
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
+
+flog.info("Dereplicating reads")
 derepFs <- derepFastq(filtFs, verbose = TRUE)
 derepRs <- derepFastq(filtRs, verbose = TRUE)
-# Name the derep-class objects by the sample names
 names(derepFs) <- sample.names
 names(derepRs) <- sample.names
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
+
+flog.info("Running dada2 on dereplicated reads")
 dadaFs <- dada(derepFs, err = errF, multithread = max((opt$threads - 2), 1))
 dadaRs <- dada(derepRs, err = errR, multithread = max((opt$threads - 2), 1))
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
+flog.info("Assembling amplicon contigs (\"merging pairs\")")
 mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose = TRUE)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
+flog.info("Building counts table")
 seqtab <- makeSequenceTable(mergers)
-
+flog.info("Removing chimeras")
 seqtab.nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = max((opt$threads - 2), 1), verbose = TRUE)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 getN <- function(x) { sum(getUniques(x)) }
 track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
 colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
 rownames(track) <- sample.names
+flog.info("Read statistics:", track, capture = TRUE)
 
+flog.info("Assigning taxonomy down to Genus taxlevel")
 taxa <- assignTaxonomy(seqtab.nochim, opt$silva_trainset, multithread = max((opt$threads - 2), 1))
+flog.info("Assigning taxonomy down to Species level")
 taxa <- addSpecies(taxa, opt$silva_species_assignment)
 
-tt <- as.data.frame(taxa)
-tt$Domain <- tt$Kingdom
-tt <- tt[ , c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")]
+flog.info("Building JAMS-style SummarizedExperiment")
+#n.b. Pump all these objects into opt to declutter workspace.
+opt$tt <- as.data.frame(taxa)
+opt$tt$Domain <- opt$tt$Kingdom
+opt$tt <- opt$tt[ , c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")]
 taxlvls <- c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus")
 taxtags <- c("d__", "k__", "p__", "c__", "o__", "f__", "g__")
 
 for(lvl in 1:length(taxlvls)){
     taxlvl <- taxlvls[lvl]
-    tt[which(is.na(tt[ , taxlvl]) == FALSE) , taxlvl] <- paste0(taxtags[lvl], tt[which(is.na(tt[ , taxlvl]) == FALSE) , taxlvl])
-    tt[which(is.na(tt[ , taxlvl]) == TRUE) , taxlvl] <- "Unclassified"
+    opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl] <- paste0(taxtags[lvl], opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl])
+    opt$tt[which(is.na(opt$tt[ , taxlvl]) == TRUE) , taxlvl] <- "Unclassified"
 }
 
 #Add genus-species to species column, like kraken does it so infer_LKT will work as is.
 #tt[which(is.na(tt[ , "Species"]) == FALSE) , "Species"] <- paste(tt[which(is.na(tt[ , "Species"]) == FALSE), "Genus"], tt[which(is.na(tt[ , "Species"]) == FALSE) , "Species"], sep = "_")
 #tt$Species <- gsub("^g__", "s__", tt$Species)
 
-tt[which(is.na(tt[ , "Species"]) == TRUE) , "Species"] <- "Unclassified"
-tt <- infer_LKT(tt)
-tt$Species <- tt$LKT
-tt$LKT <- make.unique(tt$LKT)
+opt$tt[which(is.na(opt$tt[ , "Species"]) == TRUE) , "Species"] <- "Unclassified"
+opt$tt <- infer_LKT(opt$tt)
+opt$tt$Species <- tt$LKT
+opt$tt$LKT <- make.unique(tt$LKT)
 
 #Get counts table
-cts <- t(seqtab.nochim)
-cts <- as.data.frame(cts)
+opt$cts <- t(seqtab.nochim)
+opt$cts <- as.data.frame(opt$cts)
 
 #Maintain same order as cts
-tt <- tt[rownames(cts), ]
+opt$tt <- opt$tt[rownames(opt$cts), ]
 
 #Call ASVs as non-redundant LKTs
-rownames(tt) <- tt$LKT
-rownames(cts) <- tt$LKT
+rownames(opt$tt) <- opt$tt$LKT
+rownames(opt$cts) <- opt$tt$LKT
 
 rownames(opt$phenotable) <- opt$phenotable$Sample
 pheno <- opt$phenotable
 
 rownames(pheno) <- pheno$Sample
-pheno <- pheno[colnames(cts), ]
+pheno <- pheno[colnames(opt$cts), ]
 
 variable_list <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenotable = pheno, maxclass = 15, maxsubclass = 4, class_to_ignore = "N_A", verbose = TRUE)
 
 cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE)
 
-exp <- make_SummarizedExperiment_from_tables(pheno = pheno, counttable = cts, featuretable = tt, analysisname = "LKT")
+exp <- make_SummarizedExperiment_from_tables(pheno = pheno, counttable = opt$cts, featuretable = opt$tt, analysisname = "LKT")
 
 #Save image
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
