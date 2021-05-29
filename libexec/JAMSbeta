@@ -211,6 +211,9 @@ opt$projimage <- file.path(opt$outdir, ".RData")
 ## Start project ##
 ###################
 suppressMessages(suppressPackageStartupMessages(library(JAMS)))
+flog.info("JAMS - Just A Microbiology System")
+flog.info(authorshipmessage)
+
 flog.info("JAMSbeta start. Gathering information...")
 project <- as.character(opt$projectname)
 flog.info(paste("Using", project, "for name of project"))
