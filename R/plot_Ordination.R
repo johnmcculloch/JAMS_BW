@@ -190,7 +190,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (!(is.numeric(cats))){
             if (!is.null(samplesToHighlight)){
-                centroids <- aggregate(formula = as.formula(cbind(get(colnames(dford[1])), get(colnames(dford)[2])) ~ Comparison), data = dford[samplesToHighlight, ], FUN = mean)
+                centroids <- aggregate(formula = as.formula(cbind(get(colnames(dford)[1]), get(colnames(dford)[2])) ~ Comparison), data = dford[samplesToHighlight, ], FUN = mean)
                 colnames(centroids)[c(2, 3)] <- paste0("mean", colnames(dford)[1:2])
                 rownames(centroids) <- centroids[ , "Comparison"]
                 centroiddf <- left_join(dford[samplesToHighlight, ], centroids, by = "Comparison")
