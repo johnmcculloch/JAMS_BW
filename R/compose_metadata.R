@@ -15,7 +15,7 @@ compose_metadata <- function(metadatafolder = NULL, recursive = FALSE, prefixsub
     list.metadata <- lapply(metadatafns, function (x) { read.xlsx(x) } )
 
     #Bind metadata and leave missing data with NA
-    allmetadata <- rbind.fill(list.metadata)
+    allmetadata <- plyr::rbind.fill(list.metadata)
 
     if (!is.null(prefixsubstitutiontable)){
         samplerowstosub <- which(allmetadata$Sample %in% prefixsubstitutiontable$OldPrefix == TRUE)
