@@ -135,6 +135,11 @@ option_list <- list(
                 type="character",
                 help ="Path to an R script to run after all other options have been executed. Example: -s /path/to/make_these_specific_plots.R will execute the commands in this script at the end of JAMSbeta."),
 
+    make_option(c("-L", "--create_logfile"),
+                action = "store_true", default = TRUE,
+                type = "logical",
+                help = "If set, this option will append messages to a log file within the output folder named [ProjectName]_JAMS.log."),
+
     make_option(c("-v", "--version"),
                 action="store_true", help = "report version")
  )
@@ -211,6 +216,11 @@ opt$projimage <- file.path(opt$outdir, ".RData")
 ## Start project ##
 ###################
 suppressMessages(suppressPackageStartupMessages(library(JAMS)))
+if (opt$create_logfile){
+    opt$logfile <- file.path(opt$outdir, paste0(opt$projectname, "_JAMS.log"))
+    flog.appender(appender.tee(opt$logfile))
+}
+
 flog.info("JAMS - Just A Microbiology System")
 flog.info(authorshipmessage)
 

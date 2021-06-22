@@ -195,6 +195,11 @@ option_list <- list(
     make_option(c("-z", "--testdependencies"), default=defopt$testdependencies, action="store_true",
                 help = str_c("test dependencies only and leave, default: ", defopt$testdependencies, ")")),
 
+    make_option(c("-L", "--create_logfile"),
+                action = "store_true", default = TRUE,
+                type = "logical",
+                help = "If set, this option will append messages to a log file within the output folder named [ProjectName]_JAMS.log."),
+
     make_option(c("-v", "--version"), action="store_true",
                 help ="report version")
 )
@@ -274,6 +279,12 @@ if (opt$abort == TRUE){
 ###################
 ## Main Function ##
 ###################
+
+if (opt$create_logfile){
+    opt$logfile <- file.path(opt$outdir, paste0(opt$prefix, "_JAMS.log"))
+    flog.appender(appender.tee(opt$logfile))
+}
+
 flog.info("JAMS - Just A Microbiology System")
 flog.info(paste("Version", opt$verstr))
 flog.info(paste("By:", paste(JAMSauthors, collapse = "; ")))

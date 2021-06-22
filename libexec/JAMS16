@@ -114,7 +114,7 @@ option_list <- list(
                 help ="Path to an R script to run after all other options have been executed. Example: -s /path/to/make_these_specific_plots.R will execute the commands in this script at the end of JAMSbeta."),
 
     make_option(c("-L", "--create_logfile"),
-                action = "store_true", default = FALSE,
+                action = "store_true", default = TRUE,
                 type = "logical",
                 help = "If set, this option will append messages to a log file within the output folder named [ProjectName]_JAMS.log."),
 
@@ -404,9 +404,29 @@ rawfastqsdfR2 <- rawfastqsdfR2[rownames(rawfastqsdfR1) , ]
 
 
 flog.info("Filtering and trimming reads")
-out <- filterAndTrim(fwd = rawfastqsdfR1$Filepaths, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$Filepaths, filt.rev = rawfastqsdfR2$FilteredFilePaths, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1))
+out <- filterAndTrim(fwd = rawfastqsdfR1$Filepaths, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$Filepaths, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1))
+
+##
+#Get a list of reads who do not survive read number threshold
+read_count_threshold <- 5000
+readstodiscard <- rownames(subset(as.data.frame(out), reads.out < read_count_threshold))
+
+#Reset reads data frame as not containing reads to discard
+rawfastqsdfR1 <- subset(rawfastqsdfR1, !(Filenames %in% readstodiscard))
+rawfastqsdfR2 <- subset(rawfastqsdfR2, !(Filenames %in% readstodiscard))
+
+Samples_passing_threshold <- intersect(rawfastqsdfR1$OriPrefix, rawfastqsdfR2$OriPrefix)
+
+rawfastqsdfR1 <- subset(rawfastqsdfR1, OriPrefix %in% Samples_passing_threshold)
+rawfastqsdfR2 <- subset(rawfastqsdfR2, OriPrefix %in% Samples_passing_threshold)
+
 filtFs <- rawfastqsdfR1$FilteredFilePaths
 filtRs <- rawfastqsdfR2$FilteredFilePaths
+
+sample.names <- rawfastqsdfR1$OriPrefix
+
+###
+# Later add message of samples which were lost
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 
@@ -454,6 +474,7 @@ flog.info("Assigning taxonomy down to Genus taxlevel")
 taxa <- assignTaxonomy(seqtab.nochim, opt$silva_trainset, multithread = max((opt$threads - 2), 1))
 flog.info("Assigning taxonomy down to Species level")
 taxa <- addSpecies(taxa, opt$silva_species_assignment)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 flog.info("Building JAMS-style SummarizedExperiment")
 #n.b. Pump all these objects into opt to declutter workspace.
@@ -475,8 +496,8 @@ for(lvl in 1:length(taxlvls)){
 
 opt$tt[which(is.na(opt$tt[ , "Species"]) == TRUE) , "Species"] <- "Unclassified"
 opt$tt <- infer_LKT(opt$tt)
-opt$tt$Species <- tt$LKT
-opt$tt$LKT <- make.unique(tt$LKT)
+opt$tt$Species <- opt$tt$LKT
+opt$tt$LKT <- make.unique(opt$tt$LKT)
 
 #Get counts table
 opt$cts <- t(seqtab.nochim)
@@ -484,6 +505,9 @@ opt$cts <- as.data.frame(opt$cts)
 
 #Maintain same order as cts
 opt$tt <- opt$tt[rownames(opt$cts), ]
+
+#Create ASV to LKT dictionary
+asv2lkt <- data.frame(ASV = rownames(opt$tt), LKT = opt$tt$LKT, stringsAsFactors = FALSE)
 
 #Call ASVs as non-redundant LKTs
 rownames(opt$tt) <- opt$tt$LKT
@@ -500,6 +524,16 @@ variable_list <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenot
 cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE)
 
 exp <- make_SummarizedExperiment_from_tables(pheno = pheno, counttable = opt$cts, featuretable = opt$tt, analysisname = "LKT")
+
+metadata(exp)$asv2lkt <- asv2lkt
+
+#######
+## Clean up workspace image to reduce RAM footprint
+
+objects_to_clean <- c("dadaFs", "dadaRs", "derepFs", "derepRs", "mergers", "quality_list", "quality_list_tmp", "seqtab", "seqtab.nochim", "taxa", "asv2lkt", "colm", "errF", "errR", "filtFs", "filtRs", "fls")
+objects_to_clean <- objects_to_clean[objects_to_clean %in% ls()]
+rm(list = objects_to_clean)
+gc()
 
 #Save image
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
