@@ -1,9 +1,9 @@
-#' filter_experiment(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), discard_SDoverMean_below = NULL, samplesToKeep = NULL, featuresToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL)
+#' filter_experiment(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), discard_SDoverMean_below = NULL, samplesToKeep = NULL, featuresToKeep = NULL, normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL)
 #'
 #' Filters a SummarizedExperiment object by several criteria.
 #' @export
 
-filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), discard_SDoverMean_below = NULL, samplesToKeep = NULL, featuresToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL){
+filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), discard_SDoverMean_below = NULL, samplesToKeep = NULL, featuresToKeep = NULL, normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL){
 
     #Get only samples you asked for
     if (!(is.null(samplesToKeep))){
@@ -42,6 +42,10 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
     countmat <- as.matrix(assays(ExpObj)$BaseCounts)
     countmat <- countmat[!is.na(row.names(countmat)),]
 
+    if (normalization == "compositions"){
+        asPPM <- FALSE
+    }
+
     #Transform to PPM if applicable
     if (asPPM == TRUE){
         #transform into PPM
@@ -62,7 +66,15 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
         assays(ExpObj)$BaseCounts <- countmatrix
 
     } else {
-        countmatrix <- countmat
+
+        if (normalization == "compositions"){
+            countmat2 <- sapply(1:ncol(countmat), function(x){ as.numeric(compositions::clr(countmat[,x])) })
+            colnames(countmat2) <- colnames(countmat)
+            rownames(countmat2) <- rownames(countmat)
+            countmatrix <- countmat2
+        } else {
+            countmatrix <- countmat
+        }
     }
 
     #Discard features which do not match certain criteria
