@@ -202,5 +202,5 @@ for (binexec in binexecs){
 #Install non-R executables
 if (onbiowulf == TRUE){
     #Install Linuxbrew dependencies
-    system(paste("bash", file.path(jamsbinpath, "install_brew_dependencies.sh")))
+    #system(paste("bash", file.path(jamsbinpath, "install_brew_dependencies.sh")))
 }

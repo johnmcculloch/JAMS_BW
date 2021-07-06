@@ -244,6 +244,16 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
                 ct <- cdict[[colourby]]
                 groupcols <- setNames(as.character(ct$Colour), as.character(ct$Name))
                 p <- p + scale_color_manual(values = groupcols)
+            } else {
+                #Use colour table if available
+                if ("ctable" %in% names(metadata(currobj))){
+                    discretenames <- sort(unique(dford$Colours))
+                    colourshave <- discretenames[discretenames %in% rownames(metadata(currobj)$ctable)]
+                    cores <- as.vector(rainbow(length(discretenames)))
+                    names(cores) <- discretenames
+                    cores[colourshave] <- metadata(currobj)$ctable[colourshave, "Hex"]
+                    p <- p + scale_color_manual(values = cores)
+                }
             }
         }
 

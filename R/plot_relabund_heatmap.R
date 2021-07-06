@@ -485,6 +485,11 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                             if (is.null(cdict)){
                                 cores[[g]] <- as.vector(rainbow(length(unique(hmdf[ ,g]))))
                                 names(cores[[g]]) <- sort(unique(hmdf[ ,g]))
+                                #Use colour table if available
+                                if ("ctable" %in% names(metadata(currobj))){
+                                    colourshave <- names(cores[[g]])[names(cores[[g]]) %in% rownames(metadata(currobj)$ctable)]
+                                    cores[[g]][colourshave]<- metadata(currobj)$ctable[colourshave, "Hex"]
+                                }
                             } else {
                                 ct <- cdict[[colcategories[g]]]
                                 ct <- subset(ct, Name %in% hmdf[ , g])
