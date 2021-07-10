@@ -402,31 +402,37 @@ rawfastqsdfR2 <- subset(rawfastqsdf, Read == "R2")
 rownames(rawfastqsdfR2) <- rawfastqsdfR2$OriPrefix
 rawfastqsdfR2 <- rawfastqsdfR2[rownames(rawfastqsdfR1) , ]
 
-
 flog.info("Filtering and trimming reads")
 out <- filterAndTrim(fwd = rawfastqsdfR1$Filepaths, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$Filepaths, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1))
 
-##
+#Adjust out dataframe
+out <- as.data.frame(out)
+out$Filenames <- rownames(out)
+out <- left_join(out, rawfastqsdf[ , c("Filenames", "OriPrefix")], by = "Filenames")
+colnames(out)[1:2] <- c("Number_Reads_Input", "Number_Reads_Output")
+out$Filenames <- NULL
+rawfastqsdf <- left_join(rawfastqsdf, out, by = "OriPrefix")
+
 #Get a list of reads who do not survive read number threshold
 read_count_threshold <- 5000
-readstodiscard <- rownames(subset(as.data.frame(out), reads.out < read_count_threshold))
-
-#Reset reads data frame as not containing reads to discard
-rawfastqsdfR1 <- subset(rawfastqsdfR1, !(Filenames %in% readstodiscard))
-rawfastqsdfR2 <- subset(rawfastqsdfR2, !(Filenames %in% readstodiscard))
+samplestodiscard <- subset(out, Number_Reads_Output < read_count_threshold)[]$OriPrefix
+rawfastqsdf$Sample_Status <- "Sample_Kept_Read_Count_Sufficient"
+if (length(samplestodiscard) > 0){
+    rawfastqsdf$Sample_Status[which(rawfastqsdf$OriPrefix %in% samplestodiscard)] <- "Sample_Eliminated_Low_Read_Count"
+    flog.warn("Samples", paste0(samplestodiscard, collapse = ", "), "were discarded for having less than", read_count_threshold, "reads after filtering.")
+    #Reset reads data frame as not containing reads to discard
+    rawfastqsdfR1 <- subset(rawfastqsdfR1, !(OriPrefix %in% samplestodiscard))
+    rawfastqsdfR2 <- subset(rawfastqsdfR2, !(OriPrefix %in% samplestodiscard))
+}
 
 Samples_passing_threshold <- intersect(rawfastqsdfR1$OriPrefix, rawfastqsdfR2$OriPrefix)
 
-rawfastqsdfR1 <- subset(rawfastqsdfR1, OriPrefix %in% Samples_passing_threshold)
-rawfastqsdfR2 <- subset(rawfastqsdfR2, OriPrefix %in% Samples_passing_threshold)
+rm(out)
 
 filtFs <- rawfastqsdfR1$FilteredFilePaths
 filtRs <- rawfastqsdfR2$FilteredFilePaths
 
 sample.names <- rawfastqsdfR1$OriPrefix
-
-###
-# Later add message of samples which were lost
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 
@@ -465,10 +471,12 @@ seqtab.nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = 
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 getN <- function(x) { sum(getUniques(x)) }
-track <- cbind(out, sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim))
-colnames(track) <- c("input", "filtered", "denoisedF", "denoisedR", "merged", "nonchim")
-rownames(track) <- sample.names
-flog.info("Read statistics:", track, capture = TRUE)
+track <- as.data.frame(cbind(sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim)))
+colnames(track) <- c("DenoisedF", "DenoisedR", "Merged", "NonChim")
+track$OriPrefix <- sample.names
+rawfastqsdf <- left_join(rawfastqsdf, track, by = "OriPrefix")
+flog.info("Exporting read stats")
+write.xlsx(rawfastqsdf, file = paste0(opt$projectname, "_Reads_Statistics.xlsx"), col.names = TRUE, row.names = FALSE, colWidths = "auto", borders = "all")
 
 flog.info("Assigning taxonomy down to Genus taxlevel")
 taxa <- assignTaxonomy(seqtab.nochim, opt$silva_trainset, multithread = max((opt$threads - 2), 1))
