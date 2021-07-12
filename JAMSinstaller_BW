@@ -133,20 +133,10 @@ if (nchar(currslurmjobid) > 3){
     if (installalpha == TRUE){
         stop("You are not on a node on Biowulf. This version of JAMSalpha will only work on HPC Biowulf. Refer to documentation. Aborting now. If you want to install only JAMSbeta, use the --onlybeta option.")
     }
-    #Check if linuxbrew is installed, else halt
-    if((system("which brew", ignore.stdout = TRUE)) == 1){
-        stop("You must install Linuxbrew before running this installation script. Refer to documentation. Aborting now.")
-    }
 
     if (nchar(rlibs) < 5){
         rlibs <- .libPaths()[1]
     }
-}
-
-if (onbiowulf == TRUE){
-    #cat("Checking for non-R dependencies before attempting to install the JAMS package.")
-    #system("brew update")
-    #system("brew install gcc libxml2")
 }
 
 cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
@@ -163,7 +153,7 @@ if(!(all((c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "pr
     install.packages(c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits"), repos = repos, update = TRUE, lib = rlibs)
 }
 #Make sure we have the correct version of Bioconductor
-BiocManager::install(version = "3.12", ask = FALSE)
+BiocManager::install(version = "3.13", ask = FALSE)
 
 require("devtools")
 require("stringr")
@@ -197,10 +187,4 @@ for (binexec in binexecs){
       cat(paste("Linking executable with", "ln", "-s", sourcepath, targetpath, "\n"))
       system(paste("ln", "-s", sourcepath, targetpath))
     }
-}
-
-#Install non-R executables
-if (onbiowulf == TRUE){
-    #Install Linuxbrew dependencies
-    #system(paste("bash", file.path(jamsbinpath, "install_brew_dependencies.sh")))
 }
