@@ -331,6 +331,8 @@ if(length(Samples_have_R1R2) != (nrow(rawfastqsdf) / 2)){
 }
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
+phredcutoff <- 18
+
 if (is.null(opt$trunclen_cutoffs_R1_R2)){
 
     require("Rqc")
@@ -373,7 +375,6 @@ if (is.null(opt$trunclen_cutoffs_R1_R2)){
     quantile75cutoff_R1 <- sapply(paste0("Q", 10:30), function(x) { as.numeric(quantile(subset(rawfastqsdf, Read == "R1")[ , x], probs = seq(0, 1, 0.1))["90%"]) })
     quantile75cutoff_R2 <- sapply(paste0("Q", 10:30), function(x) { as.numeric(quantile(subset(rawfastqsdf, Read == "R2")[ , x], probs = seq(0, 1, 0.1))["90%"]) })
 
-    phredcutoff <- 18
     trunclen_cutoffs_R1_R2 <- unname(c(quantile75cutoff_R1[paste0("Q", phredcutoff)], quantile75cutoff_R2[paste0("Q", phredcutoff)]))
 
 } else {
