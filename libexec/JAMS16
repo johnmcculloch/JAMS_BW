@@ -377,12 +377,14 @@ if (is.null(opt$trunclen_cutoffs_R1_R2)){
 
     trunclen_cutoffs_R1_R2 <- unname(c(quantile75cutoff_R1[paste0("Q", phredcutoff)], quantile75cutoff_R2[paste0("Q", phredcutoff)]))
 
-} else {
-    trunclen_cutoffs_R1_R2 <- unlist(strsplit(opt$trunclen_cutoffs_R1_R2, split = ","))
-}
+    flog.info(paste("For R1 reads, on read cycle", trunclen_cutoffs_R1_R2[1], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
+    flog.info(paste("For R2 reads, on read cycle", trunclen_cutoffs_R1_R2[2], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
 
-flog.info(paste("For R1 reads, on read cycle", trunclen_cutoffs_R1_R2[1], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
-flog.info(paste("For R2 reads, on read cycle", trunclen_cutoffs_R1_R2[2], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
+} else {
+    trunclen_cutoffs_R1_R2 <- as.numeric(unlist(strsplit(opt$trunclen_cutoffs_R1_R2, split = ",")))
+    flog.info(paste("For R1 reads truncation length will be", trunclen_cutoffs_R1_R2[1], "as specified by the user"))
+    flog.info(paste("For R2 reads truncation length will be", trunclen_cutoffs_R1_R2[2], "as specified by the user"))
+}
 
 #Flag samples which will not pass quality control
 #flagR1_Samples <- rownames(subset(rawfastqsdf, Read == "R1"))[which(subset(rawfastqsdf, Read == "R1")[ , paste0("Q", phredcutoff)] <  trunclen_cutoffs_R1_R2[1])]
@@ -398,12 +400,12 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 flog.info("Starting dada2 pipeline according to https://benjjneb.github.io/dada2/tutorial_1_8.html")
 sample.names <- subset(rawfastqsdf, Read == "R1")[]$OriPrefix
 
-flog.info("Plotting raw read qualities using dada2")
-pdf(paste(paste(project, "Dada2_Read_Quality_Plots", sep = "_"), "pdf", sep = "."), paper = "a4r")
-for(smp in sample.names){
-    print(plotQualityProfile(subset(rawfastqsdf, OriPrefix == smp)[order(subset(rawfastqsdf, OriPrefix == smp)$Read) , c("Filepaths")]))
-}
-dev.off()
+#flog.info("Plotting raw read qualities using dada2")
+#pdf(paste(paste(project, "Dada2_Read_Quality_Plots", sep = "_"), "pdf", sep = "."), paper = "a4r")
+#for(smp in sample.names){
+#    print(plotQualityProfile(subset(rawfastqsdf, OriPrefix == smp)[order(subset(rawfastqsdf, OriPrefix == smp)$Read) , c("Filepaths")]))
+#}
+#dev.off()
 
 rawfastqsdf$FilteredFilePaths <- sapply(1:nrow(rawfastqsdf), function(x){ file.path(opt$outdir, "filteredreads", paste0(paste(paste(rawfastqsdf[x , c("OriPrefix", "Read")], collapse = "_"), "filt", sep = "_"), ".fastq.gz")) })
 
