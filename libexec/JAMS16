@@ -63,6 +63,11 @@ option_list <- list(
                 type="character",
                 help ="path to where all fastq files are"),
 
+    make_option(c("-T", "--trunclen_cutoffs_R1_R2"),
+                action="store", default = NULL,
+                type="character",
+                help ="Specify truncation lengths for R1,R2 (example: -T 240,200). If not specified, JAMS16 will impute appropriate values for truncation with fastq quality analysis."),
+
     make_option(c("-a", "--taxonomy_database"),
                 action="store", default = NULL,
                 type="character",
@@ -326,48 +331,54 @@ if(length(Samples_have_R1R2) != (nrow(rawfastqsdf) / 2)){
 }
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
-require("Rqc")
-flog.info("Analyzing read qualities")
-#Deal with the "all connections are in use" open by doing them in batches
-quality_list <- list()
-filelist <- split(1:length(rawfastqsdf$Filepaths), ceiling(seq_along(1:length(rawfastqsdf$Filepaths)) / 50))
-for (fls in 1:length(filelist)){
-    quality_list_tmp <- suppressWarnings(Rqc::rqcQA(rawfastqsdf$Filepaths[filelist[[fls]]], workers = max((opt$threads - 2), 1)))
-    quality_list <- c(quality_list, quality_list_tmp)
-}
+if (is.null(opt$trunclen_cutoffs_R1_R2)){
 
-flog.info("Determining the best truncation length for reads")
-find_phred_cutoff <- function(qa = NULL, SampName = NULL){
-    CyclePhreddf <- rqcCycleAverageQualityCalc(qa[[SampName]])
-    CyclePhreddf$cycle <- as.numeric(CyclePhreddf$cycle)
-    loess_out <- loess(quality ~ cycle, data = CyclePhreddf)
-    CyclePhreddf$Fitted <- fitted(loess_out)
-    cyclecutoffs <- sapply(10:30, function (x){ CyclePhreddf$cycle[max(which(CyclePhreddf$Fitted >= x))] })
-    names(cyclecutoffs) <- paste0("Q", 10:30)
-
-    return(cyclecutoffs)
-
-}
-
-CyclePhred_list <- lapply(names(quality_list), function(x){ find_phred_cutoff(qa = quality_list, SampName = x)} )
-
-names(CyclePhred_list) <- names(quality_list)
-CyclePhreddf_per_Sample <- as.data.frame(bind_rows(CyclePhred_list, .id = "id"))
-colnames(CyclePhreddf_per_Sample)[which(colnames(CyclePhreddf_per_Sample) == "id")] <- "Filenames"
-for (colm in 1:ncol(CyclePhreddf_per_Sample)){
-    if (any(is.na(CyclePhreddf_per_Sample[ , colm]))){
-        CyclePhreddf_per_Sample[is.na(CyclePhreddf_per_Sample[ , colm]), colm] <- 1
+    require("Rqc")
+    flog.info("Analyzing read qualities")
+    #Deal with the "all connections are in use" open by doing them in batches
+    quality_list <- list()
+    filelist <- split(1:length(rawfastqsdf$Filepaths), ceiling(seq_along(1:length(rawfastqsdf$Filepaths)) / 50))
+    for (fls in 1:length(filelist)){
+        quality_list_tmp <- suppressWarnings(Rqc::rqcQA(rawfastqsdf$Filepaths[filelist[[fls]]], workers = max((opt$threads - 2), 1)))
+        quality_list <- c(quality_list, quality_list_tmp)
     }
+
+    flog.info("Determining the best truncation length for reads")
+    find_phred_cutoff <- function(qa = NULL, SampName = NULL){
+        CyclePhreddf <- rqcCycleAverageQualityCalc(qa[[SampName]])
+        CyclePhreddf$cycle <- as.numeric(CyclePhreddf$cycle)
+        loess_out <- loess(quality ~ cycle, data = CyclePhreddf)
+        CyclePhreddf$Fitted <- fitted(loess_out)
+        cyclecutoffs <- sapply(10:30, function (x){ CyclePhreddf$cycle[max(which(CyclePhreddf$Fitted >= x))] })
+        names(cyclecutoffs) <- paste0("Q", 10:30)
+
+        return(cyclecutoffs)
+
+    }
+
+    CyclePhred_list <- lapply(names(quality_list), function(x){ find_phred_cutoff(qa = quality_list, SampName = x)} )
+
+    names(CyclePhred_list) <- names(quality_list)
+    CyclePhreddf_per_Sample <- as.data.frame(bind_rows(CyclePhred_list, .id = "id"))
+    colnames(CyclePhreddf_per_Sample)[which(colnames(CyclePhreddf_per_Sample) == "id")] <- "Filenames"
+    for (colm in 1:ncol(CyclePhreddf_per_Sample)){
+        if (any(is.na(CyclePhreddf_per_Sample[ , colm]))){
+            CyclePhreddf_per_Sample[is.na(CyclePhreddf_per_Sample[ , colm]), colm] <- 1
+        }
+    }
+
+    rawfastqsdf <- left_join(rawfastqsdf, CyclePhreddf_per_Sample, by = "Filenames")
+    rownames(rawfastqsdf) <- rawfastqsdf$Filenames
+
+    quantile75cutoff_R1 <- sapply(paste0("Q", 10:30), function(x) { as.numeric(quantile(subset(rawfastqsdf, Read == "R1")[ , x], probs = seq(0, 1, 0.1))["90%"]) })
+    quantile75cutoff_R2 <- sapply(paste0("Q", 10:30), function(x) { as.numeric(quantile(subset(rawfastqsdf, Read == "R2")[ , x], probs = seq(0, 1, 0.1))["90%"]) })
+
+    phredcutoff <- 18
+    trunclen_cutoffs_R1_R2 <- unname(c(quantile75cutoff_R1[paste0("Q", phredcutoff)], quantile75cutoff_R2[paste0("Q", phredcutoff)]))
+
+} else {
+    trunclen_cutoffs_R1_R2 <- unlist(strsplit(opt$trunclen_cutoffs_R1_R2, split = ","))
 }
-
-rawfastqsdf <- left_join(rawfastqsdf, CyclePhreddf_per_Sample, by = "Filenames")
-rownames(rawfastqsdf) <- rawfastqsdf$Filenames
-
-quantile75cutoff_R1 <- sapply(paste0("Q", 10:30), function(x) { as.numeric(quantile(subset(rawfastqsdf, Read == "R1")[ , x], probs = seq(0, 1, 0.1))["90%"]) })
-quantile75cutoff_R2 <- sapply(paste0("Q", 10:30), function(x) { as.numeric(quantile(subset(rawfastqsdf, Read == "R2")[ , x], probs = seq(0, 1, 0.1))["90%"]) })
-
-phredcutoff <- 18
-trunclen_cutoffs_R1_R2 <- unname(c(quantile75cutoff_R1[paste0("Q", phredcutoff)], quantile75cutoff_R2[paste0("Q", phredcutoff)]))
 
 flog.info(paste("For R1 reads, on read cycle", trunclen_cutoffs_R1_R2[1], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
 flog.info(paste("For R2 reads, on read cycle", trunclen_cutoffs_R1_R2[2], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
