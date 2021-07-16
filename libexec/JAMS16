@@ -118,10 +118,10 @@ option_list <- list(
                 type="character",
                 help ="Path to an R script to run after all other options have been executed. Example: -s /path/to/make_these_specific_plots.R will execute the commands in this script at the end of JAMSbeta."),
 
-    make_option(c("-L", "--create_logfile"),
+    make_option(c("-Q", "--plot_read_qualities"),
                 action = "store_true", default = TRUE,
                 type = "logical",
-                help = "If set, this option will append messages to a log file within the output folder named [ProjectName]_JAMS.log."),
+                help = "Plot read qualities to PDF file. Default is to not plot."),
 
     make_option(c("-v", "--version"),
                 action="store_true", help = "report version")
@@ -202,7 +202,7 @@ opt$projimage <- file.path(opt$outdir, ".RData")
 ## Start project ##
 ###################
 suppressMessages(suppressPackageStartupMessages(library(JAMS)))
-if (opt$create_logfile){
+if (TRUE){
     opt$logfile <- file.path(opt$outdir, paste0(opt$projectname, "_JAMS.log"))
     flog.appender(appender.tee(opt$logfile))
 }
@@ -400,12 +400,14 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 flog.info("Starting dada2 pipeline according to https://benjjneb.github.io/dada2/tutorial_1_8.html")
 sample.names <- subset(rawfastqsdf, Read == "R1")[]$OriPrefix
 
-#flog.info("Plotting raw read qualities using dada2")
-#pdf(paste(paste(project, "Dada2_Read_Quality_Plots", sep = "_"), "pdf", sep = "."), paper = "a4r")
-#for(smp in sample.names){
-#    print(plotQualityProfile(subset(rawfastqsdf, OriPrefix == smp)[order(subset(rawfastqsdf, OriPrefix == smp)$Read) , c("Filepaths")]))
-#}
-#dev.off()
+if (opt$plot_read_qualities){
+    flog.info("Plotting raw read qualities using dada2")
+    pdf(paste(paste(project, "Dada2_Read_Quality_Plots", sep = "_"), "pdf", sep = "."), paper = "a4r")
+    for(smp in sample.names){
+        print(plotQualityProfile(subset(rawfastqsdf, OriPrefix == smp)[order(subset(rawfastqsdf, OriPrefix == smp)$Read) , c("Filepaths")]))
+    }
+    dev.off()
+}
 
 rawfastqsdf$FilteredFilePaths <- sapply(1:nrow(rawfastqsdf), function(x){ file.path(opt$outdir, "filteredreads", paste0(paste(paste(rawfastqsdf[x , c("OriPrefix", "Read")], collapse = "_"), "filt", sep = "_"), ".fastq.gz")) })
 
