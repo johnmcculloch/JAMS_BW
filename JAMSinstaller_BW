@@ -45,13 +45,13 @@ if (length(args) > 0){
 }
 
 #Decide what to install and where
-if (("--onlybeta") %in% (as.character(args))){
-    installalpha <- FALSE
-    binexecs <- c("JAMSbeta", "JAMS16", "JAMSjoinlanes", "JAMSmakeswarm", "JAMSbankit", "JAMSfastqprefixrenamer")
-} else {
+#if (("--onlybeta") %in% (as.character(args))){
+#    installalpha <- FALSE
+#    binexecs <- c("JAMSbeta", "JAMS16", "JAMSjoinlanes", "JAMSmakeswarm", "JAMSbankit", "JAMSfastqprefixrenamer")
+#} else {
     installalpha <- TRUE
     binexecs <- c("JAMSalpha", "JAMSbeta", "JAMS16", "JAMSbuildk2db", "JAMSjoinlanes", "JAMSmakeswarm", "JAMSbankit", "JAMSfastqprefixrenamer")
-}
+#}
 
 homefolder <- as.character(Sys.getenv("HOME"))
 if ("--linnkto" %in% (as.character(args))){
@@ -167,7 +167,7 @@ bytesRAM <- detectAvailRAM()
 cat(paste0("You have ~", round(bytesRAM/1E9, 1), " Gbytes of RAM available\n"))
 
 #Install Bioconductor packages
-bioconductordeps <- c("dada2", "SummarizedExperiment", "HybridMTest", "genefilter", "ComplexHeatmap", "Rqc")
+bioconductordeps <- c("dada2", "SummarizedExperiment", "HybridMTest", "genefilter", "ComplexHeatmap")
 BiocManager::install(pkgs = bioconductordeps, update = TRUE, ask = FALSE, site_repository = repos)
 #devtools::install_github("jokergoo/ComplexHeatmap")
 devtools::install_github('barkasn/fastSave')
