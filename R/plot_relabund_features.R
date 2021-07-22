@@ -17,7 +17,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
         analysisname <- analysis
     }
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, maxl2fc = maxl2fc, minl2fc = minl2fc)
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, maxl2fc = maxl2fc, minl2fc = minl2fc, minabscorrcoeff = minabscorrcoeff)
 
     if (!(is.null(subsetby))){
         subset_points <- sort(unique(colData(obj)[, which(colnames(colData(obj)) == subsetby)]))
@@ -230,6 +230,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             #Filter by correlation coefficient, if applicable
             if (all(c((!is.null(presetlist$minabscorrcoeff)), ("abscorrel" %in% colnames(matstats))))){
                 matstats <- subset(matstats, abscorrel >= presetlist$minabscorrcoeff)
+
                 if (nrow(matstats) < 1){
                     #abort, nothing is left over
                     flog.warn("None of the wanted features were found in the SummarizedExperiment object when using the current absolute correlation coefficient filtration parameters.")
