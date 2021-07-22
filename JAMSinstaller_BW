@@ -130,9 +130,9 @@ if (nchar(currslurmjobid) > 3){
          return(totmembytes)
      }
 
-    if (installalpha == TRUE){
-        stop("You are not on a node on Biowulf. This version of JAMSalpha will only work on HPC Biowulf. Refer to documentation. Aborting now. If you want to install only JAMSbeta, use the --onlybeta option.")
-    }
+    #if (installalpha == TRUE){
+    #    stop("You are not on a node on Biowulf. This version of JAMSalpha will only work on HPC Biowulf. Refer to documentation. Aborting now. If you want to install only JAMSbeta, use the --onlybeta option.")
+    #}
 
     if (nchar(rlibs) < 5){
         rlibs <- .libPaths()[1]
