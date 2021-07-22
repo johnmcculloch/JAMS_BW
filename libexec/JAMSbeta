@@ -400,13 +400,13 @@ if (adjustmetadata == TRUE){
 
 
 #Export list.data to system and set it as NULL, to decrease RAM burden.
-flog.info("Saving list.data.rda to system. Please be patient...")
-list.data_fn <- file.path(opt$outdir, "list_data.rda")
-if ("fastSave" %in% rownames(installed.packages())) {
-    save.pigz(list.data, file = list.data_fn, envir = .GlobalEnv, n.cores = opt$threads)
-} else {
-    save(list.data, file = list.data_fn)
-}
+#flog.info("Saving list.data.rda to system. Please be patient...")
+#list.data_fn <- file.path(opt$outdir, "list_data.rda")
+#if ("fastSave" %in% rownames(installed.packages())) {
+#    save.pigz(list.data, file = list.data_fn, envir = .GlobalEnv, n.cores = opt$threads)
+#} else {
+#    save(list.data, file = list.data_fn)
+#}
 
 pheno <- opt$phenotable
 phenolabels <- opt$phenolabels
