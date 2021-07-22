@@ -110,7 +110,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             if (!(is.numeric(cats))){
                 permanovap <- vegan::adonis(as.formula(paste("d ~ ", compareby)), data = currpt_stat, permutations = permanova_permutations)$aov.tab$`Pr(>F)`[1]
             } else {
-                flog.info("Impossible to get permanova because colourby is continuous")
+                flog.info("Impossible to get permanova because compareby is continuous")
                 permanovap <- NULL
             }
         } else {
@@ -127,6 +127,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             dford <- as.data.frame(tsne_out$Y)
             rownames(dford) <- rownames(currpt)
             colnames(dford)[1:2] <- c("PC1", "PC2")
+            dford_full <- dford
             xl <- "tSNE 1"
             yl <- "tSNE 2"
 
@@ -138,6 +139,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             dford <- as.data.frame(tumap_out)
             rownames(dford) <- rownames(currpt)
             colnames(dford) <- c("PC1", "PC2")
+            dford_full <- dford
             xl <- "tUMAP 1"
             yl <- "tUMAP 2"
 
@@ -148,6 +150,12 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             vars <- pcaRes$sdev^2
             vars <- round(vars/sum(vars), 5) * 100
 
+            #Make a data frame with how variance is explained by which components
+            vardf <- data.frame(Component = colnames(ord), Variance = vars, Cumulative_variance = cumsum(vars))
+            vardf$Component <- factor(vardf$Component, levels = vardf$Component)
+
+            varplot <- ggplot(vardf, aes(x = Component)) + geom_bar(aes(y = Variance), fill = 'blue', stat = "identity") + geom_point(aes(y = Cumulative_variance), colour = "black", pch = 16, size = 1) + geom_path(aes(y = Cumulative_variance, group = 1)) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.6, size = rel(0.5))) + labs(title = "Variance explained by each PCoA component", subtitle = pcatit, x = 'Component', y = 'Variance')
+
             #Take into account different PCs if applicable
             if (any(PCA_Components != c(1, 2))){
                 comp <- PCA_Components[1:2]
@@ -157,6 +165,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             xl <- sprintf("%s: %.2f%% variance", colnames(ord)[comp[1]], vars[comp[1]])
             yl <- sprintf("%s: %.2f%% variance", colnames(ord)[comp[2]], vars[comp[2]])
             #zl <- sprintf("%s: %.2f%% variance", colnames(ord)[comp[3]], vars[comp[3]])
+            dford_full <- as.data.frame(ord)
             dford <- as.data.frame(ord[, comp])
         }
 
@@ -190,12 +199,12 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (!(is.numeric(cats))){
             if (!is.null(samplesToHighlight)){
-                centroids <- aggregate(formula = as.formula(cbind(get(colnames(dford)[1]), get(colnames(dford)[2])) ~ Comparison), data = dford[samplesToHighlight, ], FUN = mean)
+                centroids <- aggregate(.~Comparison, data = dford[samplesToHighlight, c(paste0("PC", comp), "Comparison")], FUN = mean)
                 colnames(centroids)[c(2, 3)] <- paste0("mean", colnames(dford)[1:2])
                 rownames(centroids) <- centroids[ , "Comparison"]
                 centroiddf <- left_join(dford[samplesToHighlight, ], centroids, by = "Comparison")
             } else {
-                centroids <- aggregate(formula = as.formula(cbind(get(colnames(dford[1])), get(colnames(dford)[2])) ~ Comparison), data = dford, FUN = mean)
+                centroids <- aggregate(.~Comparison, data = dford[ , c(paste0("PC", comp), "Comparison")], FUN = mean)
                 colnames(centroids)[c(2, 3)] <- paste0("mean", colnames(dford)[1:2])
                 centroiddf <- left_join(dford, centroids, by = "Comparison")
                 rownames(centroids) <- centroids[ , "Comparison"]
@@ -312,15 +321,32 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         #pcatit <- paste(pcatit, sampsizemsg, sep = "\n")
         p <- p + ggtitle(pcatit)
         p <- p + labs(colour = colourby)
-        p <- p + guides(alpha = FALSE)
+        p <- p + guides(alpha = "none")
 
         if (grid == FALSE ){
             p <- p + theme(panel.background = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(colour = "black", fill = NA, size=1))
         }
 
         if (all(c((!(is.numeric(cats))), plotcentroids, show_centroid_distances))){
-            centroiddist <- as.matrix(dist(centroidmeandf[ , paste0("mean", colnames(dford)[1:2])], method = "euclidean"))
+
+            if (!calculate_centroid_distances_in_all_dimensions){
+                centroiddist <- as.matrix(dist(centroidmeandf[ , paste0("mean", colnames(dford)[1:2])], method = "euclidean"))
+            } else {
+                flog.info(paste("Calculating the euclidean distances between centroids in", ncol(dford_full), "dimesnions"))
+                dford_full$Comparison <- currpt[match(rownames(dford_full), rownames(currpt)), which(colnames(currpt) == compareby)]
+
+                if (!is.null(samplesToHighlight)){
+                    centroids_full <- aggregate(.~Comparison, data = dford_full[samplesToHighlight, ], FUN = mean)
+                } else {
+                    centroids_full <- aggregate(.~Comparison, data = dford_full, FUN = mean)
+                }
+                colnames(centroids_full)[c(2:ncol(centroids_full))] <- paste0("mean", colnames(centroids_full)[c(2:ncol(centroids_full))])
+                rownames(centroids_full) <- centroids_full[ , "Comparison"]
+                centroiddist <- as.matrix(dist(centroids_full[,2:ncol(centroids_full)], method = "euclidean"))
+            }
+
             centroiddist <- round(centroiddist, 3)
+
             centroiddistshow <- ggtexttable(centroiddist, theme = ttheme(base_style = "classic", base_size = 8))
 
             p <- ggarrange(p, centroiddistshow, ncol = 1, nrow = 2, heights = c(3, 1), labels = list("", "Euclidean distance between centroids"), font.label = list(size = 10, face = "italic"), vjust = 1, hjust = -1)
