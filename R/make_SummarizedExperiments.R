@@ -3,7 +3,7 @@
 #' Makes a SummarizedExperiment object for every analysis that is possible to make given loaded jams files in list.data.
 #' @export
 
-make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, list.data = NULL, phenolabels = NULL){
+make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, list.data = NULL, phenolabels = NULL, threads = 8){
 
     require(SummarizedExperiment)
     require(Matrix)
@@ -11,6 +11,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
     data(ECdescmap)
     data(GOtermdict)
     data(InterproDict)
+    data(blast_lookup)
 
     #Get data for features
     if (!is.null(onlysamples)){
@@ -210,9 +211,9 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                     tempanaldose$NumBases <- as.numeric(tempanaldose$NumBases)
                     analysisdoses[[ad]] <- tempanaldose
                     tempanaldata <- featuredata[[ad]]
-                    #Careful to make it backwards-compatible
-                    featdatacolsavail <- colnames(tempanaldata)[colnames(tempanaldata) %in% c("Feature", "LKT", "GeneName", analysis)]
+                    featdatacolsavail <- colnames(tempanaldata)[colnames(tempanaldata) %in% c("Feature", "LengthDNA", "LKT", "GeneName", "GeneNameNR", analysis)]
                     tempanaldata <- tempanaldata[ , featdatacolsavail]
+
                     #If analysis contains several accessions per gene, repeat rows for each kind
                     #Also, make it backwards compatible with older jamsfiles
                     if (all(c((analysis %in% colnames(tempanaldata)), (analysis %in% c("GO", "MetaCyc"))))){
