@@ -13,7 +13,8 @@ make_SummarizedExperiments(
   restricttoLKTs = NULL,
   stratify_functions_by_taxon = TRUE,
   list.data = NULL,
-  phenolabels = NULL
+  phenolabels = NULL,
+  threads = 8
 )
 }
 \description{
