@@ -1,11 +1,13 @@
-#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...)
+#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...)
 #'
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
+
+
     #Consider orthography of the word "colour"
     if (is.null(colourby)){
         colourby <- colorby
@@ -27,6 +29,23 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     } else {
         analysisname <- analysis
     }
+    pcatitbase <- paste(algorithm, "of", analysisname)
+
+    flog.info(pcatitbase)
+
+    if (assay_for_matrix == "GeneCounts"){
+        flog.warn("Counts matrix used for ordination will represent the *number of genes* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
+        asPPM <- FALSE
+        log2tran <- FALSE
+        pcatitbase <- paste(pcatitbase, "Counts matrix used for ordination represents the number of genes", sep = "\n")
+    }
+
+    if (asPPM == FALSE){
+        applyfilters <- FALSE
+        featcutoff <- c(0, 0)
+        GenomeCompletenessCutoff <- NULL
+        PctFromCtgscutoff <- NULL
+    }
 
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
 
@@ -39,7 +58,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     #Create list vector to hold plots
     gvec <- list()
     plotnum <- 1
-    pcatitbase <- paste(algorithm, "of", analysisname)
+
 
     for (sp in 1:length(subset_points)){
 
@@ -54,7 +73,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             pcatit <- pcatitbase
         }
         pcatit <- paste(c(pcatit, presetlist$filtermsg), collapse = "\n")
-
+flog.info("filtering")
         currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = sp_samplesToKeep, featuresToKeep = featuresToKeep, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
 
         currpt <- as.data.frame(colData(currobj))
@@ -66,7 +85,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
 
         #Get counts matrix
-        countmat <- as.matrix(assays(currobj)$BaseCounts)
+        countmat <- as.matrix(assays(currobj)[[assay_for_matrix]])
 
         #Protect against rows with empty data
         rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
@@ -94,7 +113,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
 
         sampsizemsg <- paste0("Number of samples = ", ncol(countmat), "; Number of features = ", nrow(countmat))
-
+flog.info("getting distance")
         if (!is.null(samplesToHighlight)){
             samplesToHighlight <- samplesToHighlight[samplesToHighlight %in% rownames(countmat)]
             currpt_stat <- currpt[(rownames(currpt) %in% samplesToHighlight), ]
@@ -105,7 +124,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             d <- vegdist(countmat, method = distmethod, na.rm = TRUE)
             cats <- currpt_stat[, compareby]
         }
-
+flog.info("getting permanova")
         if (permanova == TRUE){
             if (!(is.numeric(cats))){
                 permanovap <- vegan::adonis(as.formula(paste("d ~ ", compareby)), data = currpt_stat, permutations = permanova_permutations)$aov.tab$`Pr(>F)`[1]
@@ -116,7 +135,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         } else {
             permanovap <- NULL
         }
-
+flog.info("ordinating")
         if (algorithm == "tSNE"){
             #tSNE algorithm
             if (is.null(perplx)){
@@ -196,7 +215,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         } else {
             dford$Alpha <- 1
         }
-
+flog.info("getting centroids")
         if (!(is.numeric(cats))){
             if (!is.null(samplesToHighlight)){
                 centroids <- aggregate(.~Comparison, data = dford[samplesToHighlight, c(paste0("PC", comp), "Comparison")], FUN = mean)
@@ -214,7 +233,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             centroidmeandf <- centroidmeandf[!duplicated(centroidmeandf[ , paste0("mean", colnames(dford)[1])]), ]
             rownames(centroidmeandf) <- centroidmeandf[ , "Comparison"]
         }
-
+flog.info("plotting")
         if (!is.null(samplesToHighlight)){
             aesthetic <- aes(x = get(colnames(dford)[1]), y = get(colnames(dford)[2]), alpha = Alpha)
         } else {
