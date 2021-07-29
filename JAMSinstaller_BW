@@ -167,7 +167,7 @@ bytesRAM <- detectAvailRAM()
 cat(paste0("You have ~", round(bytesRAM/1E9, 1), " Gbytes of RAM available\n"))
 
 #Install all packages via Bioconductor
-alldeps <- c("R.utils", "parallel", "optparse", "futile.logger", "benchmarkme", "RCurl", "Rtsne", "uwot", "circlize", "Polychrome", "openxlsx", "grid", "gridExtra", "tidyverse", "ggplot2", "ggrepel", "wordcloud", "colorfulVennPlot", "gplots", "vegan", "matrixStats", "seqinr", "dada2", "survival", "survminer", "SummarizedExperiment", "ComplexHeatmap", "HybridMTest", "ggpubr", "combinat", "data.table", "genefilter", "gg3D", "gtools", "gtable", "fastSave", "Matrix")
+alldeps <- c("R.utils", "Rcpp", "RcppEigen", "minqa", "parallel", "optparse", "futile.logger", "benchmarkme", "RCurl", "Rtsne", "uwot", "circlize", "Polychrome", "openxlsx", "grid", "gridExtra", "tidyverse", "ggplot2", "ggrepel", "wordcloud", "colorfulVennPlot", "gplots", "vegan", "matrixStats", "seqinr", "dada2", "survival", "survminer", "SummarizedExperiment", "ComplexHeatmap", "HybridMTest", "ggpubr", "combinat", "data.table", "genefilter", "gg3D", "gtools", "gtable", "fastSave", "Matrix")
 bioconductordeps <- c("dada2", "SummarizedExperiment", "HybridMTest", "genefilter", "ComplexHeatmap")
 non_bioconductordeps <- alldeps[!(alldeps %in% bioconductordeps)]
 
