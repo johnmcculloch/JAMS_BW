@@ -13,11 +13,11 @@ print_help <- function(){
    cat("Usage: JAMSinstaller --install [options]\n")
    cat("\n")
    cat("Options:\n")
-   cat("--onlybeta    #Installs only JAMSbeta. Useful to install on a computer where only JAMSbeta will be run.\n")
+   #cat("--onlybeta    #Installs only JAMSbeta. Useful to install on a computer where only JAMSbeta will be run.\n")
    cat("--linkto   #Creates symbolic links to the JAMS excecutables to this path. Default: ~/bin\n")
    cat("\n")
-   cat("If only --install is passed, both JAMSalpha and JAMSbeta will be installed,\nand symlinks to the excecutables will be created in the user\'s ~/bin folder,\nwhich is assumed to be in $PATH\n")
-   cat("\n")
+   #cat("If only --install is passed, both JAMSalpha and JAMSbeta will be installed,\nand symlinks to the excecutables will be created in the user\'s ~/bin folder,\nwhich is assumed to be in $PATH\n")
+   #cat("\n")
    q()
 }
 
@@ -166,9 +166,12 @@ cat(paste("You have", threads, "cpus available\n"))
 bytesRAM <- detectAvailRAM()
 cat(paste0("You have ~", round(bytesRAM/1E9, 1), " Gbytes of RAM available\n"))
 
-#Install Bioconductor packages
+#Install all packages via Bioconductor
+alldeps <- c("R.utils", "parallel", "optparse", "futile.logger", "benchmarkme", "RCurl", "Rtsne", "uwot", "circlize", "Polychrome", "openxlsx", "grid", "gridExtra", "tidyverse", "ggplot2", "ggrepel", "wordcloud", "colorfulVennPlot", "gplots", "vegan", "matrixStats", "seqinr", "dada2", "survival", "survminer", "SummarizedExperiment", "ComplexHeatmap", "HybridMTest", "ggpubr", "combinat", "data.table", "genefilter", "gg3D", "gtools", "gtable", "fastSave", "Matrix")
 bioconductordeps <- c("dada2", "SummarizedExperiment", "HybridMTest", "genefilter", "ComplexHeatmap")
-BiocManager::install(pkgs = bioconductordeps, update = TRUE, ask = FALSE, site_repository = repos)
+non_bioconductordeps <- alldeps[!(alldeps %in% bioconductordeps)]
+
+BiocManager::install(pkgs = alldeps, update = TRUE, ask = FALSE, site_repository = repos)
 #devtools::install_github("jokergoo/ComplexHeatmap")
 devtools::install_github('barkasn/fastSave')
 #Install the rest of JAMS
