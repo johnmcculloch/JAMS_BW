@@ -6,7 +6,7 @@
 make_jams_file <- function(opt = opt, outdir = opt$outdir, asRDS = TRUE, export_to_XL = FALSE){
     setwd(opt$sampledir)
     flog.info("Making .jams file")
-    JAMSobj <- c("projinfo", "contigsdata", "featuredata", "assemblystats", "LKTdose", "featuredose", "readstats", "ucobias", "taxa_16S_cons", "resfinder", "plasmidfinder", "abricate", "vfdb")[c("projinfo","contigsdata", "featuredata", "assemblystats", "LKTdose", "featuredose", "readstats", "ucobias","taxa_16S_cons", "resfinder", "plasmidfinder", "abricate", "vfdb") %in% names(opt)]
+    JAMSobj <- c("projinfo", "contigsdata", "featuredata", "assemblystats", "LKTdose", "featuredose", "readstats", "ucobias", "TNF_contigs", "TNF_features", "taxa_16S_cons", "resfinder", "plasmidfinder", "abricate", "vfdb")[c("projinfo", "contigsdata", "featuredata", "assemblystats", "LKTdose", "featuredose", "readstats", "ucobias", "TNF_contigs", "TNF_features", "taxa_16S_cons", "resfinder", "plasmidfinder", "abricate", "vfdb") %in% names(opt)]
     if (asRDS){
         filesuffix <- "rds"
     } else {
