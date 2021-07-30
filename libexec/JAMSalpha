@@ -400,7 +400,7 @@ if("readsdir" %in% names(opt)){
     bank_reads(opt = opt)
 }
 
-objectstoexport <- names(opt)[names(opt) %in% c("featuredata", "ucobias", "interproscanoutput", "featuredose", "readstats")]
+objectstoexport <- names(opt)[names(opt) %in% c("featuredata", "TNF_contigs", "TNF_features", "ucobias", "interproscanoutput", "featuredose", "readstats")]
 export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
