@@ -9,7 +9,7 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
 
     get_TNF <- function(sequence = NULL){
 
-        TNFdf <- as.data.frame(oligonucleotideFrequency(DNAString(paste(as.character(unlist(sequence)), collapse = "")), 4), stringsAsFactors = FALSE)
+        TNFdf <- as.data.frame(Biostrings::oligonucleotideFrequency(Biostrings::DNAString(paste(as.character(unlist(sequence)), collapse = "")), 4), stringsAsFactors = FALSE)
         colnames(TNFdf) <- "Freq"
         TNFdf$Tetranucleotide <- rownames(TNFdf)
         TNFdf <- TNFdf[ , c("Tetranucleotide", "Freq")]
@@ -23,7 +23,7 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
     TNF_features <- plyr::ldply(TNF_list, rbind)
     colnames(TNF_features)[1] <- "Feature"
 
-    TNF_features <- as.data.frame(pivot_wider(data = TNF_features, names_from = "Feature", values_from = "Freq", values_fill = 0))
+    TNF_features <- as.data.frame(tidyr::pivot_wider(data = TNF_features, names_from = "Feature", values_from = "Freq", values_fill = 0))
     rownames(TNF_features) <- TNF_features$Tetranucleotide
     TNF_features$Tetranucleotide <- NULL
     TNF_features <- t(TNF_features)
