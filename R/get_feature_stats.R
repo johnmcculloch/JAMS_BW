@@ -27,7 +27,7 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
     rownames(TNF_features) <- TNF_features$Tetranucleotide
     TNF_features$Tetranucleotide <- NULL
     TNF_features <- t(TNF_features)
-    opt$TNF_features <- TNF_features
+    opt$TNF_features <- as.data.frame(TNF_features)
 
     flog.info("Calculating Tetranucleotide frequencies for all contigs")
     TNF_list_contigs <- lapply(1:length(opt$NHcontigs_sequence), function (x) { get_TNF(opt$NHcontigs_sequence[[x]]) } )
@@ -40,7 +40,7 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
     rownames(TNF_contigs) <- TNF_contigs$Tetranucleotide
     TNF_contigs$Tetranucleotide <- NULL
     TNF_contigs <- t(TNF_contigs)
-    opt$TNF_contigs <- TNF_contigs
+    opt$TNF_contigs <- as.data.frame(TNF_contigs)
 
     flog.info("Calculating codon usage frequencies for all features")
     ucolist <- list()
