@@ -20,7 +20,7 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
     TNF_list_features <- lapply(1:length(opt$genes), function (x) { get_TNF(opt$genes[[x]]) } )
     names(TNF_list_features) <- names(opt$genes)
 
-    TNF_features <- plyr::ldply(TNF_list, rbind)
+    TNF_features <- plyr::ldply(TNF_list_features, rbind)
     colnames(TNF_features)[1] <- "Feature"
 
     TNF_features <- as.data.frame(tidyr::pivot_wider(data = TNF_features, names_from = "Feature", values_from = "Freq", values_fill = 0))
