@@ -60,8 +60,8 @@ shift $(($OPTIND - 1))
 #Find executables or die.
 echo "You are on Biowulf."
 #module load java/1.8.0_211 || die "Could not load java module."
-module load interproscan || die "Could not load interproscan module."
-#module load interproscan/5.29-68.0 || die "Could not load interproscan module."
+#module load interproscan || die "Could not load interproscan module."
+module load interproscan/5.29-68.0 || die "Could not load interproscan module."
 
 #Generate sbatch script
 interproscan --goterms --pathways -f tsv "$fasta" interproscan "$chunk" 1> iprocommand.txt
