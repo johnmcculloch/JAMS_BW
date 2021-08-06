@@ -259,7 +259,7 @@ opt$reports <- file.path(opt$destination, "reports")
 opt$logfile <- file.path(opt$destination, "bankit_log.txt")
 opt$user <- as.character(Sys.info()["user"])
 
-JAMSsubfolders <- c("jamsfiles", "JAMStarballs", "reads", "reports")
+JAMSsubfolders <- c("jamsfiles", "JAMStarballs", "reads", "reports", "logfiles", "featuretables")
 for (subfolder in JAMSsubfolders){
     if (file.exists(opt[[subfolder]])){
         flog.info(paste("Found", subfolder, "folder"))
@@ -280,6 +280,9 @@ prefixes <- sapply(1:length(tarballs), function(x) { unlist(strsplit(tarballs[x]
 JAMSalphaorigindf <- data.frame(Prefix = prefixes, JAMStarball = tarballs, stringsAsFactors = FALSE)
 JAMSalphaorigindf$Report <- paste(JAMSalphaorigindf$Prefix, "JAMSalpha_report.pdf", sep = "_")
 JAMSalphaorigindf$JAMSfile <- paste(JAMSalphaorigindf$Prefix, "jams", sep = ".")
+JAMSalphaorigindf$featuretable <- paste(JAMSalphaorigindf$Prefix, "feature_tables.xlsx", sep = "_")
+JAMSalphaorigindf$logfile <- paste(JAMSalphaorigindf$Prefix, "JAMS.log", sep = "_")
+
 #Load prefix list if present
 if (!(is.null(opt$prefixlist))){
     wantedprefixes <- read.table(opt$prefixlist, header = FALSE, sep = " ", stringsAsFactors = FALSE)
@@ -314,9 +317,9 @@ for (currPrefix in JAMSalphaorigindf$Prefix){
     abortprefix <- FALSE
     sampledf <- subset(JAMSalphaorigindf, Prefix == currPrefix)
     #Bank jams, report and tarball file
-    for (jf in c("JAMSfile", "Report", "JAMStarball")){
+    for (jf in c("JAMSfile", "Report", "JAMStarball", "featuretable", "logfile")){
         target <- switch(jf, "JAMSfile" = opt$jamsfiles, "Report" = opt$reports, "JAMStarball" = opt$JAMStarballs)
-        if(file.exists(file.path(opt$origin, sampledf[, jf]))){
+        if (file.exists(file.path(opt$origin, sampledf[, jf]))){
             #Check if file with same name has already been banked.
             if (file.exists(file.path(target, sampledf[, jf]))){
                 report2log(message = paste("Target file", (file.path(target, sampledf[, jf])), "already exists." ), warn = TRUE, opt = opt)
