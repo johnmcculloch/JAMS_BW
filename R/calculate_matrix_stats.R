@@ -110,7 +110,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         if (invertbinaryorder == TRUE){
             l2fc <- (l2fc * -1)
         }
-        matstats <- data.frame(pval = as.vector(unlist(mwpval)), l2fc = l2fc)
+        matstats <- data.frame(pval = as.vector(unlist(mwpval)), stat = as.vector(unlist(mwstat)), l2fc = l2fc)
         rownames(matstats) <- rownames(countmatrix)
         matstats$absl2fc <- abs(matstats$l2fc)
 
