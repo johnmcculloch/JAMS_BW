@@ -73,7 +73,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             pcatit <- pcatitbase
         }
         pcatit <- paste(c(pcatit, presetlist$filtermsg), collapse = "\n")
-flog.info("filtering")
+        flog.info("filtering")
         currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = sp_samplesToKeep, featuresToKeep = featuresToKeep, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
 
         currpt <- as.data.frame(colData(currobj))
@@ -113,7 +113,7 @@ flog.info("filtering")
         }
 
         sampsizemsg <- paste0("Number of samples = ", ncol(countmat), "; Number of features = ", nrow(countmat))
-flog.info("getting distance")
+        flog.info("getting distance")
         if (!is.null(samplesToHighlight)){
             samplesToHighlight <- samplesToHighlight[samplesToHighlight %in% rownames(countmat)]
             currpt_stat <- currpt[(rownames(currpt) %in% samplesToHighlight), ]
@@ -124,18 +124,22 @@ flog.info("getting distance")
             d <- vegdist(countmat, method = distmethod, na.rm = TRUE)
             cats <- currpt_stat[, compareby]
         }
-flog.info("getting permanova")
+        flog.info("getting permanova")
         if (permanova == TRUE){
             if (!(is.numeric(cats))){
-                permanovap <- vegan::adonis(as.formula(paste("d ~ ", compareby)), data = currpt_stat, permutations = permanova_permutations)$aov.tab$`Pr(>F)`[1]
+                permanovaout <- vegan::adonis(as.formula(paste("d ~ ", compareby)), data = currpt_stat, permutations = permanova_permutations)$aov.tab
+                permanovap <- permanovaout$`Pr(>F)`[1]
+                permanovaF <- permanovaout$`F.Model`[1]
             } else {
                 flog.info("Impossible to get permanova because compareby is continuous")
                 permanovap <- NULL
+                permanovaF <- NULL
             }
         } else {
             permanovap <- NULL
+            permanovaF <- NULL
         }
-flog.info("ordinating")
+        flog.info("ordinating")
         if (algorithm == "tSNE"){
             #tSNE algorithm
             if (is.null(perplx)){
@@ -306,7 +310,7 @@ flog.info("plotting")
         }
 
         if (!is.null(permanovap)) {
-            pcatit <- paste(c(pcatit, (paste("PERMANOVA p <", round(permanovap, 4)))), collapse = "\n")
+            pcatit <- paste(c(pcatit, paste0("PERMANOVA p <", round(permanovap, 4), "; F-Model = ", round(permanovaF, 4))), collapse = "\n")
         }
 
         if(any(c((!is.null(permanovap)), (algorithm == "PCA")))){
