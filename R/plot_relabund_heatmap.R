@@ -171,7 +171,6 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                 }
                 svec[[s]] <- matstatsbank
                 ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
-
                 matstats$Colour <- rep("black", nrow(matstats))
                 countmat2 <- countmat[rownames(matstats), ]
 
@@ -189,7 +188,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     fullheatmap_row_dend <- suppressWarnings(row_dend(htfull))
                 }
 
-                if (!cluster_features_per_heatmap){
+                if (all(c(!cluster_features_per_heatmap, !is.null(fullheatmap_row_order)))){
                     countmat2 <- countmat2[fullheatmap_row_order, ]
                     matstats <- matstats[rownames(countmat2), ]
                 }
