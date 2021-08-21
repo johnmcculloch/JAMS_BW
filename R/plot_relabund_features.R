@@ -461,7 +461,12 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             overallpmeth <- matstats[feat, "Method"]
             overallp <- paste0("pval=", round(matstats[feat, "pval"], 4))
             overalladjp <- paste0("padj_fdr=", round(matstats[feat, "padj_fdr"], 4))
-            stattit <- paste(overallpmeth, overallp, overalladjp, ffeatmsg, sep = " | ")
+            if("stat" %in% colnames(matstats)){
+                overallstat <- paste0("stat=", round(matstats[feat, "stat"], 4))
+            } else {
+                overallstat <- NULL
+            }
+            stattit <- paste(overallpmeth, overallp, overalladjp, overallstat, ffeatmsg, sep = " | ")
 
             if ("correl" %in% colnames(matstats)){
                 correlstat <- paste0("corr_coeff=", round(matstats[feat, "correl"], 3))
