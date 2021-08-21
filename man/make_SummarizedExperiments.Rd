@@ -2,7 +2,7 @@
 % Please edit documentation in R/make_SummarizedExperiments.R
 \name{make_SummarizedExperiments}
 \alias{make_SummarizedExperiments}
-\title{make_SummarizedExperiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, minPctFromCtg = NULL, minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL)}
+\title{make_SummarizedExperiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8)}
 \usage{
 make_SummarizedExperiments(
   pheno = NULL,
@@ -12,8 +12,10 @@ make_SummarizedExperiments(
   minpropsampanalysis = 0.1,
   restricttoLKTs = NULL,
   stratify_functions_by_taxon = TRUE,
+  add_TNF_data = FALSE,
   list.data = NULL,
   phenolabels = NULL,
+  cdict = cdict,
   threads = 8
 )
 }

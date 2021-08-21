@@ -1,9 +1,9 @@
-#' make_SummarizedExperiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, minPctFromCtg = NULL, minProbNumGenomes = NULL, restricttoLKTs = NULL, list.data = NULL)
+#' make_SummarizedExperiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8)
 #'
 #' Makes a SummarizedExperiment object for every analysis that is possible to make given loaded jams files in list.data.
 #' @export
 
-make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, list.data = NULL, phenolabels = NULL, threads = 8){
+make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8){
 
     require(SummarizedExperiment)
     require(Matrix)
@@ -74,6 +74,15 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
             possibleanalyses <- onlyanalyses
         }
 
+    }
+
+    #Add colour table to expvec, if passed
+    if (!is.null(cdict)){
+        ctable <- plyr::rbind.fill(cdict)
+        ctable <- ctable[!duplicated(ctable), ]
+        rownames(ctable) <- ctable$Name
+    } else {
+        ctable <- NULL
     }
 
     #Make a vector for holding experiment list
@@ -160,6 +169,31 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         if (!is.null(phenolabels)){
             metadata(SEobj)$phenolabels <- phenolabels
         }
+
+        #Make Tetranucleotide Frequency matrices if data is present
+        LKT_TNF_objects <- paste(Samples, "TNF_contigs", sep="_")
+        if (all(c(all(LKT_TNF_objects %in% names(list.data)), add_TNF_data))){
+            LKT_TNF_contigs <- list.data[LKT_TNF_objects]
+            names(LKT_TNF_contigs) <- Samples
+            #Add LKT information
+            for (smp in Samples){
+                LKT_TNF_contigs[[smp]]$Contig <- rownames(LKT_TNF_contigs[[smp]])
+                LKT_TNF_contigs[[smp]] <- left_join(LKT_TNF_contigs[[smp]], list.data[[paste(smp, "contigsdata", sep = "_")]], by = "Contig")
+            }
+
+            LKT_TNF_contigsall <- bind_rows(LKT_TNF_contigs, .id = "id")
+            colnames(LKT_TNF_contigsall)[which(colnames(LKT_TNF_contigsall) == "id")] <- "Sample"
+
+            LKT_TNF_contigsall$Contig <- rownames(LKT_TNF_contigsall)
+
+            metadata(SEobj)$LKT_TNF_contigs <- LKT_TNF_contigsall
+
+        }
+
+        if (!is.null(ctable)){
+            metadata(SEobj)$ctable <- ctable
+        }
+
         if (is.null(restricttoLKTs)){
             expvec[[e]] <- SEobj
             names(expvec)[e] <- "LKT"
@@ -375,6 +409,9 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         metadata(SEobj)$analysis <- analysis
         if (!is.null(phenolabels)){
             metadata(SEobj)$phenolabels <- phenolabels
+        }
+        if (!is.null(ctable)){
+            metadata(SEobj)$ctable <- ctable
         }
 
         #Split functions by taxon, if applicable
