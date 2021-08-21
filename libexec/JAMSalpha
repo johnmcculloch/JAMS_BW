@@ -381,6 +381,7 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 #Get feature stats
 opt <- add_blast_results_to_featuredata(opt = opt, blastanalyses = opt$blastanalyses)
 opt <- get_feature_stats(opt = opt)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Make functional analysis
 opt <- harvest_functions(opt = opt, doinparallel = TRUE)
