@@ -1,9 +1,9 @@
-#' filter_experiment(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), discard_SDoverMean_below = NULL, samplesToKeep = NULL, featuresToKeep = NULL, normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL)
+#' filter_experiment(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), discard_SDoverMean_below = NULL, samplesToKeep = NULL, featuresToKeep = NULL, normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, flush_out_empty_samples = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL)
 #'
 #' Filters a SummarizedExperiment object by several criteria.
 #' @export
 
-filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), discard_SDoverMean_below = NULL, samplesToKeep = NULL, featuresToKeep = NULL, normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL){
+filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), discard_SDoverMean_below = NULL, samplesToKeep = NULL, featuresToKeep = NULL, normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, flush_out_empty_samples = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL){
 
     #Get only samples you asked for
     if (!(is.null(samplesToKeep))){
@@ -31,12 +31,15 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
 
     #Flush out empty rows
     ExpObj <- ExpObj[(rowSums(rawcts) > 0), ]
+
     #Flush out empty Samples
-    emptysamples <- names(which(colSums(rawcts) == 0) == TRUE)
-    if (length(emptysamples) > 0){
-        flog.info(paste("Samples", paste0(emptysamples, collapse = ", "), "are empty and will be discarded."))
-        validsamples <- names(which(colSums(rawcts) > 0) == TRUE)
-        ExpObj <- ExpObj[ , validsamples]
+    if (flush_out_empty_samples){
+        emptysamples <- names(which(colSums(rawcts) == 0) == TRUE)
+        if (length(emptysamples) > 0){
+            flog.info(paste("Samples", paste0(emptysamples, collapse = ", "), "are empty and will be discarded."))
+            validsamples <- names(which(colSums(rawcts) > 0) == TRUE)
+            ExpObj <- ExpObj[ , validsamples]
+        }
     }
 
     countmat <- as.matrix(assays(ExpObj)$BaseCounts)
