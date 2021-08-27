@@ -131,12 +131,15 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
             mwpval <- sapply(1:nrow(countmatrix), function(x) { vegan::adonis(countmatrix[x,] ~ classesvector, parallel = numthreads, permutations = nperm)$aov.tab$`Pr(>F)`[1] } )
         } else if (stattype == "anova") {
             flog.info("Calculating p-values with ANOVA.")
-            mwpval <- sapply(1:nrow(countmatrix), function(x) { summary(aov(countmatrix[x,] ~ classesvector))[[1]]$`Pr(>F)`[1] } )
+            comparisons <- lapply(1:nrow(countmatrix), function(x) { summary(aov(countmatrix[x,] ~ classesvector))[[1]] })
+            mwstat <- sapply(1:length(comparisons), function(x) { as.numeric(comparisons[[x]]["classesvector", "F value"]) } )
+            mwpval <- sapply(1:length(comparisons), function(x) { as.numeric(comparisons[[x]]["classesvector", "Pr(>F)"]) } )
         }
 
         mwpval[is.na(mwpval)] <- 1
 
-        matstats <- data.frame(Feature = rownames(countmatrix), pval=mwpval)
+        matstats <- data.frame(Feature = rownames(countmatrix), pval = as.vector(unlist(mwpval)), stat = as.vector(unlist(mwstat)))
+
         rownames(matstats) <- rownames(countmatrix)
         #Adjust p-values
         adjlist <- lapply(p.adjust.methods, function(x){ p.adjust(matstats$pval, method = x, n = length(matstats$pval)) })
