@@ -134,6 +134,7 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, f
             feature_cdict <- createPalette(nrow(new_counts),  c("#ff0000", "#00ff00", "#0000ff"))
             names(feature_cdict) <- rownames(new_counts)
         }
+	feature_cdict <- feature_cdict[rownames(new_counts)] # remove entries not on graph
 
         p <- p + scale_fill_manual(values = feature_cdict)
 
