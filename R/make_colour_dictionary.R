@@ -42,7 +42,7 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabe
         if (is.null(phenolabels)){
             flog.info("Imputing types of columns on the metadata.")
             Var_label <- colnames(pheno)
-            Var_type <- sapply(Var_label, function (x) { infer_column_type(x) } )
+            Var_type <- sapply(Var_label, function (x) { infer_column_type(phenotable = pheno, colm = x, class_to_ignore = class_to_ignore) } )
             phenolabels <- data.frame(Var_label = unname(Var_label), Var_type = unname(Var_type), stringsAsFactors = FALSE)
         }
 
