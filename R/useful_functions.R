@@ -751,3 +751,24 @@ analyze_fastq_filename <- function(fn = NULL, maintain_Illumina_format = FALSE){
     return(filefacts)
 
 }
+
+
+#' infer_column_type(phenotable = NULL, colm = NULL, class_to_ignore = "N_A")
+#'
+#' From a phenotable, infers what kind of a column it is, discrete or continuous.
+#' @export
+
+infer_column_type <- function(phenotable = NULL, colm = NULL, class_to_ignore = "N_A"){
+    if (colm %in% c("Sample", "sample")){
+        colmtype <- "Sample"
+    } else {
+        if (can_be_made_numeric( (phenotable[, colm] ), cats_to_ignore = class_to_ignore)){
+            colmtype <- "continuous"
+        } else {
+            colmtype <- "discrete"
+        }
+    }
+
+    return(colmtype)
+
+}
