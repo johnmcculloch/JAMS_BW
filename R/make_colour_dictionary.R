@@ -3,7 +3,7 @@
 #' Returns a dictionary of colours for each class within each variable_list
 #' @export
 
-make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_ignore = NULL, colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, showcoloursonly = FALSE){
+make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = NULL, colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, showcoloursonly = FALSE){
 
     atoms <- c("0200FC", "ff7f02", "468B00", "CD2626", "267ACD", "640032", "FC00FA", "000000", "478559", "161748", "f95d9b", "39a0ca")
 
@@ -36,6 +36,18 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, class_to_
             colourpies[[pies]] <- ggplot(currsliceValues, aes(x = "", y = Slice, fill = Colour)) + geom_bar(width = 1, stat = "identity") + scale_fill_manual(values = currcols)  + coord_polar("y") + labs(title = paste0("JAMSpalette", pies))
         }
         return(colourpies)
+    }
+
+    if (is.null(variable_list)){
+        if (is.null(phenolabels)){
+            flog.info("Imputing types of columns on the metadata.")
+            Var_label <- colnames(pheno)
+            Var_type <- sapply(Var_label, function (x) { infer_column_type(x) } )
+            phenolabels <- data.frame(Var_label = unname(Var_label), Var_type = unname(Var_type), stringsAsFactors = FALSE)
+        }
+
+        #Define kinds of variables
+        variable_list <- define_kinds_of_variables(phenolabels = phenolabels, phenotable = pheno, maxclass = 15, maxsubclass = 6, class_to_ignore = class_to_ignore)
     }
 
     #See how many different things there are
