@@ -64,18 +64,6 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
             phenolabels <- trim_whitespace_from_df(phenolabels)
         } else {
             Var_label <- colnames(phenotable)
-            infer_column_type <- function(colm){
-                if (colm %in% c("Sample", "sample")){
-                    colmtype <- "Sample"
-                } else {
-                    if (can_be_made_numeric( (phenotable[, colm] ), cats_to_ignore = class_to_ignore)){
-                        colmtype <- "continuous"
-                    } else {
-                        colmtype <- "discrete"
-                    }
-                }
-                return(colmtype)
-            }
             Var_type <- sapply(Var_label, function (x) { infer_column_type(x) } )
             phenolabels <- data.frame(Var_label = unname(Var_label), Var_type = unname(Var_type), stringsAsFactors = FALSE)
         }
