@@ -12,6 +12,13 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
         phenolabels <- metadata[[2]]
     }
 
+    if (is.null(phenolabels)){
+        flog.info("Imputing types of columns on the metadata.")
+        Var_label <- colnames(phenotable)
+        Var_type <- sapply(Var_label, function (x) { infer_column_type(phenotable = phenotable, colm = x, class_to_ignore = class_to_ignore) } )
+        phenolabels <- data.frame(Var_label = unname(Var_label), Var_type = unname(Var_type), stringsAsFactors = FALSE)
+    }
+
     validcols <- as.character(phenolabels$Var_label)
     if (verbose){
         flog.info(paste("Phenolabels contains", length(validcols), "categories."))
