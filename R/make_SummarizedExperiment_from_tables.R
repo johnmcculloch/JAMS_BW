@@ -49,7 +49,22 @@ make_SummarizedExperiment_from_tables <- function(pheno = NULL, pheno_fn= NULL, 
 
     #md_list$ft$Accession <- NULL
     md_list$ft <- md_list$ft[(rownames(md_list$ft) %in% featureorder), ]
-    sampleorder <- rownames(md_list$pheno)
+
+    #Account for inconsistencies between pheno and cts
+    sampleorder <- intersect(colnames(md_list$cts), rownames(md_list$pheno))
+
+    if (length(sampleorder) != nrow(md_list$pheno)){
+        missingsample_pheno <- rownames(md_list$pheno)[!rownames(md_list$pheno) %in% colnames(md_list$cts)]
+        flog.warn(paste("WARNING: Sample(s)", paste0(missingsample_pheno, collapse = ", "), "is (are) missing from metadata and will be omitted in the phenotable."))
+        md_list$pheno <- md_list$pheno[sampleorder, ]
+    }
+
+    if (length(sampleorder) != ncol(md_list$cts)){
+        missingsample_cts <- colnames(md_list$cts)[!colnames(md_list$cts) %in% rownames(md_list$pheno)]
+        flog.warn(paste("WARNING: Sample(s)", paste0(missingsample_cts, collapse = ", "), "is (are) missing from the count table and will be omitted."))
+        md_list$cts <- md_list$cts[ , sampleorder]
+    }
+
     md_list$ft <- as.matrix(md_list$ft)
     md_list$ft <- md_list$ft[featureorder, ]
     md_list$cts <- as.matrix(md_list$cts)
