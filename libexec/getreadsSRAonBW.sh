@@ -1,7 +1,7 @@
 #!/bin/bash
 accession=$1
-module load perl
-module load sratoolkit
+#module load perl
+#module load sratoolkit
 fastq-dump --split-e "$accession"
 splitfile="$accession"_1.fastq
 if [ -f "$splitfile" ]
@@ -13,5 +13,5 @@ else
     mv "$accession".fastq "$accession"_SE.fastq
 fi
 
-module unload sratoolkit
-module unload perl
+#module unload sratoolkit
+#module unload perl
