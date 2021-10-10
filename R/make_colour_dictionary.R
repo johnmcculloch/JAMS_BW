@@ -1,9 +1,9 @@
-#' make_colour_dictionary(variable_list=NULL, pheno=NULL)
+#' make_colour_dictionary(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, showcoloursonly = FALSE)
 #'
-#' Returns a dictionary of colours for each class within each variable_list
+#' Returns a dictionary of colours for each class within each variable_list or phenotable
 #' @export
 
-make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = NULL, colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, showcoloursonly = FALSE){
+make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, showcoloursonly = FALSE){
 
     atoms <- c("0200FC", "ff7f02", "468B00", "CD2626", "267ACD", "640032", "FC00FA", "000000", "478559", "161748", "f95d9b", "39a0ca")
 

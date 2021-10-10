@@ -2,13 +2,13 @@
 % Please edit documentation in R/make_colour_dictionary.R
 \name{make_colour_dictionary}
 \alias{make_colour_dictionary}
-\title{make_colour_dictionary(variable_list=NULL, pheno=NULL)}
+\title{make_colour_dictionary(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, showcoloursonly = FALSE)}
 \usage{
 make_colour_dictionary(
   variable_list = NULL,
   pheno = NULL,
   phenolabels = NULL,
-  class_to_ignore = NULL,
+  class_to_ignore = "N_A",
   colour_of_class_to_ignore = "#bcc2c2",
   colour_table = NULL,
   shuffle = FALSE,
@@ -16,5 +16,5 @@ make_colour_dictionary(
 )
 }
 \description{
-Returns a dictionary of colours for each class within each variable_list
+Returns a dictionary of colours for each class within each variable_list or phenotable
 }
