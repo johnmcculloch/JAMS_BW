@@ -5,7 +5,18 @@
 \title{spew_heatmap_report(c("analysis", "report"))
 Wrapper for launching a report for a SINGLE analysis}
 \usage{
-spew_heatmap_report(hmcomb)
+spew_heatmap_report(
+  hmcomb = NULL,
+  outdir = NULL,
+  expvec = NULL,
+  applyfilters = NULL,
+  variable_list = NULL,
+  scaled = NULL,
+  cdict = NULL,
+  makespreadsheets = TRUE,
+  makeheatmaps = TRUE,
+  project = NULL
+)
 }
 \description{
 spew_heatmap_report(c("analysis", "report"))

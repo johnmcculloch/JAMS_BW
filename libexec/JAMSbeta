@@ -574,9 +574,9 @@ appropriatenumcores <- round((appropriatenumcores * (1 - UsedRAM)), 0)
 
 if (opt$plot_in_parallel == TRUE){
     flog.info(paste("Using", appropriatenumcores, "CPUs for generating plots in parallel."))
-    mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) }, mc.cores = appropriatenumcores)
+    mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(hmcomb = plotkinds[[x]], outdir = opt$outdir, expvec = expvec, applyfilters = applyfilters, variable_list = variable_list, scaled = TRUE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, project = project) }, mc.cores = appropriatenumcores)
 } else {
-    sapply(1:length(plotkinds), function (x) { spew_heatmap_report(plotkinds[[x]]) })
+    sapply(1:length(plotkinds), function (x) { spew_heatmap_report(hmcomb = plotkinds[[x]], outdir = opt$outdir, expvec = expvec, applyfilters = applyfilters, variable_list = variable_list, scaled = TRUE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, project = project) })
 }
 
 #Running extra script if required
