@@ -193,6 +193,14 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
         names(interpronumbaseslist) <- iproanalyses
         interpronumbaseslist <- plyr::ldply(interpronumbaseslist, rbind)
         interpronumbaseslist$`.id` <- NULL
+
+        #New version of Interproscan splits signal peptide analysis into three different classes, Gram Positive, Gram Negative and Eukaryote. Making the accessions non-redundant for these analyses
+        for (analtofix in c("SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SignalP_EUK")){
+            if (analtofix %in% interpronumbaseslist$Analysis){
+                interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"] <- paste(analtofix, interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"], sep = "_")
+            }
+        }
+
         rownames(interpronumbaseslist) <- interpronumbaseslist$Accession
     }
 
@@ -318,26 +326,26 @@ fix_interproscanoutput <- function(opt = NULL, check_ipro_jobs_status = TRUE){
 
         interprotsvs <- file.path(opt$iprodir, list.files(path = opt$iprodir, pattern=".tsv"))
         #load tsvs into a single object in memory
-        readipro<-function(x){
+        readipro <- function(x){
             read.table(file=x, sep="\t", header=FALSE, quote="", skipNul=FALSE, fill=TRUE, colClasses = "character", col.names=c("Feature","MD5","AALength","Analysis","Accession","Description","Start","Stop","Score","Status","Date","IproAcc","IproDesc","GOterms","Pathways"))
         }
         alliprotsvs <- lapply(interprotsvs, readipro)
-        ipro<-plyr::ldply(alliprotsvs, rbind)
+        ipro <- plyr::ldply(alliprotsvs, rbind)
 
         #Clean-up datafrane
-        ipro<-subset(ipro, Analysis !="MobiDBLite")
-        ipro$MD5<-NULL
-        ipro$Start<-NULL
-        ipro$Stop<-NULL
-        ipro$Start<-NULL
-        ipro$Score<-as.numeric(ipro$Score)
-        ipro$Score[is.na(ipro$Score)]<- 0
-        ipro<-subset(ipro, Score < 0.001)
-        ipro<-subset(ipro, Status == "T")
-        ipro$Score<-NULL
-        ipro$Status<-NULL
-        ipro$Date<-NULL
-        ipro$AALength<-as.numeric(ipro$AALength)
+        ipro <- subset(ipro, Analysis !="MobiDBLite")
+        ipro$MD5 <- NULL
+        ipro$Start <- NULL
+        ipro$Stop <- NULL
+        ipro$Start <- NULL
+        ipro$Score <- as.numeric(ipro$Score)
+        ipro$Score[is.na(ipro$Score)] <- 0
+        ipro <- subset(ipro, Score < 0.001)
+        ipro <- subset(ipro, Status == "T")
+        ipro$Score <- NULL
+        ipro$Status <- NULL
+        ipro$Date <- NULL
+        ipro$AALength <- as.numeric(ipro$AALength)
 
         #Fill in the blanks
         ipro <- ipro %>% mutate(Description = ifelse(Description == "", "none", Description))
@@ -348,7 +356,7 @@ fix_interproscanoutput <- function(opt = NULL, check_ipro_jobs_status = TRUE){
 
         #remove eventual duplicates
         ipro <- ipro[!duplicated(ipro), ]
-        opt$interproscanoutput<-ipro
+        opt$interproscanoutput <- ipro
     }
 
     return(opt)
