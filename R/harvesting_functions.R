@@ -201,6 +201,9 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
             }
         }
 
+        #Remove a "-" which is annoyingly being added as an accession for GO and Interpro.
+        interpronumbaseslist <- subset(interpronumbaseslist, Accession != "-")
+
         rownames(interpronumbaseslist) <- interpronumbaseslist$Accession
     }
 
@@ -216,7 +219,7 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
     opt$featuredose$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
 
     #Add interpro descriptions, if applicable
-    if("interproscanoutput" %in% names(opt)){
+    if ("interproscanoutput" %in% names(opt)){
         #Add GO descriptions
         descriptions <- GOtermdict$Description[match(opt$featuredose$Accession, GOtermdict$Accession)]
         opt$featuredose$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
