@@ -346,8 +346,11 @@ for (currPrefix in JAMSalphaorigindf$Prefix){
                 }
             }
         } else {
-            report2log(message = paste("Could not find", sampledf[, jf]), warn = TRUE, opt = opt)
-            abortprefix <- TRUE
+            #If missing file is featuretable, ignore, as this may not be an isolate sample, else, flag as NO-GO
+            if (jf != "featuretable"){
+                report2log(message = paste("Could not find", sampledf[, jf]), warn = TRUE, opt = opt)
+                abortprefix <- TRUE
+            }
         }
     }
     #Bank reads
