@@ -270,8 +270,11 @@ for (subfolder in JAMSsubfolders){
             q()
         }
     } else {
-        flog.info(paste("Creating", subfolder, "folder"))
-        dir.create(opt[[subfolder]])
+        #Only create if not simulating
+        if (opt$simulate != TRUE){
+            flog.info(paste("Creating", subfolder, "folder"))
+            dir.create(opt[[subfolder]])
+        }
     }
 }
 
