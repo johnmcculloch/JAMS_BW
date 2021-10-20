@@ -213,6 +213,8 @@ assemble_contigs <- function(opt = NULL){
     flog.info(paste0("Assembling reads using ", opt$assembler, ". Please be patient..."))
     flog.info(paste0("Assembler command used: ", paste(assemblercmd, paste0(assemblerargs, collapse = " "))))
 
+    #cd into directory using system to see if lscratch issue is resolved
+    system2(paste("cd", opt$workdir))
     system2(assemblercmd, args = assemblerargs, stdout = TRUE, stderr = TRUE)
     flog.info(paste("Assembly of reads using", opt$assembler, "complete."))
 
