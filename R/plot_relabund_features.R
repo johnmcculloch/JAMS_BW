@@ -356,7 +356,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             if (!is.null(connectby)){
                 dat$Connect <- curr_pt[rownames(dat) , connectby]
             }
-#print(dat)
+
             if (!is.null(colourby)){
                 if (colourby == "GenomeCompleteness"){
                     pctgencompdf <- t(genomecompletenessdf) * 100

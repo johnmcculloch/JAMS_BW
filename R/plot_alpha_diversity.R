@@ -1,9 +1,9 @@
-#' plot_alpha_diversity(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...)
+#' plot_alpha_diversity(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...){
+plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...){
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
@@ -167,22 +167,31 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             names(svec)[svn] <- tablename
             svn <- svn + 1
 
-            colnames(dat)[which(colnames(dat) == compareby)] <- "Compareby"
+            dat$Compareby <- dat[ , compareby]
+
             #if there is an explicit order to compareby then set it to that
             if (!is.null(compareby_order)){
                 dat$Compareby <- factor(dat$Compareby, levels = compareby_order)
             }
 
             if (!is.null(shapeby)){
-                colnames(dat)[which(colnames(dat) == shapeby)] <- "Shape"
+                dat$Shape <- dat[ , shapeby]
             }
 
             if (!is.null(colourby)){
-                colnames(dat)[which(colnames(dat) == colourby)] <- "Colour"
+                dat$Colour <- dat[ , colourby]
+            }
+
+            if (!is.null(fillby)){
+                dat$Fill <- dat[ , fillby]
+            }
+
+            if (!is.null(connectby)){
+                dat$Connect <- dat[ , connectby]
             }
 
             if (!is.null(facetby)){
-                colnames(dat)[which(colnames(dat) == facetby)] <- "Facetby"
+                dat$Facetby <- dat[ , facetby]
             }
 
             measures_to_show <- measures[measures %in% colnames(alphadiv)]
@@ -222,6 +231,16 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
 
                     if (!overlay_boxplot){
                         p <- p + geom_boxplot(outlier.shape = NA)
+                    }
+
+                    if (!is.null(fillby)){
+                        p <- p + aes(fill = Fill)
+                        #if there is a colour dictionary, then use that
+                        if (!(is.null(cdict))){
+                            ct <- cdict[[fillby]]
+                            groupcols <- setNames(as.character(ct$Colour), as.character(ct$Name))
+                            p <- p + scale_fill_manual(values = groupcols)
+                        }
                     }
 
                     if (!(is.null(shapeby))){
