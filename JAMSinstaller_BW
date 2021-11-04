@@ -153,7 +153,7 @@ if(!(all((c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "pr
     install.packages(c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits"), repos = repos, update = TRUE, lib = rlibs)
 }
 #Make sure we have the correct version of Bioconductor
-BiocManager::install(version = "3.13", ask = FALSE)
+BiocManager::install(version = "3.14", ask = FALSE)
 
 require("devtools")
 require("stringr")
