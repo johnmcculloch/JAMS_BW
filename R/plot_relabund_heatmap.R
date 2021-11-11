@@ -1,9 +1,9 @@
-#' plot_relabund_heatmap(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...)
+#' plot_relabund_heatmap(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...)
 #'
 #' Plots relative abundance heatmaps annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
+plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = FALSE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
 
     #Test for silly stuff
     if ((hmtype %in% c("comparative", "PA")) && (is.null(compareby))){
@@ -30,6 +30,11 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, maxl2fc = maxl2fc, minl2fc = minl2fc)
 
     if (normalization == "compositions"){
+        asPPM <- FALSE
+    }
+
+    if (assay_for_matrix == "GeneCounts"){
+        flog.warn("Counts matrix used for heatmap will represent the *number of genes* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
         asPPM <- FALSE
     }
 
@@ -125,14 +130,14 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
             }
 
             #Get counts matrix
-            countmat <- as.matrix(assays(currobj)$BaseCounts)
+            countmat <- as.matrix(assays(currobj)[[assay_for_matrix]])
 
             #Protect against rows with empty data
             rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
             countmat <- countmat[rowsToKeep, ]
 
             if (ignoreunclassified == TRUE){
-               dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")
+               dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified", "hypothetical protein", "putative protein")
                rowsToKeep <- which(!(rownames(countmat) %in% dunno))
                countmat <- countmat[rowsToKeep, ]
             }
@@ -175,7 +180,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                 countmat2 <- countmat[rownames(matstats), ]
 
                 #Transform to log2 space
-                countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
+                if (assay_for_matrix == "BaseCounts"){
+                    countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
+                }
 
                 if (all(c(cluster_rows, (any(!(c(cluster_samples_per_heatmap, cluster_features_per_heatmap))))))){
                     flog.info("Clustering samples and features using entire matrix to obtain sample and feature order for all heatmaps.")
@@ -470,8 +477,8 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     ht1fs <- 10
 
                     #Plot the heatmap
-                    fontsizey <- min(6, round((((-1 / 150) * (nrow(mathm))) + 1) * 5, 1))
-                    fontsizex <- as.numeric(unlist(round((((-1 / 150) * (ncol(mathm))) + 1) * 5, 0)))
+                    fontsizey <- round((((-1 / 200) * (nrow(mathm))) + 1.01 * 6), 2)
+                    fontsizex <- as.numeric(unlist(round((((-1 / 200) * (ncol(mathm))) + 1.01) * 6, 0)))
 
                     hmdf <- as.data.frame(matrix(data = 0, nrow = nrow(colData(currobj)), ncol = length(colcategories)))
                     cores <- vector("list", length = length(colcategories))
@@ -538,23 +545,37 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                                 RelabundBreakPtsLbls <- as.character(paste0(RelabundBreakPts, "%"))
                                 HMrelabundBreaks <- Pct2log2PPM(PctBreakPts)
                             } else {
-                                #Let us see what the distribution looks like to fit it to the colour spectrum
-                                #Transform to PPM
-                                quantprobs <- round(((2:(length(PctHmColours) - 1)) * (1 / length(PctHmColours))), 1)
-                                #quantprobs <- c(0.10, 0.20, 0.35, 0.50, 0.85, 0.95, 0.99)
-                                nonlogmat <- convert_matrix_log2(mat = mathm, transformation = "from_log2")
-                                #Transform to get quantiles
-                                countmatdistrib <- apply(nonlogmat, function (x) { quantile(x, probs = quantprobs) }, MARGIN = 2)
-                                #take median values of these
-                                medpoints <- rowMedians(countmatdistrib)
-                                PPMrelabundBreaks <- c(0, medpoints, max(nonlogmat))
-                                HMrelabundBreaks <- log2(PPMrelabundBreaks + 1)
-                                RelabundBreakPts <- PPMrelabundBreaks
-                                relabundscalename <- "Parts Per Million"
-                                RelabundBreakPtsLbls <- as.character(paste(RelabundBreakPts, "PPM"))
+                                if (assay_for_matrix == "GeneCounts"){
+                                    #Plot cells within heatmap as present/absent
+#                                    relabundheatmapCols <- colorRamp2(0:max(mathm), c("#000000", rainbow(max(mathm))))
+#                                    RelabundBreakPtsLbls <- as.character(0:max(mathm))
+#                                    HMrelabundBreaks <- 0:max(mathm)
+print(sort(unique(as.vector(mathm))))
+                                    relabundheatmapCols <- colorRamp2(sort(unique(as.vector(mathm))), c("#000000", rainbow( length(sort(unique(as.vector(mathm)))) - 1 )))
+                                    RelabundBreakPtsLbls <- as.character(sort(unique(as.vector(mathm))))
+                                    HMrelabundBreaks <- sort(unique(as.vector(mathm)))
+
+                                    relabundscalename <- "Number of genes"
+                                } else {
+                                    #matrix cells are BaseCounts in PPM
+                                    #Let us see what the distribution looks like to fit it to the colour spectrum
+                                    #Transform to PPM
+                                    quantprobs <- round(((2:(length(PctHmColours) - 1)) * (1 / length(PctHmColours))), 1)
+                                    #quantprobs <- c(0.10, 0.20, 0.35, 0.50, 0.85, 0.95, 0.99)
+                                    nonlogmat <- convert_matrix_log2(mat = mathm, transformation = "from_log2")
+                                    #Transform to get quantiles
+                                    countmatdistrib <- apply(nonlogmat, function (x) { quantile(x, probs = quantprobs) }, MARGIN = 2)
+                                    #take median values of these
+                                    medpoints <- rowMedians(countmatdistrib)
+                                    PPMrelabundBreaks <- c(0, medpoints, max(nonlogmat))
+                                    HMrelabundBreaks <- log2(PPMrelabundBreaks + 1)
+                                    RelabundBreakPts <- PPMrelabundBreaks
+                                    relabundscalename <- "Parts Per Million"
+                                    RelabundBreakPtsLbls <- as.character(paste(RelabundBreakPts, "PPM"))
+                                    relabundheatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
+                                }
                             }
                         }
-                        relabundheatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
                     } else {
                         #Plot cells within heatmap as present/absent
                         relabundheatmapCols <- colorRamp2(c(0, 1), c("blue4", "red"))
@@ -563,7 +584,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         relabundscalename <- "Pres/Abs"
                     }
 
-                    if (all(c((!is.null(textby)), (fontsizex > 0.5)))){
+                    if (all(c((!is.null(textby)), (fontsizex > 0.2)))){
                         hmdf_txt <- as.character(colData(currobj)[ , which(colnames(colData(currobj)) == textby[1])])
                         ha_column <- HeatmapAnnotation(which = "column", df = hmdf, col = cores, textby = anno_text(hmdf_txt, gp = gpar(fontsize = fontsizex, col = "black")), annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"))
                     } else {
