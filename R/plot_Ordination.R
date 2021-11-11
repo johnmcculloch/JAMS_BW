@@ -139,6 +139,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             permanovap <- NULL
             permanovaF <- NULL
         }
+
         flog.info("ordinating")
         if (algorithm == "tSNE"){
             #tSNE algorithm
@@ -219,7 +220,8 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         } else {
             dford$Alpha <- 1
         }
-flog.info("getting centroids")
+
+        flog.info("getting centroids")
         if (!(is.numeric(cats))){
             if (!is.null(samplesToHighlight)){
                 centroids <- aggregate(.~Comparison, data = dford[samplesToHighlight, c(paste0("PC", comp), "Comparison")], FUN = mean)
@@ -237,7 +239,8 @@ flog.info("getting centroids")
             centroidmeandf <- centroidmeandf[!duplicated(centroidmeandf[ , paste0("mean", colnames(dford)[1])]), ]
             rownames(centroidmeandf) <- centroidmeandf[ , "Comparison"]
         }
-flog.info("plotting")
+
+        flog.info("plotting")
         if (!is.null(samplesToHighlight)){
             aesthetic <- aes(x = get(colnames(dford)[1]), y = get(colnames(dford)[2]), alpha = Alpha)
         } else {
@@ -278,6 +281,7 @@ flog.info("plotting")
                 p <- p + scale_color_manual(values = groupcols)
             } else {
                 #Use colour table if available
+
                 if ("ctable" %in% names(metadata(currobj))){
                     discretenames <- sort(unique(dford$Colours))
                     colourshave <- discretenames[discretenames %in% rownames(metadata(currobj)$ctable)]
