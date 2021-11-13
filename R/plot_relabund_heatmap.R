@@ -535,6 +535,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                             relabundscalename <- "scaling"
                             RelabundBreakPtsLbls <- round(RelabundBreakPts, 2)
                             HMrelabundBreaks <- RelabundBreakPtsLbls
+                            relabundheatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
                         } else {
                             #This is the colour spectrum we are aiming to span
                             PctHmColours <- c("blue4", "blue", "slategray1", "khaki", "orange", "tomato", "red", "magenta2", "magenta4")
@@ -544,13 +545,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                                 relabundscalename <- "Relative Abundance (%)"
                                 RelabundBreakPtsLbls <- as.character(paste0(RelabundBreakPts, "%"))
                                 HMrelabundBreaks <- Pct2log2PPM(PctBreakPts)
+                                relabundheatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
                             } else {
                                 if (assay_for_matrix == "GeneCounts"){
-                                    #Plot cells within heatmap as present/absent
-#                                    relabundheatmapCols <- colorRamp2(0:max(mathm), c("#000000", rainbow(max(mathm))))
-#                                    RelabundBreakPtsLbls <- as.character(0:max(mathm))
-#                                    HMrelabundBreaks <- 0:max(mathm)
-print(sort(unique(as.vector(mathm))))
                                     relabundheatmapCols <- colorRamp2(sort(unique(as.vector(mathm))), c("#000000", rainbow( length(sort(unique(as.vector(mathm)))) - 1 )))
                                     RelabundBreakPtsLbls <- as.character(sort(unique(as.vector(mathm))))
                                     HMrelabundBreaks <- sort(unique(as.vector(mathm)))
