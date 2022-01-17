@@ -129,7 +129,7 @@ option_list <- list(
                 help = str_c("Tab limited text file for sample name substitution in the format: oldname[TAB]newname")),
 
     make_option(c("-x", "--substitutionspreadsheet"), default = NULL, action="store",
-                help = str_c("Tab limited xlsx spreadsheet for sample name substitution")),
+                help = str_c("xlsx spreadsheet for sample name substitution. The first column is for the original prefix and the second column is for the new sample name. The first row is for column names, which can be anything, like OriPrefix and Sample, for example. If there are sample names on the firstrow, they will be ignored.")),
 
     make_option(c("-i", "--maintain_Illumina_format"), default = defopt$maintain_Illumina_format,
                 action="store_true", help = str_c("Maintain filenames in Illumina format after prefix substitution, i.e. OldPrefix_S264_L003_R1_001.fastq.gz becomes NewPrefix_S264_L003_R1_001.fastq.gz. (default: FALSE. Illumina file OldPrefix_S264_L003_R1_001.fastq.gz becomes NewPrefix_R1.fastq.gz.) See https://support.illumina.com/help/BaseSpace_OLH_009008/Content/Source/Informatics/BS/NamingConvention_FASTQ-files-swBS.htm for naming convention")),
