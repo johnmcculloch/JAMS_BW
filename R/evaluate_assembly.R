@@ -75,9 +75,9 @@ evaluate_assembly <- function(opt = NULL){
     }
 
     #Load expected genome size data
-    JAMSMedian_Genome_Sizes_file <- file.path(opt$workingkrakendb, "JAMS_Median_Genome_Sizes.tsv")
+    JAMSMedian_Genome_Sizes_file <- file.path(opt$workingkrakendb, "JAMSMedian_Genome_Sizes.rda")
     if (file.exists(JAMSMedian_Genome_Sizes_file)){
-        JAMSMedian_Genome_Sizes <- read.table(file = JAMSMedian_Genome_Sizes_file, sep = "\t", fill = TRUE, stringsAsFactors = FALSE, quote = NULL, header = TRUE, colClasses = c("character", "numeric", "numeric", "numeric", "character"))
+        load(JAMSMedian_Genome_Sizes_file)
     } else {
         #Fall back on generic taxonomy table and warn user
         flog.info("JAMS Median Genome Sizes table not found. Falling back on generic JAMS Median Genome Sizes table.")
