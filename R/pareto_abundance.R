@@ -3,20 +3,20 @@
 #' Plots a pareto chart of the relative abundance of a taxon.
 #' @export
 
-pareto_abundance<-function(LKTdose=NULL, samplename=NULL, list.data=NULL, taxlevel=NULL, assemblystats=NULL, showcompletenesstext=TRUE, showcompletenessline=TRUE, showcontigline=FALSE, showparetocurve=TRUE, showpercentagetext=TRUE){
+pareto_abundance <- function(LKTdose = NULL, samplename = NULL, list.data = NULL, taxlevel = NULL, assemblystats = NULL, showcompletenesstext = TRUE, showcompletenessline = TRUE, showcontigline = FALSE, showparetocurve = TRUE, showpercentagetext = TRUE){
 
-    if(is.null(LKTdose)){
-        if(is.null(list.data)){
+    if (is.null(LKTdose)){
+        if (is.null(list.data)){
             stop("You must provide an LKTdose or list.data object as input.")
         }
-        if(is.null(samplename)){
+        if (is.null(samplename)){
             stop("Given a list.data object, you must provide the sample name for which you want to plot.")
         }
         LKTdose <- list.data[[paste(samplename, "LKTdose", sep="_")]]
         assemblystats <- list.data[[paste(samplename, "assemblystats", sep="_")]]
     }
 
-    taxlvlspresent<-colnames(LKTdose)[colnames(LKTdose) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
+    taxlvlspresent <- colnames(LKTdose)[colnames(LKTdose) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
 
     #Make a colour dictionary by phylum
     tt<-LKTdose[, taxlvlspresent]
@@ -107,7 +107,7 @@ pareto_abundance<-function(LKTdose=NULL, samplename=NULL, list.data=NULL, taxlev
     #Add genome size and num of 16Ss on top of each bar if applicable.
     if(!(is.null(assemblystats))){
         if(showcompletenesstext == TRUE){
-            plot.df <- plot.df + geom_text(data = dfdose, aes(x = lbls, y = Percentage, label = dfdose$Gencomp), vjust = 0, angle = 90, nudge_y = 6.3, size = rel(1.8))
+            plot.df <- plot.df + geom_text(data = dfdose, aes(x = lbls, y = Percentage, label = Gencomp), vjust = 0, angle = 90, nudge_y = 6.3, size = rel(1.8))
         }
         if(showcompletenessline == TRUE){
             plot.df <- plot.df + geom_path(aes(y = ProbNumGenomes*100, group=1, colour = "Expected Genome Completeness"))

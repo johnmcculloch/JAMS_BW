@@ -357,7 +357,7 @@ for (organisms in opt$wantedorganisms){
     flog.info(paste("There are", totalbugs, "to download."))
     flog.info(paste("Genome deposit categories for", organisms,"are:", paste0(paste(bugprop$Quality, bugprop$pct, "%"), collapse = ", ")))
 
-    #Rename output files for brevity
+    #Save image
     save.image(opt$projimage)
 
     bugstodownload$destfn <- file.path(opt$currbugdir, paste(bugstodownload$assembly_accession, "fna.gz", sep = "."))
@@ -604,7 +604,7 @@ find_lineage <- function(taxidint){
     if (length(norankpos) > 0){
         for (nr in norankpos){
             #find highest position within taxlevels
-            highestknown <- which(lineagedf$rank %in% validtaxlvls)[max(which((which(lineagedf$rank %in%   validtaxlvls)) < nr))]
+            highestknown <- which(lineagedf$rank %in% validtaxlvls)[max(which((which(lineagedf$rank %in% validtaxlvls)) < nr))]
              #find lowest position within taxlevels
             lowesttknown <- which(lineagedf$rank %in% validtaxlvls)[min(which((which(lineagedf$rank %in% validtaxlvls)) > nr))]
             if (!is.na(lowesttknown) && !is.na(highestknown)){
@@ -612,8 +612,8 @@ find_lineage <- function(taxidint){
                 lowestknowntaxlvl <- lineagedf$rank[lowesttknown]
                 numpositionstocorrect <- (which(lineagedf$rank == lowestknowntaxlvl) - which(lineagedf$rank == highestknowntaxlvl)) - 1
                 #get names of these positions
-                namestosub <- validtaxlvls[(1:numpositionstocorrect)+(which(validtaxlvls == highestknowntaxlvl))]
-                lineagedf$rank[nr+((1:numpositionstocorrect)-1)] <- namestosub
+                namestosub <- validtaxlvls[(1:numpositionstocorrect) + (which(validtaxlvls == highestknowntaxlvl))]
+                lineagedf$rank[nr + ((1:numpositionstocorrect)-1)] <- namestosub
             }
         }
     }
@@ -641,7 +641,7 @@ find_lineage <- function(taxidint){
     colnames(fulllineage) <- c("taxid", validtaxlvls)
 
     for (colm in validtaxlvls){
-        fulllineage[,colm][is.na(fulllineage[, colm])] <- paste0(validtaxtags[which(validtaxlvls == colm)], "Unclassified")
+        fulllineage[ , colm][is.na(fulllineage[ , colm])] <- paste0(validtaxtags[which(validtaxlvls == colm)], "Unclassified")
     }
 
     fulllineage <- subset(fulllineage, taxid != "none")
@@ -765,15 +765,18 @@ for (lvl in 1:(which(finaltablevalidtaxlvls == "species"))){
     flog.info(paste("Finding which Last Known Taxa are at the", finaltablevalidtaxlvls[lvl], "level."))
     JAMStaxtable$LKT[which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvl]] %in% paste0(finaltablevalidtaxtags[lvl], dunno)))] <- paste("LKT", JAMStaxtable[which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvl]] %in% paste0(finaltablevalidtaxtags[lvl], dunno))), finaltablevalidtaxlvls[lvl]], sep = "__")
 }
+
+
 #use method of clipping up to two words at species to get Genus plus species, but only for bacteria. This is a temporary measure for NCBIs annoying habit of overinflating desposits at the species level.
-bacterialrows <- which(JAMStaxtable$superkingdom == "d__Bacteria")
-lvlnum <- which(finaltablevalidtaxlvls == "species")
-speciesLKTrows <- which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvlnum]] %in% paste0(finaltablevalidtaxtags[lvlnum], dunno)))
+#bacterialrows <- which(JAMStaxtable$superkingdom == "d__Bacteria")
+#lvlnum <- which(finaltablevalidtaxlvls == "species")
+#speciesLKTrows <- which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvlnum]] %in% paste0(finaltablevalidtaxtags[lvlnum], dunno)))
 #Find which species LKT rows are within the bacterial domain
-rowstocorrect <- speciesLKTrows[(speciesLKTrows %in% bacterialrows)]
-JAMStaxtable$LKT[rowstocorrect] <- sapply(1:length(rowstocorrect), function (n) { paste0(sapply(strsplit(JAMStaxtable$LKT[rowstocorrect[n]], split = '_', fixed = TRUE), function(x) (x[1:6])), collapse = "_") })
+#rowstocorrect <- speciesLKTrows[(speciesLKTrows %in% bacterialrows)]
+#JAMStaxtable$LKT[rowstocorrect] <- sapply(1:length(rowstocorrect), function (n) { #paste0(sapply(strsplit(JAMStaxtable$LKT[rowstocorrect[n]], split = '_', fixed = TRUE), function(x) (x[1:6])), collapse = "_") })
 
 colnames(JAMStaxtable) <- c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
+rownames(JAMStaxtable) <- JAMStaxtable$Taxid
 
 #Export to system
 setwd(opt$k2db)
@@ -809,7 +812,7 @@ if (opt$defer_building_database == FALSE){
     flog.warn("As requested, building of database will be deferred. To complete the process, please run the following command or launch the Build_JAMSk2db.sh script on a system with appropriate RAM resources.")
     cat(buildcmd)
     save.image(opt$projimage)
-    cat('#!/bin/bash', file = "Build_JAMSk2db.sh")
+    cat('#!/bin/bash', file = "Build_JAMSk2db.sh", sep = "\n")
     cat(buildcmd, file = "Build_JAMSk2db.sh", append = TRUE)
 }
 
