@@ -16,7 +16,7 @@ kraken_classify_taxonomy <- function(opt = NULL, fastafile = NULL, confidence = 
     k2out[] <- lapply(k2out, as.character)
     JAMStaxtablefile <- file.path(opt$workingkrakendb, "JAMStaxtable.rda")
     if (file.exists(JAMStaxtablefile)){
-        JAMStaxtable <- load(JAMStaxtablefile)
+        load(JAMStaxtablefile)
     } else {
         #Fall back on generic taxonomy table and warn user
         flog.info("JAMS taxonomy table not found. Falling back on generic JAMS taxtable.")
