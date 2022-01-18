@@ -14,9 +14,9 @@ kraken_classify_taxonomy <- function(opt = NULL, fastafile = NULL, confidence = 
     k2out <- plyr::ldply(kraken2taxid, rbind)
     colnames(k2out) <- c("ClassFlag", "Sequence", "Taxid", "Length", "kmers")
     k2out[] <- lapply(k2out, as.character)
-    JAMStaxtablefile <- file.path(opt$workingkrakendb, "JAMS_taxtable.tsv")
+    JAMStaxtablefile <- file.path(opt$workingkrakendb, "JAMStaxtable.rda")
     if (file.exists(JAMStaxtablefile)){
-        JAMStaxtable <- read.table(file = JAMStaxtablefile, sep = "\t", fill = TRUE, stringsAsFactors = FALSE, quote = NULL, header = TRUE)
+        JAMStaxtable <- load(JAMStaxtablefile)
     } else {
         #Fall back on generic taxonomy table and warn user
         flog.info("JAMS taxonomy table not found. Falling back on generic JAMS taxtable.")
