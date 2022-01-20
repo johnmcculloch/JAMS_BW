@@ -79,9 +79,13 @@ evaluate_assembly <- function(opt = NULL){
     if (file.exists(JAMSMedian_Genome_Sizes_file)){
         load(JAMSMedian_Genome_Sizes_file)
     } else {
-        #Fall back on generic taxonomy table and warn user
-        flog.info("JAMS Median Genome Sizes table not found. Falling back on generic JAMS Median Genome Sizes table.")
-        data(JAMSMedian_Genome_Sizes)
+        if (file.exists(file.path(opt$workingkrakendb, "JAMS_Median_Genome_Sizes.tsv"))){
+            JAMSMedian_Genome_Sizes <- fread(file.path(opt$workingkrakendb, "JAMS_Median_Genome_Sizes.tsv"), data.table = FALSE, header = TRUE, stringsAsFactors = FALSE)
+        } else {
+            #Fall back on generic taxonomy table and warn user
+            flog.info("JAMS Median Genome Sizes table not found. Falling back on generic JAMS Median Genome Sizes table.")
+            data(JAMSMedian_Genome_Sizes)
+        }
     }
     rownames(JAMSMedian_Genome_Sizes) <- JAMSMedian_Genome_Sizes$Taxon
 
