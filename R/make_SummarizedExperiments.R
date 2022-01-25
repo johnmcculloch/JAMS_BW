@@ -343,14 +343,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         }
 
         if (analysis == "resfinder"){
-            data(resfinderlookup)
-            ftt <- suppressMessages(left_join(ftt, resfinderlookup))
+            ftt <- suppressMessages(left_join(ftt, blast_lookup$resfinder_lookup))
             ftt[] <- lapply(ftt, as.character)
-            #Fill up reasonably with data which might be empty
-            ftt[is.na(ftt[])] <- "S"
-            for (colm in c("Description", "Class", "ResistancePhenotype", "PMID", "Mechanism")){
-                ftt[, colm][which(ftt[, colm] == "S")] <- "none"
-            }
             rownames(ftt) <- ftt$Accession
             ftt$Description <- ftt$Class
         }
