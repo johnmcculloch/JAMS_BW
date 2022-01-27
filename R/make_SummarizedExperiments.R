@@ -250,7 +250,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
 
                     #If analysis contains several accessions per gene, repeat rows for each kind
                     #Also, make it backwards compatible with older jamsfiles
-                    if (all(c((analysis %in% colnames(tempanaldata)), (analysis %in% c("GO", "MetaCyc"))))){
+                    if (analysis %in% colnames(tempanaldata)) {
                         #flog.info("Analysis contains several accessions per gene, splitting to get number of genes per accession.")
                         tempanaldata <- tidyr::separate_rows(tempanaldata, all_of(analysis), sep = fixed("\\|"))
                     }
