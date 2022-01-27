@@ -92,7 +92,7 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, f
         }
 
         if (threshold > 0) {
-            new_counts <- countmat[rowMeans(countmat) > threshold, ]
+            new_counts <- countmat[rowMeans(countmat) > threshold,, drop=FALSE ]
             misc_counts <- total_units - colSums(new_counts)
             new_counts <- rbind(new_counts, Misc_Low_Abundance = misc_counts)
         } else {
