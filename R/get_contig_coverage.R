@@ -174,18 +174,22 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
             coveragebamfile <- sortedbamfile
         }
 
+        covdflist <- list()
+
         #Calculating contig base coverage
         flog.info("Calculating base coverage depth in contigs.")
         coverageargs <- c("-ibam", coveragebamfile, "-d", ">", "perbasecoverage.map")
         system2('genomeCoverageBed', args = coverageargs, stdout = TRUE, stderr = TRUE)
-        contigcoverage <- fread(file = "perbasecoverage.map", sep = "\t", header = FALSE, nThread = opt$threads)
-        colnames(contigcoverage) <- c("Contig", "Position", "Depth")
-        contigcoverage$Position <- as.numeric(contigcoverage$Position)
-        contigcoverage$Depth <- as.numeric(contigcoverage$Depth)
-        contigcoverage$Contig <- as.character(contigcoverage$Contig)
-        contigdose <- aggregate(Depth ~ Contig, FUN = sum, data = contigcoverage)
-        colnames(contigdose)[2] <- "NumBases"
-        opt$contigsdata <- left_join(opt$contigsdata, contigdose)
+        covdflist$contigcoverage <- fread(file = "perbasecoverage.map", sep = "\t", header = FALSE, nThread = opt$threads)
+        colnames(covdflist$contigcoverage) <- c("Feature", "Position", "Depth")
+        covdflist$contigcoverage <- covdflist$contigcoverage[ , c("Feature", "Depth")]
+
+        #contigcoverage$Position <- as.numeric(contigcoverage$Position)
+        #contigcoverage$Depth <- as.numeric(contigcoverage$Depth)
+        #contigcoverage$Contig <- as.character(contigcoverage$Contig)
+#        contigdose <- aggregate(Depth ~ Contig, FUN = sum, data = contigcoverage)
+#        colnames(contigdose)[2] <- "NumBases"
+#        opt$contigsdata <- left_join(opt$contigsdata, contigdose)
 
         #Calculating feature coverage
         flog.info("Calculating coverage depth for features.")
@@ -194,16 +198,34 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
         system(bedcmd)
         bedfeatargs <- c("coverage", "-hist", "-sorted", "-b", sortedbed, "-a", opt$bedfile, ">", "featuredep.tsv")
         system2('bedtools', args = bedfeatargs, stdout = TRUE, stderr = FALSE)
-        featuredep <- fread(file = "featuredep.tsv", sep = "\t", stringsAsFactors = FALSE, fill = TRUE, nThread = opt$threads)
-        colnames(featuredep) <- c("Contig", "Start", "End", "Feature", "MapQual", "Strand", "Annotby", "FeatType", "Spin", "Annot", "Depth", "PartNumBasesofFeature", "LenghtofFeat", "PctofAatdep")
-        featuredep <- subset(featuredep, FeatType %in% c("CDS", "tRNA",  "rRNA",  "tmRNA"))
-        featuredep$PartDepthofFeature <- (featuredep$Depth * featuredep$PartNumBasesofFeature)
-        featuredose <- aggregate(PartDepthofFeature ~ Feature, FUN = sum, data = featuredep)
-        colnames(featuredose)[2] <- "NumBases"
-        opt$featuredata <- left_join(opt$featuredata, featuredose)
+        covdflist$featuredep <- fread(file = "featuredep.tsv", sep = "\t", stringsAsFactors = FALSE, fill = TRUE, nThread = opt$threads)
+        colnames(covdflist$featuredep) <- c("Contig", "Start", "End", "Feature", "MapQual", "Strand", "Annotby", "FeatType", "Spin", "Annot", "Depth", "PartNumBasesofFeature", "LengthofFeat", "PctofAatdep")
+        covdflist$featuredep <- subset(covdflist$featuredep, FeatType %in% c("CDS", "tRNA",  "rRNA",  "tmRNA"))
+        covdflist$featuredep$PartDepthofFeature <- (covdflist$featuredep$Depth * covdflist$featuredep$PartNumBasesofFeature)
+        covdflist$featuredep <- covdflist$featuredep[ , c("Feature", "PartDepthofFeature")]
+        colnames(covdflist$featuredep) <- c("Feature", "Depth")
 
-        #Shrink contig perbase coverage for future use.
-        opt$contigperbasecoverage <- shrink_perbasecoverage(perbasecoverage = contigcoverage, percentage = 2)
+        #Aggregate in parallel
+        sum_up_bases <- function(df = NULL){
+            aggregate_df <- df[ , list(NumBases = sum(Depth)), by = "Feature"]
+
+            return(aggregate_df)
+        }
+
+        if (opt$threads > 3){
+            aggregate_df_list <- mclapply(names(covdflist), function(x) { sum_up_bases(df = covdflist[[x]])}, mc.cores = 4)
+        } else {
+            aggregate_df_list <- lapply(names(covdflist), function(x) { sum_up_bases(df = covdflist[[x]])})
+        }
+
+        names(aggregate_df_list) <- names(covdflist)
+        colnames(aggregate_df_list$contigcoverage) <- c("Contig", "NumBases")
+        opt$contigsdata <- left_join(opt$contigsdata, as.data.frame(aggregate_df_list$contigcoverage), by = "Contig")
+        opt$featuredata <- left_join(opt$featuredata, as.data.frame(aggregate_df_list$featuredep), by = "Feature")
+        opt$contigsdata$NumBases <- as.numeric(opt$contigsdata$NumBases)
+        opt$featuredata$NumBases <- as.numeric(opt$featuredata$NumBases)
+
+        #opt$contigperbasecoverage <- shrink_perbasecoverage(perbasecoverage = contigcoverage, percentage = 2)
         #Consolidate LKT dose
         if (opt$classifyunassembled == TRUE){
             #Eliminate redundancy and get the dose
@@ -243,6 +265,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
     #Compute dose of Last Known Taxa, but maintain kraken1 backwards conmpatibility
     flog.info("Computing dose of Last Known Taxa.")
     totaldose <- aggregate(NumBases ~ LKT, FUN = sum, data = tmpalldata)
+
     tmpalldata$NumBases <- NULL
     tmpalldata$Sequence <- NULL
     tmpalldata$Taxid <- NULL
@@ -250,7 +273,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
     tmpalldata$IS1 <- NULL #Cannot left join to something which is more discriminatory
     #de-duplicate up to LKT. Amazingly, there are some alternative taxonomy lineages for the same species... Crikey.
     tmpalldata <- tmpalldata[which(!(duplicated(tmpalldata$LKT))), ]
-    totaldose <- left_join(totaldose, tmpalldata)
+    totaldose <- left_join(totaldose, tmpalldata, by = "LKT")
     totaldose <- left_join(totaldose, fromCtgPct, by = "LKT")
     totaldose$PctFromCtg[which(is.na(totaldose$PctFromCtg))] <- 0 #Just being sure
     opt$LKTdose <- totaldose[ , c((validtaxlvls[!(validtaxlvls %in% "IS1")]), "NumBases", "PctFromCtg")]

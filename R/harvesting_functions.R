@@ -98,49 +98,41 @@ get_feature_to_blast_result_table <- function(opt = NULL, blastanalysis = NULL){
 
 get_feature_to_accession_table <- function(opt = NULL, iproanalysis = NULL){
 
-        flog.info(paste("Adding", iproanalysis, "signatures to featuredata."))
-        #subset ipro to contain only applicable analysis
-        if (!(iproanalysis %in% c("Interpro", "GO", "MetaCyc"))){
-            iprointerest <- subset(opt$interproscanoutput, Analysis == iproanalysis)
-            accessioncol <- "Accession"
-            descriptioncol <- "Description"
-        } else if (iproanalysis == "MetaCyc"){
-            iprointerest <- subset(opt$interproscanoutput, Pathways != "none")
-            accessioncol <- "Accession"
-            descriptioncol <- "Description"
-        } else {
-            iprointerest <- subset(opt$interproscanoutput, IproAcc != "none")
-            accessioncol <- "IproAcc"
-            descriptioncol <- "IproDesc"
-        }
+    flog.info(paste("Adding", iproanalysis, "signatures to featuredata."))
+    if (iproanalysis == "GO"){
+        #get rid of information without GO terms
+        iprointerest <- subset(opt$interproscanoutput, !(GOterms %in% c("none", "", "-")))[ , c("Feature", "GOterms")]
+        #Make non-redundant data frame
+        iprointerest <- tidyr::separate_rows(iprointerest, all_of("GOterms"), sep = fixed("\\|"))
+        feat2acc <- iprointerest %>% group_by(Feature) %>% summarize(Accession = str_c(GOterms, collapse = "|"))
+        feat2acc <- as.data.frame(feat2acc)
 
-        if (iproanalysis == "GO"){
-            #get rid of information without GO terms
-            iprointerest <- subset(iprointerest, GOterms != "none")
-            #If looking for GO terms, split up accessions in GOterms column, and get sorted, non-reundant list.
-            #featsIwant <- sapply(unique(iprointerest[ , "Feature"]), function (x) { paste0(sort(unique(unlist(strsplit(iprointerest[which(iprointerest[ , "Feature"] == x), "GOterms"], "|", fixed = TRUE)))), collapse = "|")} )
-            #feat2acc <- data.frame(Feature = names(featsIwant), Accession = unname(featsIwant), stringsAsFactors = FALSE)
-            iprointerest <- tidyr::separate_rows(iprointerest[ , c("Feature", "GOterms")], all_of("GOterms"), sep = fixed("\\|"))
-            feat2acc <- iprointerest %>% group_by(Feature) %>% summarize(Accession = str_c(GOterms, collapse = "|"))
-            feat2acc <- as.data.frame(feat2acc)
-
-        } else if (iproanalysis == "MetaCyc"){
-            #get rid of information without Pathways
-            iprointerest <- subset(iprointerest, Pathways != "")
-            #If looking for pathway terms, split up annotations in Pathways column, and get sorted, non-reundant list.
-            iprointerest <- tidyr::separate_rows(iprointerest[ , c("Feature", "Pathways")], all_of("Pathways"), sep = fixed("\\|"))
-            iprointerest <- iprointerest[grep(iproanalysis, iprointerest$Pathways), ]
-            iprointerest$Pathways <- gsub("MetaCyc: ", "", iprointerest$Pathways)
-            feat2acc <- iprointerest %>% group_by(Feature) %>% summarize(Accession = str_c(Pathways, collapse = "|"))
-            feat2acc <- as.data.frame(feat2acc)
-        } else {
-
-            featsIwant <- sapply(unique(iprointerest[, "Feature"]), function (x) { paste0(sort(unique(iprointerest[which(iprointerest[,"Feature"] == x), accessioncol])), collapse = "|")} )
-            feat2acc <- data.frame(Feature = names(featsIwant), Accession = unname(featsIwant), stringsAsFactors = FALSE)
-        }
+    } else if (iproanalysis == "MetaCyc"){
+        #get rid of information without Pathways terms
+        iprointerest <- subset(opt$interproscanoutput, !(Pathways %in% c("none", "", "-")))[ , c("Feature", "Pathways")]
+        #Make non-redundant data frame
+        iprointerest <- tidyr::separate_rows(iprointerest, all_of("Pathways"), sep = fixed("\\|"))
+        iprointerest <- iprointerest[grep("MetaCyc", iprointerest$Pathways), ]
+        iprointerest$Pathways <- gsub("MetaCyc: ", "", iprointerest$Pathways)
+        feat2acc <- iprointerest %>% group_by(Feature) %>% summarize(Accession = str_c(Pathways, collapse = "|"))
+        feat2acc <- as.data.frame(feat2acc)
+    } else if (iproanalysis == "Interpro"){
+        iprointerest <- subset(opt$interproscanoutput, !(IproAcc %in% c("none", "", "-")))[ , c("Feature", "IproAcc")]
+        iprointerest <- tidyr::separate_rows(iprointerest, all_of("IproAcc"), sep = fixed("\\|"))
+        feat2acc <- iprointerest %>% group_by(Feature) %>% summarize(Accession = str_c(IproAcc, collapse = "|"))
+        feat2acc <- as.data.frame(feat2acc)
+    } else {
+        #Get appropriate analysis space and get rid of information without Accession terms
+        iprointerest <- subset(opt$interproscanoutput, Analysis == iproanalysis)
+        iprointerest <- subset(iprointerest, !(Accession %in% c("none", "", "-")))[ , c("Feature", "Accession")]
+        #Make non-redundant data frame
+        iprointerest <- tidyr::separate_rows(iprointerest, all_of("Accession"), sep = fixed("\\|"))
+        feat2acc <- iprointerest %>% group_by(Feature) %>% summarize(Accession = str_c(Accession, collapse = "|"))
+        feat2acc <- as.data.frame(feat2acc)
+    }
 
     #Remove any non-informative information
-    feat2acc <- feat2acc[which(!(feat2acc$Accession %in% c("none", ""))), ]
+    feat2acc <- feat2acc[which(!(feat2acc$Accession %in% c("none", "", "-"))), ]
     colnames(feat2acc)[2] <- iproanalysis
 
     return(feat2acc)
@@ -326,11 +318,14 @@ fix_interproscanoutput <- function(opt = NULL, check_ipro_jobs_status = TRUE){
         flog.info("Harvesting and integrating Interproscan data.")
 
         interprotsvs <- file.path(opt$iprodir, list.files(path = opt$iprodir, pattern=".tsv"))
+        appropriatenumcores <- max(1 , (min((opt$threads - 2), length(interprotsvs))))
+
         #load tsvs into a single object in memory
         readipro <- function(x){
             fread(file=x, sep="\t", header=FALSE, quote="", fill=TRUE, colClasses = "character", col.names=c("Feature","MD5","AALength","Analysis","Accession","Description","Start","Stop","Score","Status","Date","IproAcc","IproDesc","GOterms","Pathways"))
         }
-        alliprotsvs <- lapply(interprotsvs, readipro)
+
+        alliprotsvs <- mclapply(interprotsvs, readipro, mc.cores = appropriatenumcores)
         ipro <- plyr::ldply(alliprotsvs, rbind)
 
         #Clean-up datafrane
