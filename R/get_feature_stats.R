@@ -7,6 +7,9 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
 
     flog.info("Calculating Tetranucleotide frequencies for all features")
 
+    #Cap the number of CPUs to 32 because of memory issues
+    appropriatenumcores <-  min(max(1, (opt$threads - 2)), 32)
+
     get_TNF <- function(sequence = NULL){
 
         TNFdf <- as.data.frame(Biostrings::oligonucleotideFrequency(Biostrings::DNAString(paste(as.character(unlist(sequence)), collapse = "")), 4), stringsAsFactors = FALSE)
@@ -17,29 +20,34 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
         return(TNFdf)
     }
 
-    TNF_list_features <- lapply(1:length(opt$genes), function (x) { get_TNF(opt$genes[[x]]) } )
-    names(TNF_list_features) <- names(opt$genes)
-
+    TNF_list_features <- mclapply(1:length(opt$genes), function (x) { get_TNF(opt$genes[[x]]) }, mc.cores = appropriatenumcores)
     TNF_features <- plyr::ldply(TNF_list_features, rbind)
     colnames(TNF_features)[1] <- "Feature"
-
-    TNF_features <- as.data.frame(tidyr::pivot_wider(data = TNF_features, names_from = "Feature", values_from = "Freq", values_fill = 0))
-    rownames(TNF_features) <- TNF_features$Tetranucleotide
+    TNF_features <- as.data.table(TNF_features)
+    TNF_features <- tidyr::pivot_wider(data = TNF_features, names_from = "Feature", values_from = "Freq", values_fill = 0)
+    Tetranucleotides <- TNF_features$Tetranucleotide
     TNF_features$Tetranucleotide <- NULL
-    TNF_features <- t(TNF_features)
+    feature_names <- colnames(TNF_features)
+    TNF_features <- transpose(TNF_features)
+    TNF_features <- as.data.frame(TNF_features)
+    colnames(TNF_features) <- Tetranucleotides
+    rownames(TNF_features) <- feature_names
     opt$TNF_features <- as.data.frame(TNF_features)
 
     flog.info("Calculating Tetranucleotide frequencies for all contigs")
-    TNF_list_contigs <- lapply(1:length(opt$NHcontigs_sequence), function (x) { get_TNF(opt$NHcontigs_sequence[[x]]) } )
+    TNF_list_contigs <- mclapply(1:length(opt$NHcontigs_sequence), function (x) { get_TNF(opt$NHcontigs_sequence[[x]]) }, mc.cores = appropriatenumcores)
     names(TNF_list_contigs) <- names(opt$NHcontigs_sequence)
-
     TNF_contigs <- plyr::ldply(TNF_list_contigs, rbind)
     colnames(TNF_contigs)[1] <- "Contig"
-
-    TNF_contigs <- as.data.frame(pivot_wider(data = TNF_contigs, names_from = "Contig", values_from = "Freq", values_fill = 0))
-    rownames(TNF_contigs) <- TNF_contigs$Tetranucleotide
+    TNF_contigs <- as.data.table(TNF_contigs)
+    TNF_contigs <- pivot_wider(data = TNF_contigs, names_from = "Contig", values_from = "Freq", values_fill = 0)
+    Tetranucleotides <- TNF_contigs$Tetranucleotide
     TNF_contigs$Tetranucleotide <- NULL
-    TNF_contigs <- t(TNF_contigs)
+    contig_names <- colnames(TNF_contigs)
+    TNF_contigs <- transpose(TNF_contigs)
+    TNF_contigs <- as.data.frame(TNF_contigs)
+    colnames(TNF_contigs) <- Tetranucleotides
+    rownames(TNF_contigs) <- contig_names
     opt$TNF_contigs <- as.data.frame(TNF_contigs)
 
     flog.info("Calculating codon usage frequencies for all features")
