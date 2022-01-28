@@ -118,8 +118,12 @@ get_feature_to_accession_table <- function(opt = NULL, iproanalysis = NULL){
             #get rid of information without GO terms
             iprointerest <- subset(iprointerest, GOterms != "none")
             #If looking for GO terms, split up accessions in GOterms column, and get sorted, non-reundant list.
-            featsIwant <- sapply(unique(iprointerest[ , "Feature"]), function (x) { paste0(sort(unique(unlist(strsplit(iprointerest[which(iprointerest[ , "Feature"] == x), "GOterms"], "|", fixed = TRUE)))), collapse = "|")} )
-            feat2acc <- data.frame(Feature = names(featsIwant), Accession = unname(featsIwant), stringsAsFactors = FALSE)
+            #featsIwant <- sapply(unique(iprointerest[ , "Feature"]), function (x) { paste0(sort(unique(unlist(strsplit(iprointerest[which(iprointerest[ , "Feature"] == x), "GOterms"], "|", fixed = TRUE)))), collapse = "|")} )
+            #feat2acc <- data.frame(Feature = names(featsIwant), Accession = unname(featsIwant), stringsAsFactors = FALSE)
+            iprointerest <- tidyr::separate_rows(iprointerest[ , c("Feature", "GOterms")], all_of("GOterms"), sep = fixed("\\|"))
+            feat2acc <- iprointerest %>% group_by(Feature) %>% summarize(Accession = str_c(GOterms, collapse = "|"))
+            feat2acc <- as.data.frame(feat2acc)
+
         } else if (iproanalysis == "MetaCyc"){
             #get rid of information without Pathways
             iprointerest <- subset(iprointerest, Pathways != "")
@@ -130,6 +134,7 @@ get_feature_to_accession_table <- function(opt = NULL, iproanalysis = NULL){
             feat2acc <- iprointerest %>% group_by(Feature) %>% summarize(Accession = str_c(Pathways, collapse = "|"))
             feat2acc <- as.data.frame(feat2acc)
         } else {
+
             featsIwant <- sapply(unique(iprointerest[, "Feature"]), function (x) { paste0(sort(unique(iprointerest[which(iprointerest[,"Feature"] == x), accessioncol])), collapse = "|")} )
             feat2acc <- data.frame(Feature = names(featsIwant), Accession = unname(featsIwant), stringsAsFactors = FALSE)
         }
