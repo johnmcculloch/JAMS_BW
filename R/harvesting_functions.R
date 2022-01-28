@@ -323,7 +323,7 @@ fix_interproscanoutput <- function(opt = NULL, check_ipro_jobs_status = TRUE){
         interprotsvs <- file.path(opt$iprodir, list.files(path = opt$iprodir, pattern=".tsv"))
         #load tsvs into a single object in memory
         readipro <- function(x){
-            read.table(file=x, sep="\t", header=FALSE, quote="", skipNul=FALSE, fill=TRUE, colClasses = "character", col.names=c("Feature","MD5","AALength","Analysis","Accession","Description","Start","Stop","Score","Status","Date","IproAcc","IproDesc","GOterms","Pathways"))
+            fread(file=x, sep="\t", header=FALSE, quote="", fill=TRUE, colClasses = "character", col.names=c("Feature","MD5","AALength","Analysis","Accession","Description","Start","Stop","Score","Status","Date","IproAcc","IproDesc","GOterms","Pathways"))
         }
         alliprotsvs <- lapply(interprotsvs, readipro)
         ipro <- plyr::ldply(alliprotsvs, rbind)
