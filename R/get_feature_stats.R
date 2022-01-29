@@ -7,8 +7,7 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
 
     flog.info("Calculating Tetranucleotide frequencies for all features")
 
-    #Cap the number of CPUs to 32 because of memory issues
-    appropriatenumcores <-  min(max(1, (opt$threads - 2)), 32)
+    appropriatenumcores <-  min(max(1, (opt$threads - 2)), 56)
 
     get_TNF <- function(sequence = NULL){
 
@@ -21,6 +20,7 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
     }
 
     TNF_list_features <- mclapply(1:length(opt$genes), function (x) { get_TNF(opt$genes[[x]]) }, mc.cores = appropriatenumcores)
+    names(TNF_list_features) <- names(opt$genes)
     TNF_features <- plyr::ldply(TNF_list_features, rbind)
     colnames(TNF_features)[1] <- "Feature"
     TNF_features <- as.data.table(TNF_features)
@@ -52,7 +52,7 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
 
     flog.info("Calculating codon usage frequencies for all features")
     ucolist <- list()
-    ucolist <- lapply(1:length(opt$genes), function (x) { uco(opt$genes[[x]], index = ucoindex, NA.rscu = 0) })
+    ucolist <- mclapply(1:length(opt$genes), function (x) { uco(opt$genes[[x]], index = ucoindex, NA.rscu = 0) }, mc.cores = appropriatenumcores)
     names(ucolist) <- names(opt$genes)
 
     ucobias <- plyr::ldply(ucolist, rbind)
