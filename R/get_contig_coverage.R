@@ -184,13 +184,6 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
         colnames(covdflist$contigcoverage) <- c("Feature", "Position", "Depth")
         covdflist$contigcoverage <- covdflist$contigcoverage[ , c("Feature", "Depth")]
 
-        #contigcoverage$Position <- as.numeric(contigcoverage$Position)
-        #contigcoverage$Depth <- as.numeric(contigcoverage$Depth)
-        #contigcoverage$Contig <- as.character(contigcoverage$Contig)
-#        contigdose <- aggregate(Depth ~ Contig, FUN = sum, data = contigcoverage)
-#        colnames(contigdose)[2] <- "NumBases"
-#        opt$contigsdata <- left_join(opt$contigsdata, contigdose)
-
         #Calculating feature coverage
         flog.info("Calculating coverage depth for features.")
         sortedbed <- paste0(opt$prefix, ".sorted.markdup.sorted.bed")
