@@ -7,7 +7,8 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
 
     flog.info("Calculating Tetranucleotide frequencies for all features")
 
-    appropriatenumcores <-  min(max(1, (opt$threads - 2)), 56)
+    #Cap threads to 32 because of memory issues
+    appropriatenumcores <-  min(max(1, (opt$threads - 2)), 32)
 
     get_TNF <- function(sequence = NULL){
 
