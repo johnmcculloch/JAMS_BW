@@ -52,7 +52,7 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq"){
 
     flog.info("Calculating codon usage frequencies for all features")
     ucolist <- list()
-    ucolist <- mclapply(1:length(opt$genes), function (x) { uco(opt$genes[[x]], index = ucoindex, NA.rscu = 0) }, mc.cores = appropriatenumcores)
+    ucolist <- lapply(1:length(opt$genes), function (x) { uco(opt$genes[[x]], index = ucoindex, NA.rscu = 0) })
     names(ucolist) <- names(opt$genes)
 
     ucobias <- plyr::ldply(ucolist, rbind)
