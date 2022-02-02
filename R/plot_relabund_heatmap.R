@@ -477,7 +477,8 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     ht1fs <- 10
 
                     #Plot the heatmap
-                    fontcoefficient <- (-0.04 * nrow(mathm)) + 7.5
+                    #fontcoefficient <- (-0.04 * nrow(mathm)) + 7.5
+                    fontcoefficient <- (-0.05 * nrow(mathm)) + 7.5
                     fontsizey <- round((((-1 / 200) * (nrow(mathm))) + 1.01 * fontcoefficient), 2)
                     fontsizex <- as.numeric(unlist(round((((-1 / 200) * (ncol(mathm))) + 1.01) * fontcoefficient, 0)))
 
