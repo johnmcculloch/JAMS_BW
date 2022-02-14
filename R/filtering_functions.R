@@ -58,6 +58,7 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
         }
 
         countmat2 <- sapply(1:ncol(countmat), function(x){ getPPM(Sample = colnames(countmat)[x])} )
+
         colnames(countmat2) <- colnames(countmat)
         #Round to integer
         for (c in 1:ncol(countmat2)){
