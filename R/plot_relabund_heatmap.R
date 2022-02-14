@@ -149,6 +149,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                 feattable$Feature <- paste(feattable$Accession, feattable$Description, sep = "-")
                 rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]
             }
+
             matrixSamples <- colnames(countmat)
             matrixRows <- rownames(countmat)
 
