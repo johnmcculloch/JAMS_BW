@@ -115,6 +115,7 @@ defopt$testdependencies <- FALSE
 defopt$threads <- detectBatchCPUs()
 defopt$krakenconfidencescore <- 0.000005
 defopt$classifyunassembled <- FALSE
+defopt$bin_contigs_with_metabat <- FALSE
 
 option_list <- list(
     make_option(c("-f", "--R1"), action="store", default=NULL,
@@ -184,6 +185,10 @@ option_list <- list(
     make_option(c("-q", "--classifyunassembled"), default=defopt$classifyunassembled,
                 action="store_true",
                 help = str_c("classify unassembled reads by kraken2 and include counts in taxonomic abundance. Irrelevant for isolates. default: ", defopt$classifyunassembled, ")")),
+
+    make_option(c("-m", "--bin_contigs_with_metabat"), default=defopt$bin_contigs_with_metabat,
+                action="store_true",
+                help = str_c("bin contigs into Metagenome Assembled Genomes using MetaBAT2: ", defopt$classifyunassembled, ")")),
 
     make_option(c("-x", "--threads"), default=defopt$threads, action="store",
                 type="numeric",
