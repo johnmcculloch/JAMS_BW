@@ -12,9 +12,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
 
     #Fix metadata classes and remove classes to ignore, if present
     if (hmtype %in% c("comparative", "PA")){
-        variables_to_fix <- c(compareby, subsetby)
+        variables_to_fix <- c(compareby, subsetby, ordercolsby)
     } else {
-        variables_to_fix <- subsetby
+        variables_to_fix <- c(subsetby, ordercolsby)
     }
 
     #Vet experiment object
@@ -731,7 +731,11 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
 
                     #Determine column order explicitly if required and draw heatmap
                     if (!is.null(ordercolsby)) {
-                        column_order <- order(colData(currobj)[ , which(colnames(colData(currobj)) == ordercolsby)])
+                        if(can_be_made_numeric(colData(currobj)[ , which(colnames(colData(currobj)) == ordercolsby)])){
+                            column_order <- order(as.numeric(colData(currobj)[ , which(colnames(colData(currobj)) == ordercolsby)]))
+                        } else {
+                            column_order <- order(colData(currobj)[ , which(colnames(colData(currobj)) == ordercolsby)])
+                        }
                         cluster_column_slices <- FALSE
                         fullheatmap_column_dend <- FALSE
                     } else {
