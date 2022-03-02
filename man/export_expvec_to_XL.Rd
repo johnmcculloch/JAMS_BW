@@ -2,7 +2,7 @@
 % Please edit documentation in R/export_expvec_to_XL.R
 \name{export_expvec_to_XL}
 \alias{export_expvec_to_XL}
-\title{export_expvec_to_XL(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, includemetadata = TRUE)}
+\title{export_expvec_to_XL(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, includemetadata = TRUE, returncounts = FALSE)}
 \usage{
 export_expvec_to_XL(
   expvec = NULL,
@@ -14,7 +14,8 @@ export_expvec_to_XL(
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
   PctFromCtgscutoff = NULL,
-  includemetadata = TRUE
+  includemetadata = TRUE,
+  returncounts = FALSE
 )
 }
 \description{

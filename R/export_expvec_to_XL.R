@@ -1,9 +1,9 @@
-#' export_expvec_to_XL(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, includemetadata = TRUE)
+#' export_expvec_to_XL(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, includemetadata = TRUE, returncounts = FALSE)
 #'
 #' Exports counts and featuredata in a SummarizedExperiment vector into a single spreadsheet.
 #' @export
 
-export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, includemetadata = TRUE){
+export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, includemetadata = TRUE, returncounts = FALSE){
 
     if (!(is.null(usefulexp))){
         usefulexp <- names(expvec)[(names(expvec) %in% usefulexp)]
@@ -72,6 +72,9 @@ export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL
 
     countvec <- countvec[sapply(countvec, function(x){ !(is.null(x)) })]
 
-    print(paste("Saving spreadsheet as", filename))
+    flog.info(paste("Saving spreadsheet as", filename))
     write.xlsx(countvec, file = filename, asTable = TRUE, rowNames = TRUE, colNames = TRUE, borders = "all", colWidths = "auto")
+    if (returncounts){
+        return(countvec)
+    }
 }
