@@ -19,7 +19,7 @@ plot_Ordination(
   asPPM = TRUE,
   PPM_normalize_to_bases_sequenced = FALSE,
   assay_for_matrix = "BaseCounts",
-  algorithm = "PCA",
+  algorithm = "PCoA",
   PCA_Components = c(1, 2),
   distmethod = "jaccard",
   compareby = NULL,

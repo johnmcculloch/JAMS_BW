@@ -3,14 +3,18 @@
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCoA", PCA_Components = c(1, 2), distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
-
 
     #Consider orthography of the word "colour"
     if (is.null(colourby)){
         colourby <- colorby
+    }
+
+    #Check for silly stuff
+    if (!(algorithm %in% c("PCA", "PCoA", "tSNE", "tUMAP"))){
+        stop(paste0("It is not possible to use ordination algorithm ", algorithm, ". Please select between PCA, PCoA, tSNE or tUMAP"))
     }
 
     #Define what is being compared for permanova
@@ -58,7 +62,6 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     #Create list vector to hold plots
     gvec <- list()
     plotnum <- 1
-
 
     for (sp in 1:length(subset_points)){
 
@@ -168,11 +171,20 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             yl <- "tUMAP 2"
 
         } else {
-            #Not tSNE or tUMAP, so use PCA
-            pcaRes <- prcomp(d)
-            ord <- pcaRes$x
-            vars <- pcaRes$sdev^2
-            vars <- round(vars/sum(vars), 5) * 100
+            if (algorithm == "PCA"){
+                pcaRes <- prcomp(d)
+                ord <- pcaRes$x
+                vars <- pcaRes$sdev^2
+                vars <- round(vars/sum(vars), 5) * 100
+                axisprefix <- "PC"
+            } else {
+                #Default to PCoA
+                pcoaRes <- ape::pcoa(d, correction = "none")
+                ord <- pcoaRes$vectors
+                vars <- pcoaRes$values$Broken_stick
+                vars <- round(vars, 5) * 100
+                axisprefix <- "Axis."
+            }
 
             #Make a data frame with how variance is explained by which components
             vardf <- data.frame(Component = colnames(ord), Variance = vars, Cumulative_variance = cumsum(vars))
@@ -224,12 +236,12 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         flog.info("getting centroids")
         if (!(is.numeric(cats))){
             if (!is.null(samplesToHighlight)){
-                centroids <- aggregate(.~Comparison, data = dford[samplesToHighlight, c(paste0("PC", comp), "Comparison")], FUN = mean)
+                centroids <- aggregate(.~Comparison, data = dford[samplesToHighlight, c(paste0(axisprefix, comp), "Comparison")], FUN = mean)
                 colnames(centroids)[c(2, 3)] <- paste0("mean", colnames(dford)[1:2])
                 rownames(centroids) <- centroids[ , "Comparison"]
                 centroiddf <- left_join(dford[samplesToHighlight, ], centroids, by = "Comparison")
             } else {
-                centroids <- aggregate(.~Comparison, data = dford[ , c(paste0("PC", comp), "Comparison")], FUN = mean)
+                centroids <- aggregate(.~Comparison, data = dford[ , c(paste0(axisprefix, comp), "Comparison")], FUN = mean)
                 colnames(centroids)[c(2, 3)] <- paste0("mean", colnames(dford)[1:2])
                 centroiddf <- left_join(dford, centroids, by = "Comparison")
                 rownames(centroids) <- centroids[ , "Comparison"]
@@ -281,7 +293,6 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
                 p <- p + scale_color_manual(values = groupcols)
             } else {
                 #Use colour table if available
-
                 if ("ctable" %in% names(metadata(currobj))){
                     discretenames <- sort(unique(dford$Colours))
                     colourshave <- discretenames[discretenames %in% rownames(metadata(currobj)$ctable)]
