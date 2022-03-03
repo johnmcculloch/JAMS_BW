@@ -154,6 +154,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             dford <- as.data.frame(tsne_out$Y)
             rownames(dford) <- rownames(currpt)
             colnames(dford)[1:2] <- c("PC1", "PC2")
+            axisprefix <- "PC"
             dford_full <- dford
             xl <- "tSNE 1"
             yl <- "tSNE 2"
@@ -166,6 +167,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             dford <- as.data.frame(tumap_out)
             rownames(dford) <- rownames(currpt)
             colnames(dford) <- c("PC1", "PC2")
+            axisprefix <- "PC"
             dford_full <- dford
             xl <- "tUMAP 1"
             yl <- "tUMAP 2"
