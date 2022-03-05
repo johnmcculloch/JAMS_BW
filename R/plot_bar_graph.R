@@ -8,6 +8,7 @@
 #' @param total_units unit to normalize data to -- default percentage (100).
 #' @param threshold minimum value to include as separate entry (below is Misc_Low_Abundance).
 #' @param groupby colData category to use for labels
+#' @param label_samples label samples on graph
 #' @param cat_pos position of category line (change if ugly in plot)
 #' @param cat_text_size text size of category labels
 #' @param legend_text_size text size of legend labels
@@ -19,7 +20,7 @@
 #' @examples
 #' plot_bar_graph(ExpObj = mrexp1, glomby = "Phylum", groupby = "Group")
 
-plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, groupby = NULL, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, class_to_ignore = "N_A", ...) {
+plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, class_to_ignore = "N_A", ...) {
 
     require(reshape2)
     require(Polychrome)
@@ -28,7 +29,15 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, f
 
     #Vet experiment object
     obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = valid_vars, class_to_ignore = class_to_ignore)
-
+    if (!is.null(groupby)) {
+      if (!is.null(obj[[groupby]])) {
+        obj <- obj[,order(obj[[groupby]])]   
+      } else {
+        flog.error(str_c(groupby, " is not a valid column of your metadata"))
+        groupby <- NULL
+      }
+      
+    }
     analysis <- metadata(obj)$analysis
     if (!is.null(glomby)){
         analysisname <- glomby
@@ -123,6 +132,9 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, f
         p <- p + theme(legend.text = element_text(colour = "black", size = legend_text_size, face="italic"))
         p <- p + theme(legend.title = element_text(colour = "black", size = legend_text_size))
         p <- p + theme(title = element_text(size = 8))
+        if (label_samples) {
+          p <- p +  theme(axis.text.x = element_text(angle=90))
+        }
 
         if(!(is.null(cdict))) {
             ct <- cdict[[colourby]]
