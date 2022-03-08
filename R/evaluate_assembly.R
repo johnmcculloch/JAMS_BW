@@ -79,6 +79,7 @@ evaluate_assembly <- function(opt = NULL){
     if (file.exists(JAMSMedian_Genome_Sizes_file)){
         load(JAMSMedian_Genome_Sizes_file)
     } else {
+        #make compatioble with old database versions
         if (file.exists(file.path(opt$workingkrakendb, "JAMS_Median_Genome_Sizes.tsv"))){
             JAMSMedian_Genome_Sizes <- fread(file.path(opt$workingkrakendb, "JAMS_Median_Genome_Sizes.tsv"), data.table = FALSE, header = TRUE, stringsAsFactors = FALSE)
         } else {
@@ -88,6 +89,9 @@ evaluate_assembly <- function(opt = NULL){
         }
     }
     rownames(JAMSMedian_Genome_Sizes) <- JAMSMedian_Genome_Sizes$Taxon
+
+    #export to global env for the benefit of legacy versions
+    assign("JAMSMedian_Genome_Sizes", JAMSMedian_Genome_Sizes, .GlobalEnv)
 
     taxlvls <- c("LKT", "IS1", "Species", "Genus", "Family", "Order", "Class", "Phylum", "Kingdom", "Domain")
     assemblystats_alllevels <- mclapply(taxlvls, function (x) { get_assembly_stats_by_taxlevel(opt = opt, taxlevel = x) }, mc.cores = max(1, min(length(taxlvls), (opt$threads - 2))))
