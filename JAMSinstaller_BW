@@ -140,11 +140,11 @@ if (nchar(currslurmjobid) > 3){
 }
 
 cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
-if (onbiowulf == TRUE){
-    system("export TMP=/scratch/$USER")
-} else {
-    system("export TMP=~/")
-}
+#if (onbiowulf == TRUE){
+#    system("export TMP=/data/$USER")
+#} else {
+#    system("export TMP=~/")
+#}
 
 #Install devtools and stringr if not present
 repos <- "https://cloud.r-project.org"

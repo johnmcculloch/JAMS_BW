@@ -249,9 +249,11 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
                 rownames(centroids) <- centroids[ , "Comparison"]
             }
             centroidmeandf <- centroiddf
+
             centroidmeandf <- centroidmeandf[ , 3:ncol(centroidmeandf)]
             centroidmeandf <- centroidmeandf[!duplicated(centroidmeandf[ , paste0("mean", colnames(dford)[1])]), ]
             rownames(centroidmeandf) <- centroidmeandf[ , "Comparison"]
+
         }
 
         flog.info("plotting")
@@ -371,6 +373,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
             if (!calculate_centroid_distances_in_all_dimensions){
                 centroiddist <- as.matrix(dist(centroidmeandf[ , paste0("mean", colnames(dford)[1:2])], method = "euclidean"))
+
             } else {
                 flog.info(paste("Calculating the euclidean distances between centroids in", ncol(dford_full), "dimesnions"))
                 dford_full$Comparison <- currpt[match(rownames(dford_full), rownames(currpt)), which(colnames(currpt) == compareby)]
