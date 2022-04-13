@@ -3,6 +3,7 @@
 #'
 #' @param ExpObj a SummarizedExperiment object.
 #' @param glomby string giving taxonomic level (from tax_table) to plot at.
+#' @param absolute if true, don't normalize to 100% or whatever but show absolute abundance
 #' @param samplesToKeep vector with samples to plot.
 #' @param featuresToKeep vector with features to plot.
 #' @param total_units unit to normalize data to -- default percentage (100).
@@ -20,7 +21,7 @@
 #' @examples
 #' plot_bar_graph(ExpObj = mrexp1, glomby = "Phylum", groupby = "Group")
 
-plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, class_to_ignore = "N_A", ...) {
+plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, class_to_ignore = "N_A", ...) {
 
     require(reshape2)
     require(Polychrome)
@@ -56,8 +57,12 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, f
     #Create list vector to hold plots
     gvec <- list()
     plotnum <- 1
-    bartitbase <- paste("Relative abundances of", analysisname)
-
+    if (absolute) {
+      bartitbase <- paste("Absolute abundances of", analysisname)
+    } else {
+      bartitbase <- paste("Relative abundances of", analysisname)
+    }
+    
     for (sp in 1:length(subset_points)){
 
         if (!(is.null(subsetby))){
@@ -78,7 +83,7 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, f
 
         if (PPM_normalize_to_bases_sequenced == TRUE){
             bartit <- paste(c(bartit, "Normalized to total number of bases sequenced in sample"), collapse = "\n")
-        } else {
+        } else if (!absolute) {
             bartit <- paste(c(bartit, "Normalized to number of bases for analysis in sample"), collapse = "\n")
         }
 
@@ -96,13 +101,18 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, f
         }
 
         #Re-normalize to percentage
-        for (colm in 1:ncol(countmat)){
-            countmat[ , colm] <- (countmat[ , colm] / sum(countmat[ , colm])) * total_units
+        if (!absolute) {
+          for (colm in 1:ncol(countmat)){
+              countmat[ , colm] <- (countmat[ , colm] / sum(countmat[ , colm])) * total_units
+          }
         }
-
         if (threshold > 0) {
             new_counts <- countmat[rowMeans(countmat) > threshold,, drop=FALSE ]
-            misc_counts <- total_units - colSums(new_counts)
+            if (absolute) {
+              misc_counts <- colSums(countmat) - colSums(new_counts)
+            } else {
+              misc_counts <- total_units - colSums(new_counts)
+            }
             new_counts <- rbind(new_counts, Misc_Low_Abundance = misc_counts)
         } else {
             new_counts <- countmat
