@@ -77,7 +77,11 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
         }
         bartit <- paste(c(bartit, presetlist$filtermsg), collapse = "\n")
 
-        currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = sp_samplesToKeep, featuresToKeep = featuresToKeep, asPPM = TRUE, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
+        if (absolute) {
+          currobj <- obj
+        } else {
+            currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = sp_samplesToKeep, featuresToKeep = featuresToKeep, asPPM = TRUE, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
+        }
 
         currpt <- as.data.frame(colData(currobj))
 
@@ -89,7 +93,6 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
 
         #Get counts matrix
         countmat <- as.matrix(assays(currobj)$BaseCounts)
-
         #Protect against rows with empty data
         rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
         countmat <- countmat[rowsToKeep, ]
@@ -117,7 +120,6 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
         } else {
             new_counts <- countmat
         }
-
         mdf <- reshape2::melt(new_counts)
         colnames(mdf) <- c(analysisname, "Sample", "Abundance")
 
@@ -125,16 +127,17 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
         mdf[ , analysisname] <- factor(mdf[ , analysisname], levels = fill_sum[order(-fill_sum$Abundance), analysisname])
 
         mdf$Sample <- factor(mdf$Sample, levels = colnames(new_counts))
-
+        
         p <- ggplot(mdf, aes_string(x = "Sample", y = "Abundance", fill = analysisname))
         p <- p + geom_bar(stat = "identity", position = "stack", color = border_color, size = 0)
         if(!is.null(addtit)) {
           bartit <- str_c(bartit, " ", addtit)
         }
         p <- p + ggtitle(bartit)
+        
         p <- p + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
         p <- p + theme(plot.margin = unit(c(0, 1, 1, 0.5), "lines"))
-        p <- p + theme(strip.background = element_rect(fill = "white", colour = NA))
+        p <- p + theme(strip.background=element_rect(fill = "white", colour = NA))
         p <- p + theme(panel.background = element_rect(fill = "white", colour = "white"))
         p <- p + theme(plot.margin = margin(c(1, 1, 3, 1), unit = "lines"))
         p <- p + theme(axis.line = element_blank())
@@ -145,13 +148,11 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
         if (label_samples) {
           p <- p +  theme(axis.text.x = element_text(angle=90))
         }
-
         if(!(is.null(cdict))) {
             ct <- cdict[[colourby]]
             groupcols <- setNames(as.character(ct$Colour), as.character(ct$Name))
             p <- p + scale_color_manual(values = groupcols)
         }
-
         if (is.null(feature_cdict)){
             feature_cdict <- createPalette(nrow(new_counts),  c("#ff0000", "#00ff00", "#0000ff"))
             names(feature_cdict) <- rownames(new_counts)
@@ -159,7 +160,6 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
 	feature_cdict <- feature_cdict[rownames(new_counts)] # remove entries not on graph
 
         p <- p + scale_fill_manual(values = feature_cdict)
-
         if (!is.null(groupby)) {
             cat_values <- as.factor(currpt[ , groupby])
             for (level in levels(cat_values)) {
@@ -169,6 +169,7 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
                 p <- p + annotate("text", label = level, x = startx + (endx - startx) / 2, y = 2 * cat_pos, cex = cat_text_size)
             }
         }
+        return(p)
         gvec[[plotnum]] <- p
         plotnum <- plotnum + 1
     }
