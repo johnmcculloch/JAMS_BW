@@ -15,7 +15,7 @@ export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL
     pt <- as.data.frame(colData(expvec2[[1]]))
 
     countvec <- NULL
-    countvec <- vector("list", length = 1000)
+    countvec <- list()
     cvn <- 1
     if (includemetadata == TRUE){
         flog.info("Exporting metadata.")
@@ -39,7 +39,7 @@ export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL
 
         presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
 
-        exp_filt <- filter_experiment(ExpObj = expvec2[[analysis]], featcutoff = presetlist$featcutoff, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
+        exp_filt <- filter_experiment(ExpObj = expvec2[[x]], featcutoff = presetlist$featcutoff, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
 
         cts <- assays(exp_filt)$BaseCounts
         ctsname <- paste(names(expvec2)[x], countunits, sep="_")
@@ -49,7 +49,7 @@ export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL
 
         if ("GenomeCompleteness" %in% names(assays((expvec2)[[x]]))){
             cts <- assays(exp_filt)$GenomeCompleteness
-            ctsname <- paste(names(expvec2)[x], "GenomeCompleteness", sep="_")
+            ctsname <- paste(names(expvec2)[x], "GnmCompl", sep="_")
             countvec[[cvn]] <- as.data.frame(cts)
             names(countvec)[cvn] <- ctsname
             cvn <- cvn + 1
@@ -71,6 +71,13 @@ export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL
     }
 
     countvec <- countvec[sapply(countvec, function(x){ !(is.null(x)) })]
+    #Cap tab names to 31 characters because of excel
+    if(any(nchar(names(countvec)) > 30)){
+        flog.info("Capping tab names to 31characters because of Microsoft Excel.")
+        newnames <- sapply(names(countvec), function(x){ stringr::str_trunc(x, 28) })
+        newnames <- make.unique(newnames)
+        names(countvec) <- newnames
+    }
 
     flog.info(paste("Saving spreadsheet as", filename))
     write.xlsx(countvec, file = filename, asTable = TRUE, rowNames = TRUE, colNames = TRUE, borders = "all", colWidths = "auto")

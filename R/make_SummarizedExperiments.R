@@ -113,9 +113,10 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         #get rid of LKT dupes due to NCBI taxonomy names at species level including subspecies nomenclature. Sigh. These are usually unclassified species.
         tt <- tt[!(duplicated(tt$LKT)), ]
         #Add Gram information
-        data(Gram)
-        phylum2gram <- Gram[,c("Phylum", "Gram")]
-        tt <- left_join(as.data.frame(tt), phylum2gram, by = "Phylum")
+        data(JAMStaxtable)
+        LKT2gram <- JAMStaxtable[ , c("LKT", "Gram")]
+        LKT2gram <- subset(JAMStaxtable, LKT %in% tt$LKT)
+        tt <- left_join(as.data.frame(tt), LKT2gram, by = "LKT")
         tt[which(is.na(tt[ , "Gram"])), "Gram"] <- "na"
         tt <- tt[ , c("Gram", taxlvlspresent)]
         rownames(tt) <- tt$LKT

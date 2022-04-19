@@ -561,15 +561,20 @@ shrink_perbasecoverage <-function(perbasecoverage = NULL, percentage = 2){
 
 
 
-#' add_shape_to_plot_safely(p = NULL, shapevec = NULL, cdict = NULL)
+#' add_shape_to_plot_safely(p = NULL, shapevec = NULL, shapeby = NULL, cdict = NULL, use_letters_as_shapes = FALSE)
 #'
 #' #Given a vector of classes for adding shapes to a ggplot, attributes shapes safely in the presence or absence of a cdict containing shape info
 #' @export
 
-add_shape_to_plot_safely <- function (p = NULL, shapevec = NULL, shapeby = NULL, cdict = NULL){
+add_shape_to_plot_safely <- function (p = NULL, shapevec = NULL, shapeby = NULL, cdict = NULL, use_letters_as_shapes = FALSE){
 
-    shape_pecking_order <- c(19, 17, 15, 8, 12, 13, 18, 10, 3, 4, 11, 0, 1, 2, 5, 6, 7, 6, 35, 36, 38, 64)
     numshapes <- length(unique(shapevec))
+    if ((numshapes < 25) & !use_letters_as_shapes){
+        shape_pecking_order <- c(19, 17, 15, 8, 12, 13, 18, 10, 3, 4, 11, 0, 1, 2, 5, 6, 7, 6, 35, 36, 38, 64, 163, 165, 167)
+    } else {
+        #Use letters
+        shape_pecking_order <- c(65:90, 97:122, 35:38, 134:140)
+    }
 
     if (!is.null(cdict)){
         st <- cdict[[shapeby]]

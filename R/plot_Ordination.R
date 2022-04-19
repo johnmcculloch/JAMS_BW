@@ -1,9 +1,9 @@
-#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...)
+#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCoA", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...)
 #'
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCoA", PCA_Components = c(1, 2), distmethod = "jaccard", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCoA", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
@@ -275,7 +275,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (!(is.null(shapeby))){
             p <- p + aes(shape = Shape)
-            p <- add_shape_to_plot_safely(p = p, shapevec = dford$Shape, shapeby = shapeby, cdict = cdict)
+            p <- add_shape_to_plot_safely(p = p, shapevec = dford$Shape, shapeby = shapeby, use_letters_as_shapes = use_letters_as_shapes, cdict = cdict)
         }
 
         if (!(is.null(sizeby))){
@@ -352,11 +352,21 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
 
         if (all(c((!(is.numeric(cats))), plotcentroids))) {
-            p <- p + geom_segment(aes(x = get(colnames(centroiddf)[ncol(centroiddf) - 1]), y = get(colnames(centroiddf)[ncol(centroiddf)]), xend = get(colnames(centroiddf)[1]), yend = get(colnames(centroiddf)[2]), colour = Colours), data = centroiddf)
+
+            #Account for not using colours. I am sorry this is messy and unelegant, will tidy up later. Using safest method.
+            if (!is.null(colourby)){
+                p <- p + geom_segment(aes(x = get(colnames(centroiddf)[ncol(centroiddf) - 1]), y = get(colnames(centroiddf)[ncol(centroiddf)]), xend = get(colnames(centroiddf)[1]), yend = get(colnames(centroiddf)[2]), colour = Colours), data = centroiddf)
+            } else {
+                p <- p + geom_segment(aes(x = get(colnames(centroiddf)[ncol(centroiddf) - 1]), y = get(colnames(centroiddf)[ncol(centroiddf)]), xend = get(colnames(centroiddf)[1]), yend = get(colnames(centroiddf)[2])), data = centroiddf)
+            }
 
             if (highlight_centroids){
                 p <- p + geom_point(aes(x = get(colnames(centroidmeandf)[ncol(centroidmeandf) - 1]), y = get(colnames(centroidmeandf)[ncol(centroidmeandf)])), colour = "black", data = centroiddf, size = (dotsize * 3))
-                p <- p + geom_point(aes(x = get(colnames(centroidmeandf)[ncol(centroidmeandf) - 1]), y = get(colnames(centroidmeandf)[ncol(centroidmeandf)]), colour = Colours), data = centroiddf, size = (dotsize * 1.5))
+                if (!is.null(colourby)){
+                    p <- p + geom_point(aes(x = get(colnames(centroidmeandf)[ncol(centroidmeandf) - 1]), y = get(colnames(centroidmeandf)[ncol(centroidmeandf)]), colour = Colours), data = centroiddf, size = (dotsize * 1.5))
+                } else {
+                    p <- p + geom_point(aes(x = get(colnames(centroidmeandf)[ncol(centroidmeandf) - 1]), y = get(colnames(centroidmeandf)[ncol(centroidmeandf)])), data = centroiddf, size = (dotsize * 1.5))
+                }
             }
         }
 

@@ -7,9 +7,11 @@
 plot_bar_graph(
   ExpObj = NULL,
   glomby = NULL,
+  absolute = FALSE,
   samplesToKeep = NULL,
   featuresToKeep = NULL,
   groupby = NULL,
+  label_samples = FALSE,
   colourby = NULL,
   subsetby = NULL,
   applyfilters = NULL,
@@ -37,11 +39,15 @@ plot_bar_graph(
 
 \item{glomby}{string giving taxonomic level (from tax_table) to plot at.}
 
+\item{absolute}{if true, don't normalize to 100\% or whatever but show absolute abundance}
+
 \item{samplesToKeep}{vector with samples to plot.}
 
 \item{featuresToKeep}{vector with features to plot.}
 
 \item{groupby}{colData category to use for labels}
+
+\item{label_samples}{label samples on graph}
 
 \item{total_units}{unit to normalize data to -- default percentage (100).}
 

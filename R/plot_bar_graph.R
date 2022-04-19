@@ -3,7 +3,7 @@
 #'
 #' @param ExpObj a SummarizedExperiment object.
 #' @param glomby string giving taxonomic level (from tax_table) to plot at.
-#' @param absolute if true, don't normalize to 100% or whatever but show absolute abundance
+#' @param absolute if true, don't normalize to 100\% or whatever but show absolute abundance
 #' @param samplesToKeep vector with samples to plot.
 #' @param featuresToKeep vector with features to plot.
 #' @param total_units unit to normalize data to -- default percentage (100).
@@ -32,12 +32,12 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
     obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = valid_vars, class_to_ignore = class_to_ignore)
     if (!is.null(groupby)) {
       if (!is.null(obj[[groupby]])) {
-        obj <- obj[,order(obj[[groupby]])]   
+        obj <- obj[,order(obj[[groupby]])]
       } else {
         flog.error(str_c(groupby, " is not a valid column of your metadata"))
         groupby <- NULL
       }
-      
+
     }
     analysis <- metadata(obj)$analysis
     if (!is.null(glomby)){
@@ -62,7 +62,7 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
     } else {
       bartitbase <- paste("Relative abundances of", analysisname)
     }
-    
+
     for (sp in 1:length(subset_points)){
 
         if (!(is.null(subsetby))){
@@ -127,14 +127,14 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
         mdf[ , analysisname] <- factor(mdf[ , analysisname], levels = fill_sum[order(-fill_sum$Abundance), analysisname])
 
         mdf$Sample <- factor(mdf$Sample, levels = colnames(new_counts))
-        
+
         p <- ggplot(mdf, aes_string(x = "Sample", y = "Abundance", fill = analysisname))
         p <- p + geom_bar(stat = "identity", position = "stack", color = border_color, size = 0)
         if(!is.null(addtit)) {
           bartit <- str_c(bartit, " ", addtit)
         }
         p <- p + ggtitle(bartit)
-        
+
         p <- p + theme(axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank())
         p <- p + theme(plot.margin = unit(c(0, 1, 1, 0.5), "lines"))
         p <- p + theme(strip.background=element_rect(fill = "white", colour = NA))

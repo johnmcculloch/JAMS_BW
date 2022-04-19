@@ -722,10 +722,17 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
 
                     #Plot Gram and phyla, if applicable
                     if (all(c(showGram, (analysisname %in% c("LKT", "Species", "Genus", "Family", "Order", "Class"))))){
-                        data(Gram)
+                        data(Gram)#only for colours
                         tt <- as.data.frame(rowData(currobj))
-                        tt <- tt[rownames(mathm), c(analysisname, "Phylum")]
-                        tt <- left_join(tt, Gram, by = "Phylum")
+                        #Make backwards compatible
+                        if (!("Gram" %in% colnames(tt))){
+                            #There is no Gram information on SummarizedExperiment feature table
+                            tt <- tt[rownames(mathm), c(analysisname, "Phylum")]
+                            tt <- left_join(tt, Gram, by = "Phylum")
+                        } else {
+                            #Gram information is present on SummarizedExperiment feature table
+                            tt <- tt[rownames(mathm), c(analysisname, "Phylum", "Gram")]
+                        }
                         phycols <- setNames(as.character(Gram$PhylumColour), as.character(Gram$Phylum))[unique(tt$Phylum)]
                         gramcols <- setNames(as.character(Gram$GramColour), as.character(Gram$Gram))[unique(tt$Gram)]
                         hatax <- rowAnnotation(Phylum = tt$Phylum, Gram = tt$Gram, col = list(Phylum = phycols, Gram = gramcols),  annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = TRUE)
