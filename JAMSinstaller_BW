@@ -37,7 +37,7 @@ getScriptPath <- function() {
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) > 0){
-    if(!all((as.character(args) %in% c("--install", "--onlybeta",  "--linkto")))){
+    if(!all((as.character(args) %in% c("--install", "--onlybeta",  "--linkto", "--force")))){
         print_help()
     }
 } else {
@@ -62,6 +62,13 @@ if ("--linnkto" %in% (as.character(args))){
 
 if (!file.exists(linkto)){
     stop(paste("The specified folder for creating executable symbolic links does not exist:", linkto))
+}
+
+
+if ("--force" %in% (as.character(args))){
+    force_install <- TRUE
+} else {
+    force_install <- FALSE
 }
 
 jamsdir <- getScriptPath()
@@ -167,13 +174,13 @@ bytesRAM <- detectAvailRAM()
 cat(paste0("You have ~", round(bytesRAM/1E9, 1), " Gbytes of RAM available\n"))
 
 #Install all packages via Bioconductor
-alldeps <- c("R.utils", "Rcpp", "RcppEigen", "parallel", "optparse", "futile.logger", "benchmarkme", "RCurl", "Rtsne", "uwot", "circlize", "Polychrome", "openxlsx", "grid", "gridExtra", "tidyverse", "ggplot2", "ggrepel", "wordcloud", "colorfulVennPlot", "gplots", "vegan", "matrixStats", "Biostrings", "seqinr", "dada2", "survival", "survminer", "SummarizedExperiment", "ComplexHeatmap", "HybridMTest", "ggpubr", "combinat", "data.table", "genefilter", "gg3D", "gtools", "gtable", "fastSave", "Matrix")
+alldeps <- c("R.utils", "Rcpp", "RcppEigen", "parallel", "optparse", "tcltk", "futile.logger", "benchmarkme", "RCurl", "Rtsne", "uwot", "circlize", "Polychrome", "openxlsx", "grid", "gridExtra", "tidyverse", "ggplot2", "ggrepel", "wordcloud", "colorfulVennPlot", "gplots", "vegan", "matrixStats", "Biostrings", "seqinr", "dada2", "survival", "survminer", "SummarizedExperiment", "ComplexHeatmap", "HybridMTest", "ggpubr", "combinat", "data.table", "genefilter", "gg3D", "gtools", "gtable", "fastSave", "Matrix")
 bioconductordeps <- c("dada2", "SummarizedExperiment", "HybridMTest", "Biostrings", "genefilter", "ComplexHeatmap")
 non_bioconductordeps <- alldeps[!(alldeps %in% bioconductordeps)]
 
-BiocManager::install(pkgs = alldeps, update = TRUE, ask = FALSE, site_repository = repos)
+BiocManager::install(pkgs = alldeps, update = TRUE, ask = FALSE, site_repository = repos, force = force_install)
 #devtools::install_github("jokergoo/ComplexHeatmap")
-devtools::install_github('barkasn/fastSave')
+#devtools::install_github('barkasn/fastSave')
 #Install the rest of JAMS
 devtools::install(jamsdir, upgrade = FALSE, repos = repos)
 
