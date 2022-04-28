@@ -217,8 +217,8 @@ flog.info(paste("Using", project, "for name of project"))
 opt$threads <- as.numeric(detectHardwareResources()["threads"])
 flog.info(paste("You have", opt$threads, "CPUs available."))
 
-opt$silva_trainset <- file.path(opt$taxonomy_database, "silva_nr_v132_train_set.fa.gz")
-opt$silva_species_assignment <- file.path(opt$taxonomy_database, "silva_species_assignment_v132.fa.gz")
+opt$silva_trainset <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = "train")))[1]
+opt$silva_species_assignment <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = "species")))[1]
 
 flog.info(paste("Content will be output to", opt$outdir))
 
