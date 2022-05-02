@@ -180,7 +180,7 @@ non_bioconductordeps <- alldeps[!(alldeps %in% bioconductordeps)]
 
 BiocManager::install(pkgs = alldeps, update = TRUE, ask = FALSE, site_repository = repos, force = force_install)
 #devtools::install_github("jokergoo/ComplexHeatmap")
-#devtools::install_github('barkasn/fastSave')
+devtools::install_github('barkasn/fastSave')
 #Install the rest of JAMS
 devtools::install(jamsdir, upgrade = FALSE, repos = repos)
 
