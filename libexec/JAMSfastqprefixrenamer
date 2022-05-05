@@ -192,19 +192,6 @@ if (is.null(opt$readsfolder)) {
     q()
 }
 
-
-#Define useful functions
-is.redundant <- function(vec){
-    propunique <- length(unique(vec))/length(vec)
-    if (propunique < 1){
-        redundant = TRUE
-    } else {
-        redundant = FALSE
-    }
-
-    return(redundant)
-}
-
 find_container <- function(x) {
     prefsuff <- unlist(strsplit(rawfastqsdf$Filenames[x], split = "\\."))
     container <- paste(prefsuff[(which(prefsuff == "fastq")):(length(prefsuff))], collapse = ".")
@@ -216,6 +203,7 @@ find_container <- function(x) {
 ###################
 ## Main Function ##
 ###################
+suppressWarnings(suppressPackageStartupMessages(library(JAMS)))
 
 if (opt$destination != opt$readsfolder){
     flog.info("Destination directory and origin are different.")
