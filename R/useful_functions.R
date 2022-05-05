@@ -723,11 +723,13 @@ analyze_fastq_filename <- function(fn = NULL, maintain_Illumina_format = FALSE){
         if (contains_paired_read_info){
             filefacts$OriPrefix <- paste0(unlist(strsplit(fnbody, split = "_"))[1:(numfnbodysegments - 1)], collapse = "_")
             filefacts$Read <- tail(unlist(strsplit(fnbody, split = "_")), n = 1)
+            filefacts$Appendage <-  paste(filefacts$Read, filefacts$suffix, sep = ".")
         } else {
             filefacts$OriPrefix <- fnbody
             filefacts$Read <- ""
+            filefacts$Appendage <- filefacts$suffix
         }
-        filefacts$Appendage <- paste0(".", filefacts$suffix)
+
     } else {
         #OK, is Illumina style prefix
         #Das Read ist immer an zweiter position
