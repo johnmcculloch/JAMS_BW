@@ -78,6 +78,10 @@ evaluate_assembly <- function(opt = NULL){
     JAMSMedian_Genome_Sizes_file <- file.path(opt$workingkrakendb, "JAMSMedian_Genome_Sizes.rda")
     if (file.exists(JAMSMedian_Genome_Sizes_file)){
         load(JAMSMedian_Genome_Sizes_file)
+        #Ensure backwards compatibility
+        if(!exists(JAMSMedian_Genome_Sizes)){
+            JAMSMedian_Genome_Sizes <- Median_Genome_Sizes
+        }
     } else {
         #make compatioble with old database versions
         if (file.exists(file.path(opt$workingkrakendb, "JAMS_Median_Genome_Sizes.tsv"))){
