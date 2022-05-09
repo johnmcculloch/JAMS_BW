@@ -115,7 +115,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         #Add Gram information
         data(JAMStaxtable)
         LKT2gram <- JAMStaxtable[ , c("LKT", "Gram")]
-        LKT2gram <- subset(JAMStaxtable, LKT %in% tt$LKT)
+        LKT2gram <- subset(LKT2gram, LKT %in% tt$LKT)
+        LKT2gram <- LKT2gram[!(duplicated(LKT2gram$LKT)), ]
         tt <- left_join(as.data.frame(tt), LKT2gram, by = "LKT")
         tt[which(is.na(tt[ , "Gram"])), "Gram"] <- "na"
         tt <- tt[ , c("Gram", taxlvlspresent)]
