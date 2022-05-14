@@ -1,9 +1,9 @@
-#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCoA", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...)
+#' plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCoA", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...)
 #'
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCoA", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, pairby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE,  transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCoA", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
@@ -19,7 +19,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
     #Define what is being compared for permanova
     if (is.null(compareby)){
-        compareby <- c(colourby, shapeby, ellipseby, textby, sizeby, pairby)[1]
+        compareby <- c(colourby, shapeby, ellipseby, textby, sizeby, connectby)[1]
     }
     #Remove samples bearing categories within class_to_ignore
     valid_vars <- c(compareby, subsetby)[which(!is.na(c(compareby, subsetby)))]
@@ -207,7 +207,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             dford <- as.data.frame(ord[, comp])
         }
 
-        #Add colour, size, shape, text, ellipse and pair
+        #Add colour, size, shape, text, ellipse and connect
         dford$Comparison <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == compareby)]
         if (!is.null(colourby)){
             dford$Colours <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == colourby)]
@@ -224,8 +224,22 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         if (!is.null(sizeby)){
             dford$Size <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == sizeby)]
         }
-        if (!is.null(pairby)){
-            dford$Pair <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == pairby)]
+        if (!is.null(connectby)){
+            dford$Connect <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == connectby)]
+            #If reorder dataframe if required, so geom_path will connect in the right order
+            if (!is.null(connection_orderby)){
+                dford$ConnectOrder <- currpt[match(rownames(dford), rownames(currpt)), which(colnames(currpt) == connection_orderby)]
+                sampleorder <- NULL
+                for (grp in unique(dford$Connect)){
+                    currdford <- subset(dford, Connect == grp)[ , c("Connect", "ConnectOrder")]
+                    if (can_be_made_numeric(currdford$ConnectOrder)){
+                        sampleorder <-c(sampleorder, rownames(currdford[order(as.numeric(currdford$ConnectOrder)), ]))
+                    } else {
+                        sampleorder <-c(sampleorder, rownames(currdford[order(currdford$ConnectOrder), ]))
+                    }
+                }
+                dford <- dford[sampleorder, ]
+            }
         }
 
         if (!is.null(samplesToHighlight)){
@@ -308,14 +322,13 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             }
         }
 
-        if (!is.null(pairby)){
-            p <- p + aes(group = Pair) + geom_line()
+        if (!is.null(connectby)){
+            p <- p + geom_path(color = "black", size = (dotsize * 0.25))
         }
 
         if (!is.null(textby)){
             require(ggrepel)
-            #p <- p + geom_text_repel(aes(label = Text), size = dotsize, segment.color = 'transparent')
-            p <- p + geom_text_repel(aes(label = Text), size = (dotsize * 0.9), segment.size = 0.2)
+            p <- p + geom_text_repel(aes(label = Text), size = (dotsize * 0.75), min.segment.length = 0, segment.size = 0.05, segment.color = "black", segment.curvature = -0.05, segment.ncp = 3, segment.inflect = FALSE, max.overlaps = 50)
         }
 
         p <- p + geom_point(size = dotsize) + labs(x = xl, y = yl)
