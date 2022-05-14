@@ -79,7 +79,7 @@ evaluate_assembly <- function(opt = NULL){
     if (file.exists(JAMSMedian_Genome_Sizes_file)){
         load(JAMSMedian_Genome_Sizes_file)
         #Ensure backwards compatibility
-        if(!exists(JAMSMedian_Genome_Sizes)){
+        if(!exists("JAMSMedian_Genome_Sizes")){
             JAMSMedian_Genome_Sizes <- Median_Genome_Sizes
         }
     } else {
