@@ -515,7 +515,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                             hmdf[, g] <- as.numeric(hmdf[, g])
                             if ((max(numvals) - min(numvals)) > 0 ){
                                 #If values contain class to ignore, make them black else, only span whicte and dark blue
-                                cores[[g]] <- colorRamp2(c(min(numvals), max(numvals)), c("#3a8aa7", "#780078"), space = "HSV")
+                                cores[[g]] <- colorRamp2(c(min(numvals), max(numvals)), c("#3a8aa7", "#780078"), space = "RGB")
                             } else {
                                 #Not enough variance, so make them discrete
                                 cores[[g]] <- as.vector(rainbow(length(unique(hmdf[, g]))))
