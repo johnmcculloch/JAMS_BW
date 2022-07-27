@@ -7,11 +7,6 @@ evaluate_assembly <- function(opt = NULL){
 
     flog.info("Evaluating completeness of genomes.")
 
-    ######################################
-    ##   Declare functions that must    ##
-    ## be declared within this funciton ##
-    ######################################
-
     getN50 <- function(contigs2length){
         quantile50 <- (sum(as.numeric(contigs2length$Length))) * 0.5
         N50 <- max(subset(contigs2length, Lcum > quantile50)$Length)
@@ -56,11 +51,11 @@ evaluate_assembly <- function(opt = NULL){
 
     getcontigs2length <- function(opt = NULL, taxlevel = NULL, taxinterest = NULL){
         contigsdata <- opt$contigsdata
-        if (all(c(!is.null(taxlevel), !is.null(taxinterest)))) {
+        if (taxlevel != "Isolate") {
             contigs2length <- subset(contigsdata, contigsdata[ , taxlevel] == taxinterest)
             contigs2length <- contigs2length[, c(taxlevel, "Contig", "Length")]
         } else {
-            contigs2length <- contigsdata[, c(taxlevel, "Contig", "Length")]
+            contigs2length <- contigsdata[, c("LKT", "Contig", "Length")]
         }
         colnames(contigs2length) <- c("Taxon", "Contig", "Length")
         contigs2length <- contigs2length[order(contigs2length$Length, decreasing = TRUE), ]
@@ -69,28 +64,32 @@ evaluate_assembly <- function(opt = NULL){
         return(contigs2length)
     }
 
-    get_assembly_stats_by_taxon <- function(opt = NULL, taxlevel = NULL, taxinterest = NULL, is_isolate = FALSE){
-        if (is_isolate){
-            taxlevel <- "LKT"
-            taxinterest <- NULL
-            taxname <- opt$prefix
-        } else {
-            taxname <- taxinterest
-        }
+    get_assembly_stats_by_taxon <- function(opt = NULL, taxlevel = NULL, taxinterest = NULL){
 
+        if (taxlevel == "Isolate"){
+            taxinterest <- opt$prefix
+            is_isolate <- TRUE
+        } else {
+            is_isolate <- FALSE
+        }
         contigs2length <- getcontigs2length(opt = opt, taxlevel = taxlevel, taxinterest = taxinterest)
-        assemblystats <- data.frame(TaxLevel = taxlevel, Taxon = taxname, NumContigs = nrow(contigs2length), ContigSum = sum(contigs2length$Length), LargestContigSize = max(contigs2length$Length), N50 = getN50(contigs2length), L50 = getL50(contigs2length), N90 = getN90(contigs2length), ProbNumGenomes = estimate_genome_completeness(contigs2length, is_isolate = is_isolate), Num16S = find16SrRNA(contigs2length = contigs2length, opt = opt))
+        assemblystats <- data.frame(TaxLevel = taxlevel, Taxon = taxinterest, NumContigs = nrow(contigs2length), ContigSum = sum(contigs2length$Length), LargestContigSize = max(contigs2length$Length), N50 = getN50(contigs2length), L50 = getL50(contigs2length), N90 = getN90(contigs2length), ProbNumGenomes = estimate_genome_completeness(contigs2length, is_isolate = is_isolate), Num16S = find16SrRNA(contigs2length = contigs2length, opt = opt))
 
         return(assemblystats)
     }
 
     get_assembly_stats_by_taxlevel <- function(opt = NULL, taxlevel = NULL){
         contigsdata <- opt$contigsdata
-        #Get a list of non-redundant tax entities
-        Taxa <- unique(contigsdata[ , taxlevel])
-        assemblystats_taxlevel <- lapply(Taxa, function(t) { get_assembly_stats_by_taxon(opt = opt, taxlevel = taxlevel, taxinterest = t) })
-        assemblystats_taxlevel <- plyr::ldply(assemblystats_taxlevel, rbind)
-        assemblystats_taxlevel <- assemblystats_taxlevel[order(assemblystats_taxlevel$ProbNumGenomes, decreasing = TRUE), ]
+        if (taxlevel != "Isolate"){
+            #Get a list of non-redundant tax entities
+            Taxa <- unique(contigsdata[ , taxlevel])
+            assemblystats_taxlevel <- lapply(Taxa, function(t) { get_assembly_stats_by_taxon(opt = opt, taxlevel = taxlevel, taxinterest = t) })
+            assemblystats_taxlevel <- plyr::ldply(assemblystats_taxlevel, rbind)
+            assemblystats_taxlevel <- assemblystats_taxlevel[order(assemblystats_taxlevel$ProbNumGenomes, decreasing = TRUE), ]
+        } else {
+            assemblystats_taxlevel <- get_assembly_stats_by_taxon(opt = opt, taxlevel = "Isolate")
+        }
+
         return(assemblystats_taxlevel)
     }
 
@@ -118,18 +117,15 @@ evaluate_assembly <- function(opt = NULL){
     assign("JAMSMedian_Genome_Sizes", JAMSMedian_Genome_Sizes, .GlobalEnv)
 
     #Decide if calculating for a metagenome or for an isolate
+    taxlvls <- c("LKT", "IS1", "Species", "Genus", "Family", "Order", "Class", "Phylum", "Kingdom", "Domain")
     if (opt$analysis == "isolate") {
         flog.info(paste("Evaluating assembly for isolate", opt$prefix))
-        opt$assemblystats <- get_assembly_stats_by_taxon(opt = opt, is_isolate = TRUE)
-
-    } else {
-
-        taxlvls <- c("LKT", "IS1", "Species", "Genus", "Family", "Order", "Class", "Phylum", "Kingdom", "Domain")
-        assemblystats_alllevels <- mclapply(taxlvls, function (x) { get_assembly_stats_by_taxlevel(opt = opt, taxlevel = x) }, mc.cores = max(1, min(length(taxlvls), (opt$threads - 2))))
-        assemblystats_alllevels <- plyr::ldply(assemblystats_alllevels, rbind)
-
-        opt$assemblystats <- assemblystats_alllevels
+        taxlvls <- c(taxlvls, "Isolate")
     }
+
+    assemblystats_alllevels <- mclapply(taxlvls, function (x) { get_assembly_stats_by_taxlevel(opt = opt, taxlevel = x) }, mc.cores = max(1, min(length(taxlvls), (opt$threads - 2))))
+    assemblystats_alllevels <- plyr::ldply(assemblystats_alllevels, rbind)
+    opt$assemblystats <- assemblystats_alllevels
 
     return(opt)
 }
