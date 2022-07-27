@@ -25,7 +25,7 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
     }
 
     #If setting featmaxatleastPPM or featcutoff to anything other than the defaults, then return as PPM.
-    if ((featmaxatleastPPM != 0) || featcutoff != c(0, 0)){
+    if (any(featcutoff != c(0, 0))){
         asPPM <- TRUE
     }
 
