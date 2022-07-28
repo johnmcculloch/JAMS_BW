@@ -3,7 +3,11 @@
 #' JAMSalpha function
 #' @export
 
-print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplots", "taxonomy", "SixteenSid", "resfinder", "abricate", "plasmidfinder", "vfdb", "func"), plotucobias = FALSE){
+print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplots", "taxonomy", "SixteenSid", "resfinder", "abricate", "plasmidfinder", "vfdb", "func"), plotucobias = FALSE, report_style = NULL){
+
+    if (is.null(report_style)){
+        report_style <- opt$analysis
+    }
 
     #See what is available
     elementsinopt <- elements[elements %in% names(opt)]
@@ -36,14 +40,27 @@ print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplo
     #Print taxonomic analysis, if applicable
     if (("taxonomy" %in% elements)){
         taxlvlspresent <- colnames(opt$LKTdose)[colnames(opt$LKTdose) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
-        for (taxl in taxlvlspresent){
-            print(pareto_abundance(LKTdose = opt$LKTdose, samplename = samplename, taxlevel = taxl, assemblystats = opt$assemblystats, showcompletenesstext = TRUE, showcompletenessline = FALSE, showcontigline = FALSE, showparetocurve = TRUE, showpercentagetext = TRUE))
+
+        if (report_style %in% c("metagenome", "metatranscriptome")){
+            for (taxl in taxlvlspresent){
+                print(pareto_abundance(LKTdose = opt$LKTdose, samplename = samplename, taxlevel = taxl, assemblystats = opt$assemblystats, showcompletenesstext = TRUE, showcompletenessline = FALSE, showcontigline = FALSE, showparetocurve = TRUE, showpercentagetext = TRUE))
+            }
+            #Print an extra pareto chart for LKT with genome completeness
+            print(pareto_abundance(LKTdose = opt$LKTdose, assemblystats = opt$assemblystats, samplename = samplename, taxlevel = "LKT", showcompletenesstext = TRUE, showcompletenessline = TRUE, showcontigline = FALSE, showparetocurve = TRUE, showpercentagetext = TRUE))
+        } else if (report_style == "isolate"){
+            donut_list <- lapply(c("LKT", "Species", "IS1"), function (x) { plot_genome_taxonomy_donut(opt = opt, taxlevel = x, percentage_threshold = 99, ntop = 10, brewer_palette = 3) } )
+            names(donut_list) <- c("Species", "IS1", "LKT")
+            Isolateassemblystatstable <- ggtexttable(subset(opt$assemblystats, TaxLevel == "Isolate")[ , 2:ncol(opt$assemblystats)], rows = NULL, theme = ttheme("mBlue", base_size = 8))
+            donuts_top <- ggarrange(plotlist = donut_list, ncol = 3, nrow = 1, align = "h")
+            donuts <- ggarrange(donuts_top, Isolateassemblystatstable, ncol = 1, nrow = 2, align = "hv")
+
+            print(donuts)
         }
-        #Print an extra pareto chart for LKT with genome completeness
-        print(pareto_abundance(LKTdose = opt$LKTdose, assemblystats = opt$assemblystats, samplename = samplename, taxlevel = "LKT", showcompletenesstext = TRUE, showcompletenessline = TRUE, showcontigline = FALSE, showparetocurve = TRUE, showpercentagetext = TRUE))
+
         if ("ucoplots" %in% names(opt)){
             print(opt$ucoplots)
         }
+
     }
 
     #If transcriptome, report proportion of CDS to rRNA

@@ -9,7 +9,8 @@ print_jams_report(
   outputdir = NULL,
   elements = c("readplots", "taxonomy", "SixteenSid", "resfinder", "abricate",
     "plasmidfinder", "vfdb", "func"),
-  plotucobias = FALSE
+  plotucobias = FALSE,
+  report_style = NULL
 )
 }
 \description{
