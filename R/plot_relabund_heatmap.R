@@ -588,7 +588,8 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         relabundscalename <- "Pres/Abs"
                     }
 
-                    if (all(c((!is.null(textby)), (fontsizex > 0.2)))){
+                    #if (all(c((!is.null(textby)), (fontsizex > 0.2)))){
+                    if (!is.null(textby)){
                         hmdf_txt <- as.character(colData(currobj)[ , which(colnames(colData(currobj)) == textby[1])])
                         ha_column <- HeatmapAnnotation(which = "column", df = hmdf, col = cores, textby = anno_text(hmdf_txt, gp = gpar(fontsize = fontsizex, col = "black")), annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"))
                     } else {
