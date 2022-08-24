@@ -33,7 +33,7 @@ get_reads <- function(opt = NULL){
             flog.info("You are probably on Biowulf. Will use NIH HPC version of SRA toolkit to avoid caching issues.")
             commandtorun <- paste(file.path(opt$bindir, "getreadsSRAonBW.sh"), opt$sraaccession, sep =  " ")
         } else {
-            commandtorun <- paste("fastq-dump --split-e", opt$sraaccession, sep =  " ")
+            commandtorun <- paste("fastq-dump --skip-technical --readids --dumpbase --split-e --clip", opt$sraaccession, sep = " ")
         }
         system(commandtorun)
 
