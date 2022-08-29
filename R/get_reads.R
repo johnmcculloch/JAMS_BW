@@ -33,13 +33,13 @@ get_reads <- function(opt = NULL){
             flog.info("You are probably on Biowulf. Will use NIH HPC version of SRA toolkit to avoid caching issues.")
             commandtorun <- paste(file.path(opt$bindir, "getreadsSRAonBW.sh"), opt$sraaccession, sep =  " ")
         } else {
-            commandtorun <- paste("fastq-dump --skip-technical --readids --dumpbase --split-e --clip", opt$sraaccession, sep = " ")
+            commandtorun <- paste("fastq-dump --skip-technical --readids --read-filter pass --dumpbase --split-e --clip", opt$sraaccession, sep = " ")
         }
         system(commandtorun)
 
         #Eliminate unpaired read because split-e was used. This means that unpaired reads from a paired Run will be dumped into a third file.
         if (length(list.files(pattern = "fastq") > 2)){
-            file.remove(paste(opt$sraaccession, "fastq", sep = "."))
+            file.remove(paste0(opt$sraaccession, "_pass.fastq"))
         }
     } else {
         opt$readorigin <- "supplied"
