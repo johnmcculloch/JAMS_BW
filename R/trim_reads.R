@@ -32,6 +32,20 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18){
         minlen=36
         trimmcommand<-"trimmomatic"
 
+        #scores <- system2('awk', args = c("\'NR % 4 == 10\'", opt$rawreads[1]), stdout = TRUE)
+        scores <- system2('head', args = c("-1000", opt$rawreads[1]), stdout = TRUE)
+        scores <- scores[seq(4, 1000, by = 4)]
+        atomized_scores <- unlist(strsplit(scores, split = ""))
+        atomized_scores_values <- sapply(atomized_scores, function(x) { utf8ToInt(x) } )
+        atomized_scores_values <- atomized_scores_values - 33
+        scores_quantiles <- quantile(atomized_scores_values)
+        if (unname(scores_quantiles["25%"]) > 40){
+            opt$phredoffset <- 64
+        } else {
+            opt$phredoffset <- 33
+        }
+        flog.info(paste("Looks like the fastqs have a Phred offset of", opt$phredoffset))
+
         if(opt$libstructure == "pairedend"){
             libstruct<-"PE"
             input.read1<-opt$rawreads[1]
@@ -41,7 +55,7 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18){
             output.trim_unpaired1<-paste(opt$prefix, libstruct, "R1_trim_unpaired.fastq", sep="_")
             output.trim_unpaired2<-paste(opt$prefix, libstruct, "R2_trim_unpaired.fastq", sep="_")
             #filter reads
-            commandtorun<-paste(trimmcommand, libstruct, "-threads", opt$threads, input.read1, input.read2, output.trim1, output.trim_unpaired1, output.trim2, output.trim_unpaired2, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
+            commandtorun<-paste(trimmcommand, libstruct, "-threads", opt$threads, input.read1, input.read2, output.trim1, output.trim_unpaired1, output.trim2, output.trim_unpaired2, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("-phred", as.character(opt$phredoffset)), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
             system(commandtorun)
 
             #merge unpaired
@@ -72,7 +86,7 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18){
             output.trimSE<-paste(opt$prefix, libstruct, "trim.fastq", sep="_")
 
             #filter reads
-            commandtorun<-paste(trimmcommand, libstruct, "-threads", opt$threads, input.read1, output.trimSE, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
+            commandtorun<-paste(trimmcommand, libstruct, "-threads", opt$threads, input.read1, output.trimSE, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("-phred", as.character(opt$phredoffset)), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
             system(commandtorun)
 
             #add info of what was acieved to opt
