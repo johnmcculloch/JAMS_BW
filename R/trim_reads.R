@@ -32,7 +32,6 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18){
         minlen=36
         trimmcommand<-"trimmomatic"
 
-        #scores <- system2('awk', args = c("\'NR % 4 == 10\'", opt$rawreads[1]), stdout = TRUE)
         scores <- system2('head', args = c("-1000", opt$rawreads[1]), stdout = TRUE)
         scores <- scores[seq(4, 1000, by = 4)]
         atomized_scores <- unlist(strsplit(scores, split = ""))
