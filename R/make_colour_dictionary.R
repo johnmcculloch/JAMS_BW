@@ -1,41 +1,25 @@
-#' make_colour_dictionary(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, showcoloursonly = FALSE)
+#' make_colour_dictionary(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, print_palette = FALSE)
 #'
 #' Returns a dictionary of colours for each class within each variable_list or phenotable
 #' @export
 
-make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, showcoloursonly = FALSE){
+make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, print_palette = FALSE){
 
-    atoms <- c("0200FC", "ff7f02", "468B00", "CD2626", "267ACD", "640032", "FC00FA", "000000", "478559", "161748", "f95d9b", "39a0ca")
+    atoms <- c("0200FC", "ff7f02", "468B00", "CD2626", "267ACD", "640032", "FC00FA", "000000", "478559", "161748", "f95D9B", "39A0CA")
 
     JAMSpalette <- paste0("#", atoms)
-
-    offsets <- c(2,4,6,8)
-    for(offsetamplitude in offsets){
-        offset <- as.hexmode(offsetamplitude)
-        atomsoff <- as.character(as.hexmode(atoms) + offset)
-        JAMSpalette_ext <- paste0("#", atomsoff)
-        JAMSpalette <- c(JAMSpalette, JAMSpalette_ext)
+    for (bset in c("Set1", "Paired", "Set2", "Set3")){
+        JAMSpalette <- c(JAMSpalette, colorRampPalette(brewer.pal(8, bset))(length(atoms)))
     }
 
     if (shuffle == TRUE){
         JAMSpalette <- JAMSpalette[shuffle(JAMSpalette)]
     }
 
-    if (showcoloursonly == TRUE){
-        #make example pies if requested
-        sliceValues <- as.data.frame(rep(10, length(atoms)))
-        colnames(sliceValues) <- "Slice"
-        colourpies <- list()
-        for (pies in 1:(length(offsets) + 1)){
-            currsliceValues <- sliceValues
-            pallist <- split(1:length(JAMSpalette), ceiling(seq_along(1:length(JAMSpalette)) / length(atoms)))
-            currpalette <- JAMSpalette[pallist[[pies]]]
-            currsliceValues$Colour <- factor(currpalette, levels=as.character(currpalette))
-            currcols <- as.character(currsliceValues$Colour)
-            names(currcols) <- as.character(currsliceValues$Colour)
-            colourpies[[pies]] <- ggplot(currsliceValues, aes(x = "", y = Slice, fill = Colour)) + geom_bar(width = 1, stat = "identity") + scale_fill_manual(values = currcols)  + coord_polar("y") + labs(title = paste0("JAMSpalette", pies))
-        }
-        return(colourpies)
+    if (print_palette){
+        pdf("JAMSpalette_values.pdf", paper = "a4r")
+        scales::show_col(JAMSpalette)
+        dev.off()
     }
 
     if (is.null(variable_list)){
