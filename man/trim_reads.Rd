@@ -4,7 +4,12 @@
 \alias{trim_reads}
 \title{trim_reads}
 \usage{
-trim_reads(opt = NULL, discardleftoverSE = FALSE, qual = 18)
+trim_reads(
+  opt = NULL,
+  discardleftoverSE = FALSE,
+  qual = 18,
+  autodetect_phred_offest = TRUE
+)
 }
 \description{
 JAMSalpha function

@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18){
+trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetect_phred_offest = TRUE){
 
     #Check if reads are in tmpdir
     if (opt$workdir != opt$sampledir){
@@ -17,6 +17,8 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18){
         flog.info("Could not find raw reads to trim. Aborting now")
         q()
     }
+
+    opt$phredoffset <- 33
 
     if(opt$seqtype %in% c("illuminape", "illuminamp")){
 
@@ -32,18 +34,20 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18){
         minlen=36
         trimmcommand<-"trimmomatic"
 
-        scores <- system2('head', args = c("-1000", opt$rawreads[1]), stdout = TRUE)
-        scores <- scores[seq(4, 1000, by = 4)]
-        atomized_scores <- unlist(strsplit(scores, split = ""))
-        atomized_scores_values <- sapply(atomized_scores, function(x) { utf8ToInt(x) } )
-        atomized_scores_values <- atomized_scores_values - 33
-        scores_quantiles <- quantile(atomized_scores_values)
-        if (unname(scores_quantiles["25%"]) > 40){
-            opt$phredoffset <- 64
-        } else {
-            opt$phredoffset <- 33
+        if (autodetect_phred_offest == TRUE){
+            scores <- system2('head', args = c("-1000", opt$rawreads[1]), stdout = TRUE)
+            scores <- scores[seq(4, 1000, by = 4)]
+            atomized_scores <- unlist(strsplit(scores, split = ""))
+            atomized_scores_values <- sapply(atomized_scores, function(x) { utf8ToInt(x) } )
+            atomized_scores_values <- atomized_scores_values - 33
+            scores_quantiles <- quantile(atomized_scores_values)
+            if (unname(scores_quantiles["25%"]) > 40){
+                opt$phredoffset <- 64
+            } else {
+                opt$phredoffset <- 33
+            }
+            flog.info(paste("Looks like the fastqs have a Phred offset of", opt$phredoffset))
         }
-        flog.info(paste("Looks like the fastqs have a Phred offset of", opt$phredoffset))
 
         if(opt$libstructure == "pairedend"){
             libstruct<-"PE"
@@ -80,9 +84,9 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18){
             }
 
         } else if(opt$libstructure == "singleend"){
-            libstruct<-"SE"
-            input.read1<-opt$rawreads[1]
-            output.trimSE<-paste(opt$prefix, libstruct, "trim.fastq", sep="_")
+            libstruct <- "SE"
+            input.read1 <- opt$rawreads[1]
+            output.trimSE <- paste(opt$prefix, libstruct, "trim.fastq", sep="_")
 
             #filter reads
             commandtorun<-paste(trimmcommand, libstruct, "-threads", opt$threads, input.read1, output.trimSE, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("-phred", as.character(opt$phredoffset)), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")

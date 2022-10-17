@@ -109,35 +109,42 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
                 CorrHmColours <- c("blue4", "lightgoldenrodyellow", "red1")
                 heatmapCols <- colorRamp2(c(-1, 0, 1), CorrHmColours)
 
-                fontsizey <- max(1, (min(5, round((((-1 / 300) * (nrow(matstats))) + 1) * 3.5, 0))))
+                #fontsizey <- max(1, (min(5, round((((-1 / 300) * (nrow(matstats))) + 1) * 3.5, 0))))
+
+                fontcoefficient <- (-0.05 * nrow(matstats)) + 7.5
+                fontsizey <- round((((-1 / 200) * (nrow(matstats))) + 1.01 * fontcoefficient), 2)
 
                 #Add genome completeness info if LKT
-                if (analysis == "LKT"){
-                    genomecompletenessdf <- assays(currobj)$GenomeCompleteness
-                    genomecompletenessstats <- as.matrix(genomecompletenessdf[rownames(matstats), ])
-                    gcl <- lapply(1:nrow(genomecompletenessstats), function (x){ (as.numeric(genomecompletenessstats[x, ][which(genomecompletenessstats[x, ] != 0)])) * 100 })
+                ha1 <- NULL
+                ha2 <- NULL
 
-                    data(Gram)
-                    #Get Phyla
-                    if (analysisname %in% c("LKT", "Species", "Genus", "Family", "Order", "Class")){
-                        tt <- as.data.frame(rowData(currobj))
-                        tt <- tt[rownames(matstats), c(analysisname, "Phylum")]
-                        Gram$Kingdom <- NULL
-                        tt <- left_join(tt, Gram)
-                        tt$Gram[which(!(tt$Gram %in% c("positive", "negative")))] <- "not_sure"
-                        phcol <- colorRampPalette((brewer.pal(9, "Set1")))(length(unique(tt$Phylum)))
-                        names(phcol) <- unique(tt$Phylum)
-                        phcol[which(names(phcol) == "p__Unclassified")] <- "#000000"
-                        phcol <- phcol[!duplicated(phcol)]
+                if (analysis == "LKT"){
+
+                    if ("GenomeCompleteness" %in% names(assays(currobj))){
+                        genomecompletenessdf <- assays(currobj)$GenomeCompleteness
+                        genomecompletenessstats <- as.matrix(genomecompletenessdf[rownames(matstats), ])
+                        gcl <- lapply(1:nrow(genomecompletenessstats), function (x){ (as.numeric(genomecompletenessstats[x, ][which(genomecompletenessstats[x, ] != 0)])) * 100 })
                     }
 
-                    ha1 <- rowAnnotation(Pct_Genome_Compl = anno_boxplot(gcl, width = unit(4, "cm"), pch = 20, size = unit(1, "mm"),  axis_param = list(labels_rot = 90)), Gram = tt$Gram, Phylum = tt$Phylum, col = list(Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8"), Phylum = phcol),  annotation_name_gp = gpar(fontsize = 6, col = "black"))
+                    if(any(c(showGram, showphylum))){
+                        data(Gram)
+                        #Get Phyla
+                        if (analysisname %in% c("LKT", "Species", "Genus", "Family", "Order", "Class")){
+                            tt <- as.data.frame(rowData(currobj))
+                            tt <- tt[rownames(matstats), c(analysisname, "Phylum")]
+                            Gram$Kingdom <- NULL
+                            tt <- left_join(tt, Gram)
+                            tt$Gram[which(!(tt$Gram %in% c("positive", "negative")))] <- "not_sure"
+                            phcol <- colorRampPalette((brewer.pal(9, "Set1")))(length(unique(tt$Phylum)))
+                            names(phcol) <- unique(tt$Phylum)
+                            phcol[which(names(phcol) == "p__Unclassified")] <- "#000000"
+                            phcol <- phcol[!duplicated(phcol)]
+                        }
 
-                    ha2 <- HeatmapAnnotation(Phylum = tt$Phylum, Gram = tt$Gram, col = list(Phylum = phcol, Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8")),  annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = FALSE)
+                        ha1 <- rowAnnotation(Pct_Genome_Compl = anno_boxplot(gcl, width = unit(4, "cm"), pch = 20, size = unit(1, "mm"),  axis_param = list(labels_rot = 90)), Gram = tt$Gram, Phylum = tt$Phylum, col = list(Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8"), Phylum = phcol),  annotation_name_gp = gpar(fontsize = 6, col = "black"))
 
-                } else {
-                    ha1 <- NULL
-                    ha2 <- NULL
+                        ha2 <- HeatmapAnnotation(Phylum = tt$Phylum, Gram = tt$Gram, col = list(Phylum = phcol, Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8")),  annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = FALSE)
+                    }
                 }
 
                 #Build plot title
