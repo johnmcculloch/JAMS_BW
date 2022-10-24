@@ -63,6 +63,14 @@ export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL
             cvn <- cvn + 1
         }
 
+        if ("GeneCounts" %in% names(assays((expvec2)[[x]]))){
+            cts <- assays(exp_filt)$GeneCounts
+            ctsname <- paste(names(expvec2)[x], "GeneCounts", sep="_")
+            countvec[[cvn]] <- as.data.frame(cts)
+            names(countvec)[cvn] <- ctsname
+            cvn <- cvn + 1
+        }
+
         feattbl <- as.data.frame(rowData(expvec2[[x]]))
         ftsname <- paste(names(expvec2)[x], "featuretable", sep="_")
         countvec[[cvn]] <- feattbl
