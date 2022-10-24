@@ -4,9 +4,6 @@ suppressMessages(suppressPackageStartupMessages(library(optparse)))
 #####################################
 # Define System-specific Functions ##
 #####################################
-if ((.Platform$OS.type) != "unix"){
-    stop("JAMS only works on UNIX. Install Linux and try again.")
-}
 
 #Get slurm job ID
 slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
