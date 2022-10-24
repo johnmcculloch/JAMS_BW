@@ -125,8 +125,6 @@ option_list <- list(
                 help = str_c("Project ID for downloading reads from Illumina BaseSpace. If using the -b option, any reads from the -o input will be ignored. BaseSpace CLI must be installed. To install, see this: https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview")),
     make_option(c("-z", "--tarup"), default = defopt$tarup, action="store_true",
                 help = str_c("Output joined lanes as a tarball (reads.tar.gz) rather than two separate fastq files.")),
-#    make_option(c("-c", "--checkcount"), default = defopt$checkcount, action="store_true",
-#                help = str_c("If forward and reverse reads are present for a sample, check that they have the same number of reads.")),
     make_option(c("-t", "--threads"), default=defopt$threads, action="store",
                 help = str_c("number of threads (default: ", defopt$threads, ")")),
     make_option(c("-p", "--prefixlist"), action="store",
