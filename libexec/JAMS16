@@ -63,8 +63,11 @@ option_list <- list(
                 type="character",
                 help ="path to where all fastq files are"),
 
+    make_option(c("-b", "--basespace_projectID"), default = NULL, action="store",
+                help = str_c("Project ID for downloading reads from Illumina BaseSpace. If using the -b option, any reads from the -y input will be ignored. BaseSpace CLI must be installed. To install, see this: https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview")),
+
     make_option(c("-T", "--trunclen_cutoffs_R1_R2"),
-                action="store", default = NULL,
+                action="store", default = "240,200",
                 type="character",
                 help ="Specify truncation lengths for R1,R2 (example: -T 240,200). If not specified, JAMS16 will impute appropriate values for truncation with fastq quality analysis."),
 
@@ -89,11 +92,6 @@ option_list <- list(
                 help ="Generate Relative Abundace heatmaps and spreadsheets based on variance analysis."),
 
     make_option(c("-k", "--make_comparative_reports"),
-                action="store_true", default = FALSE,
-                type="logical",
-                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
-
-    make_option(c("-b", "--make_PA_reports"),
                 action="store_true", default = FALSE,
                 type="logical",
                 help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
@@ -293,6 +291,15 @@ if (opt$metadatavetting == TRUE){
 #Save in case anything else goes wrong later
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
+#Download BaseSpace reads, if required
+if (!is.null(opt$basespace_projectID)){
+    flog.info(paste("Downloading reads from BasesSpace under project ID", as.character(opt$basespace_projectID)))
+    opt$reads_files_path <- file.path(opt$outdir, "BaseSpaceReads")
+    dir.create(opt$reads_files_path, recursive = TRUE)
+    cmd <- paste("bs", "download", "project", "-i", as.character(opt$basespace_projectID), "-o", opt$reads_files_path)
+    system(cmd)
+}
+
 Samples_want <- as.character(opt$phenotable[ , ptsampcol])
 #Look for corresponding fastqs with the wanted sample prefixes
 #Get a list of fastq files
@@ -324,8 +331,15 @@ if (length(Samples_have_R1R2) < length(Samples_have)){
 }
 rawfastqsdf <- subset(rawfastqsdf, OriPrefix %in% Samples_have_R1R2)
 
+#Are there at least two samples?
+if (nrow(rawfastqsdf) < 3){
+    flog.warn(paste("There are only", nrow(rawfastqsdf), "samples that were found in the fastq file path. Check your metadata and fastq file path! Aborting now."))
+    q()
+}
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
 #Check each sample has two files
-if(length(Samples_have_R1R2) != (nrow(rawfastqsdf) / 2)){
+if (length(Samples_have_R1R2) != (nrow(rawfastqsdf) / 2)){
     flog.warn("Some samples have more than two fastq files. Check your metadata and fastq file path! Aborting now.")
     q()
 }
