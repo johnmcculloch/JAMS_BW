@@ -130,9 +130,9 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         flog.info("getting permanova")
         if (permanova == TRUE){
             if (!(is.numeric(cats))){
-                permanovaout <- vegan::adonis(as.formula(paste("d ~ ", compareby)), data = currpt_stat, permutations = permanova_permutations)$aov.tab
+                permanovaout <- vegan::adonis2(formula = as.formula(paste("d ~ ", compareby)), data = currpt_stat, permutations = permanova_permutations, parallel = threads)
                 permanovap <- permanovaout$`Pr(>F)`[1]
-                permanovaF <- permanovaout$`F.Model`[1]
+                permanovaF <- permanovaout$`F`[1]
             } else {
                 flog.info("Impossible to get permanova because compareby is continuous")
                 permanovap <- NULL
