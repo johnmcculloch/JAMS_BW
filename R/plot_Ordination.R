@@ -127,6 +127,12 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             d <- vegdist(countmat, method = distmethod, na.rm = TRUE)
             cats <- currpt_stat[, compareby]
         }
+
+        #switch off permanova if there is only a single comparison
+        if (length(cats) < 2){
+            permanova <- FALSE
+        }
+
         flog.info("getting permanova")
         if (permanova == TRUE){
             if (!(is.numeric(cats))){
@@ -134,7 +140,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
                 permanovap <- permanovaout$`Pr(>F)`[1]
                 permanovaF <- permanovaout$`F`[1]
             } else {
-                flog.info("Impossible to get permanova because compareby is continuous")
+                flog.info("Impossible to get permanova because compareby is continuous.")
                 permanovap <- NULL
                 permanovaF <- NULL
             }
