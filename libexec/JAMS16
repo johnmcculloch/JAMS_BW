@@ -60,8 +60,10 @@ option_list <- list(
                 type="character",
                 help ="path to where all fastq files are"),
 
-    make_option(c("-b", "--basespace_projectID"), default = NULL, action="store",
-                help = str_c("Project ID for downloading reads from Illumina BaseSpace. If using the -b option, any reads from the -y input will be ignored. BaseSpace CLI must be installed. To install, see this: https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview")),
+    make_option(c("-b", "--basespace_projectID"), default = NULL,
+                action="store",
+                type="character",
+                help = "Project ID for downloading reads from Illumina BaseSpace. If using the -b option, any reads from the -y input will be ignored. BaseSpace CLI must be installed. To install, see this: https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview"),
 
     make_option(c("-T", "--trunclen_cutoffs_R1_R2"),
                 action="store", default = "240,200",
