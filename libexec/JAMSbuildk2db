@@ -235,6 +235,7 @@ dir.create(opt$taxonomydb, recursive = TRUE)
 setwd(opt$taxonomydb)
 
 opt$ncbiftp <- "ftp.ncbi.nlm.nih.gov"
+opt$krakenUniqmapfile <- file.path(opt$k2db, "header2taxid.map")
 
 #Define which organisms to include
 opt$organismnames <- unique(unlist(strsplit(opt$organisms, split = ",")))
@@ -278,7 +279,7 @@ save.image(opt$projimage)
 ## Get genomes
 
 #Define useful functions beforehand
-decompress_rename_and_count <- function(assembly_summary_line){
+decompress_rename_and_count <- function(assembly_summary_line = NULL, krakenUniqmapfile = NULL){
 
     #Do it safely
     if (file.exists(assembly_summary_line$destfn)){
@@ -289,6 +290,11 @@ decompress_rename_and_count <- function(assembly_summary_line){
         newheader <- paste(assembly_summary_line$assembly_accession, "kraken:taxid", assembly_summary_line$taxid, sep = "|")
         sedcmd <- paste("sed", "-i", "-e", paste0("\'", paste0("s/^>.*/>", newheader, "/"), "\'"), newfn, collapse = " ")
         system(sedcmd)
+
+        #Append to taxid map for Kraken uniq
+        if (!is.null(krakenUniqmapfile)){
+            cat(paste(newheader, assembly_summary_line$taxid, sep = "\t"), file = krakenUniqmapfile, append = TRUE)
+        }
         #Count bases
         fastaheader <- paste0("\'", ">", "\'")
         newln <- paste0("\'", "\n", "\'")
@@ -383,7 +389,7 @@ for (organisms in opt$wantedorganisms){
             currchunk <- bugstodownload[chunkcoords[[cnk]], ]
             currchunk <- currchunk[which(!(is.na(currchunk[,1]))), ]
             #decompress and rename
-            gsizelist <- mclapply(1:nrow(currchunk), function (x) { decompress_rename_and_count(currchunk[x, ]) }, mc.cores = (opt$threads - 2))
+            gsizelist <- mclapply(1:nrow(currchunk), function (x) { decompress_rename_and_count(assembly_summary_line = currchunk[x, ], krakenUniqmapfile = opt$krakenUniqmapfile) }, mc.cores = (opt$threads - 2))
             currchunk$gensize <- unlist(gsizelist)
             #Append current chunk info to master_assembly_summary
             opt$master_assembly_summary <- rbind(currchunk, opt$master_assembly_summary)
@@ -391,7 +397,7 @@ for (organisms in opt$wantedorganisms){
         }
     } else {
         flog.info(paste("There are", nrow(bugstodownload), "genomes to decompress and fix. This is less than 1000, so doing this serially."))
-        gsizelist <- lapply(1:nrow(bugstodownload), function (x) { decompress_rename_and_count(bugstodownload[x, ]) })
+        gsizelist <- lapply(1:nrow(bugstodownload), function (x) { decompress_rename_and_count(assembly_summary_line = bugstodownload[x, ], krakenUniqmapfile = opt$krakenUniqmapfile) })
         bugstodownload$gensize <- unlist(gsizelist)
         #Append current chunk info to master_assembly_summary
         opt$master_assembly_summary<-rbind(bugstodownload, opt$master_assembly_summary)
