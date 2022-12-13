@@ -16,7 +16,7 @@ pareto_abundance <- function(LKTdose = NULL, samplename = NULL, list.data = NULL
         assemblystats <- list.data[[paste(samplename, "assemblystats", sep="_")]]
     }
 
-    taxlvlspresent <- colnames(LKTdose)[colnames(LKTdose) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
+    taxlvlspresent <- colnames(LKTdose)[colnames(LKTdose) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT", "MAG_MPT")]
 
     #Make a colour dictionary by phylum
     tt<-LKTdose[, taxlvlspresent]

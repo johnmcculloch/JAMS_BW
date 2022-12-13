@@ -188,7 +188,7 @@ option_list <- list(
 
     make_option(c("-m", "--bin_contigs_with_metabat"), default=defopt$bin_contigs_with_metabat,
                 action="store_true",
-                help = str_c("bin contigs into Metagenome Assembled Genomes using MetaBAT2. default: ", defopt$classifyunassembled, ")")),
+                help = str_c("bin contigs into Metagenome Assembled Genomes using MetaBAT2. default: ", defopt$bin_contigs_with_metabat, ")")),
 
     make_option(c("-x", "--threads"), default=defopt$threads, action="store",
                 type="numeric",
