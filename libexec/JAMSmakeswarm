@@ -234,6 +234,9 @@ option_list <- list(
     make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
                 help = str_c("Use -n option in swarm file, for skipping InterproScan, even if available.)")),
 
+    make_option(c("-m", "--use_metabat"), default = FALSE, action="store_true",
+                help = str_c("Use -m option in swarm file, for classifying binning contigs into MAGs using MetaBAT2.)")),
+
     make_option(c("-q", "--classifyunassembled"), default = FALSE, action="store_true",
                 help = str_c("Use -q option in swarm file, for classifying unassembled reads.)")),
 
@@ -375,6 +378,10 @@ if (opt$skipinterpro == TRUE) {
 
 if (opt$classifyunassembled == TRUE) {
     commonoptions <- paste(commonoptions, "-q", collapse = " ")
+}
+
+if (opt$use_metabat == TRUE) {
+    commonoptions <- paste(commonoptions, "-m", collapse = " ")
 }
 
 finalswarm <- NULL
