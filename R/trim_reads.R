@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetect_phred_offest = TRUE){
+trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetect_phred_offest = FALSE){
 
     #Check if reads are in tmpdir
     if (opt$workdir != opt$sampledir){
