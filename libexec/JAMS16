@@ -75,6 +75,11 @@ option_list <- list(
                 type="character",
                 help ="path to the taxonomy database."),
 
+    make_option(c("-u", "--read_count_threshold"),
+                action="store", default = 5000,
+                type="numeric",
+                help ="path to the taxonomy database."),
+
     make_option(c("-e", "--export_tables"),
                 action="store_true", default = FALSE,
                 type="logical",
@@ -443,8 +448,8 @@ out$Filenames <- NULL
 rawfastqsdf <- left_join(rawfastqsdf, out, by = "OriPrefix")
 
 #Get a list of reads who do not survive read number threshold
-read_count_threshold <- 5000
-samplestodiscard <- subset(out, Number_Reads_Output < read_count_threshold)[]$OriPrefix
+
+samplestodiscard <- subset(out, Number_Reads_Output < opt$read_count_threshold)[]$OriPrefix
 rawfastqsdf$Sample_Status <- "Sample_Kept_Read_Count_Sufficient"
 if (length(samplestodiscard) > 0){
     rawfastqsdf$Sample_Status[which(rawfastqsdf$OriPrefix %in% samplestodiscard)] <- "Sample_Eliminated_Low_Read_Count"
