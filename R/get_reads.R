@@ -29,12 +29,12 @@ get_reads <- function(opt = NULL){
         flog.info(paste("Downloading from NCBI SRA reads pertaining to run", opt$sraaccession))
         #If in Biowulf, module load sra-toolkit
         slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
-        if(nchar(slurmjobid) > 3){
-            flog.info("You are probably on Biowulf. Will use NIH HPC version of SRA toolkit to avoid caching issues.")
-            commandtorun <- paste(file.path(opt$bindir, "getreadsSRAonBW.sh"), opt$sraaccession, sep =  " ")
-        } else {
+        #if (nchar(slurmjobid) > 3){
+        #    flog.info("You are probably on Biowulf. Will use NIH HPC version of SRA toolkit to avoid caching issues.")
+        #    commandtorun <- paste(file.path(opt$bindir, "getreadsSRAonBW.sh"), opt$sraaccession, sep =  " ")
+        #} else {
             commandtorun <- paste("fastq-dump --skip-technical --readids --read-filter pass --dumpbase --split-e --clip", opt$sraaccession, sep = " ")
-        }
+        #}
         system(commandtorun)
 
         #Eliminate unpaired read because split-e was used. This means that unpaired reads from a paired Run will be dumped into a third file.
