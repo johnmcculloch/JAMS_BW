@@ -805,7 +805,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     #Make a genome completeness heatmap if in taxonomic space
                     if (all(c((secondaryheatmap %in% c("GenomeCompleteness", "PctFromCtgs")), (any(c(("GenomeCompleteness" %in% names(assays(currobj))), ("PctFromCtgs" %in% names(assays(currobj))))))))) {
 
-                    if (ncol(mathm) < 31){
+                    if (ncol(mathm) < 2){ # Basically this was changed to enforce the secondary heatmap to always be plot separately
                         SHM_ha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
                     } else {
                         SHM_ha_column <- ha_column
@@ -826,7 +826,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         }
 
                         #Plot heatmaps side by side if there are less than the threshold number of samples or less. Else plot one on each page.
-                        if (ncol(mathm) < 31){
+                        if (ncol(mathm) < 2){ # Basically this was changed to enforce the secondary heatmap to always be plot separately
                             ht_list = ht1 + ht2
                             draw(ht_list, heatmap_legend_side = "bottom", annotation_legend_side = "right", ht_gap = unit(0.2, "cm"),padding = unit(c(2, 2, 2, 2), "mm"), column_title = dualHMtit, column_title_gp = gpar(fontsize = ht1fs))
                             drawseparateGChm <- FALSE
