@@ -453,7 +453,7 @@ samplestodiscard <- subset(out, Number_Reads_Output < opt$read_count_threshold)[
 rawfastqsdf$Sample_Status <- "Sample_Kept_Read_Count_Sufficient"
 if (length(samplestodiscard) > 0){
     rawfastqsdf$Sample_Status[which(rawfastqsdf$OriPrefix %in% samplestodiscard)] <- "Sample_Eliminated_Low_Read_Count"
-    flog.warn("Samples", paste0(samplestodiscard, collapse = ", "), "were discarded for having less than", read_count_threshold, "reads after filtering.")
+    flog.warn("Samples", paste0(samplestodiscard, collapse = ", "), "were discarded for having less than", opt$read_count_threshold, "reads after filtering.")
     #Reset reads data frame as not containing reads to discard
     rawfastqsdfR1 <- subset(rawfastqsdfR1, !(OriPrefix %in% samplestodiscard))
     rawfastqsdfR2 <- subset(rawfastqsdfR2, !(OriPrefix %in% samplestodiscard))
