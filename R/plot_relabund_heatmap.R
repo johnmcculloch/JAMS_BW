@@ -5,6 +5,9 @@
 
 plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
 
+    #Hardwire the minimum number of samples for a side by side secondary heatmap. This may be in a later version added as a function argument.
+    threshold_for_double_plot <- 7
+
     #Test for silly stuff
     if ((hmtype %in% c("comparative", "PA")) && (is.null(compareby))){
         stop("If rows are to be selected by highest significant difference between classes in a discrete category, you must determine the category using the argument *classesvector*")
@@ -514,7 +517,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                             numvals <- as.numeric(hmdf[, g][which(!(hmdf[, g] %in% class_to_ignore))])
                             hmdf[, g] <- as.numeric(hmdf[, g])
                             if ((max(numvals) - min(numvals)) > 0 ){
-                                #If values contain class to ignore, make them black else, only span whicte and dark blue
+                                #If values contain class to ignore, make them black else, only span white and dark blue
                                 cores[[g]] <- colorRamp2(c(min(numvals), max(numvals)), c("#3a8aa7", "#780078"), space = "RGB")
                             } else {
                                 #Not enough variance, so make them discrete
@@ -633,7 +636,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                             gchmdf <- gchmdf * 100
                             #Cap genome completeness to 400% max, to preserve scale across heatmaps
                             gchmdf[which(gchmdf[] > 400)] <- 400
-                            if (ncol(mathm) < 31){
+                            if (ncol(mathm) < threshold_for_double_plot){
                                 ht1fs <- 7
                                 dualHMtit <- plotit
                                 hm1tit <- "Relative Abundance"
@@ -644,7 +647,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                             pctctgsdf <- as.data.frame(assays(currobj)$PctFromCtgs)
                             gchmdf <- pctctgsdf[rownames(mathm), colnames(mathm)]
                             gchmdf <- as.matrix(gchmdf)
-                            if (ncol(mathm) < 31){
+                            if (ncol(mathm) < threshold_for_double_plot){
                                 ht1fs <- 7
                                 dualHMtit <- plotit
                                 hm1tit <- "Relative Abundance"
@@ -805,11 +808,11 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     #Make a genome completeness heatmap if in taxonomic space
                     if (all(c((secondaryheatmap %in% c("GenomeCompleteness", "PctFromCtgs")), (any(c(("GenomeCompleteness" %in% names(assays(currobj))), ("PctFromCtgs" %in% names(assays(currobj))))))))) {
 
-                    if (ncol(mathm) < 2){ # Basically this was changed to enforce the secondary heatmap to always be plot separately
-                        SHM_ha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
-                    } else {
-                        SHM_ha_column <- ha_column
-                    }
+                        if (ncol(mathm) < threshold_for_double_plot){
+                            SHM_ha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
+                        } else {
+                            SHM_ha_column <- ha_column
+                        }
 
                         RelabundRowOrder <- suppressWarnings(row_order(ht1))
                         HT1ColumnOrder <- suppressWarnings(column_order(ht1))
@@ -826,7 +829,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         }
 
                         #Plot heatmaps side by side if there are less than the threshold number of samples or less. Else plot one on each page.
-                        if (ncol(mathm) < 2){ # Basically this was changed to enforce the secondary heatmap to always be plot separately
+                        if (ncol(mathm) < threshold_for_double_plot){
                             ht_list = ht1 + ht2
                             draw(ht_list, heatmap_legend_side = "bottom", annotation_legend_side = "right", ht_gap = unit(0.2, "cm"),padding = unit(c(2, 2, 2, 2), "mm"), column_title = dualHMtit, column_title_gp = gpar(fontsize = ht1fs))
                             drawseparateGChm <- FALSE
