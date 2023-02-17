@@ -229,6 +229,23 @@ trim_whitespace_from_df <- function(df = NULL){
     return(df)
 }
 
+#' replace_NAs_with_character(df)
+#' Replaces NAs with a specific character in a data frame
+#' @export
+
+replace_NAs_with_character <- function(df = NULL, replacement = "N_A"){
+    #check if input is reasonable
+    if (class(df)[1] != "data.frame"){
+        stop("Input must be a data.frame")
+    }
+
+    for (colm in 1:ncol(df)){
+        df[is.na(df[ , colm]) , colm] <- replacement
+    }
+
+    return(df)
+}
+
 
 #' exporttabletsv(dataobj = NULL, project = NULL, basename = NULL, row.names = TRUE, col.names = TRUE, path = NULL)
 #' Generic function to export a dataframe to tsv format
