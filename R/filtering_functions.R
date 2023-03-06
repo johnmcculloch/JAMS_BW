@@ -89,12 +89,12 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
         thresholdPPM <- featcutoff[1]
         sampcutoffpct <- min(featcutoff[2], 100)
 
-        prop_above_threshold <- function(x) {
-            proportionPassing <- length(which(countmatrix[x, ] >= thresholdPPM)) / ncol(countmatrix)
+        prop_above_threshold <- function(countmatrix = NULL, feat = NULL, thresholdPPM = NULL) {
+            proportionPassing <- length(which(countmatrix[feat, ] >= thresholdPPM)) / ncol(countmatrix)
             return(proportionPassing)
         }
 
-        featuresToKeep2 <- rownames(countmatrix)[which((sapply(1:nrow(countmatrix), function(x) { prop_above_threshold(x) })) > (sampcutoffpct/100))]
+        featuresToKeep2 <- rownames(countmatrix)[which((sapply(1:nrow(countmatrix), function(x) { prop_above_threshold(countmatrix = countmatrix, feat = x, thresholdPPM = thresholdPPM) })) > (sampcutoffpct/100))]
 
         ExpObj <- ExpObj[featuresToKeep2, ]
         countmatrix <- countmatrix[featuresToKeep2, ]
