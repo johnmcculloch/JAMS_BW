@@ -148,7 +148,7 @@ option_list <- list(
 
     make_option(c("-d", "--dbdir"), default=NULL, action="store",
                 type="character",
-                help = str_c("path to JAMS database directory")),
+                help = str_c("path to JAMS database folder")),
 
     make_option(c("-k", "--krakenconfidencescore"), default=defopt$krakenconfidencescore,
                 type = "numeric", action = "store",
@@ -156,7 +156,7 @@ option_list <- list(
 
     make_option(c("-o", "--outdir"), default=defopt$outdir, action="store",
                 type="character",
-                help = str_c("output directory (default: ", defopt$outdir, ")")),
+                help = str_c("output folder (default: ", defopt$outdir, ")")),
 
     make_option(c("-p", "--prefix"), default=NULL, action="store",
                 type="character",
@@ -250,14 +250,14 @@ for (pathtofix in c("R1", "R2", "SE", "contigs", "readstarball", "outdir", "dbdi
 
 # give help if needed input option not provided
 if (is.null(opt$dbdir)) {
-    print("You must supply the JAMS database directory.")
+    print("You must supply the JAMS database folder.")
     parse_args(OptionParser(option_list=option_list), c("-h"))
     q()
 } else {
-    #If db directory does exist, does it have the appropriate structure
+    #If db folder does exist, does it have the appropriate structure
     #Stop if unreasonable settings
     if (!(dir.exists(opt$dbdir))){
-        flog.info("JAMS db directory not found. You must supply one. Aborting now.")
+        flog.info("JAMS db folder not found. You must supply one. Aborting now.")
         q()
     } else {
         #DB path was supplied. Now validate the structure.
@@ -287,16 +287,16 @@ flog.info("JAMS - Just A Microbiology System")
 flog.info(paste("Version", opt$verstr))
 flog.info(paste("By:", paste(JAMSauthors, collapse = "; ")))
 
-#If all is OK, then create the project directory structure
+#If all is OK, then create the project folder structure
 opt$sampledir <- file.path(opt$outdir, paste0(opt$prefix, "_JAMS"))
-flog.info("Creating Sample output directory")
+flog.info("Creating Sample output folder")
 dir.create(opt$sampledir, showWarnings = FALSE, recursive = TRUE)
 
 #if (!(is.null(opt$tmpdir))){
 #    opt$tmpsampdir <- file.path(opt$tmpdir, paste(opt$prefix, "JAMStemp", sep="_"))
 #    dir.create(opt$tmpsampdir, showWarnings = FALSE, recursive = FALSE)
-#    flog.info(paste("Temporary Sample directory is", opt$tmpsampdir))
-#    flog.info(paste("Will work from within this directory and copy final files to", opt$sampledir))
+#    flog.info(paste("Temporary Sample folder is", opt$tmpsampdir))
+#    flog.info(paste("Will work from within this folder and copy final files to", opt$sampledir))
 #    opt$workdir <- opt$tmpsampdir
 #} else {
     opt$workdir <- opt$sampledir
@@ -306,10 +306,10 @@ dir.create(opt$sampledir, showWarnings = FALSE, recursive = TRUE)
 
 opt$projimage <- file.path(opt$sampledir, ".RData")
 
-flog.info(paste("Database directory is", opt$dbdir))
-flog.info(paste("Output directory is", opt$outdir))
-flog.info(paste("Final sample directory is", opt$sampledir))
-flog.info(paste("Working directory is", opt$workdir))
+flog.info(paste("Database folder is", opt$dbdir))
+flog.info(paste("Output folder is", opt$outdir))
+flog.info(paste("Final sample folder is", opt$sampledir))
+flog.info(paste("Working folder is", opt$workdir))
 flog.info(paste("Host is", opt$host))
 flog.info(paste("Project type is", opt$analysis))
 
