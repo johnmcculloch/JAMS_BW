@@ -292,31 +292,17 @@ opt$sampledir <- file.path(opt$outdir, paste0(opt$prefix, "_JAMS"))
 flog.info("Creating Sample output directory")
 dir.create(opt$sampledir, showWarnings = FALSE, recursive = TRUE)
 
-#Define a working directory.
-if (is.null(opt$tmpdir)){
-    #Try lscratch temp directory
-    slurmtmpdir <- file.path("/lscratch", slurmjobid)
-    if (dir.exists(slurmtmpdir)){
-        flog.info(paste("Using", slurmtmpdir, "as temporary folder"))
-        opt$tmpdir<-slurmtmpdir
-        system("export TMPDIR=/lscratch/$SLURM_JOB_ID")
-    }
-} else {
-    if (!(dir.exists(opt$tmpdir))){
-        flog.info(paste("The temporary directory specified does not exist."))
-        opt$tmpdir <- NULL
-    }
-}
-
-if (!(is.null(opt$tmpdir))){
-    opt$tmpsampdir <- file.path(opt$tmpdir, paste(opt$prefix, "JAMStemp", sep="_"))
-    dir.create(opt$tmpsampdir, showWarnings = FALSE, recursive = FALSE)
-    flog.info(paste("Temporary Sample directory is", opt$tmpsampdir))
-    flog.info(paste("Will work from within this directory and copy final files to", opt$sampledir))
-    opt$workdir <- opt$tmpsampdir
-} else {
+#if (!(is.null(opt$tmpdir))){
+#    opt$tmpsampdir <- file.path(opt$tmpdir, paste(opt$prefix, "JAMStemp", sep="_"))
+#    dir.create(opt$tmpsampdir, showWarnings = FALSE, recursive = FALSE)
+#    flog.info(paste("Temporary Sample directory is", opt$tmpsampdir))
+#    flog.info(paste("Will work from within this directory and copy final files to", opt$sampledir))
+#    opt$workdir <- opt$tmpsampdir
+#} else {
     opt$workdir <- opt$sampledir
-}
+#}
+#note: phasing out temporary directories
+
 
 opt$projimage <- file.path(opt$sampledir, ".RData")
 
