@@ -10,7 +10,7 @@ Authors@R: c(person("John", "McCulloch", email = "john.mcculloch@nih.gov", role 
     person("Miriam", "Fernandes", email = "miriam.fernandes@nih.gov", role = "ctb"),
     person("Ascharya", "Balaji", email = "ascharya.balaji@nih.gov", role = "ctb"),
     person("Lisa", "Crowson", email = "lisapcrowson@gmail.com", role = "ctb"),
-    person("Colm", "O Huigin", email = "colm.ohuigin@nih.gov", role = "ctb")
+    person("Colm", "O Huigin", email = "colm.ohuigin@nih.gov", role = "ctb"),
     person("Amiran", "Dzutsev", email = "amiran.dzutsev@nih.gov", role = "ctb"),
     person("Giorgio", "Trinchieri", email = "trinchig@niaid.nih.gov", role = "ctb"))
 Description: Package for analysis of microbial (meta)genomic samples
