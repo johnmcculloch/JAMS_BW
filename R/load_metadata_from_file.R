@@ -18,7 +18,7 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
 
         xlMD <-  list()
         for (sheet in 1:3){
-            xlMD[[sheet]] <- tryCatch(read.xlsx(xlsxFile, sheet = sheet, startRow = 1, colNames = TRUE, rowNames = FALSE, detectDates = FALSE, skipEmptyRows = FALSE, skipEmptyCols = TRUE), error = function(e) { message(paste("Sheet", sheet, "is empty.")) } )
+            xlMD[[sheet]] <- tryCatch(read.xlsx(xlsxFile, sheet = sheet, startRow = 1, colNames = TRUE, rowNames = FALSE, detectDates = TRUE, skipEmptyRows = FALSE, skipEmptyCols = TRUE), error = function(e) { message(paste("Sheet", sheet, "is empty.")) } )
         }
 
         #Find out who is who
