@@ -18,16 +18,16 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
 
         xlMD <-  list()
         for (sheet in 1:3){
-            xlMD[[sheet]] <- tryCatch(read.xlsx(xlsxFile, sheet = sheet, startRow = 1, colNames = TRUE, rowNames = FALSE, detectDates = TRUE, skipEmptyRows = FALSE, skipEmptyCols = TRUE), error = function(e) { message(paste("Sheet", sheet, "is empty.")) } )
-
+            xlMD[[sheet]] <- tryCatch(read.xlsx(xlsxFile, sheet = sheet, startRow = 1, colNames = TRUE, rowNames = FALSE, detectDates = FALSE, skipEmptyRows = FALSE, skipEmptyCols = TRUE), error = function(e) { message(paste("Sheet", sheet, "is empty.")) } )
+##Not working at the moment so will manually fix dates after beta
             #Coerce dates, numeric, all to character. JAMS fixes class on the fly but need this for Summarized Experiment object to work.
-            if(nrow(xlMD[[sheet]]) > 0){
-                for (colm in 1:ncol(xlMD[[sheet]])){
-                    xlMD[[sheet]][ , colm] <- as.character(xlMD[[sheet]][ , colm])
-                    xlMD[[sheet]][is.na(xlMD[[sheet]][ , colm]), colm] <- "N_A"
-                }
-            }
-        }
+            #if(nrow(xlMD[[sheet]]) > 0){
+            #    for (colm in 1:ncol(xlMD[[sheet]])){
+            #        xlMD[[sheet]][ , colm] <- as.character(xlMD[[sheet]][ , colm])
+          #          xlMD[[sheet]][is.na(xlMD[[sheet]][ , colm]), colm] <- "N_A"
+        #        }
+        #    }
+      #  }
 
         #Find out who is who
         find_metadata_type <- function(xlMD = NULL, sheet = NULL){
