@@ -3,7 +3,7 @@
 
 # JAMS_BW
 <p align="center">
-Just a Microbiology System (JAMS) - a suite for analyzing microbiological sequencing data for use on NIH HPC systems (Biowulf). A version for generic Linux systems is coming out **VERY SOON **
+Just a Microbiology System (JAMS) - a suite for analyzing microbiological sequencing data for use on NIH HPC systems (Biowulf). A version for generic Linux systems is coming out **VERY SOON**
   
 Installation and usage instructions as well as tutorials are on the [JAMS wiki](https://github.com/johnmcculloch/JAMS_BW/wiki)
 
