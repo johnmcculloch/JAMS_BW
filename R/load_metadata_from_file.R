@@ -27,7 +27,7 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
           #          xlMD[[sheet]][is.na(xlMD[[sheet]][ , colm]), colm] <- "N_A"
         #        }
         #    }
-      #  }
+          }
 
         #Find out who is who
         find_metadata_type <- function(xlMD = NULL, sheet = NULL){
