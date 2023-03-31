@@ -793,7 +793,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     } else {
 
                         column_split <- NULL
-                        if (any(cluster_samples_per_heatmap, !cluster_rows)){
+                        if (all(is.null(ordercolsby), any(cluster_samples_per_heatmap, !cluster_rows))){
 
                             ht1 <- Heatmap(mathm, name = relabundscalename, column_title = hm1tit, column_title_gp = gpar(fontsize = ht1fs), top_annotation = ha_column, col = relabundheatmapCols, column_names_gp = gpar(fontsize = fontsizex), column_dend_height = unit(5, "mm"), right_annotation = row_ha, left_annotation = hatax, cluster_rows = cluster_rows, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol, fontface = hmfontface), heatmap_legend_param = list(direction = "horizontal", title = relabundscalename, labels = RelabundBreakPtsLbls, at = HMrelabundBreaks, title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 4)), row_names_max_width = unit(6, "cm"), ...)
 
