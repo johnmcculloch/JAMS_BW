@@ -111,8 +111,16 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
 
                 #fontsizey <- max(1, (min(5, round((((-1 / 300) * (nrow(matstats))) + 1) * 3.5, 0))))
 
+                ##Making if loop so will have font even if too small
+
                 fontcoefficient <- (-0.05 * nrow(matstats)) + 7.5
                 fontsizey <- round((((-1 / 200) * (nrow(matstats))) + 1.01 * fontcoefficient), 2)
+
+                if (fontsizey >= 0.5){
+                  fontsizey = fontsizey
+                }else{
+                  fontsizey = 0.5
+                }
 
                 #Add genome completeness info if LKT
                 ha1 <- NULL
