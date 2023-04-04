@@ -1,15 +1,19 @@
-#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, asPPM = TRUE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE)
+#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, asPPM = TRUE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE)
 #'
 #' Plots correlation heatmaps annotated by the metadata or a correlelogram of features
 #' @export
 
-plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, asPPM = TRUE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE) {
+plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, asPPM = TRUE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE) {
 
     #Vet experiment object
     obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, class_to_ignore = class_to_ignore)
 
     analysis <- metadata(obj)$analysis
-    analysisname <- analysis
+    if (!is.null(glomby)){
+        analysisname <- glomby
+    } else {
+        analysisname <- analysis
+    }
 
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
 
@@ -109,18 +113,9 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
                 CorrHmColours <- c("blue4", "lightgoldenrodyellow", "red1")
                 heatmapCols <- colorRamp2(c(-1, 0, 1), CorrHmColours)
 
-                #fontsizey <- max(1, (min(5, round((((-1 / 300) * (nrow(matstats))) + 1) * 3.5, 0))))
-
-                ##Making if loop so will have font even if too small
-
                 fontcoefficient <- (-0.05 * nrow(matstats)) + 7.5
-                fontsizey <- round((((-1 / 200) * (nrow(matstats))) + 1.01 * fontcoefficient), 2)
-
-                if (fontsizey >= 0.5){
-                  fontsizey = fontsizey
-                }else{
-                  fontsizey = 0.5
-                }
+                fontsizey <- round((((-1 / 300) * (nrow(matstats))) + 0.85 * fontcoefficient), 2)
+                fontsizey <- max(0.5, fontsizey)
 
                 #Add genome completeness info if LKT
                 ha1 <- NULL
@@ -134,12 +129,14 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
                         gcl <- lapply(1:nrow(genomecompletenessstats), function (x){ (as.numeric(genomecompletenessstats[x, ][which(genomecompletenessstats[x, ] != 0)])) * 100 })
                     }
 
-                    if(any(c(showGram, showphylum))){
+                    if (any(c(showGram, showphylum))){
                         data(Gram)
                         #Get Phyla
                         if (analysisname %in% c("LKT", "Species", "Genus", "Family", "Order", "Class")){
                             tt <- as.data.frame(rowData(currobj))
-                            tt <- tt[rownames(matstats), c(analysisname, "Phylum")]
+                            tt <- tt[rownames(matstats), ]
+                            tt <- tt[ , c(analysisname, "Phylum")]
+
                             Gram$Kingdom <- NULL
                             tt <- left_join(tt, Gram)
                             tt$Gram[which(!(tt$Gram %in% c("positive", "negative")))] <- "not_sure"
@@ -149,7 +146,11 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
                             phcol <- phcol[!duplicated(phcol)]
                         }
 
-                        ha1 <- rowAnnotation(Pct_Genome_Compl = anno_boxplot(gcl, width = unit(4, "cm"), pch = 20, size = unit(1, "mm"),  axis_param = list(labels_rot = 90)), Gram = tt$Gram, Phylum = tt$Phylum, col = list(Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8"), Phylum = phcol),  annotation_name_gp = gpar(fontsize = 6, col = "black"))
+                        if (show_GenomeCompleteness_boxplot){
+                            ha1 <- rowAnnotation(Pct_Genome_Compl = anno_boxplot(gcl, width = unit(4, "cm"), pch = 20, size = unit(1, "mm"),  axis_param = list(labels_rot = 90)), Gram = tt$Gram, Phylum = tt$Phylum, col = list(Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8"), Phylum = phcol),  annotation_name_gp = gpar(fontsize = 6, col = "black"))
+                        } else {
+                            ha1 <- NULL
+                        }
 
                         ha2 <- HeatmapAnnotation(Phylum = tt$Phylum, Gram = tt$Gram, col = list(Phylum = phcol, Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8")),  annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = FALSE)
                     }
