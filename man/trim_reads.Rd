@@ -8,7 +8,7 @@ trim_reads(
   opt = NULL,
   discardleftoverSE = FALSE,
   qual = 18,
-  autodetect_phred_offest = TRUE
+  autodetect_phred_offest = FALSE
 )
 }
 \description{

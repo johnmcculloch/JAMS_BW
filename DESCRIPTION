@@ -18,4 +18,4 @@ Depends: R (>= 4.2.0), R.utils, parallel, optparse, futile.logger, benchmarkme, 
 License: GPL
 Encoding: UTF-8
 Remotes: AckerDWM/gg3D
-RoxygenNote: 7.2.1
+RoxygenNote: 7.2.3

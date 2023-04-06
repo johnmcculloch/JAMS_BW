@@ -2,9 +2,13 @@
 % Please edit documentation in R/check_resources.R
 \name{check_resources}
 \alias{check_resources}
-\title{check_resources(opt=opt)}
+\title{check_resources(opt = opt, application = "WGS")}
 \usage{
-check_resources(opt = opt)
+check_resources(
+  opt = opt,
+  applications_to_check = c("base", "reads", "assembly", "kraken", "host", "annotation",
+    "16S", "blast")
+)
 }
 \description{
 JAMSalpha function
