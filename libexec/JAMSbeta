@@ -64,12 +64,6 @@ option_list <- list(
                 type="character",
                 help ="path to where all .jams files are"),
 
-#Discontinuing loading previous workspace until this gets sorted and becomes useful again
-#    make_option(c("-w", "--load_workspace"),
-#                action="store", default = NULL,
-#                type="character",
-#                help ="/path/to/.RData  -  Continue or change the JAMSbeta pipeline from a previous workspace with an .RData file"),
-
     make_option(c("-g", "--minGbNAHS"),
                 action="store", default = 0,
                 type="numeric",
