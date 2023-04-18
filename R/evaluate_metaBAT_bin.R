@@ -58,7 +58,7 @@ evaluate_metaBAT_bin <- function(opt = NULL){
 
     get_assembly_stats_by_bin <- function(opt = NULL, bininterest = NULL){
         contigs2length <- getcontigs2length(opt=opt, bininterest = bininterest)
-        assemblystats <- data.frame(MAGbin = bininterest, MAG_MPT = derive_probable_taxonomy(contigs2length), NumContigs = nrow(contigs2length), ContigSum = sum(contigs2length$Length), LargestContigSize = max(contigs2length$Length), N50 = getN50(contigs2length), L50 = getL50(contigs2length), N90 = getN90(contigs2length), Num16S = find16SrRNA(contigs2length = contigs2length, opt = opt))
+        assemblystats <- data.frame(MetaBATbin = bininterest, MAG_MPT = derive_probable_taxonomy(contigs2length), NumContigs = nrow(contigs2length), ContigSum = sum(contigs2length$Length), LargestContigSize = max(contigs2length$Length), N50 = getN50(contigs2length), L50 = getL50(contigs2length), N90 = getN90(contigs2length), Num16S = find16SrRNA(contigs2length = contigs2length, opt = opt))
 
         taxinteresttype <- gsub("^LKT__", "", assemblystats$MAG_MPT)
         expgensize <- as.integer(JAMSMedian_Genome_Sizes[taxinteresttype, "Genome_Size_Median"])
