@@ -361,7 +361,7 @@ if (opt$analysis %in% c("isolate", "isolaternaseq")){
 opt <- get_contig_coverage(opt = opt, markduplicates = FALSE)
 
 #Bank information gathered
-objectstoexport <- names(opt)[names(opt) %in% c("contigsdata", "assemblystats", "contigperbasecoverage", "LKTdose")]
+objectstoexport <- names(opt)[names(opt) %in% c("contigsdata", "assemblystats", "contigperbasecoverage", "LKTdose", "MAGdose", "assemblystats_MAGs")]
 export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
