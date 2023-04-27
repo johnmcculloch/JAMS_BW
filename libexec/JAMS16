@@ -76,7 +76,7 @@ option_list <- list(
                 help ="path to the taxonomy database."),
 
     make_option(c("-u", "--read_count_threshold"),
-                action="store", default = 5000,
+                action="store", default = 500,
                 type="numeric",
                 help ="path to the taxonomy database."),
 
@@ -461,6 +461,9 @@ if (length(samplestodiscard) > 0){
 
 Samples_passing_threshold <- intersect(rawfastqsdfR1$OriPrefix, rawfastqsdfR2$OriPrefix)
 
+Sample2Depth <- out[ , c("OriPrefix", "Number_Reads_Output")]
+colnames(Sample2Depth)[1] <- "Sample"
+
 rm(out)
 
 filtFs <- rawfastqsdfR1$FilteredFilePaths
@@ -557,6 +560,9 @@ rownames(opt$cts) <- opt$tt$LKT
 
 rownames(opt$phenotable) <- opt$phenotable$Sample
 pheno <- opt$phenotable
+
+#Add sequencing depth
+pheno <- left_join(pheno, Sample2Depth)
 
 rownames(pheno) <- pheno$Sample
 pheno <- pheno[colnames(opt$cts), ]
