@@ -571,9 +571,10 @@ variable_list <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenot
 
 cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE)
 
-exp <- make_SummarizedExperiment_from_tables(pheno = pheno, counttable = opt$cts, featuretable = opt$tt, analysisname = "LKT")
+expvec <- list()
+expvec$LKT <- make_SummarizedExperiment_from_tables(pheno = pheno, counttable = opt$cts, featuretable = opt$tt, analysisname = "LKT")
 
-metadata(exp)$asv2lkt <- asv2lkt
+metadata(expvec$LKT)$asv2lkt <- asv2lkt
 
 #######
 ## Clean up workspace image to reduce RAM footprint
