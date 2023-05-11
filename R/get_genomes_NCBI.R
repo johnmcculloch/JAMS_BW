@@ -148,7 +148,7 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
         flog.info(paste("There are", nrow(wanted_assembly_summary), "entries matching the RefSeq criteria."))
     }
 
-    if(nobs == TRUE){
+    if (nobs == TRUE){
         flog.info("Filtering out entries which have been tagged as being problematic or low quality.")
         noproblem <- which(wanted_assembly_summary$excluded_from_refseq == "")
         wanted_assembly_summary <- wanted_assembly_summary[noproblem, ]
@@ -163,6 +163,12 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
         wanted_assembly_summary$url <- paste(wanted_assembly_summary$ftp_path, paste(sufreps, filesuffix, sep="_")  , sep="/")
         wanted_assembly_summary$destfn <- file.path(outputdir, paste(wanted_assembly_summary$organism_name, wanted_assembly_summary$infraspecific_name, wanted_assembly_summary$assembly_accession, filesuffix, sep="_"))
         wanted_assembly_summary$ftp_path <- NULL
+
+        #Curtail to ntop if requested
+        if (!is.null(ntop)){
+            flog.info(paste("Keeping only the top", ntop, "genomes, as requested with the ntop argument."))
+            wanted_assembly_summary <- wanted_assembly_summary[1:ntop, ]
+        }
 
         #Now download stuff wanted to the output dir
         if(simulate == FALSE){
