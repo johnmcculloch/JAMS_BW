@@ -56,6 +56,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
         }
     }
 
+    #ensure that what the user is asking for is within the metadata
+    colcategories <- colcategories[colcategories %in% colnames(colData(obj))]
+
     #Initialize Stats Vector list
     svec <- list()
     s <- 1
