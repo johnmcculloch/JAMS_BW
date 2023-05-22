@@ -274,7 +274,7 @@ declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, feat
             if (analysis == "LKT"){
                 presetlist$featcutoff <- c(2000, 15)
                 presetlist$GenomeCompletenessCutoff <- c(30, 10)
-                presetlist$PctFromCtgscutoff <- c(50, 10)
+                presetlist$PctFromCtgscutoff <- c(70, 50)
                 presetlist$minl2fc <- 2
             } else {
                 presetlist$featcutoff <- c(50, 15)
@@ -285,7 +285,7 @@ declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, feat
             if (analysis == "LKT"){
                 presetlist$featcutoff <- c(250, 15)
                 presetlist$GenomeCompletenessCutoff <- c(10, 5)
-                presetlist$PctFromCtgscutoff <- c(25, 10)
+                presetlist$PctFromCtgscutoff <- c(70, 50)
                 presetlist$minl2fc <- 1
             } else {
                 presetlist$featcutoff <- c(5, 5)
@@ -296,7 +296,7 @@ declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, feat
             if (analysis == "LKT"){
                 presetlist$featcutoff <- c(50, 5)
                 presetlist$GenomeCompletenessCutoff <- c(5, 5)
-                presetlist$PctFromCtgscutoff <- c(25, 10)
+                presetlist$PctFromCtgscutoff <- c(70, 50)
                 presetlist$minl2fc <- 1
             } else {
                 presetlist$featcutoff <- c(0, 0)
