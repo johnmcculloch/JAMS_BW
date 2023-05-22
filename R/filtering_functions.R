@@ -288,7 +288,7 @@ declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, feat
                 presetlist$PctFromCtgscutoff <- c(25, 10)
                 presetlist$minl2fc <- 1
             } else {
-                presetlist$featcutoff <- c(10, 5)
+                presetlist$featcutoff <- c(5, 5)
                 presetlist$minl2fc <- 1
             }
             presetlist$minabscorrcoeff <- 0.6
@@ -299,7 +299,7 @@ declare_filtering_presets <- function(analysis = NULL, applyfilters = NULL, feat
                 presetlist$PctFromCtgscutoff <- c(25, 10)
                 presetlist$minl2fc <- 1
             } else {
-                presetlist$featcutoff <- c(5, 5)
+                presetlist$featcutoff <- c(0, 0)
                 presetlist$minl2fc <- 1
             }
             presetlist$minabscorrcoeff <- 0.4
