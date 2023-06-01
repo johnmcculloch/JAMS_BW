@@ -14,7 +14,7 @@ calculate_matrix_stats(
   fun_for_l2fc = "geom_mean",
   threshPA = 0,
   numthreads = 1,
-  nperm = 999
+  nperm = 10000
 )
 }
 \description{

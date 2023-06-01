@@ -1,9 +1,106 @@
-#' plot_relabund_heatmap(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...)
-#'
 #' Plots relative abundance heatmaps annotated by the metadata using as input a SummarizedExperiment object
+
+#' plot_relabund_heatmap(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, show_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...)
+
+#' @param ExpObj JAMS-style SummarizedExperiment object
+
+#' @param glomby String giving the taxonomic level at which to agglomerate counts. This argument should only be used with taxonomic SummarizedExperiment objects. When NULL (the default), there is no agglomeration
+
+#' @param hmtype Type of heatmap to plot. Options are "exploratory" or "comparative". When "exploratory" is passed, features are ranked by variance across all samples. When "comparative" is passed, the metadata variable name for grouping samples must be passed using the compareby argument (see below).
+
+#' @param compareby String specifying the the metadata variable name for grouping samples when the hmtype argument is set to "comparative". This will calculate p-values for each feature using the Mann-Whitney-Wilcoxon U-test when there are exactly two classes within the variable, and the log2 foldchange between the two groups will be calculated. When there are three or more classes within the variable, the p-value will be calculated using ANOVA. If there is only a single class within the variable, hmtype will default to "exploratory" and features will be ranked by variance across samples.
+
+#' @param colcategories Vector with variables to include on the header sample annotation. A key legend for each variable will be included. If set to NULL, all variables contained in the SummarizedExperiment object metadata containing between 2 and 10 classes will be included. Variables containing continuous data will be plot with a gradient scale.
+
+#' @param samplesToKeep Vector with sample names to keep. If NULL, all samples within the SummarizedExperiment object are kept. Default is NULL.
+
+#' @param featuresToKeep Vector with feature names to keep. If NULL, all features within the SummarizedExperiment object are kept. Default is NULL. Please note that when agglomerating features with the glomby argument (see above), feature names passed to featuresToKeep must be post-agglomeration feature names. For example, if glomby="Family", featuresToKeep must be family names, such as "f__Enterobacteriaceae", etc.
+
+#' @param subsetby String specifying the the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.
+
+#' @param invertbinaryorder Requires a logical value. If set to TRUE, when using compareby when there are exactly two classes within the variable, the log2 foldchange signs of the two groups will be inverted. Default is FALSE.
+
+#' @param hmasPA Requires a logical value. If set to TRUE, cells within a heatmap will be plot as present (red) or absent (black) instead of using a continuous colour scale. Default is FALSE.
+
+#' @param threshPA Numeric value setting the threshold for absence in Presence/Absence heatmaps. Default is 0.
+
+#' @param ntop Numeric value setting the cap for the maxiumum number of features to plot. If NULL, all features surviving filtration settings will be plot. This argument is usually used when plotting "exploratory" heatmaps. For "comparative" heatmaps, it is often more practical to cap the number of features show on a heatmap with showonlypbelow (see below). Default is NULL.
+
+#' @param splitcolsby String specifying the metadata variable for splitting the heatmap into column groups. Samples are thus grouped by each existing class within the variable. Default is NULL.
+
+#' @param ordercolsby String specifying the metadata variable for ordering the samples sequentially. If variable is continuous, order will be from smaller to greater values; if variable is discrete, order will be alphabetical. If NULL, samples will be clustered naively and a dendrogram generated. Default is NULL.
+
+#' @param column_split_group_order When used with splitcolsby, column_split_group_order will take a vector setting the explicit order of classes by which to order the split column groups. For clustering samples within each split column group see cluster_column_slices.
+
+#' @param cluster_column_slices Requires a logical value. If set to TRUE and columns are split into column groups (see splitcolsby), clustering within the slice is performed. Default is TRUE. To turn off clustering, thereby set to FALSE.
+
+#' @param cluster_samples_per_heatmap Requires a logical value. If set to TRUE, samples will be clustered within each heatmap using only the features shown on that single heatmap. If set to FALSE, pre-clusterization of all samples will be performed without drawing a heatmap so that the sample order can then be maintained on all heatmaps until all features surviving filtration have been plot. The number of features per heatmap can be set by max_rows_in_heatmap. Please note that if set to FALSE, plotting of heatmaps may be substantially slower as clusterization of the master matrix will be computed first. Default is TRUE.
+
+#' @param cluster_rows Requires a logical value. If set to TRUE, features will be clustered together on the heatmap based on sample structure. See cluster_features_per_heatmap for more options. Default is TRUE.
+
+#' @param cluster_features_per_heatmap Requires a logical value. If set to TRUE, features will be clustered within each heatmap using only the samples shown on that single heatmap. If set to FALSE, pre-clusterization of all features surviving filtration will be performed without drawing a heatmap as to define feature order on all heatmaps until all features surviving filtration have been plot. The number of features per heatmap can be set by max_rows_in_heatmap. Please note that if set to FALSE, plotting of heatmaps may be substantially slower as clusterization of the master matrix will be computed first. Default is TRUE.
+
+#' @param textby String specifying the metadata variable containing classes for annotating samples with text on the top of each column. Default is NULL. Please note that label_samples must be set to TRUE for metadata text to be added.
+
+#' @param label_samples Requires a logical value. If set to TRUE (the default), the sample names will be printed at the bottom of each sample column.
+
+#' @param max_rows_in_heatmap Numeric value setting the maximum number of rows to be plot on a single heatmap. Default is 50. If there are more features surviving filtration than this number, they will be plot in subsequent heatmaps until all features have been plot. See ntop for capping the number of features. See maxnumheatmaps for capping the number of heatmaps to be plot in a comparison.
+
+#' @param maxnumheatmaps Numeric value setting the maximum number of heatmaps to be plot within a comparison. If there is a larger number of features surviving filtration than whatever value is set by max_rows_in_heatmap, multiple heatmaps will be generated untill all features have been plot. When maxnumheatmaps is set to NULL (the default) there is no cap on the number of heatmaps to be generated within a comparison. See also ntop and max_rows_in_heatmap.
+
+#' @param featcutoff Requires a numeric vector of length 2 for specifying how to filter out features by relative abundance. The first value of the vector specifies the minimum relative abundance in Parts per Million (PPM) and the second value is the percentage of samples which must have at least that relative abundance. Thus, passing c(250, 10) to featcutoff would filter out any feature which does not have at least 250 PPM (= 0.025 percent) of relative abundance in at least 10 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the featcutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.
+
+#' @param GenomeCompletenessCutoff Requires a numeric vector of length 2 for specifying how to filter out features by genome completeness. This is, of course, only applicble for taxonomic shotgun SummarizedExperiment objects. When passed to non-taxonomic shotgun SummarizedExperiment objects, GenomeCompletenessCutoff will be ignored. The first value of the vector specifies the minimum genome completeness in percentage  and the second value is the percentage of samples which must have at least that genome completeness. Thus, passing c(50, 5) to GenomeCompletenessCutoff would filter out any taxonomic feature which does not have at least 50 percent of genome completeness in at least 5 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the GenomeCompletenessCutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.
+
+#' @param applyfilters Optional string specifying filtration setting "combos", used as a shorthand for setting the featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff arguments in JAMS plotting functions. If NULL (the default), none of these arguments are set if not specified. Permissible values for applyfilters are "light", "moderate" or "stringent". The actual values vary whether the SummarizedExperiment object is taxonomical (LKT) or not. For a taxonomical SummarizedExperiment object, using "light" will set featcutoff=c(50, 5), GenomeCompletenessCutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(250, 15), GenomeCompletenessCutoff=c(10, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(2000, 15), GenomeCompletenessCutoff=c(30, 10), minl2fc=2, minabscorrcoeff=0.8. For non-taxonomical (i.e. functional) SummarizedExperiment objects, using "light" will set featcutoff=c(0, 0), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(50, 15), minl2fc=2.5, minabscorrcoeff=0.8. When using applyfilters, one can still set one or more of featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff, which will then take the user set value in lieu of those set by the applyfilters shorthand.
+
+#' @param discard_SDoverMean_below Numeric value setting the minimum standard deviation over mean (sd/mean) value cutoff for a feature to be kept. Features with an sd/mean value smaller than this threshold will be discarded. When NULL, this filtration is not applied. Default is NULL.
+
+#' @param showpval Requires a logical value. If set to TRUE, a text label with the p-values (raw and adjusted) for each feature will be shown on the right of each row of the heatmap. Default is TRUE.
+
+#' @param showroundedpval Requires a logical value. If set to TRUE, the text label with the p-values (raw and adjusted) for each feature will be rounded to three decimal places. Default is TRUE.
+
+#' @param showonlypbelow Numeric value setting the maximum p-value for a feature to be shown on a heatmap. This only applies to "comparative" heatmaps (see hmtype). Features with p-values above this threshold will not be shown. When NULL, all features surviving other filtration criteria will be shown. Default is NULL.
+
+#' @param adj_pval_for_threshold Requires a logical value. If set to TRUE, then if setting a numerical value for p-value cutoff with showonlypbelow (q.v.), only *adjusted* p-values below or equal to the threshold will be shown. Default is FALSE, i.e. use a raw p-value for cutoff.
+
+#' @param minl2fc Numeric value setting the minimum absolute log2 fold change value to report within a heatmap. This only applies to "comparative" heatmaps (see hmtype) when the variable being compared (see compareby) has exactly two classes. When NULL, this filtration is not applied and features with minimum log2 foldchanges of any value down to 0 will be shown. Default is NULL.
+
+#' @param maxl2fc Numeric value setting the maximum absolute log2 fold change value to report within a heatmap. This only applies to "comparative" heatmaps (see hmtype) when the variable being compared (see compareby) has exactly two classes. When NULL, this filtration is not applied and features with maximum log2 foldchanges of any value up to Inf will be shown. Default is NULL.
+
+#' @param fun_for_l2fc String specifying the mathematical function for aggregating samples within each group when calculating the log2 fold change for each feature. This only applies to "comparative" heatmaps (see hmtype) when the variable being compared (see compareby) has exactly two classes. Permissible entries are "sum", "mean", "median" or "geom_mean". Default is geom_mean. For "geom_mean", the geometric mean within each group is calculated with exp(mean(log((x1, x2, x3, ...) + 1))).
+
+#' @param showl2fc Requires a logical value. If set to TRUE, a text label with the log2 fold change between groups of each feature when applicable will be shown on the right of each row of the heatmap. Default is TRUE. See compareby and fun_for_l2fc.
+
+#' @param showGram Requires a logical value. If set to TRUE, if the SummarizedExperiment object is taxonomical (see ExpObj), annotations with the Phylum and predicted Gram cell wall category of each feature will be plot to the left of each row of the heatmap. Default is FALSE.
+
+#' @param show_GenomeCompleteness Requires a logical value. When TRUE (the default), if the SummarizedExperiment object is taxonomical (see ExpObj), annotations with the Phylum and predicted Gram cell-wall category of each feature will be plot to the left of each row of the heatmap. Default is FALSE.
+
+#' @param addtit Optional string with text to append to heatmap main title. Default is NULL.
+
+#' @param assay_for_matrix String specifying the SummarizedExperiment assay to be used for the heatmap. Permissible values are "BaseCounts" or "GeneCounts". "BaseCounts" (the default) will use the basepair counts for each feature (either taxonomical or functional). These values will be normalized into relative abundance in PPM unless specified by the normalization argument (see normalization and PPM_normalize_to_bases_sequenced). When using "GeneCounts" (only available in non-taxonomical SummarizedExperiment objects) the *number of genes* annotated as each feature will be used. The heatmap will be plot with a scale of 0 to the maximum number of genes for a single feature on the heatmap. For instance, using "GeneCounts" for, let's say, an ECNumber SummarizedExperiment will plot the number of genes bearing each Enzyme Commission Number annotation within each sample. Default is "BaseCounts".
+
+#' @param normalization String specifying if the BaseCounts for the assay should be normalized or not. Permissible values are "relabund" and "compositions". When using "relabund", the relative abundance of each feature will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column *previous to any filtration*. See also PPM_normalize_to_bases_sequenced for details.  When using "compositions", the counts matrix will be transformed using the clr function of the compositions package. Please install this package independently of JAMS as it is not a JAMS dependency.
+
+#' @param PPM_normalize_to_bases_sequenced Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column *previous to any filtration*. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a *non-taxonomical* SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is FALSE.
+
+#' @param scaled Requires a logical value. If set to TRUE the z-scores for each row (each feature) will be plot on the heatmap rather than their relative abundances.
+
+#' @param numthreads Numeric value setting the number of threads to use for any multi-threaded process within this function. The default is 1.
+
+#' @param statsonlog Requires a logical value. If set to TRUE, sample statistics will be calculated on a log2 transformed relative abundance table. Default is FALSE, meaning statistics (p-values or variance) will be calculated on relative abundance values in PPM. See also hmtype.
+
+#' @param ignoreunclassified Requires a logical value. If set to TRUE, for taxonomical SummarizedExperiment objects, the feature "LKT__Unclassified" will be omitted from being shown. In the case of non-taxonomical SummarizedExperiment objects, the completely unannotated features will be omitted. For example, for an ECNumber SummarizedExperiment object, genes *without* an Enzyme Commission Number annotation (feature "EC_none") will not be shown. Statistics are, however, computed taking the completely unclassifed feature into account, so p-values will not change.
+
+#' @param returnstats Requires a logical value. If set to TRUE, this function will return a named list of the statistical computations obtained for *all* features within each subset (see subsetby) with the relevant statistic (MannWhitneyWilcoxon p-value, ANOVA p-value, variance, SD, rank, etc). Default is FALSE. Note that when FALSE, this function does not return anything, rather it plots to the device using the ComplexHeatmaps package.
+
+#' @param class_to_ignore String or vector specifying any classes which should lead to samples being excluded from the comparison within the variable passed to compareby. Default is N_A. This means that within any metadata variable passed to compareby containing the "N_A" string within that specific variable, the sample will be dropped from that comparison.
+
+#' @param no_underscores Requires a logical value. If set to TRUE, removes underscores from taxonomical feature names on a heatmap. For example, "LKT__s__Staphylococcus_aureus" would be plot as "LKT s Staphylococcus aureus". Default is FALSE.
+
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adjustpval = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, secondaryheatmap = "GenomeCompleteness", addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, nperm = 99, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
+plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, show_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
 
     #Hardwire the minimum number of samples for a side by side secondary heatmap. This may be in a later version added as a function argument.
     threshold_for_double_plot <- 7
@@ -36,7 +133,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, maxl2fc = maxl2fc, minl2fc = minl2fc)
 
     if (normalization == "compositions"){
+        require("compositions")
         asPPM <- FALSE
+        #Make scaling default for compositions, as the heatmap colour scale for clr has not yet been resolved in this plotting function. Will turn this off later.
+        scaled <- TRUE
     }
 
     if (assay_for_matrix == "GeneCounts"){
@@ -222,7 +322,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                 cl <- colData(currobj)[ , which(colnames(colData(currobj)) == compareby)]
                 discretenames <- sort(unique(cl))
 
-                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = statsonlog, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, nperm = nperm, threshPA = threshPA, fun_for_l2fc = fun_for_l2fc)
+                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = statsonlog, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, threshPA = threshPA, fun_for_l2fc = fun_for_l2fc)
 
                 ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
 
@@ -630,9 +730,8 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     ht1fs <- 8
                     hm1tit <- plotit
 
-                    if (is.null(secondaryheatmap)) {
-                        #Cheap trick
-                        secondaryheatmap <- FALSE
+                    if (show_GenomeCompleteness) {
+                        secondaryheatmap <- "GenomeCompleteness"
                     }
 
                     if (secondaryheatmap == "GenomeCompleteness") {

@@ -1,6 +1,6 @@
 Package: JAMS
 Title: Just A Microbiology System
-Version: 1.8.5
+Version: 1.9.0
 Authors@R: c(person("John", "McCulloch", email = "john.mcculloch@nih.gov", role = c("aut", "cre")),
     person("Jonathan", "Badger", email = "jonathan.badger@nih.gov", role = "aut"),
     person("Nikki", "Cannon", email = "nikkicannon7@gmail.com", role = "aut"),
@@ -8,6 +8,8 @@ Authors@R: c(person("John", "McCulloch", email = "john.mcculloch@nih.gov", role 
     person("Michael", "Valencia", email = "michael.valencia@nih.gov", role = "ctb"),
     person("Jennifer", "Barb", email = "barbj@mail.nih.gov", role = "ctb"),
     person("Miriam", "Fernandes", email = "miriam.fernandes@nih.gov", role = "ctb"),
+    person("Raquel", "Costa", email = "raquel.costa@nih.gov", role = "ctb"),
+    person("Maria", "Clavijo-Salomon", email = "maria.clavijo-salomon@nih.gov", role = "ctb"),
     person("Ascharya", "Balaji", email = "ascharya.balaji@nih.gov", role = "ctb"),
     person("Lisa", "Crowson", email = "lisapcrowson@gmail.com", role = "ctb"),
     person("Colm", "O Huigin", email = "colm.ohuigin@nih.gov", role = "ctb"),
