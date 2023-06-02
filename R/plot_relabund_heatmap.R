@@ -455,22 +455,23 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         matstats <- matstats[rownames(countmat2), ]
                     }
 
-                    #If adjustpval is set to auto, then find out which is best and re-set it to either TRUE or FALSE
-                    if (("pval" %in% colnames(matstats)) && adjustpval == "auto"){
+                    #If adj_pval_for_threshold is set to auto, then find out which is best and re-set it to either TRUE or FALSE
+
+                    if (("pval" %in% colnames(matstats)) && adj_pval_for_threshold == "auto"){
                         propsigadj <- length(which(matstats$padj_fdr < 0.05)) / length(matstats$padj_fdr)
                         propsignonadj <- length(which(matstats$pval < 0.05)) / length(matstats$pval)
                         fracsigadj <- propsigadj / propsignonadj
                         if ((!is.na(fracsigadj)) && (fracsigadj > 0.2)){
-                            adjustpval <- TRUE
+                            adj_pval_for_threshold <- TRUE
                         } else {
-                            adjustpval <- FALSE
+                            adj_pval_for_threshold <- FALSE
                         }
-                        flog.info(paste("P-value adjustment set to auto. Upon adjustment using FDR, the proportion still below 0.05 after adjustment is", round((fracsigadj * 100), 1), "% of unadjusted p-values, so p-value adjustment is set to", as.character(adjustpval)))
+                        flog.info(paste("P-value adjustment set to auto. Upon adjustment using FDR, the proportion still below 0.05 after adjustment is", round((fracsigadj * 100), 1), "% of unadjusted p-values, so p-value adjustment is set to", as.character(adj_pval_for_threshold)))
                     }
 
-                    if (("pval" %in% colnames(matstats)) && adjustpval != TRUE){
+                    if (("pval" %in% colnames(matstats)) && adj_pval_for_threshold != TRUE){
                         sigmeas <- "pval"
-                    } else if (("pval" %in% colnames(matstats)) && adjustpval == TRUE){
+                    } else if (("pval" %in% colnames(matstats)) && adj_pval_for_threshold == TRUE){
                         sigmeas <- "padj_fdr"
                     }
 
@@ -504,7 +505,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         }
 
                     } else {
-                        if (adjustpval != TRUE){
+                        if (adj_pval_for_threshold != TRUE){
                             rowcutoff <- which(matstats$pval <= showonlypbelow)
                         } else {
                             rowcutoff <- which(matstats$padj_fdr <= showonlypbelow)
