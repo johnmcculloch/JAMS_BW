@@ -1,6 +1,5 @@
 #' Plots relative abundance heatmaps annotated by the metadata using as input a SummarizedExperiment object
 
-
 #' @param ExpObj JAMS-style SummarizedExperiment object
 
 #' @param glomby String giving the taxonomic level at which to agglomerate counts. This argument should only be used with taxonomic SummarizedExperiment objects. When NULL (the default), there is no agglomeration
@@ -80,8 +79,6 @@
 #' @param assay_for_matrix String specifying the SummarizedExperiment assay to be used for the heatmap. Permissible values are "BaseCounts" or "GeneCounts". "BaseCounts" (the default) will use the basepair counts for each feature (either taxonomical or functional). These values will be normalized into relative abundance in PPM unless specified by the normalization argument (see normalization and PPM_normalize_to_bases_sequenced). When using "GeneCounts" (only available in non-taxonomical SummarizedExperiment objects) the *number of genes* annotated as each feature will be used. The heatmap will be plot with a scale of 0 to the maximum number of genes for a single feature on the heatmap. For instance, using "GeneCounts" for, let's say, an ECNumber SummarizedExperiment will plot the number of genes bearing each Enzyme Commission Number annotation within each sample. Default is "BaseCounts".
 
 #' @param normalization String specifying if the BaseCounts for the assay should be normalized or not. Permissible values are "relabund" and "compositions". When using "relabund", the relative abundance of each feature will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. See also PPM_normalize_to_bases_sequenced for details.  When using "compositions", the counts matrix will be transformed using the clr function of the compositions package. Please install this package independently of JAMS as it is not a JAMS dependency.
-
-#' @param asPPM
 
 #' @param PPM_normalize_to_bases_sequenced Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a **non-taxonomical** SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is FALSE.
 

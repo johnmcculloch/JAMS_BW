@@ -2,7 +2,8 @@
 % Please edit documentation in R/plot_Ordination.R
 \name{plot_Ordination}
 \alias{plot_Ordination}
-\title{plot_Ordination(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "PCoA", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, dotborder = NULL, log2tran = TRUE, transp = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, threads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...)}
+\title{Creates ordination plots based on PCA, tSNE or tUMAP
+plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, dotborder = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, transp = TRUE, perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)}
 \usage{
 plot_Ordination(
   ExpObj = NULL,
@@ -15,7 +16,6 @@ plot_Ordination(
   applyfilters = NULL,
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
-  PctFromCtgscutoff = NULL,
   asPPM = TRUE,
   PPM_normalize_to_bases_sequenced = FALSE,
   assay_for_matrix = "BaseCounts",
@@ -47,13 +47,103 @@ plot_Ordination(
   cdict = NULL,
   grid = TRUE,
   forceaspectratio = NULL,
-  threads = 8,
+  numthreads = 8,
   return_coordinates_matrix = FALSE,
   permanova_permutations = 10000,
   class_to_ignore = "N_A",
   ...
 )
 }
+\arguments{
+\item{ExpObj}{JAMS-style SummarizedExperiment object}
+
+\item{glomby}{String giving the taxonomic level at which to agglomerate counts. This argument should only be used with taxonomic SummarizedExperiment objects. When NULL (the default), there is no agglomeration}
+
+\item{subsetby}{String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.}
+
+\item{samplesToKeep}{Vector with sample names to keep. If NULL, all samples within the SummarizedExperiment object are kept. Default is NULL.}
+
+\item{samplesToHighlight}{Vector with sample names to highlight in respect to all other sample names in the plot. If NULL, all samples within the SummarizedExperiment object are shown at the same luminocity. Default is NULL.}
+
+\item{featuresToKeep}{Vector with feature names to keep. If NULL, all features within the SummarizedExperiment object are kept. Default is NULL. Please note that when agglomerating features with the glomby argument (see above), feature names passed to featuresToKeep must be post-agglomeration feature names. For example, if glomby="Family", featuresToKeep must be family names, such as "f__Enterobacteriaceae", etc.}
+
+\item{ignoreunclassified}{Requires a logical value. If set to TRUE, for taxonomical SummarizedExperiment objects, the feature "LKT__Unclassified" will be omitted from being shown. In the case of non-taxonomical SummarizedExperiment objects, the completely unannotated features will be omitted. For example, for an ECNumber SummarizedExperiment object, genes *without* an Enzyme Commission Number annotation (feature "EC_none") will not be shown. Statistics are, however, computed taking the completely unclassifed feature into account, so p-values will not change.}
+
+\item{applyfilters}{Optional string specifying filtration setting "combos", used as a shorthand for setting the featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff arguments in JAMS plotting functions. If NULL, none of these arguments are set if not specified. Permissible values for applyfilters are "light", "moderate" or "stringent". The actual values vary whether the SummarizedExperiment object is taxonomical (LKT) or not. For a taxonomical SummarizedExperiment object, using "light" will set featcutoff=c(50, 5), GenomeCompletenessCutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(250, 15), GenomeCompletenessCutoff=c(10, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(2000, 15), GenomeCompletenessCutoff=c(30, 10), minl2fc=2, minabscorrcoeff=0.8. For non-taxonomical (i.e. functional) SummarizedExperiment objects, using "light" will set featcutoff=c(0, 0), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(50, 15), minl2fc=2.5, minabscorrcoeff=0.8. When using applyfilters, one can still set one or more of featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff, which will then take the user set value in lieu of those set by the applyfilters shorthand. Default is light.}
+
+\item{featcutoff}{Requires a numeric vector of length 2 for specifying how to filter out features by relative abundance. The first value of the vector specifies the minimum relative abundance in Parts per Million (PPM) and the second value is the percentage of samples which must have at least that relative abundance. Thus, passing c(250, 10) to featcutoff would filter out any feature which does not have at least 250 PPM (= 0.025 percent) of relative abundance in at least 10 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the featcutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.}
+
+\item{GenomeCompletenessCutoff}{Requires a numeric vector of length 2 for specifying how to filter out features by genome completeness. This is, of course, only applicble for taxonomic shotgun SummarizedExperiment objects. When passed to non-taxonomic shotgun SummarizedExperiment objects, GenomeCompletenessCutoff will be ignored. The first value of the vector specifies the minimum genome completeness in percentage  and the second value is the percentage of samples which must have at least that genome completeness. Thus, passing c(50, 5) to GenomeCompletenessCutoff would filter out any taxonomic feature which does not have at least 50 percent of genome completeness in at least 5 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the GenomeCompletenessCutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.}
+
+\item{asPPM}{.}
+
+\item{PPM_normalize_to_bases_sequenced}{Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a **non-taxonomical** SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is FALSE.}
+
+\item{assay_for_matrix}{String specifying the SummarizedExperiment assay to be used for the heatmap. Permissible values are "BaseCounts" or "GeneCounts". "BaseCounts" (the default) will use the basepair counts for each feature (either taxonomical or functional). These values will be normalized into relative abundance in PPM unless specified by the normalization argument (see normalization and PPM_normalize_to_bases_sequenced). When using "GeneCounts" (only available in non-taxonomical SummarizedExperiment objects) the *number of genes* annotated as each feature will be used. The heatmap will be plot with a scale of 0 to the maximum number of genes for a single feature on the heatmap. For instance, using "GeneCounts" for, let's say, an ECNumber SummarizedExperiment will plot the number of genes bearing each Enzyme Commission Number annotation within each sample. Default is "BaseCounts".}
+
+\item{algorithm}{.}
+
+\item{PCA_Components}{.}
+
+\item{distmethod}{.}
+
+\item{compareby}{String specifying the metadata variable name for grouping samples when the hmtype argument is set to "comparative". This will calculate p-values for each feature using the Mann-Whitney-Wilcoxon U-test when there are exactly two classes within the variable, and the log2 foldchange between the two groups will be calculated. When there are three or more classes within the variable, the p-value will be calculated using ANOVA. If there is only a single class within the variable, hmtype will default to "exploratory" and features will be ranked by variance across samples.}
+
+\item{colourby}{.}
+
+\item{colorby}{.}
+
+\item{shapeby}{.}
+
+\item{use_letters_as_shapes}{.}
+
+\item{sizeby}{.}
+
+\item{connectby}{.}
+
+\item{connection_orderby}{.}
+
+\item{textby}{String specifying the metadata variable containing classes for annotating samples with text on the top of each column. Default is NULL. Please note that label_samples must be set to TRUE for metadata text to be added.}
+
+\item{ellipseby}{.}
+
+\item{dotsize}{.}
+
+\item{dotborder}{.}
+
+\item{log2tran}{.}
+
+\item{transp}{.}
+
+\item{perplx}{.}
+
+\item{max_neighbors}{.}
+
+\item{permanova}{.}
+
+\item{plotcentroids}{.}
+
+\item{highlight_centroids}{.}
+
+\item{show_centroid_distances}{.}
+
+\item{calculate_centroid_distances_in_all_dimensions}{.}
+
+\item{addtit}{Optional string with text to append to heatmap main title. Default is NULL.}
+
+\item{grid}{Requires a logical value. If set to FALSE, background will be one solid color within the plot, rather than include a grid behind the plot. Default is TRUE, meaning that the background will display a grid.}
+
+\item{forceaspectratio}{.}
+
+\item{numthreads}{Numeric value setting the number of threads to use for any multi-threaded process within this function. The default is 1.}
+
+\item{return_coordinates_matrix}{.}
+
+\item{permanova_permutations}{.}
+
+\item{class_to_ignore}{String or vector specifying any classes which should lead to samples being excluded from the comparison within the variable passed to compareby. Default is N_A. This means that within any metadata variable passed to compareby containing the "N_A" string within that specific variable, the sample will be dropped from that comparison.}
+}
 \description{
 Creates ordination plots based on PCA, tSNE or tUMAP
+plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, dotborder = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, transp = TRUE, perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)
 }
