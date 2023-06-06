@@ -81,7 +81,7 @@
 
 #' @param normalization String specifying if the BaseCounts for the assay should be normalized or not. Permissible values are "relabund" and "compositions". When using "relabund", the relative abundance of each feature will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. See also PPM_normalize_to_bases_sequenced for details.  When using "compositions", the counts matrix will be transformed using the clr function of the compositions package. Please install this package independently of JAMS as it is not a JAMS dependency.
 
-#' @param asPPM 
+#' @param asPPM
 
 #' @param PPM_normalize_to_bases_sequenced Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a **non-taxonomical** SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is FALSE.
 
@@ -423,10 +423,11 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                         }
                     }
 
+                    binary_directionality <- (discretenames[1:2][c(!invertbinaryorder, invertbinaryorder)])
                     if (matstats$Method[1] == "fisher"){
-                        binary_directionality <- paste("Odds Ratio > 1 means enriched in", (discretenames[1:2][c(!invertbinaryorder, invertbinaryorder)]))
+                        binary_directionality_msg <- paste("Odds Ratio > 1 means enriched in", binary_directionality)
                     } else {
-                        binary_directionality <- paste("Positive l2fc means increased in", (discretenames[1:2][c(!invertbinaryorder, invertbinaryorder)]))
+                        binary_directionality_msg <- paste("Positive l2fc means increased in", binary_directionality)
                     }
 
                     #Obtain a matrix that represents cells in the heatmap
@@ -718,7 +719,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = NULL, s
                     }
 
                     if (any(c("l2fc", "OddsRatio") %in% colnames(stathm))){
-                        plotit <- paste(plotit, binary_directionality, sep = "\n")
+                        plotit <- paste(plotit, binary_directionality_msg, sep = "\n")
                     }
 
                     #Add plot number if there is more than one heatmap matrix.
