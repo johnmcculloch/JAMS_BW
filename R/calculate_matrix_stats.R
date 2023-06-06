@@ -122,6 +122,11 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         matstats <- matstats[order(matstats$pval, decreasing = FALSE), ]
         matstats$Method <- rep("MannWhitneyWilcoxon", nrow(matstats))
 
+        #Add binary directionality information
+        matstats$Class_where_increased[which(matstats$l2fc == 0)] <- "neither"
+        matstats$Class_where_increased[which(matstats$l2fc > 0)] <- discretenames[1:2][c(!invertbinaryorder, invertbinaryorder)]
+        matstats$Class_where_increased[which(matstats$l2fc < 0)] <- discretenames[1:2][c(invertbinaryorder, !invertbinaryorder)]
+
     } else if (stattype %in% c("anova", "permanova")){
         require(parallel)
 
