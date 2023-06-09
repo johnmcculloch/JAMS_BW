@@ -3,7 +3,7 @@
 \name{plot_Ordination}
 \alias{plot_Ordination}
 \title{Creates ordination plots based on PCA, tSNE or tUMAP
-plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, dotborder = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, transp = TRUE, perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)}
+plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)}
 \usage{
 plot_Ordination(
   ExpObj = NULL,
@@ -19,7 +19,7 @@ plot_Ordination(
   asPPM = TRUE,
   PPM_normalize_to_bases_sequenced = FALSE,
   assay_for_matrix = "BaseCounts",
-  algorithm = "PCA",
+  algorithm = "tUMAP",
   PCA_Components = c(1, 2),
   distmethod = "bray",
   compareby = NULL,
@@ -33,9 +33,7 @@ plot_Ordination(
   textby = NULL,
   ellipseby = NULL,
   dotsize = 2,
-  dotborder = NULL,
   log2tran = TRUE,
-  transp = TRUE,
   perplx = NULL,
   max_neighbors = 15,
   permanova = TRUE,
@@ -81,39 +79,35 @@ plot_Ordination(
 
 \item{assay_for_matrix}{String specifying the SummarizedExperiment assay to be used for the heatmap. Permissible values are "BaseCounts" or "GeneCounts". "BaseCounts" (the default) will use the basepair counts for each feature (either taxonomical or functional). These values will be normalized into relative abundance in PPM unless specified by the normalization argument (see normalization and PPM_normalize_to_bases_sequenced). When using "GeneCounts" (only available in non-taxonomical SummarizedExperiment objects) the *number of genes* annotated as each feature will be used. The heatmap will be plot with a scale of 0 to the maximum number of genes for a single feature on the heatmap. For instance, using "GeneCounts" for, let's say, an ECNumber SummarizedExperiment will plot the number of genes bearing each Enzyme Commission Number annotation within each sample. Default is "BaseCounts".}
 
-\item{algorithm}{.}
+\item{algorithm}{String giving the algorithm to be used for dimensionality reduction. Permissible values are "tUMAP", "PCoA", "PCA" or "tSNE". For "tUMAP", the sample-by-feature matrix is processed using Uniform Manifold Approximation and Projection as implemented by the uwot package. For "PCA", the compositional dissimilarity (bray-curtis by default - see distmethod) of the sample-by-feature matrix is processed by Principal Component Analysis as implemented by the stats package. For "PCoA", the compositional dissimilarity (bray-curtis by default - see distmethod) of the sample-by-feature matrix is processed by Principal Component Analysis as implemented by the stats package. For "tSNE", the sample-by-feature matrix is processed using An R t-Distributed Stochastic Neighbor Embedding as implemented by the rtsne package.}
 
-\item{PCA_Components}{.}
+\item{PCA_Components}{Numerical vector of length 2 specifying which two components to plot on the 2-D ordination plot when using "PCoA" or "PCA" (see algotithm). Default is c(1, 2), meaning the first two components. The variance for each component is included on the axis.}
 
-\item{distmethod}{.}
+\item{distmethod}{String giving the dissimilarity index method for calculating the compositional dissimilarity of the sample-by-feature matrix. Default is "bray" (Bray-Curtis dissimilarity). For permissible values see the vegdist function of the vegan package ("euclidean", "bray", "jaccard", etc...).}
 
 \item{compareby}{String specifying the metadata variable name for grouping samples when the hmtype argument is set to "comparative". This will calculate p-values for each feature using the Mann-Whitney-Wilcoxon U-test when there are exactly two classes within the variable, and the log2 foldchange between the two groups will be calculated. When there are three or more classes within the variable, the p-value will be calculated using ANOVA. If there is only a single class within the variable, hmtype will default to "exploratory" and features will be ranked by variance across samples.}
 
-\item{colourby}{.}
+\item{colourby}{String specifying the metadata variable name for colouring in samples. If NULL, all samples will be black. Default is NULL.}
 
-\item{colorby}{.}
+\item{colorby}{Alternative US spelling for the colourby argument. Use either.}
 
-\item{shapeby}{.}
+\item{shapeby}{String specifying the metadata variable name for attributing shapes to samples. If NULL, all samples will be a round dot (pch = 19). Default is NULL. If there are more than 27 classes within the variable, samples will be attributed letters (A-Z, then a-z) automatically. See also use_letters_as_shapes.}
 
-\item{use_letters_as_shapes}{.}
+\item{use_letters_as_shapes}{Requires a logical value. If set to TRUE, then force sample point shapes as being letters (A-Z, then a-z) independent of how many classes there are within the variable passed to shapeby. Default is FALSE.}
 
-\item{sizeby}{.}
+\item{sizeby}{String specifying the metadata variable name for attributing point size to samples. If NULL, all samples are plot with the same size, specified by dotsize. Default is NULL.}
 
-\item{connectby}{.}
+\item{connectby}{String specifying the metadata variable name for drawing a line connecting samples belonging to the same class. If NULL, samples are not connected. Default is NULL.}
 
-\item{connection_orderby}{.}
+\item{connection_orderby}{String specifying the metadata variable name for determining the order in which samples connected by the variable specified in connectby should be drawn. This is only applicable, of course, if connectby is not NULL. The classes in the metadata variable specified in connection_orderby will be sorted either numerically from low to high, if the variable contains numeric classes, or sorted alphabetically if the variable contains discrete classes.}
 
-\item{textby}{String specifying the metadata variable containing classes for annotating samples with text on the top of each column. Default is NULL. Please note that label_samples must be set to TRUE for metadata text to be added.}
+\item{textby}{String specifying the metadata variable containing classes for annotating samples with text next to each sample point. Default is NULL.}
 
-\item{ellipseby}{.}
+\item{ellipseby}{String specifying the metadata variable containing classes for encircling samples belonging to each class with an ellipse.}
 
-\item{dotsize}{.}
-
-\item{dotborder}{.}
+\item{dotsize}{Numeric value for attributing point size to samples. Default is 2.}
 
 \item{log2tran}{.}
-
-\item{transp}{.}
 
 \item{perplx}{.}
 
@@ -145,5 +139,5 @@ plot_Ordination(
 }
 \description{
 Creates ordination plots based on PCA, tSNE or tUMAP
-plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, dotborder = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, transp = TRUE, perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)
+plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)
 }
