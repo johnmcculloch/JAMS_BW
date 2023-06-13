@@ -7,7 +7,7 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
 
     require(data.table)
     if (is.null(outputdir)){
-        outputdir = getwd()
+        outputdir <- getwd()
     }
 
     if (all(c(is.null(organisms), is.null(taxid), is.null(species_taxid), is.null(assembly_accession), is.null(bioproject), is.null(biosample), is.null(organism_name), is.null(infraspecific_name), is.null(refseq_category_upto), is.null(asm_name), is.null(assembly_level), is.null(assembly_upto)))){
@@ -23,7 +23,7 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
             ASURL <- paste(GBURL, "assembly_summary_genbank.txt", sep = "/")
         }
 
-        assembly_summary <- fread(ASURL, stringsAsFactors = FALSE, sep = "\t", header = TRUE, quote = "")
+        assembly_summary <- fread(ASURL, stringsAsFactors = FALSE, sep = "\t", header = TRUE, quote = "", data.table = FALSE)
 
         assembly_summary <- as.data.frame(assembly_summary)
         #Fix column names
@@ -118,7 +118,7 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
         if (!is.null(asm_name)){
             flog.info("Filtering by asm_name")
             asmnames <- asm_name
-            if(as_general_expression != TRUE){
+            if (as_general_expression != TRUE){
                 wanted_assembly_summary <- subset(wanted_assembly_summary, (asm_name %in% asmnames))
             } else {
                 flog.info("Considering asm_name supplied to be a general expression. Will select all asm names matching the expression(s) supplied.")
@@ -131,13 +131,15 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
 
     ##Subset by quality criteria
     #By assembly level
+    wanted_assembly_level <- c("Contig", "Scaffold", "Chromosome", "Complete Genome")
     if (is.null(assembly_level)){
         if(!is.null(assembly_upto)){
             wanted_assembly_level <- switch(assembly_upto, "Contig"=c("Contig", "Scaffold", "Chromosome", "Complete Genome"), "Scaffold"=c("Scaffold", "Chromosome", "Complete Genome"), "Chromosome"=c("Chromosome", "Complete genome"), "Complete"="Complete Genome")
-        } else {
-            wanted_assembly_level <- c("Contig", "Scaffold", "Chromosome", "Complete Genome")
         }
+    } else {
+        wanted_assembly_level <- assembly_level
     }
+
     wanted_assembly_summary <- subset(wanted_assembly_summary, (assembly_level %in% wanted_assembly_level))
     flog.info(paste("There are", nrow(wanted_assembly_summary), "entries matching the Assembly Level criteria."))
 
@@ -150,7 +152,7 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
 
     if (nobs == TRUE){
         flog.info("Filtering out entries which have been tagged as being problematic or low quality.")
-        noproblem <- which(wanted_assembly_summary$excluded_from_refseq == "")
+        noproblem <- which(wanted_assembly_summary$excluded_from_refseq %in% c("", "na"))
         wanted_assembly_summary <- wanted_assembly_summary[noproblem, ]
         flog.info(paste("There are", nrow(wanted_assembly_summary), "entries which have NOT been flagged as being problematic or low quality."))
     }
