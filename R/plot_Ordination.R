@@ -1,6 +1,6 @@
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 
-#'plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)
+#'plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, tsne_perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)
 
 #' @param ExpObj JAMS-style SummarizedExperiment object
 
@@ -22,6 +22,10 @@
 
 #' @param compareby String specifying the metadata variable name for grouping samples when the hmtype argument is set to "comparative". This will calculate p-values for each feature using the Mann-Whitney-Wilcoxon U-test when there are exactly two classes within the variable, and the log2 foldchange between the two groups will be calculated. When there are three or more classes within the variable, the p-value will be calculated using ANOVA. If there is only a single class within the variable, hmtype will default to "exploratory" and features will be ranked by variance across samples.
 
+#' @param permanova Requires a logical value. If set to TRUE, will include in the title plot the PERMANOVA stats for groups set with compareby. Default is TRUE.
+
+#' @param permanova_permutations Numerical value specifying the number of permutations for PERMANOVA. Default is 10000.
+
 #' @param colourby String specifying the metadata variable name for colouring in samples. If NULL, all samples will be black. Default is NULL.
 
 #' @param colorby Alternative US spelling for the colourby argument. Use either.
@@ -40,9 +44,9 @@
 
 #' @param textby String specifying the metadata variable containing classes for annotating samples with text next to each sample point. Default is NULL.
 
-#' @param ellipseby String specifying the metadata variable containing classes for encircling samples belonging to each class with an ellipse.
+#' @param ellipseby String specifying the metadata variable containing classes for encircling with an ellipse samples belonging to each class. Default is NULL.
 
-#' @param perplx .
+#' @param tsne_perplx Numerical value with perplexity for tSNE. Default is NULL.
 
 #' @param applyfilters Optional string specifying filtration setting "combos", used as a shorthand for setting the featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff arguments in JAMS plotting functions. If NULL, none of these arguments are set if not specified. Permissible values for applyfilters are "light", "moderate" or "stringent". The actual values vary whether the SummarizedExperiment object is taxonomical (LKT) or not. For a taxonomical SummarizedExperiment object, using "light" will set featcutoff=c(50, 5), GenomeCompletenessCutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(250, 15), GenomeCompletenessCutoff=c(10, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(2000, 15), GenomeCompletenessCutoff=c(30, 10), minl2fc=2, minabscorrcoeff=0.8. For non-taxonomical (i.e. functional) SummarizedExperiment objects, using "light" will set featcutoff=c(0, 0), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(50, 15), minl2fc=2.5, minabscorrcoeff=0.8. When using applyfilters, one can still set one or more of featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff, which will then take the user set value in lieu of those set by the applyfilters shorthand. Default is light.
 
@@ -50,19 +54,15 @@
 
 #' @param GenomeCompletenessCutoff Requires a numeric vector of length 2 for specifying how to filter out features by genome completeness. This is, of course, only applicble for taxonomic shotgun SummarizedExperiment objects. When passed to non-taxonomic shotgun SummarizedExperiment objects, GenomeCompletenessCutoff will be ignored. The first value of the vector specifies the minimum genome completeness in percentage  and the second value is the percentage of samples which must have at least that genome completeness. Thus, passing c(50, 5) to GenomeCompletenessCutoff would filter out any taxonomic feature which does not have at least 50 percent of genome completeness in at least 5 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the GenomeCompletenessCutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.
 
-#' @param permanova .
+#' @param plotcentroids Requires a logical value. If set to TRUE, centroids of samples within each sample group belonging to classes within the variable specified with compareby will be plot and lines will be drawn from each sample to the group centroid. Default is FALSE.
 
-#' @param permanova_permutations .
+#' @param highlight_centroids Requires a logical value. If set to TRUE, when using plotcentroids, the centroids will be highlighted and marked with a slightly larger relevant group shape. Default is TRUE.
 
-#' @param plotcentroids .
+#' @param max_neighbors Numerical value specifying the maximum number of neighbors when using the "tUMAP" algorithm for dimensionality reduction (see algorithm). Default is 15.
 
-#' @param highlight_centroids .
+#' @param show_centroid_distances Requires a logical value. If set to TRUE, if centroids are to be plot (see plotcentroids), will include at the bottom of the plot a matrix showing the euclidean distance between the centroids of each group. Default is FALSE.
 
-#' @param max_neighbors .
-
-#' @param show_centroid_distances .
-
-#' @param calculate_centroid_distances_in_all_dimensions .
+#' @param calculate_centroid_distances_in_all_dimensions Requires a logical value. If set to TRUE, when plotcentroids and how_centroid_distances are both also set to TRUE, the euclidean  
 
 #' @param addtit Optional string with text to append to heatmap main title. Default is NULL.
 
@@ -89,7 +89,7 @@
 #' @export
 
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
@@ -243,11 +243,11 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         flog.info("ordinating")
         if (algorithm == "tSNE"){
             #tSNE algorithm
-            if (is.null(perplx)){
-                perplx <- round(nrow(currpt) * 0.3, 0)
+            if (is.null(tsne_perplx)){
+                tsne_perplx <- round(nrow(currpt) * 0.3, 0)
             }
 
-            tsne_out <- Rtsne(countmat, dims = 3, initial_dims = 500, perplexity = perplx, theta = 0.5, check_duplicates = FALSE, pca = TRUE, max_iter = 1000)
+            tsne_out <- Rtsne(countmat, dims = 3, initial_dims = 500, perplexity = tsne_perplx, theta = 0.5, check_duplicates = FALSE, pca = TRUE, max_iter = 1000)
             dford <- as.data.frame(tsne_out$Y)
             rownames(dford) <- rownames(currpt)
             colnames(dford)[1:2] <- c("PC1", "PC2")
@@ -346,7 +346,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             dford$Alpha <- 1
         }
 
-        flog.info("getting centroids")
+        #flog.info("getting centroids")
         if (!(is.numeric(cats))){
             if (!is.null(samplesToHighlight)){
                 centroids <- aggregate(.~Comparison, data = dford[samplesToHighlight, c(paste0(axisprefix, comp), "Comparison")], FUN = mean)

@@ -360,7 +360,8 @@ if (!(is.null(opt$substitutionspreadsheet))){
 
 } else if (!(is.null(opt$prefixlist))){
 
-    wantedprefixes <- read.table(opt$prefixlist, header = FALSE, sep = " ", stringsAsFactors = FALSE)
+    #wantedprefixes <- read.table(opt$prefixlist, header = FALSE, sep = " ", stringsAsFactors = FALSE)
+    wantedprefixes <- data.table::fread(opt$prefixlist, stringsAsFactors = FALSE, data.table = FALSE, header = FALSE)
     wantedprefixes <- as.character(wantedprefixes[, 1])
     substitutiondf <- NULL
 
@@ -452,7 +453,8 @@ if (any(c((!is.null(opt$sralist)), (!is.null(opt$gcalist))))) {
         if(!is.null(opt[[lst]])){
             swarm <- NULL
             flag <- switch(lst, "sralist" = "-g", "gcalist" = "-a")
-            wantedaccessions <- read.table(opt[[lst]], header = FALSE, sep = " ", stringsAsFactors = FALSE)
+            #wantedaccessions <- read.table(opt[[lst]], header = FALSE, sep = " ", stringsAsFactors = FALSE)
+            wantedaccessions <- data.table::fread(opt[[lst]], stringsAsFactors = FALSE, data.table = FALSE, header = FALSE)
             opt$wantedaccessions <- as.character(wantedaccessions[, 1])
             cleanprefixes <- unname(sapply(opt$wantedaccessions, function(x) { gsub("_", "", x) }))
             opt$prefixestouse <- unname(sapply(cleanprefixes, function (x) { unlist(strsplit(x, split = "\\."))[1] } ))
