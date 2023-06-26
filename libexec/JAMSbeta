@@ -483,6 +483,7 @@ if (!exists("expvec")){
 
 #Get rid of list.data to save RAM
 rm(list.data)
+gc()
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 ###################
