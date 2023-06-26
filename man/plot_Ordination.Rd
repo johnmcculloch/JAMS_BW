@@ -3,7 +3,7 @@
 \name{plot_Ordination}
 \alias{plot_Ordination}
 \title{Creates ordination plots based on PCA, tSNE or tUMAP
-plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)}
+plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, tsne_perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)}
 \usage{
 plot_Ordination(
   ExpObj = NULL,
@@ -34,7 +34,7 @@ plot_Ordination(
   ellipseby = NULL,
   dotsize = 2,
   log2tran = TRUE,
-  perplx = NULL,
+  tsne_perplx = NULL,
   max_neighbors = 15,
   permanova = TRUE,
   plotcentroids = FALSE,
@@ -103,25 +103,25 @@ plot_Ordination(
 
 \item{textby}{String specifying the metadata variable containing classes for annotating samples with text next to each sample point. Default is NULL.}
 
-\item{ellipseby}{String specifying the metadata variable containing classes for encircling samples belonging to each class with an ellipse.}
+\item{ellipseby}{String specifying the metadata variable containing classes for encircling with an ellipse samples belonging to each class. Default is NULL.}
 
 \item{dotsize}{Numeric value for attributing point size to samples. Default is 2.}
 
 \item{log2tran}{.}
 
-\item{perplx}{.}
+\item{tsne_perplx}{Numerical value with perplexity for tSNE. Default is NULL.}
 
-\item{max_neighbors}{.}
+\item{max_neighbors}{Numerical value specifying the maximum number of neighbors when using the "tUMAP" algorithm for dimensionality reduction (see algorithm). Default is 15.}
 
-\item{permanova}{.}
+\item{permanova}{Requires a logical value. If set to TRUE, will include in the title plot the PERMANOVA stats for groups set with compareby. Default is TRUE.}
 
-\item{plotcentroids}{.}
+\item{plotcentroids}{Requires a logical value. If set to TRUE, centroids of samples within each sample group belonging to classes within the variable specified with compareby will be plot and lines will be drawn from each sample to the group centroid. Default is FALSE.}
 
-\item{highlight_centroids}{.}
+\item{highlight_centroids}{Requires a logical value. If set to TRUE, when using plotcentroids, the centroids will be highlighted and marked with a slightly larger relevant group shape. Default is TRUE.}
 
-\item{show_centroid_distances}{.}
+\item{show_centroid_distances}{Requires a logical value. If set to TRUE, if centroids are to be plot (see plotcentroids), will include at the bottom of the plot a matrix showing the euclidean distance between the centroids of each group. Default is FALSE.}
 
-\item{calculate_centroid_distances_in_all_dimensions}{.}
+\item{calculate_centroid_distances_in_all_dimensions}{Requires a logical value. If set to TRUE, when plotcentroids and how_centroid_distances are both also set to TRUE, the euclidean}
 
 \item{addtit}{Optional string with text to append to heatmap main title. Default is NULL.}
 
@@ -133,11 +133,11 @@ plot_Ordination(
 
 \item{return_coordinates_matrix}{.}
 
-\item{permanova_permutations}{.}
+\item{permanova_permutations}{Numerical value specifying the number of permutations for PERMANOVA. Default is 10000.}
 
 \item{class_to_ignore}{String or vector specifying any classes which should lead to samples being excluded from the comparison within the variable passed to compareby. Default is N_A. This means that within any metadata variable passed to compareby containing the "N_A" string within that specific variable, the sample will be dropped from that comparison.}
 }
 \description{
 Creates ordination plots based on PCA, tSNE or tUMAP
-plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)
+plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, tsne_perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)
 }

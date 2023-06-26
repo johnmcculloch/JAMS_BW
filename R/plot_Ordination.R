@@ -62,13 +62,11 @@
 
 #' @param show_centroid_distances Requires a logical value. If set to TRUE, if centroids are to be plot (see plotcentroids), will include at the bottom of the plot a matrix showing the euclidean distance between the centroids of each group. Default is FALSE.
 
-#' @param calculate_centroid_distances_in_all_dimensions Requires a logical value. If set to TRUE, when plotcentroids and how_centroid_distances are both also set to TRUE, the euclidean  
+#' @param calculate_centroid_distances_in_all_dimensions Requires a logical value. If set to TRUE, when plotcentroids and how_centroid_distances are both also set to TRUE, the euclidean
 
 #' @param addtit Optional string with text to append to heatmap main title. Default is NULL.
 
 #' @param assay_for_matrix String specifying the SummarizedExperiment assay to be used for the heatmap. Permissible values are "BaseCounts" or "GeneCounts". "BaseCounts" (the default) will use the basepair counts for each feature (either taxonomical or functional). These values will be normalized into relative abundance in PPM unless specified by the normalization argument (see normalization and PPM_normalize_to_bases_sequenced). When using "GeneCounts" (only available in non-taxonomical SummarizedExperiment objects) the *number of genes* annotated as each feature will be used. The heatmap will be plot with a scale of 0 to the maximum number of genes for a single feature on the heatmap. For instance, using "GeneCounts" for, let's say, an ECNumber SummarizedExperiment will plot the number of genes bearing each Enzyme Commission Number annotation within each sample. Default is "BaseCounts".
-
-#' @param asPPM .
 
 #' @param PPM_normalize_to_bases_sequenced Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a **non-taxonomical** SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is FALSE.
 
