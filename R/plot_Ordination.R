@@ -28,7 +28,7 @@
 
 #' @param colourby String specifying the metadata variable name for colouring in samples. If NULL, all samples will be black. Default is NULL.
 
-#' @param colorby Alternative US spelling for the colourby argument. Use either.
+#' @param colorby Alternative US spelling for the colourby argument. Use either, but not both. At some point, a side must be taken. 
 
 #' @param shapeby String specifying the metadata variable name for attributing shapes to samples. If NULL, all samples will be a round dot (pch = 19). Default is NULL. If there are more than 27 classes within the variable, samples will be attributed letters (A-Z, then a-z) automatically. See also use_letters_as_shapes.
 
