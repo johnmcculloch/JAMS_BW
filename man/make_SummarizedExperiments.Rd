@@ -2,12 +2,13 @@
 % Please edit documentation in R/make_SummarizedExperiments.R
 \name{make_SummarizedExperiments}
 \alias{make_SummarizedExperiments}
-\title{make_SummarizedExperiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = NULL, minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8)}
+\title{make_SummarizedExperiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8)}
 \usage{
 make_SummarizedExperiments(
   pheno = NULL,
   onlysamples = NULL,
-  onlyanalyses = NULL,
+  onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder",
+    "PRINTS", "GO"),
   minnumsampanalysis = NULL,
   minpropsampanalysis = 0.1,
   restricttoLKTs = NULL,

@@ -7,7 +7,7 @@
 plot_relabund_heatmap(
   ExpObj = NULL,
   glomby = NULL,
-  hmtype = NULL,
+  hmtype = "exploratory",
   samplesToKeep = NULL,
   featuresToKeep = NULL,
   subsetby = NULL,
