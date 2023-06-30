@@ -67,6 +67,12 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     fl <- list.files(path = jamstempfilespath, pattern = "\\.tsv$|\\.rds$")
     on <- gsub("*.tsv$", "", fl)
     on <- gsub("*.rds$", "", on)
+    ## No longer load ucobias, TNF_contigs, TNF_features, taxa_16S_cons as these are not used.
+    on <- on[grep("_ucobias$", on, invert = TRUE)]
+    on <- on[grep("_TNF_contigs$", on, invert = TRUE)]
+    on <- on[grep("_TNF_features$", on, invert = TRUE)]
+    on <- on[grep("_taxa_16S_cons$", on, invert = TRUE)]
+    ##
     if (length(which(duplicated(on) == TRUE)) > 0){
         stop("There are duplicated object names. Were different versions of the same jams file loaded? Check files and try again. Aborting now.")
         q()
