@@ -7,7 +7,6 @@
 load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE){
 
     require(parallel)
-
     flog.info("Searching for jams files.")
     fljams <- list.files(path = path, pattern = "*.jams$", full.names = TRUE, recursive = recursive, include.dirs = TRUE)
     if (length(fljams) < 1){
@@ -65,14 +64,15 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     }
 
     fl <- list.files(path = jamstempfilespath, pattern = "\\.tsv$|\\.rds$")
+    ## No longer load ucobias, TNF_contigs, TNF_features, taxa_16S_cons as these are not used.
+    ##
+    fl <- fl[grep("_ucobias\\.", fl, invert = TRUE)]
+    fl <- fl[grep("_TNF_contigs\\.", fl, invert = TRUE)]
+    fl <- fl[grep("_TNF_features\\.", fl, invert = TRUE)]
+    fl <- fl[grep("_taxa_16S_cons\\.", fl, invert = TRUE)]
+
     on <- gsub("*.tsv$", "", fl)
     on <- gsub("*.rds$", "", on)
-    ## No longer load ucobias, TNF_contigs, TNF_features, taxa_16S_cons as these are not used.
-    on <- on[grep("_ucobias$", on, invert = TRUE)]
-    on <- on[grep("_TNF_contigs$", on, invert = TRUE)]
-    on <- on[grep("_TNF_features$", on, invert = TRUE)]
-    on <- on[grep("_taxa_16S_cons$", on, invert = TRUE)]
-    ##
     if (length(which(duplicated(on) == TRUE)) > 0){
         stop("There are duplicated object names. Were different versions of the same jams file loaded? Check files and try again. Aborting now.")
         q()
@@ -83,7 +83,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
 
     flog.info(paste("There are", length(fl), "objects to load."))
 
-    loadobj <- function(objfn = NULL){
+    loadobj <- function(objfn = NULL, never_used_columns = c("AntiFam", "CDD", "Coils", "FunFam", "Gene3D", "PANTHER", "Phobius", "ProSitePatterns", "SFLD", "SignalP_EUK", "SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SMART", "SUPERFAMILY", "TIGRFAM", "MetaCyc")){
         #decide whether it is a TSV or RDS file and load appropriately.
         if ((length(grep("\\.rds$", objfn)) > 0)){
             tryCatch((jamsdf <- readRDS(objfn)), error = function() { flog.warn(paste("Unable to read file", objfn)) } )
@@ -91,6 +91,16 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         } else {
             #assume tsv
             jamsdf <- fread(data.table = FALSE, file = objfn, sep = "\t", header = TRUE, quote = "", fill = FALSE, integer64 = "numeric", logical01 = FALSE, stringsAsFactors = FALSE, nThread = 1)
+        }
+
+        #Prune unwanted columns
+        if (any(never_used_columns %in% colnames(jamsdf))){
+            wantedcols <- colnames(jamsdf)[!(colnames(jamsdf) %in% never_used_columns)]
+            jamsdf <- jamsdf[ , wantedcols]
+        }
+
+        if ("Analysis" %in% colnames(jamsdf)){
+            jamsdf <- jamsdf[!(jamsdf$Analysis %in% never_used_columns), ]
         }
 
         return(jamsdf)
