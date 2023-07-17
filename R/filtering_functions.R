@@ -9,6 +9,13 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
     if (!(is.null(samplesToKeep))){
         samplesToKeep <- samplesToKeep[samplesToKeep %in% colnames(ExpObj)]
         ExpObj <- ExpObj[, samplesToKeep]
+        #Also fix total counts vector in ExpObj metadata
+        for (mdTU in c("TotalBasesSequenced", "TotalBasesSequencedinAnalysis")){
+            MTU <- t(as.matrix(metadata(ExpObj)[[mdTU]]["NumBases", samplesToKeep]))
+            rownames(MTU) <- "NumBases"
+            colnames(MTU) <- samplesToKeep
+            metadata(ExpObj)[[mdTU]] <- MTU
+        }
     }
 
     #Get appropriate object with which to work
