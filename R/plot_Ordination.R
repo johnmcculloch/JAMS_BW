@@ -1,7 +1,5 @@
 #' Creates ordination plots based on PCA, tSNE or tUMAP
 
-#'plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, tsne_perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)
-
 #' @param ExpObj JAMS-style SummarizedExperiment object
 
 #' @param glomby String giving the taxonomic level at which to agglomerate counts. This argument should only be used with taxonomic SummarizedExperiment objects. When NULL (the default), there is no agglomeration
@@ -20,7 +18,7 @@
 
 #' @param subsetby String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.
 
-#' @param compareby String specifying the metadata variable name for grouping samples when the hmtype argument is set to "comparative". This will calculate p-values for each feature using the Mann-Whitney-Wilcoxon U-test when there are exactly two classes within the variable, and the log2 foldchange between the two groups will be calculated. When there are three or more classes within the variable, the p-value will be calculated using ANOVA. If there is only a single class within the variable, hmtype will default to "exploratory" and features will be ranked by variance across samples.
+#' @param compareby String specifying the metadata variable name for grouping samples. This will define which metadata variable grouping to calculate PERMANOVA p-value. If not specified, and argument permanova is set to TRUE, (see permanova), the compareby argument will be set by colourby or shapeby. If these latter two are also NULL, and permanova is TRUE, permanova will be set to FALSE. Default is NULL.
 
 #' @param permanova Requires a logical value. If set to TRUE, will include in the title plot the PERMANOVA stats for groups set with compareby. Default is TRUE.
 
@@ -28,7 +26,7 @@
 
 #' @param colourby String specifying the metadata variable name for colouring in samples. If NULL, all samples will be black. Default is NULL.
 
-#' @param colorby Alternative US spelling for the colourby argument. Use either, but not both. At some point, a side must be taken. 
+#' @param colorby Alternative US spelling for the colourby argument. Use either, but not both. At some point, a side must be taken.
 
 #' @param shapeby String specifying the metadata variable name for attributing shapes to samples. If NULL, all samples will be a round dot (pch = 19). Default is NULL. If there are more than 27 classes within the variable, samples will be attributed letters (A-Z, then a-z) automatically. See also use_letters_as_shapes.
 
@@ -36,11 +34,11 @@
 
 #' @param sizeby String specifying the metadata variable name for attributing point size to samples. If NULL, all samples are plot with the same size, specified by dotsize. Default is NULL.
 
-#' @param dotsize Numeric value for attributing point size to samples. Default is 2.
+#' @param dotsize Numeric value for attributing point size to all samples. Default is 2.
 
 #' @param connectby String specifying the metadata variable name for drawing a line connecting samples belonging to the same class. If NULL, samples are not connected. Default is NULL.
 
-#' @param connection_orderby String specifying the metadata variable name for determining the order in which samples connected by the variable specified in connectby should be drawn. This is only applicable, of course, if connectby is not NULL. The classes in the metadata variable specified in connection_orderby will be sorted either numerically from low to high, if the variable contains numeric classes, or sorted alphabetically if the variable contains discrete classes.
+#' @param connection_orderby String specifying the metadata variable name for determining the order in which samples connected by the variable specified in connectby should be drawn. This is only applicable, of course, if connectby is not NULL. If NULL, the classes in the metadata variable specified in connectby will be sorted either numerically from low to high, if the variable contains numeric classes, or sorted alphabetically if the variable contains discrete classes.
 
 #' @param textby String specifying the metadata variable containing classes for annotating samples with text next to each sample point. Default is NULL.
 
@@ -72,22 +70,23 @@
 
 #' @param grid Requires a logical value. If set to FALSE, background will be one solid color within the plot, rather than include a grid behind the plot. Default is TRUE, meaning that the background will display a grid.
 
-#' @param forceaspectratio .
+#' @param forceaspectratio Numeric value setting the desired plot aspect ratio. Default is 1, meaning the plot will be drawn as a square box.
 
 #' @param numthreads Numeric value setting the number of threads to use for any multi-threaded process within this function. The default is 1.
 
-#' @param log2tran .
+#' @param log2tran Requires a logical value. When set to TRUE, distance and ordination calculations will be performed starting with the log2 transformed values of the count matrix, either normalized to relative abundance (when argument asPPM = TRUE, the default) or not. When set to FALSE, the raw values of the count matrix will be used. See asPPM. Default is TRUE, meaning ordinations are done on log2 transformed space. If assay_for_matrix is set to "GeneCounts", log2tran will default to FALSE.
+
+#' @param asPPM Requires a logical value. When set to TRUE, the base counts matrix will be normalized to relative abundance in parts per million (PPM). See also PPM_normalize_to_bases_sequenced. Default is TRUE. If assay_for_matrix is set to "GeneCounts", asPPM will default to FALSE.
 
 #' @param ignoreunclassified Requires a logical value. If set to TRUE, for taxonomical SummarizedExperiment objects, the feature "LKT__Unclassified" will be omitted from being shown. In the case of non-taxonomical SummarizedExperiment objects, the completely unannotated features will be omitted. For example, for an ECNumber SummarizedExperiment object, genes *without* an Enzyme Commission Number annotation (feature "EC_none") will not be shown. Statistics are, however, computed taking the completely unclassifed feature into account, so p-values will not change.
 
-#' @param return_coordinates_matrix .
+#' @param return_coordinates_matrix Requires a logical value. If set to TRUE, the list of objects returned by this plot_Ordination will include, in addition to the ggplot2 ordination plots, a matrix with the x,y plot positions for each sample after ordination. Default is FALSE.
 
 #' @param class_to_ignore String or vector specifying any classes which should lead to samples being excluded from the comparison within the variable passed to compareby. Default is N_A. This means that within any metadata variable passed to compareby containing the "N_A" string within that specific variable, the sample will be dropped from that comparison.
 
 #' @export
 
-
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
