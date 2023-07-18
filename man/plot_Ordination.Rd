@@ -2,8 +2,7 @@
 % Please edit documentation in R/plot_Ordination.R
 \name{plot_Ordination}
 \alias{plot_Ordination}
-\title{Creates ordination plots based on PCA, tSNE or tUMAP
-plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, tsne_perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)}
+\title{Creates ordination plots based on PCA, tSNE or tUMAP}
 \usage{
 plot_Ordination(
   ExpObj = NULL,
@@ -44,7 +43,7 @@ plot_Ordination(
   addtit = NULL,
   cdict = NULL,
   grid = TRUE,
-  forceaspectratio = NULL,
+  forceaspectratio = 1,
   numthreads = 8,
   return_coordinates_matrix = FALSE,
   permanova_permutations = 10000,
@@ -73,6 +72,8 @@ plot_Ordination(
 
 \item{GenomeCompletenessCutoff}{Requires a numeric vector of length 2 for specifying how to filter out features by genome completeness. This is, of course, only applicble for taxonomic shotgun SummarizedExperiment objects. When passed to non-taxonomic shotgun SummarizedExperiment objects, GenomeCompletenessCutoff will be ignored. The first value of the vector specifies the minimum genome completeness in percentage  and the second value is the percentage of samples which must have at least that genome completeness. Thus, passing c(50, 5) to GenomeCompletenessCutoff would filter out any taxonomic feature which does not have at least 50 percent of genome completeness in at least 5 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the GenomeCompletenessCutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.}
 
+\item{asPPM}{Requires a logical value. When set to TRUE, the base counts matrix will be normalized to relative abundance in parts per million (PPM). See also PPM_normalize_to_bases_sequenced. Default is TRUE. If assay_for_matrix is set to "GeneCounts", asPPM will default to FALSE.}
+
 \item{PPM_normalize_to_bases_sequenced}{Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a **non-taxonomical** SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is FALSE.}
 
 \item{assay_for_matrix}{String specifying the SummarizedExperiment assay to be used for the heatmap. Permissible values are "BaseCounts" or "GeneCounts". "BaseCounts" (the default) will use the basepair counts for each feature (either taxonomical or functional). These values will be normalized into relative abundance in PPM unless specified by the normalization argument (see normalization and PPM_normalize_to_bases_sequenced). When using "GeneCounts" (only available in non-taxonomical SummarizedExperiment objects) the *number of genes* annotated as each feature will be used. The heatmap will be plot with a scale of 0 to the maximum number of genes for a single feature on the heatmap. For instance, using "GeneCounts" for, let's say, an ECNumber SummarizedExperiment will plot the number of genes bearing each Enzyme Commission Number annotation within each sample. Default is "BaseCounts".}
@@ -83,7 +84,7 @@ plot_Ordination(
 
 \item{distmethod}{String giving the dissimilarity index method for calculating the compositional dissimilarity of the sample-by-feature matrix. Default is "bray" (Bray-Curtis dissimilarity). For permissible values see the vegdist function of the vegan package ("euclidean", "bray", "jaccard", etc...).}
 
-\item{compareby}{String specifying the metadata variable name for grouping samples when the hmtype argument is set to "comparative". This will calculate p-values for each feature using the Mann-Whitney-Wilcoxon U-test when there are exactly two classes within the variable, and the log2 foldchange between the two groups will be calculated. When there are three or more classes within the variable, the p-value will be calculated using ANOVA. If there is only a single class within the variable, hmtype will default to "exploratory" and features will be ranked by variance across samples.}
+\item{compareby}{String specifying the metadata variable name for grouping samples. This will define which metadata variable grouping to calculate PERMANOVA p-value. If not specified, and argument permanova is set to TRUE, (see permanova), the compareby argument will be set by colourby or shapeby. If these latter two are also NULL, and permanova is TRUE, permanova will be set to FALSE. Default is NULL.}
 
 \item{colourby}{String specifying the metadata variable name for colouring in samples. If NULL, all samples will be black. Default is NULL.}
 
@@ -97,15 +98,15 @@ plot_Ordination(
 
 \item{connectby}{String specifying the metadata variable name for drawing a line connecting samples belonging to the same class. If NULL, samples are not connected. Default is NULL.}
 
-\item{connection_orderby}{String specifying the metadata variable name for determining the order in which samples connected by the variable specified in connectby should be drawn. This is only applicable, of course, if connectby is not NULL. The classes in the metadata variable specified in connection_orderby will be sorted either numerically from low to high, if the variable contains numeric classes, or sorted alphabetically if the variable contains discrete classes.}
+\item{connection_orderby}{String specifying the metadata variable name for determining the order in which samples connected by the variable specified in connectby should be drawn. This is only applicable, of course, if connectby is not NULL. If NULL, the classes in the metadata variable specified in connectby will be sorted either numerically from low to high, if the variable contains numeric classes, or sorted alphabetically if the variable contains discrete classes.}
 
 \item{textby}{String specifying the metadata variable containing classes for annotating samples with text next to each sample point. Default is NULL.}
 
 \item{ellipseby}{String specifying the metadata variable containing classes for encircling with an ellipse samples belonging to each class. Default is NULL.}
 
-\item{dotsize}{Numeric value for attributing point size to samples. Default is 2.}
+\item{dotsize}{Numeric value for attributing point size to all samples. Default is 2.}
 
-\item{log2tran}{.}
+\item{log2tran}{Requires a logical value. When set to TRUE, distance and ordination calculations will be performed starting with the log2 transformed values of the count matrix, either normalized to relative abundance (when argument asPPM = TRUE, the default) or not. When set to FALSE, the raw values of the count matrix will be used. See asPPM. Default is TRUE, meaning ordinations are done on log2 transformed space. If assay_for_matrix is set to "GeneCounts", log2tran will default to FALSE.}
 
 \item{tsne_perplx}{Numerical value with perplexity for tSNE. Default is NULL.}
 
@@ -125,11 +126,11 @@ plot_Ordination(
 
 \item{grid}{Requires a logical value. If set to FALSE, background will be one solid color within the plot, rather than include a grid behind the plot. Default is TRUE, meaning that the background will display a grid.}
 
-\item{forceaspectratio}{.}
+\item{forceaspectratio}{Numeric value setting the desired plot aspect ratio. Default is 1, meaning the plot will be drawn as a square box.}
 
 \item{numthreads}{Numeric value setting the number of threads to use for any multi-threaded process within this function. The default is 1.}
 
-\item{return_coordinates_matrix}{.}
+\item{return_coordinates_matrix}{Requires a logical value. If set to TRUE, the list of objects returned by this plot_Ordination will include, in addition to the ggplot2 ordination plots, a matrix with the x,y plot positions for each sample after ordination. Default is FALSE.}
 
 \item{permanova_permutations}{Numerical value specifying the number of permutations for PERMANOVA. Default is 10000.}
 
@@ -137,5 +138,4 @@ plot_Ordination(
 }
 \description{
 Creates ordination plots based on PCA, tSNE or tUMAP
-plot_Ordination(ExpObj = NULL, glomby = NULL, algorithm = "PCA", PCA_Components = c(1, 2), distmethod = "bray", samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, dotsize = 2, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, tsne_perplx = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, permanova = TRUE, permanova_permutations = 10000, plotcentroids = FALSE, highlight_centroids = TRUE, max_neighbors = 15, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, assay_for_matrix = "BaseCounts", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, grid = TRUE, forceaspectratio = NULL, numthreads = 8, log2tran = TRUE, ignoreunclassified = TRUE, return_coordinates_matrix = FALSE, class_to_ignore = "N_A", ...)
 }
