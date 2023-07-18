@@ -387,7 +387,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
         ##Make dots a difference size here
         if (!(is.null(sizeby))){
-            p <- p + geom_point(size = Size)
+            p <- p + geom_point(aes(size = Size))
             numsizes <- length(unique(dford$Size))
             p <- p + scale_shape_manual(values = dotsize:(dotsize + numsizes))
         }
@@ -483,7 +483,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         p <- p + guides(alpha = "none")
 
         if (grid == FALSE ){
-            p <- p + theme(panel.background = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(colour = "black", fill = NA, size=1))
+            p <- p + theme(panel.background = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(colour = "black", fill = NA, linewidth=1))
         }
 
         if (all(c((!(is.numeric(cats))), plotcentroids, show_centroid_distances))){
