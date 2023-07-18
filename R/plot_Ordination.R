@@ -385,9 +385,9 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             p <- p + aes(shape = Shape)
             p <- add_shape_to_plot_safely(p = p, shapevec = dford$Shape, shapeby = shapeby, use_letters_as_shapes = use_letters_as_shapes, cdict = cdict)
         }
-
+        ##Make dots a difference size here
         if (!(is.null(sizeby))){
-            p <- p + aes(size = Size)
+            p <- p + geom_point(size = Size)
             numsizes <- length(unique(dford$Size))
             p <- p + scale_shape_manual(values = dotsize:(dotsize + numsizes))
         }
