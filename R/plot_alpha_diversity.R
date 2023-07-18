@@ -15,7 +15,7 @@
 
 #' @param subsetby String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.
 
-#' @param compareby String specifying the metadata variable name for grouping samples when the hmtype argument is set to "comparative". This will calculate p-values for each feature using the Mann-Whitney-Wilcoxon U-test when there are exactly two classes within the variable, and the log2 foldchange between the two groups will be calculated. When there are three or more classes within the variable, the p-value will be calculated using ANOVA. If there is only a single class within the variable, hmtype will default to "exploratory" and features will be ranked by variance across samples.
+#' @param compareby  String specifying the metadata variable name for grouping samples. This will define which metadata variable grouping to calculate PERMANOVA p-value. If not specified, and argument permanova is set to TRUE, (see permanova), the compareby argument will be set by colourby or shapeby. If these latter two are also NULL, and permanova is TRUE, permanova will be set to FALSE. Default is NULL.
 
 #' @param compareby_order String or vector specifying the order in which to compare by, if this order is different than alphabetical order of the compareby parameter. Default is NULL.
 

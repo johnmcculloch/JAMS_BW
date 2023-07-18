@@ -55,7 +55,7 @@ export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL
         cvn <- cvn + 1
     }
 
-    if (any(c((asPPM == TRUE), !is.null(applyfilters), !is.null(featcutoff), !is.null(GenomeCompletenessCutoff), !is.null(PctFromCtgscutoff)))){
+    if (any(c((asPPM == TRUE), !is.null(applyfilters), !is.null(featcutoff), !is.null(GenomeCompletenessCutoff)))){
         flog.info("Counts will be exported as PPM")
         countunits <- "PPM"
     } else {
