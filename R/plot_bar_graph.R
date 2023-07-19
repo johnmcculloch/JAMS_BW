@@ -1,32 +1,67 @@
 #' Creates bar graph of relative taxonomic abundance from SummarizedExperiment object
 #'
-#'
-#' @param ExpObj a SummarizedExperiment object.
-#' @param glomby string giving taxonomic level (from tax_table) to plot at.
-#' @param absolute if true, don't normalize to 100\% or whatever but show absolute abundance
-#' @param samplesToKeep vector with samples to plot.
-#' @param featuresToKeep vector with features to plot.
-#' @param total_units unit to normalize data to -- default percentage (100).
-#' @param threshold minimum value to include as separate entry (below is Misc_Low_Abundance).
-#' @param groupby colData category to use for labels
-#' @param label_samples label samples on graph
-#' @param cat_pos position of category line (change if ugly in plot)
-#' @param cat_text_size text size of category labels
-#' @param legend_text_size text size of legend labels
-#' @param border_color color of bar borders
-#' @param cdict use JAMS colour dictionary
-#' @param feature_cdict use named list of taxon colors
-#' @param addtit optional string to add more text to title
+#' @param ExpObj JAMS-style SummarizedExperiment object
+
+#' @param glomby String giving the taxonomic level at which to agglomerate counts. This argument should only be used with taxonomic SummarizedExperiment objects. When NULL (the default), there is no agglomeration
+
+#' @param absolute Requires a logical value. If set to true, will not normalize to 100% (or whatever) but will show absolute abundance instead. Default is FALSE.
+
+#' @param samplesToKeep Vector with sample names to keep. If NULL, all samples within the SummarizedExperiment object are kept. Default is NULL.
+
+#' @param featuresToKeep Vector with feature names to keep. If NULL, all features within the SummarizedExperiment object are kept. Default is NULL. Please note that when agglomerating features with the glomby argument (see above), feature names passed to featuresToKeep must be post-agglomeration feature names. For example, if glomby="Family", featuresToKeep must be family names, such as "f__Enterobacteriaceae", etc.
+
+#' @param groupby String specifying the metadata variable name. colData category to use for labels.
+
+#' @param label_samples Requires a logical value. If set to TRUE, will include labels for sample names on graph. Default is FALSE, and will not include sample names.
+
+#' @param colourby String specifying the metadata variable name for colouring in samples. If NULL, all samples will be black. Default is NULL.
+
+#' @param subsetby String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.
+
+#' @param applyfilters Optional string specifying filtration setting "combos", used as a shorthand for setting the featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff arguments in JAMS plotting functions. If NULL, none of these arguments are set if not specified. Permissible values for applyfilters are "light", "moderate" or "stringent". The actual values vary whether the SummarizedExperiment object is taxonomical (LKT) or not. For a taxonomical SummarizedExperiment object, using "light" will set featcutoff=c(50, 5), GenomeCompletenessCutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(250, 15), GenomeCompletenessCutoff=c(10, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(2000, 15), GenomeCompletenessCutoff=c(30, 10), minl2fc=2, minabscorrcoeff=0.8. For non-taxonomical (i.e. functional) SummarizedExperiment objects, using "light" will set featcutoff=c(0, 0), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(50, 15), minl2fc=2.5, minabscorrcoeff=0.8. When using applyfilters, one can still set one or more of featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff, which will then take the user set value in lieu of those set by the applyfilters shorthand. Default is light.
+
+#' @param featcutoff Requires a numeric vector of length 2 for specifying how to filter out features by relative abundance. The first value of the vector specifies the minimum relative abundance in Parts per Million (PPM) and the second value is the percentage of samples which must have at least that relative abundance. Thus, passing c(250, 10) to featcutoff would filter out any feature which does not have at least 250 PPM (= 0.025 percent) of relative abundance in at least 10 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the featcutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.
+
+#' @param GenomeCompletenessCutoff Requires a numeric vector of length 2 for specifying how to filter out features by genome completeness. This is, of course, only applicble for taxonomic shotgun SummarizedExperiment objects. When passed to non-taxonomic shotgun SummarizedExperiment objects, GenomeCompletenessCutoff will be ignored. The first value of the vector specifies the minimum genome completeness in percentage  and the second value is the percentage of samples which must have at least that genome completeness. Thus, passing c(50, 5) to GenomeCompletenessCutoff would filter out any taxonomic feature which does not have at least 50 percent of genome completeness in at least 5 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the GenomeCompletenessCutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.
+
+#' @param PPM_normalize_to_bases_sequenced Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a **non-taxonomical** SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is FALSE.
+
+#' @param total_units Numerical value specifying the unit to normalize data to. Default percentage is 100.
+
+#' @param threshold Numberical value specifying the minimum value to include as separate entry (below is Misc_Low_Abundance). Default is 2.
+
+#' @param cat_pos Numerical value that specifies the position of the category line (change if ugly in plot, otherwise mess with at your own risk). Default is -2.
+
+#' @param cat_text_size Numerical value setting the text size of category labels. Default is 3.
+
+#' @param legend_text_size Numerical value setting the text size of legend labels. Default is 4.
+
+#' @param border_color String that specifies the color of bar borders. Default is white.
+
+#' @param feature_cdict Vector containing a dictionary of colours with a corresponding taxon. Allows you to manually define the colours for taxonomy. Default is NULL.
+
+#' @param addtit Optional string with text to append to main title. Default is NULL.
+
+#' @param grid Requires a logical value. If set to FALSE, background will be one solid color within the plot, rather than include a grid behind the plot. Default is TRUE, meaning that the background will display a grid.
+
+#' @param ignoreunclassified Requires a logical value. If set to TRUE, for taxonomical SummarizedExperiment objects, the feature "LKT__Unclassified" will be omitted from being shown. In the case of non-taxonomical SummarizedExperiment objects, the completely unannotated features will be omitted. For example, for an ECNumber SummarizedExperiment object, genes *without* an Enzyme Commission Number annotation (feature "EC_none") will not be shown. Statistics are, however, computed taking the completely unclassifed feature into account, so p-values will not change.
+
+#' @param class_to_ignore String or vector specifying any classes which should lead to samples being excluded from the comparison within the variable passed to compareby. Default is N_A. This means that within any metadata variable passed to compareby containing the "N_A" string within that specific variable, the sample will be dropped from that comparison.
+
 #' @export
 #' @examples
-#' plot_bar_graph(ExpObj = mrexp1, glomby = "Phylum", groupby = "Group")
+#' plot_bar_graph(ExpObj = expvec$LKT, glomby = "Phylum", groupby = "Group")
 
-plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, class_to_ignore = "N_A", ...) {
+plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, ignoreunclassified = FALSE, class_to_ignore = "N_A", ...) {
 
     require(reshape2)
     require(Polychrome)
 
     valid_vars <- c(groupby, subsetby)[which(!is.na(c(groupby, subsetby)))]
+
+    #Hardwire PctFromCtgscutoff, as this should never be used without filtering because of huge amounts of false positives when evaluating taxonomic information from unassembled reads. The use of classifying unassembled reads is deprecated in JAMS and the default is to NOT classify unassembled reads, so this is usually not an issue.
+    PctFromCtgscutoff <- c(70, 50)
+    transp <- TRUE
 
     #Vet experiment object
     obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = valid_vars, class_to_ignore = class_to_ignore)

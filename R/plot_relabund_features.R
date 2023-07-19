@@ -379,6 +379,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 p <- p + geom_point()
                 p <- p + geom_smooth(method = lm, aes(group=1), se = FALSE)
                 if (!(is.null(shapeby))){
+                    p <- p + aes(shape = Shape)
                     p <- add_shape_to_plot_safely(p = p, shapevec = dat$Shape, shapeby = shapeby, cdict = cdict)
                 }
                 rotang <- 0
