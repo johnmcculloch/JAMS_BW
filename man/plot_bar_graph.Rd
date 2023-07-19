@@ -2,8 +2,7 @@
 % Please edit documentation in R/plot_bar_graph.R
 \name{plot_bar_graph}
 \alias{plot_bar_graph}
-\title{plot_bar_graph(ExpObj = expvec$LKT, glomby = "Phylum", groupby = "Group")
-Creates bar graph of relative taxonomic abundance from SummarizedExperiment object}
+\title{Creates bar graph of relative taxonomic abundance from SummarizedExperiment object. For instance, plot_bar_graph(ExpObj = expvec$LKT, glomby = "Phylum", groupby = "Group")}
 \usage{
 plot_bar_graph(
   ExpObj = NULL,
@@ -84,6 +83,5 @@ plot_bar_graph(
 \item{class_to_ignore}{String or vector specifying any classes which should lead to samples being excluded from the comparison within the variable passed to compareby. Default is N_A. This means that within any metadata variable passed to compareby containing the "N_A" string within that specific variable, the sample will be dropped from that comparison.}
 }
 \description{
-plot_bar_graph(ExpObj = expvec$LKT, glomby = "Phylum", groupby = "Group")
-Creates bar graph of relative taxonomic abundance from SummarizedExperiment object
+Creates bar graph of relative taxonomic abundance from SummarizedExperiment object. For instance, plot_bar_graph(ExpObj = expvec$LKT, glomby = "Phylum", groupby = "Group")
 }

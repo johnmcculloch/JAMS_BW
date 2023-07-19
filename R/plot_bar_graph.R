@@ -1,5 +1,4 @@
-#' plot_bar_graph(ExpObj = expvec$LKT, glomby = "Phylum", groupby = "Group")
-#' Creates bar graph of relative taxonomic abundance from SummarizedExperiment object
+#' Creates bar graph of relative taxonomic abundance from SummarizedExperiment object. For instance, plot_bar_graph(ExpObj = expvec$LKT, glomby = "Phylum", groupby = "Group")
 
 #' @param ExpObj JAMS-style SummarizedExperiment object
 
