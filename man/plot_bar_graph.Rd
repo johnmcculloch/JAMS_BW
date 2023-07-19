@@ -87,6 +87,3 @@ plot_bar_graph(
 plot_bar_graph(ExpObj = expvec$LKT, glomby = "Phylum", groupby = "Group")
 Creates bar graph of relative taxonomic abundance from SummarizedExperiment object
 }
-\examples{
-plot_bar_graph(ExpObj = expvec$LKT, glomby = "Phylum", groupby = "Group")
-}
