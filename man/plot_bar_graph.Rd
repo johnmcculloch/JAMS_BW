@@ -17,9 +17,7 @@ plot_bar_graph(
   applyfilters = NULL,
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
-  PctFromCtgscutoff = NULL,
   PPM_normalize_to_bases_sequenced = FALSE,
-  ignoreunclassified = FALSE,
   total_units = 100,
   threshold = 2,
   cat_pos = -2,
@@ -30,46 +28,63 @@ plot_bar_graph(
   feature_cdict = NULL,
   addtit = NULL,
   grid = TRUE,
+  ignoreunclassified = FALSE,
   class_to_ignore = "N_A",
   ...
 )
 }
 \arguments{
-\item{ExpObj}{a SummarizedExperiment object.}
+\item{ExpObj}{JAMS-style SummarizedExperiment object}
 
-\item{glomby}{string giving taxonomic level (from tax_table) to plot at.}
+\item{glomby}{String giving the taxonomic level at which to agglomerate counts. This argument should only be used with taxonomic SummarizedExperiment objects. When NULL (the default), there is no agglomeration}
 
-\item{absolute}{if true, don't normalize to 100\% or whatever but show absolute abundance}
+\item{absolute}{Requires a logical value. If set to true, will not normalize to 100% (or whatever) but will show absolute abundance instead. Default is FALSE.}
 
-\item{samplesToKeep}{vector with samples to plot.}
+\item{samplesToKeep}{Vector with sample names to keep. If NULL, all samples within the SummarizedExperiment object are kept. Default is NULL.}
 
-\item{featuresToKeep}{vector with features to plot.}
+\item{featuresToKeep}{Vector with feature names to keep. If NULL, all features within the SummarizedExperiment object are kept. Default is NULL. Please note that when agglomerating features with the glomby argument (see above), feature names passed to featuresToKeep must be post-agglomeration feature names. For example, if glomby="Family", featuresToKeep must be family names, such as "f__Enterobacteriaceae", etc.}
 
-\item{groupby}{colData category to use for labels}
+\item{groupby}{String specifying the metadata variable name. colData category to use for labels.}
 
-\item{label_samples}{label samples on graph}
+\item{label_samples}{Requires a logical value. If set to TRUE, will include labels for sample names on graph. Default is FALSE, and will not include sample names.}
 
-\item{total_units}{unit to normalize data to -- default percentage (100).}
+\item{colourby}{String specifying the metadata variable name for colouring in samples. If NULL, all samples will be black. Default is NULL.}
 
-\item{threshold}{minimum value to include as separate entry (below is Misc_Low_Abundance).}
+\item{subsetby}{String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.}
 
-\item{cat_pos}{position of category line (change if ugly in plot)}
+\item{applyfilters}{Optional string specifying filtration setting "combos", used as a shorthand for setting the featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff arguments in JAMS plotting functions. If NULL, none of these arguments are set if not specified. Permissible values for applyfilters are "light", "moderate" or "stringent". The actual values vary whether the SummarizedExperiment object is taxonomical (LKT) or not. For a taxonomical SummarizedExperiment object, using "light" will set featcutoff=c(50, 5), GenomeCompletenessCutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(250, 15), GenomeCompletenessCutoff=c(10, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(2000, 15), GenomeCompletenessCutoff=c(30, 10), minl2fc=2, minabscorrcoeff=0.8. For non-taxonomical (i.e. functional) SummarizedExperiment objects, using "light" will set featcutoff=c(0, 0), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(50, 15), minl2fc=2.5, minabscorrcoeff=0.8. When using applyfilters, one can still set one or more of featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff, which will then take the user set value in lieu of those set by the applyfilters shorthand. Default is light.}
 
-\item{cat_text_size}{text size of category labels}
+\item{featcutoff}{Requires a numeric vector of length 2 for specifying how to filter out features by relative abundance. The first value of the vector specifies the minimum relative abundance in Parts per Million (PPM) and the second value is the percentage of samples which must have at least that relative abundance. Thus, passing c(250, 10) to featcutoff would filter out any feature which does not have at least 250 PPM (= 0.025 percent) of relative abundance in at least 10 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the featcutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.}
 
-\item{legend_text_size}{text size of legend labels}
+\item{GenomeCompletenessCutoff}{Requires a numeric vector of length 2 for specifying how to filter out features by genome completeness. This is, of course, only applicble for taxonomic shotgun SummarizedExperiment objects. When passed to non-taxonomic shotgun SummarizedExperiment objects, GenomeCompletenessCutoff will be ignored. The first value of the vector specifies the minimum genome completeness in percentage  and the second value is the percentage of samples which must have at least that genome completeness. Thus, passing c(50, 5) to GenomeCompletenessCutoff would filter out any taxonomic feature which does not have at least 50 percent of genome completeness in at least 5 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the GenomeCompletenessCutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.}
 
-\item{border_color}{color of bar borders}
+\item{PPM_normalize_to_bases_sequenced}{Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a **non-taxonomical** SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is FALSE.}
 
-\item{cdict}{use JAMS colour dictionary}
+\item{total_units}{Numerical value specifying the unit to normalize data to. Default percentage is 100.}
 
-\item{feature_cdict}{use named list of taxon colors}
+\item{threshold}{Numberical value specifying the minimum value to include as separate entry (below is Misc_Low_Abundance). Default is 2.}
 
-\item{addtit}{optional string to add more text to title}
+\item{cat_pos}{Numerical value that specifies the position of the category line (change if ugly in plot, otherwise mess with at your own risk). Default is -2.}
+
+\item{cat_text_size}{Numerical value setting the text size of category labels. Default is 3.}
+
+\item{legend_text_size}{Numerical value setting the text size of legend labels. Default is 4.}
+
+\item{border_color}{String that specifies the color of bar borders. Default is white.}
+
+\item{feature_cdict}{Vector containing a dictionary of colours with a corresponding taxon. Allows you to manually define the colours for taxonomy. Default is NULL.}
+
+\item{addtit}{Optional string with text to append to main title. Default is NULL.}
+
+\item{grid}{Requires a logical value. If set to FALSE, background will be one solid color within the plot, rather than include a grid behind the plot. Default is TRUE, meaning that the background will display a grid.}
+
+\item{ignoreunclassified}{Requires a logical value. If set to TRUE, for taxonomical SummarizedExperiment objects, the feature "LKT__Unclassified" will be omitted from being shown. In the case of non-taxonomical SummarizedExperiment objects, the completely unannotated features will be omitted. For example, for an ECNumber SummarizedExperiment object, genes *without* an Enzyme Commission Number annotation (feature "EC_none") will not be shown. Statistics are, however, computed taking the completely unclassifed feature into account, so p-values will not change.}
+
+\item{class_to_ignore}{String or vector specifying any classes which should lead to samples being excluded from the comparison within the variable passed to compareby. Default is N_A. This means that within any metadata variable passed to compareby containing the "N_A" string within that specific variable, the sample will be dropped from that comparison.}
 }
 \description{
 Creates bar graph of relative taxonomic abundance from SummarizedExperiment object
 }
 \examples{
-plot_bar_graph(ExpObj = mrexp1, glomby = "Phylum", groupby = "Group")
+plot_bar_graph(ExpObj = expvec$LKT, glomby = "Phylum", groupby = "Group")
 }
