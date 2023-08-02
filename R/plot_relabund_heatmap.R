@@ -848,8 +848,14 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                             #Gram information is present on SummarizedExperiment feature table
                             tt <- tt[rownames(mathm), c(analysisname, "Phylum", "Gram")]
                         }
-                        phycols <- setNames(as.character(Gram$PhylumColour), as.character(Gram$Phylum))[unique(tt$Phylum)]
-                        gramcols <- setNames(as.character(Gram$GramColour), as.character(Gram$Gram))[unique(tt$Gram)]
+                        #Fill in missing colours
+                        tt <- left_join(tt, Gram[ , c("Phylum", "PhylumColour")], by = "Phylum")
+                        tt[is.na(tt$PhylumColour), "PhylumColour"] <- "#BCC2C2"
+                        tt$GramColour <- "#BCC2C2"
+                        tt$GramColour[which(tt$Gram == "negative")] <- "#FC0345"
+                        tt$GramColour[which(tt$Gram == "positive")] <- "#7D00C4"
+                        phycols <- setNames(as.character(tt[!duplicated(tt$Phylum), "PhylumColour"]), as.character(tt[!duplicated(tt$Phylum), "Phylum"]))
+                        gramcols <- setNames(as.character(tt[!duplicated(tt$Gram), "GramColour"]), as.character(tt[!duplicated(tt$Gram), "Gram"]))
                         hatax <- rowAnnotation(Phylum = tt$Phylum, Gram = tt$Gram, col = list(Phylum = phycols, Gram = gramcols),  annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = TRUE)
                     } else {
                         hatax <- NULL
