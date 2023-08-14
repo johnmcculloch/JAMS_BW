@@ -196,10 +196,13 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
 
         #Rename rows with consecutive numbers
         allfeaturesbytaxa_index$RowNumber <- 1:nrow(allfeaturesbytaxa_index)
+        rownames(allfeaturesbytaxa_index) <- allfeaturesbytaxa_index$RowNumber
         rownames(allfeaturesbytaxa_matrix) <- allfeaturesbytaxa_index$RowNumber
 
         #Eliminate irrelevant columns from sparse matrix
-        taxaToKeep<- names(colSums(allfeaturesbytaxa_matrix)[colSums(allfeaturesbytaxa_matrix) > 0])
+        matcSums <- Matrix::colSums(allfeaturesbytaxa_matrix)
+        matcSums <- matcSums[matcSums > 0]
+        taxaToKeep <- names(matcSums)
         allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix[ , taxaToKeep]
 
         #Stick back into ExpObj
