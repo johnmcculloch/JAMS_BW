@@ -90,7 +90,7 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
 
     #Discard features which do not match certain criteria
     if (!(missing(featcutoff))){
-        if(length(featcutoff) != 2){
+        if (length(featcutoff) != 2){
             stop("Please specify the minimum PPM in what percentage of the samples you want with a numerical vector of size two. For example, featcutoff=c(2000,10) would discard features which are not at least 2000 PPM in at least 10% of samples.")
         }
         thresholdPPM <- featcutoff[1]
@@ -177,6 +177,34 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
         } else {
             flog.warn("There are no features you requested surviving the criteria.")
         }
+    }
+
+    #filter out unwanted feature/sample stratification if SummarizedExperiment object contains that kind of information
+    if (all(c("allfeaturesbytaxa_index", "allfeaturesbytaxa_matrix") %in% names(metadata(ExpObj)))){
+        #Obtain current index and matrix
+        allfeaturesbytaxa_index <- metadata(ExpObj)$allfeaturesbytaxa_index
+        allfeaturesbytaxa_matrix <- metadata(ExpObj)$allfeaturesbytaxa_matrix
+
+        #Eliminate from index irrelevant samples
+        allfeaturesbytaxa_index <- subset(allfeaturesbytaxa_index, Sample %in% colnames(ExpObj))
+
+        #Eliminate from index irrelevant features
+        allfeaturesbytaxa_index <- subset(allfeaturesbytaxa_index, Accession %in% rownames(ExpObj))
+
+        #Subset sparse matrix to contain only relevant rows
+        allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix[allfeaturesbytaxa_index$RowNumber, ]
+
+        #Rename rows with consecutive numbers
+        allfeaturesbytaxa_index$RowNumber <- 1:nrow(allfeaturesbytaxa_index)
+        rownames(allfeaturesbytaxa_matrix) <- allfeaturesbytaxa_index$RowNumber
+
+        #Eliminate irrelevant columns from sparse matrix
+        taxaToKeep<- names(colSums(allfeaturesbytaxa_matrix)[colSums(allfeaturesbytaxa_matrix) > 0])
+        allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix[ , taxaToKeep]
+
+        #Stick back into ExpObj
+        metadata(ExpObj)$allfeaturesbytaxa_index <- allfeaturesbytaxa_index
+        metadata(ExpObj)$allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix
     }
 
     return(ExpObj)
