@@ -94,7 +94,9 @@ merge_JAMS_SEobj <- function(ExpObj1 = NULL, ExpObj2 = NULL){
 
     #Merge the remaning bells and whistles (SEobj "metadata")
     SEobjMD_merged <- list()
-    for (SEobjMD in intersect(ExpObj1_facts$metadata, ExpObj2_facts$metadata)){
+    metadata_in_common <- intersect(ExpObj1_facts$metadata, ExpObj2_facts$metadata)
+
+    for (SEobjMD in metadata_in_common[!(metadata_in_common %in% c("allfeaturesbytaxa_index", "allfeaturesbytaxa_matrix"))]){
         if (SEobjMD == "analysis"){
             #should be the same, but I am neurotic.
             SEobjMD_merged[[SEobjMD]] <- unique(metadata(ExpObj1)$analysis, metadata(ExpObj1)$analysis)[1]
@@ -111,6 +113,27 @@ merge_JAMS_SEobj <- function(ExpObj1 = NULL, ExpObj2 = NULL){
             SEobjMD_merged[[SEobjMD]] <- NULL
         }
     }
+
+    #If this is a functional SEobj and contiains taxonomy stratification data, merge that.
+    if (all(c("allfeaturesbytaxa_index", "allfeaturesbytaxa_matrix") %in% metadata_in_common)){
+        #Ensure there are no superfluous sample or features, as the SummarizedExperiment package does not susbet metadata.
+        allfeaturesbytaxa_index1 <- metadata(ExpObj1)[["allfeaturesbytaxa_index"]]
+        #Eliminate from index irrelevant samples
+        allfeaturesbytaxa_index1 <- subset(allfeaturesbytaxa_index1, Sample %in% colnames(ExpObj1))
+        #Eliminate from index irrelevant features
+        allfeaturesbytaxa_index1 <- subset(allfeaturesbytaxa_index1, Accession %in% rownames(ExpObj1))
+
+        #Now ExpObj2
+        allfeaturesbytaxa_index2 <- metadata(ExpObj2)[["allfeaturesbytaxa_index"]]
+        #Eliminate from index irrelevant samples
+        allfeaturesbytaxa_index2 <- subset(allfeaturesbytaxa_index2, Sample %in% colnames(ExpObj2))
+        #Eliminate from index irrelevant features
+        allfeaturesbytaxa_index2 <- subset(allfeaturesbytaxa_index2, Accession %in% rownames(ExpObj2))
+
+    } else {
+        flog.info("No feature stratification by taxonomy to merge.")
+    }
+
 
     #Build the merged SummarizedExperiment object
     merged_SEobj <- SummarizedExperiment(assays = merged_assays, rowData = as.matrix(merged_ftt), colData = as.matrix(pheno_merged), metadata = SEobjMD_merged)

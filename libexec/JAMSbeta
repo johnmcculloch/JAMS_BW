@@ -435,9 +435,12 @@ if (!exists("expvec")){
             onlyanalyses <- unique(unlist(strsplit(opt$restrict_to_analyses, split = ",")))
             flog.info(paste("Building of SummarizedExperiments will be restricted to the following analyses:", paste0(onlyanalyses, collapse = ", ")))
         } else {
-            onlyanalyses <- NULL
+            onlyanalyses <- c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PRINTS")
         }
     }
+
+    #Restrict to building only stable analyses
+    onlyanalyses <- intersect(onlyanalyses, c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PRINTS"))
 
     if (opt$stratify_functions_by_taxon == TRUE){
         flog.info("Functional (non-taxonomic) SummarizedExperiment objects will be stratified by taxonomy.")
@@ -527,7 +530,7 @@ if (!is.null(opt$restrict_to_analyses)){
     wantedanalyses <- unique(unlist(strsplit(opt$restrict_to_analyses, split = ",")))
     wantedanalyses <- names(expvec)[(names(expvec) %in% wantedanalyses)]
 } else {
-    wantedanalyses <- names(expvec)[(names(expvec) %in% c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PANTHER", "PRINTS", "SUPERFAMILY", "TIGRFAM", "MetaCyc"))]
+    wantedanalyses <- names(expvec)[(names(expvec) %in% c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PRINTS"))]
 }
 
 flog.info(paste("Reports will be restricted to the following analyses:", paste0(wantedanalyses, collapse = ", ")))
