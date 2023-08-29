@@ -7,17 +7,17 @@
 adjust_phenotable <- function(opt = NULL, list.data = NULL, addtaxlevelstoisolates = NULL, class_to_ignore = "N_A"){
 
     #flog.info("Adjusting phenotable classes by type of variable.")
-    varlist <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenotable = opt$phenotable, maxclass = 10000, maxsubclass = 10000, class_to_ignore = class_to_ignore, verbose = FALSE)
+    #varlist <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenotable = opt$phenotable, maxclass = 10000, maxsubclass = 10000, class_to_ignore = class_to_ignore, verbose = FALSE)
 
     #Rename column to Sample, if it isn't already
-    colmtosub <- which(colnames(opt$phenotable) == varlist$sample)
-    colnames(opt$phenotable)[colmtosub] <- "Sample"
+    #colmtosub <- which(colnames(opt$phenotable) == varlist$sample)
+    #colnames(opt$phenotable)[colmtosub] <- "Sample"
     #make unique if there was already another column called Sample
-    if (length(which(colnames(opt$phenotable) == "Sample")) > 1){
-        colnames(opt$phenotable) <- make.unique(colnames(opt$phenotable), sep = "_")
-        colnames(opt$phenotable)[colmtosub] <- "Sample"
-        opt$phenotable$Var_label <- colnames(phenotable)
-    }
+    #if (length(which(colnames(opt$phenotable) == "Sample")) > 1){
+    #    colnames(opt$phenotable) <- make.unique(colnames(opt$phenotable), sep = "_")
+    #    colnames(opt$phenotable)[colmtosub] <- "Sample"
+    #    opt$phenotable$Var_label <- colnames(phenotable)
+    #}
     rownames(opt$phenotable) <- opt$phenotable$Sample
 
     Samples <- rownames(opt$phenotable)

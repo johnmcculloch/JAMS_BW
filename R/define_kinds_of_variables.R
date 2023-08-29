@@ -25,9 +25,9 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
     }
 
     #Stop if you are asking for more than you have.
-    if (length(validcols) > ncol(phenotable)){
-        stop("Phenolabels has more categories than the metadata in phenotable. Review and try again.")
-    }
+    #if (length(validcols) > ncol(phenotable)){
+    #    stop("Phenolabels has more categories than the metadata in phenotable. Review and try again.")
+    #}
 
     ptsampcol <- as.character(phenolabels$Var_label[which(phenolabels$Var_type == "Sample")])
     if (length(ptsampcol) != 1){
