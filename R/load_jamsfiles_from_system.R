@@ -1,10 +1,10 @@
-#' load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE)
+#' load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE, use_exactly_n_threads = NULL)
 #' JAMSbeta function
 #'
 #' Loads all JAMS files from system
 #' @export
 
-load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE){
+load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE, use_exactly_n_threads = NULL){
 
     require(parallel)
     flog.info("Searching for jams files.")
@@ -52,8 +52,13 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         decompress_jamsfile <- function (x){
             untar(jamsfilesdfwant$FullPath[x], list = FALSE, exdir = jamstempfilespath, compressed = TRUE, verbose = TRUE)
         }
+
         if (multithread_decomp == TRUE){
-            appropriatenumcores <-  max((threads - 2), 1)
+            if (is.null(use_exactly_n_threads)){
+                appropriatenumcores <- max((threads - 2), 1)
+            } else {
+                appropriatenumcores <- as.numeric(use_exactly_n_threads)
+            }
             explist <- mclapply(1:nrow(jamsfilesdfwant), function (x) { decompress_jamsfile(x) }, mc.cores = appropriatenumcores)
         } else {
             for (f in 1:nrow(jamsfilesdfwant)){
@@ -112,9 +117,16 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     }
 
     if (multithread_load) {
-        appropriatenumcores <- max(1 , (min((threads - 4), length(flwp))))
+
+        if (is.null(use_exactly_n_threads)){
+            appropriatenumcores <- max(1 , (min((threads - 2), length(flwp))))
+        } else {
+            appropriatenumcores <- as.numeric(use_exactly_n_threads)
+        }
+
         flog.info(paste("Using", appropriatenumcores, "CPUs to load objects."))
         list.data <- mclapply(flwp, function (x) { loadobj(objfn = x) }, mc.cores = appropriatenumcores, mc.preschedule = FALSE, mc.cleanup = TRUE)
+
     } else {
         list.data <- lapply(flwp, function (x) { loadobj(objfn = x) })
     }
