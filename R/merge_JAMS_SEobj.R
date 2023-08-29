@@ -97,6 +97,7 @@ merge_JAMS_SEobj <- function(ExpObj1 = NULL, ExpObj2 = NULL){
     metadata_in_common <- intersect(ExpObj1_facts$metadata, ExpObj2_facts$metadata)
 
     for (SEobjMD in metadata_in_common[!(metadata_in_common %in% c("allfeaturesbytaxa_index", "allfeaturesbytaxa_matrix"))]){
+        flog.info(paste("Merging", SEobjMD))
         if (SEobjMD == "analysis"){
             #should be the same, but I am neurotic.
             SEobjMD_merged[[SEobjMD]] <- unique(metadata(ExpObj1)$analysis, metadata(ExpObj1)$analysis)[1]
@@ -116,6 +117,7 @@ merge_JAMS_SEobj <- function(ExpObj1 = NULL, ExpObj2 = NULL){
 
     #If this is a functional SEobj and contiains taxonomy stratification data, merge that.
     if (all(c("allfeaturesbytaxa_index", "allfeaturesbytaxa_matrix") %in% metadata_in_common)){
+        flog.info("Merging taxonomy stratification data")
         #Ensure there are no superfluous sample or features, as the SummarizedExperiment package does not susbet metadata.
         allfeaturesbytaxa_index1 <- metadata(ExpObj1)[["allfeaturesbytaxa_index"]]
         #Eliminate from index irrelevant samples
@@ -129,6 +131,29 @@ merge_JAMS_SEobj <- function(ExpObj1 = NULL, ExpObj2 = NULL){
         allfeaturesbytaxa_index2 <- subset(allfeaturesbytaxa_index2, Sample %in% colnames(ExpObj2))
         #Eliminate from index irrelevant features
         allfeaturesbytaxa_index2 <- subset(allfeaturesbytaxa_index2, Accession %in% rownames(ExpObj2))
+
+        #Obtain the relevant sparse matrices for each ExpObj
+        allfeaturesbytaxa_matrix1 <- metadata(ExpObj1)[["allfeaturesbytaxa_matrix"]][allfeaturesbytaxa_index1$RowNumber, ]
+        allfeaturesbytaxa_matrix2 <- metadata(ExpObj2)[["allfeaturesbytaxa_matrix"]][allfeaturesbytaxa_index2$RowNumber, ]
+
+        #Rename rownames of index and matrix for ExpObj2 consecutively from 1.
+        allfeaturesbytaxa_index1$RowNumber <- as.character(1:nrow(allfeaturesbytaxa_index1))
+        rownames(allfeaturesbytaxa_index1) <- allfeaturesbytaxa_index1$RowNumber
+        rownames(allfeaturesbytaxa_matrix1) <- allfeaturesbytaxa_index1$RowNumber
+
+        #Rename rownames of index and matrix for ExpObj2 consecutively after the last row of ExpObj1
+        allfeaturesbytaxa_index2$RowNumber <- as.character((1 + nrow(allfeaturesbytaxa_index1)):(nrow(allfeaturesbytaxa_index1) + nrow(allfeaturesbytaxa_index2)))
+        rownames(allfeaturesbytaxa_index2) <- allfeaturesbytaxa_index2$RowNumber
+        rownames(allfeaturesbytaxa_matrix2) <- allfeaturesbytaxa_index2$RowNumber
+
+        #Merge the matrices safely
+        allfeaturesbytaxa_matrix_merged <- merge_sparse_matrix(matlist = list(allfeaturesbytaxa_matrix1, allfeaturesbytaxa_matrix2))
+
+        #Merge the indices
+        allfeaturesbytaxa_index_merged <- rbind(allfeaturesbytaxa_index1, allfeaturesbytaxa_index2)
+
+        SEobjMD_merged[["allfeaturesbytaxa_index"]] <- allfeaturesbytaxa_index_merged
+        SEobjMD_merged[["allfeaturesbytaxa_matrix"]] <- allfeaturesbytaxa_matrix_merged
 
     } else {
         flog.info("No feature stratification by taxonomy to merge.")
