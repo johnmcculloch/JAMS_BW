@@ -158,9 +158,9 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         list.data <- list.data[validon]
     }
 
-    gc()
-
+    file.remove(flwp)
     unlink(jamstempfilespath, recursive = TRUE)
+    gc()
 
     flog.info("Finished loading all objects.")
 
