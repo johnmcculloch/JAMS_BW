@@ -112,9 +112,9 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     }
 
     if (multithread_load) {
-        appropriatenumcores <- max(1 , (min((threads - 2), length(flwp))))
+        appropriatenumcores <- max(1 , (min((threads - 4), length(flwp))))
         flog.info(paste("Using", appropriatenumcores, "CPUs to load objects."))
-        list.data <- mclapply(flwp, function (x) { loadobj(objfn = x) }, mc.cores = appropriatenumcores, mc.preschedule = TRUE)
+        list.data <- mclapply(flwp, function (x) { loadobj(objfn = x) }, mc.cores = appropriatenumcores, mc.preschedule = FALSE, mc.cleanup = TRUE)
     } else {
         list.data <- lapply(flwp, function (x) { loadobj(objfn = x) })
     }
@@ -145,6 +145,8 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         minobjlist <- minobjlist[minobjlist %in% validon]
         list.data <- list.data[validon]
     }
+
+    gc()
 
     unlink(jamstempfilespath, recursive = TRUE)
 
