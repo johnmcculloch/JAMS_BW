@@ -1,9 +1,9 @@
-#' make_colour_dictionary(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, print_palette = FALSE)
+#' make_colour_dictionary(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, print_palette = FALSE, object_to_return = "cdict")
 #'
 #' Returns a dictionary of colours for each class within each variable_list or phenotable
 #' @export
 
-make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, print_palette = FALSE){
+make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, print_palette = FALSE, object_to_return = "cdict"){
 
     atoms <- c("0200FC", "ff7f02", "468B00", "CD2626", "267ACD", "640032", "FC00FA", "000000", "478559", "161748", "f95D9B", "39A0CA")
 
@@ -51,7 +51,9 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabe
 
         #Make class_to_ignore gray
         if (!is.null(class_to_ignore)){
-            discrete2colour$Colour[(discrete2colour$Name %in% class_to_ignore)] <- colour_of_class_to_ignore
+            if (class_to_ignore %in% discrete2colour$Name){
+                discrete2colour$Colour[(discrete2colour$Name %in% class_to_ignore)] <- colour_of_class_to_ignore
+            }
         }
 
         if (!is.null(colour_table)){
@@ -77,7 +79,16 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabe
             names(cdict)[d] <- discretes[d]
         }
 
-        return(cdict)
-    }
+        if (object_to_return == "ctable"){
 
+            ctable_new <- plyr::rbind.fill(cdict)
+            ctable_new <- ctable_new[!duplicated(ctable_new$Name), ]
+            rownames(ctable_new) <- ctable_new$Name
+
+            return(ctable_new)
+
+        } else {
+            return(cdict)
+        }
+    }
 }

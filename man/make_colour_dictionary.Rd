@@ -2,7 +2,7 @@
 % Please edit documentation in R/make_colour_dictionary.R
 \name{make_colour_dictionary}
 \alias{make_colour_dictionary}
-\title{make_colour_dictionary(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, print_palette = FALSE)}
+\title{make_colour_dictionary(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, print_palette = FALSE, object_to_return = "cdict")}
 \usage{
 make_colour_dictionary(
   variable_list = NULL,
@@ -12,7 +12,8 @@ make_colour_dictionary(
   colour_of_class_to_ignore = "#bcc2c2",
   colour_table = NULL,
   shuffle = FALSE,
-  print_palette = FALSE
+  print_palette = FALSE,
+  object_to_return = "cdict"
 )
 }
 \description{

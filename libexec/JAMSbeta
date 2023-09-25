@@ -89,50 +89,50 @@ option_list <- list(
                 type = "logical",
                 help = "When building SummarizedExperiment objects, split functional (non-taxonomic) analyses by taxon."),
 
-    make_option(c("-d", "--make_ordination_reports"),
-                action="store", default = NULL,
-                type="character",
-                help ="Generate ordination plots with this algorithm. Choose between PCA, tSNE or tUMAP, or more than one separated by a comma. Example: -d PCA,tUMAP"),
+#    make_option(c("-d", "--make_ordination_reports"),
+#                action="store", default = NULL,
+#                type="character",
+#                help ="Generate ordination plots with this algorithm. Choose between PCA, tSNE or tUMAP, or more than one separated by a comma. Example: -d PCA,tUMAP"),
 
-    make_option(c("-f", "--make_exploratory_reports"),
-                action="store_true", default = FALSE,
-                type="logical",
-                help ="Generate Relative Abundace heatmaps and spreadsheets based on variance analysis."),
+#    make_option(c("-f", "--make_exploratory_reports"),
+#                action="store_true", default = FALSE,
+#                type="logical",
+#                help ="Generate Relative Abundace heatmaps and spreadsheets based on variance analysis."),
 
-    make_option(c("-k", "--make_comparative_reports"),
-                action="store_true", default = FALSE,
-                type="logical",
-                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
+#    make_option(c("-k", "--make_comparative_reports"),
+#                action="store_true", default = FALSE,
+#                type="logical",
+#                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
 
-    make_option(c("-b", "--make_PA_reports"),
-                action="store_true", default = FALSE,
-                type="logical",
-                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
+#    make_option(c("-b", "--make_PA_reports"),
+#                action="store_true", default = FALSE,
+#                type="logical",
+#                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
 
-    make_option(c("-r", "--make_correlation_reports"),
-                action="store_true", default = FALSE,
-                type="logical",
-                help ="Generate Pairwise Feature Correlation heatmaps."),
+#    make_option(c("-r", "--make_correlation_reports"),
+#                action="store_true", default = FALSE,
+#                type="logical",
+#                help ="Generate Pairwise Feature Correlation heatmaps."),
 
-    make_option(c("-z", "--make_alpha_reports"),
-                action = "store_true", default = FALSE,
-                type = "logical",
-                help = "Generate alpha diversity plots."),
+#    make_option(c("-z", "--make_alpha_reports"),
+#                action = "store_true", default = FALSE,
+#                type = "logical",
+#                help = "Generate alpha diversity plots."),
 
-    make_option(c("-m", "--plot_in_parallel"),
-                action = "store_true", default = FALSE,
-                type = "logical",
-                help = "Use multiple CPUs when generating plots. This option is experimental, and is not guaranteed to not crash."),
+#    make_option(c("-m", "--plot_in_parallel"),
+#                action = "store_true", default = FALSE,
+#                type = "logical",
+#                help = "Use multiple CPUs when generating plots. This option is experimental, and is not guaranteed to not crash."),
 
     make_option(c("-s", "--run_script"),
                 action="store", default = NULL,
                 type="character",
                 help ="Path to an R script to run after all other options have been executed. Example: -s /path/to/make_these_specific_plots.R will execute the commands in this script at the end of JAMSbeta."),
 
-    make_option(c("-L", "--create_logfile"),
-                action = "store_true", default = TRUE,
-                type = "logical",
-                help = "If set, this option will append messages to a log file within the output folder named [ProjectName]_JAMS.log."),
+#    make_option(c("-L", "--create_logfile"),
+#                action = "store_true", default = TRUE,
+#                type = "logical",
+#                help = "If set, this option will append messages to a log file within the output folder named [ProjectName]_JAMS.log."),
 
     make_option(c("-v", "--version"),
                 action="store_true", help = "report version")
@@ -152,6 +152,15 @@ if (!is.null(opt$version)) {
     print(opt$verstr)
     quit()
 }
+
+#Reset deprecated options to FALSE
+opt$make_ordination_reports <- FALSE
+opt$make_exploratory_reports <- FALSE
+opt$make_comparative_reports <- FALSE
+opt$make_PA_reports <- FALSE
+opt$make_correlation_reports <- FALSE
+opt$make_alpha_reports <- FALSE
+opt$plot_in_parallel <- FALSE
 
 #Authorship message
 authors <- as.character(as.person(packageDescription("JAMS")$Author))
@@ -210,10 +219,9 @@ opt$projimage <- file.path(opt$outdir, ".RData")
 ## Start project ##
 ###################
 suppressMessages(suppressPackageStartupMessages(library(JAMS)))
-if (opt$create_logfile){
-    opt$logfile <- file.path(opt$outdir, paste0(opt$projectname, "_JAMS.log"))
-    flog.appender(appender.tee(opt$logfile))
-}
+
+opt$logfile <- file.path(opt$outdir, paste0(opt$projectname, "_JAMS.log"))
+flog.appender(appender.tee(opt$logfile))
 
 flog.info("JAMS - Just A Microbiology System")
 flog.info(authorshipmessage)
