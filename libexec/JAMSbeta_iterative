@@ -74,6 +74,11 @@ option_list <- list(
                 type="numeric",
                 help ="If using reads, what is the minimum percentage assembly into contigs for a sample to be included in an experiment. (Default=0)"),
 
+    make_option(c("-w", "--chunksize"),
+                action="store", default = 30,
+                type="numeric",
+                help ="Numeric value for building SummarizedExperiments with this number of samples at a time to keep down RAM. (Default=30)"),
+
     make_option(c("-e", "--export_tables"),
                 action="store_true", default = FALSE,
                 type="logical",
@@ -302,15 +307,14 @@ rownames(opt$phenotable_wanted) <- opt$phenotable_wanted$Sample
 opt[["phenotable"]] <- NULL
 opt[["readdata"]] <- NULL
 
-flog.info(paste("There are", length(Samples_want), "in total on the metadata. Loading 20 at a time to conserve RAM memory."))
-
-if ((length(Samples_want) %% 20) > 4){
-    chunksize <- (20 - 4)
-} else {
-    chunksize <- 20
+if (dplyr::between((length(Samples_want) %% opt$chunksize), 1, 6)) {
+    opt$chunksize <- (opt$chunksize - 1)
+    flog.warn("Adjusting chunk size of samples for iterative SummarizedExperiment object building because set value yielded a leftover chunk with < 6 samples.")
 }
 
-opt$Sample_chunk_list <- split(Samples_want, ceiling(seq_along(Samples_want) / chunksize))
+flog.info(paste("There are", length(Samples_want), "in total on the metadata. Loading", opt$chunksize, "at a time to conserve RAM memory."))
+
+opt$Sample_chunk_list <- split(Samples_want, ceiling(seq_along(Samples_want) / opt$chunksize))
 
 #Save in case anything else goes wrong later
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
