@@ -283,7 +283,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             }
 
             #Make a data frame with how variance is explained by which components
-            vardf <- data.frame(Component = colnames(ord), Variance = vars, Cumulative_variance = cumsum(vars))
+            vardf <- data.frame(Component = paste0("PC", 1:length(vars)), Variance = vars, Cumulative_variance = cumsum(vars))
             vardf$Component <- factor(vardf$Component, levels = vardf$Component)
 
             varplot <- ggplot(vardf, aes(x = Component)) + geom_bar(aes(y = Variance), fill = 'blue', stat = "identity") + geom_point(aes(y = Cumulative_variance), colour = "black", pch = 16, size = 1) + geom_path(aes(y = Cumulative_variance, group = 1)) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.6, size = rel(0.5))) + labs(title = "Variance explained by each PCoA component", subtitle = pcatit, x = 'Component', y = 'Variance')
