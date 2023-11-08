@@ -497,9 +497,9 @@ rm(list.data)
 gc()
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
-###################
-## Export tables ##
-###################
+####################
+## Export objects ##
+####################
 if (opt$export_tables == TRUE){
     flog.info("Exporting count and feature tables.")
     tablespath <- file.path(opt$outdir, "Tables")
@@ -514,6 +514,10 @@ if (opt$export_tables == TRUE){
     export_expvec_to_XL(expvec = expvec, asPPM = FALSE, filename = paste(paste(project, "Base_counts", sep = "_"), "xlsx", sep = "."))
 }
 
+#Save expvec as RDS object
+flog.info("Saving list of SummarizedExperiment objects as .rds file")
+saveRDS(expvec, file = paste(paste(project, "Expvec_list_of_SummarizedExperiment_objects", sep = "_"), "rds", sep = "."))
+
 #Determine reasonable cutoff level
 if (any(c("metatranscriptome", "isolate") %in% pheno$JAMS_Run_type)){
     applyfilters <- "none"
@@ -523,70 +527,5 @@ if (any(c("metatranscriptome", "isolate") %in% pheno$JAMS_Run_type)){
 
 #Save image
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
-
-#Stop here and save if nothing else is required.
-if (!any(c((!is.null(opt$make_ordination_reports)), (!is.null(opt$run_script)), opt$make_exploratory_reports, opt$make_comparative_reports, opt$make_PA_reports, opt$make_correlation_reports, opt$make_alpha_reports))){
-    flog.info("Thank you for using JAMSbeta")
-    q()
-}
-
-#######################
-## Do optional tasks ##
-#######################
-#Determine analyses to be plot
-if (!is.null(opt$restrict_to_analyses)){
-    wantedanalyses <- unique(unlist(strsplit(opt$restrict_to_analyses, split = ",")))
-    wantedanalyses <- names(expvec)[(names(expvec) %in% wantedanalyses)]
-} else {
-    wantedanalyses <- names(expvec)[(names(expvec) %in% c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PRINTS"))]
-}
-
-flog.info(paste("Reports will be restricted to the following analyses:", paste0(wantedanalyses, collapse = ", ")))
-
-#Create folder structure to hold outputs
-analysespaths <- file.path(opt$outdir, "Reports", wantedanalyses)
-quiet(sapply(analysespaths, function (x) { dir.create(x, showWarnings = FALSE, recursive = TRUE) } ))
-
-#Make a list of plots that are to be created.
-plotkinds <- list()
-if (!is.null(opt$make_ordination_reports)){
-    ordalgs <- unlist(strsplit(opt$make_ordination_reports, split = ","))
-    for(algo in ordalgs){
-        plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, algo) }))
-    }
-}
-if (opt$make_comparative_reports){
-    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "comparative") }))
-}
-if (opt$make_correlation_reports){
-    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "correlation") }))
-}
-if (opt$make_exploratory_reports){
-    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "exploratory") }))
-}
-if (opt$make_PA_reports){
-    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "PA") }))
-}
-if (opt$make_alpha_reports){
-    plotkinds <- c(plotkinds, lapply(wantedanalyses, function (x) { c(x, "alpha") }))
-}
-
-#print(RAMbytes_status())
-#launch plotting in parallel with an appropriate number of CPUs
-UsedRAM <- RAMbytes_status()[]$ProportionAvail[1]
-appropriatenumcores <- max(1 , (min((opt$threads - 2), length(plotkinds))))
-#Not sure if this is the calculation, but will use it to temper RAM use at the cost of CPU use and time.
-appropriatenumcores <- round((appropriatenumcores * (1 - UsedRAM)), 0)
-
-if (opt$plot_in_parallel == TRUE){
-    flog.info(paste("Using", appropriatenumcores, "CPUs for generating plots in parallel."))
-    mclapply(1:length(plotkinds), function (x) { spew_heatmap_report(hmcomb = plotkinds[[x]], outdir = opt$outdir, expvec = expvec, applyfilters = applyfilters, variable_list = variable_list, scaled = TRUE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, project = project) }, mc.cores = appropriatenumcores)
-} else {
-    sapply(1:length(plotkinds), function (x) { spew_heatmap_report(hmcomb = plotkinds[[x]], outdir = opt$outdir, expvec = expvec, applyfilters = applyfilters, variable_list = variable_list, scaled = TRUE, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, project = project) })
-}
-
-#Running extra script if required
-if (!is.null(opt$run_script)){
-    flog.warn(paste("The contents of file", opt$run_script, "will now be run on this session."))
-    source(opt$run_script)
-}
+flog.info("Thank you for using JAMSbeta")
+q()
