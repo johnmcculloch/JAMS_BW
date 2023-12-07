@@ -1,9 +1,9 @@
-#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, ...)
+#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, uselog = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, ...){
+plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, ...){
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
@@ -125,6 +125,12 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 }
             }
 
+            #Eliminate non-relevant features if not adjusting p-value
+            #Can't do it this way because when there is a single feature, matrix is reduced to a vector.
+#            if (adjustpval == FALSE){
+#                countmat <- countmat[wantedfeatures, ]
+#            }
+
             if ("GenomeCompleteness" %in% names(assays(currobj))){
                 genomecompletenessdf <- as.matrix(assays(currobj)$GenomeCompleteness)
             } else {
@@ -177,7 +183,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             cl <- colData(currobj)[ , which(colnames(colData(currobj)) == compareby)]
             discretenames <- sort(unique(cl))
 
-            matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = FALSE, stattype = stattype, classesvector = cl, invertbinaryorder = FALSE, numthreads = numthreads, nperm = nperm)
+            matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = log2tran_main_plot, statsonlog = FALSE, stattype = stattype, classesvector = cl, invertbinaryorder = FALSE, numthreads = numthreads, nperm = nperm)
 
             ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
 
@@ -515,7 +521,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 p <- p + labs(shape = shapeby)
             }
 
-            if (uselog == TRUE){
+            if (log2tran_main_plot == TRUE){
                 ytit <- "Relative Abundance in PPM"
                 #p <- p + coord_trans(y = "log2", clip = "off")
                 p <- p + scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::trans_breaks("log2", function(x) {((2 ^ x) - 1)}), labels = scales::trans_format("log2", function(x) {((2 ^ x) - 1)}))
@@ -553,6 +559,22 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             if (!is.null(stratify_by_taxlevel)){
                 currtaxsplit <- subset(taxsplit, Accession == feat)
 
+                #As per Giorgio's request, re-include samples omitted for not having a particular taxon.
+                missingSamples <- rownames(curr_pt)[!(rownames(curr_pt) %in% currtaxsplit$Sample)]
+                LKTcolumns <- colnames(currtaxsplit)[!(colnames(currtaxsplit) %in% unique(c(colnames(curr_pt), c("Sample", "Accession", "Compareby"))))]
+
+                #Matrix of empties for LKTs
+                LKTsupp_mat <- as.data.frame(matrix(data = 0, ncol = length(LKTcolumns), nrow = length(missingSamples)))
+                colnames(LKTsupp_mat) <- LKTcolumns
+                LKTsupp_mat$Sample <- missingSamples
+                curr_pt_supp <- as.data.frame(curr_pt)
+                colnames(curr_pt_supp)[which(colnames(curr_pt_supp) == compareby)] <- "Compareby"
+                LKTsupp_mat <- left_join(LKTsupp_mat, curr_pt_supp, by = "Sample")
+                LKTsupp_mat$Accession <- rep(unique(currtaxsplit$Accession), nrow(LKTsupp_mat))
+                LKTsupp_mat <- LKTsupp_mat[ , colnames(currtaxsplit)]
+
+                currtaxsplit <- rbind(currtaxsplit, LKTsupp_mat)
+
                 #for (grp in unique(currtaxsplit$Compareby)){
                     p <- NULL
                     dat <- NULL
@@ -568,6 +590,12 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     #Start building a plot
                     dat <- left_join(dat, as.data.frame(curr_pt), by = "Sample")
                     colnames(dat)[which(colnames(dat) == compareby)] <- "Compareby"
+
+                    #if there is an explicit order to compareby then set it to that
+                    if (!is.null(compareby_order)){
+                        dat$Compareby <- factor(dat$Compareby, levels = compareby_order)
+                    }
+
                     if (!(is.null(shapeby))){
                         colnames(dat)[which(colnames(dat) == shapeby)] <- "Shape"
                     }
@@ -618,11 +646,15 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
                     p <- ggplot(dat, aes(x = Taxon, y = PPM))
 
-                    p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
+                    if (!overlay_boxplot){
+                        p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
+                    }
+
                     #Rescale to exclude outliers
                     if (!is.null(rescale_axis_quantiles)){
                         p <- p + scale_y_continuous(limits = quantile(dat$PPM, rescale_axis_quantiles))
                     }
+
                     p <- p + scale_fill_manual(values = phycols[(names(phycols) %in% dat$Phylum)])
 
                     if ((length(unique(dat$Taxon))) < (nrow(dat))){
@@ -640,6 +672,9 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                         }
                     }
 
+                    if (overlay_boxplot){
+                        p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
+                    }
 
                     if (!is.null(colourby)){
                         p <- p + aes(colour = Colour)
@@ -692,10 +727,10 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                         p <- p + labs(shape = shapeby)
                     }
 
-                    if (uselog == TRUE){
+                    if (log2tran_strat_plot == TRUE){
                         ytit <- "Relative Abundance in PPM"
-                        #p <- p + coord_trans(y = "log2", clip = "off")
-                        p <- p + scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::trans_breaks("log2", function(x) {((2 ^ x) - 1)}), labels = scales::trans_format("log2", function(x) {((2 ^ x) - 1)}))
+                        #p <- p + scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::trans_breaks("log2", function(x) {((2 ^ x) - 1)}, n = 5), labels = scales::trans_format("log2", function(x) {((2 ^ x) - 1)}))
+                        p <- p + scale_y_continuous(trans = scales::pseudo_log_trans(base = 2))
 
                     } else {
                         ytit <- "Relative Abundance in PPM"
