@@ -326,7 +326,7 @@ for (cnk in 1:length(opt$Sample_chunk_list)){
     flog.info(paste("Searching for .jams files in", opt$jamsfiles_path, sep = " "))
     flog.info("Loading all wanted .jams files into a single object.")
     gc(verbose = FALSE, reset = TRUE)
-    list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = opt$Sample_chunk_list[[cnk]], threads = opt$threads, use_exactly_n_threads = min(6, (opt$threads - 2)))
+    list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = opt$Sample_chunk_list[[cnk]], threads = opt$threads, use_exactly_n_threads = min(8, (opt$threads - 2)))
     gc(reset=TRUE)
 
     Samples_have <- name_samples(list.data = list.data)
