@@ -418,7 +418,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
             SamplesWanted <- colnames(cts)[!(colnames(cts) %in% emptySamples)]
             wantedfeatures <- rownames(cts)
             NumBases1PPMthreshold <- TotalBasesSequencedinAnalysis / 1000000
-            for(samp in SamplesWanted){
+            for (samp in SamplesWanted){
                 currFeatdose <- NULL
                 #Get appropriate object with counts
                 wantedobj <- paste(samp, "featuredose", sep = "_")
@@ -433,16 +433,15 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                 currFeatdose$NumBases <- NULL
                 signalthreshold <- NumBases1PPMthreshold["NumBases" , samp]
                 NonEmptyTaxa <- names(which(colSums(currFeatdose) > 0))
-                currnonemptyFeatdose <- as.data.frame(currFeatdose[, NonEmptyTaxa])
-                rownames(currnonemptyFeatdose) <- currwantedfeatures
-                colnames(currnonemptyFeatdose) <- NonEmptyTaxa
-                currnonemptyFeatdose$Sample <- samp
-                currnonemptyFeatdose$Accession <- rownames(currnonemptyFeatdose)
-                featurebytaxonlist[[samp]] <- currnonemptyFeatdose
+                currFeatdose <- as.matrix(currFeatdose[ , NonEmptyTaxa])
+                #Transform to sparse matrix
+                featurebytaxonlist[[samp]] <- Matrix::Matrix(data = currFeatdose, sparse = TRUE)
             }
 
-            allfeaturesbytaxa <- plyr::rbind.fill(featurebytaxonlist)
-            allfeaturesbytaxa[is.na(allfeaturesbytaxa)] <- 0
+            #allfeaturesbytaxa <- plyr::rbind.fill(featurebytaxonlist)
+            #allfeaturesbytaxa[is.na(allfeaturesbytaxa)] <- 0
+
+            allfeaturesbytaxa <- merge_sparse_matrix(matlist = featurebytaxonlist[1:2])
 
             allfeaturesbytaxa <- allfeaturesbytaxa[ , c("Sample", "Accession", (sort(colnames(allfeaturesbytaxa)[which(!colnames(allfeaturesbytaxa) %in% c("Sample", "Accession"))])))]
 
