@@ -303,7 +303,12 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         featureall[is.na(featureall)] <- 0
         colnames(featureall)[1] <- "Sample"
 
-        cts <- spread(featureall, Sample, NumBases, fill = 0, drop = TRUE)
+        #Fix for not getting duplicate accessions. Delete the Description column to get clean pivot from long to wide.
+        #featureall$Description <- NULL
+        cts <- featureall[ , c("Sample", "Accession", "NumBases")] %>% pivot_wider(names_from = Sample, values_from = NumBases, values_fill = 0)
+        cts <- as.data.frame(cts)
+        cts[is.na(cts)] <- 0
+
         #Just double check that there are no dupes
         if (length(which(duplicated(cts$Accession) == TRUE)) > 0){
             flog.info(paste("Found", length(which(duplicated(cts$Accession) == TRUE)), "duplicated accessions. Keeping the first one in each case."))
@@ -311,7 +316,6 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         }
         rownames(cts) <- cts$Accession
         cts$Accession <- NULL
-        cts$Description <- NULL
 
         #Deal with samples with NO results for this analysis
         emptySamples <- rownames(phenoanal)[!(rownames(phenoanal) %in% colnames(cts))]
@@ -324,8 +328,18 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         }
         cts <- as.matrix(cts)
 
-        ftt <- featureall[, c("Accession", "Description")]
-        ftt <- ftt[!(duplicated(ftt$Accession)), ]
+        find_best_description <- function(featdf = NULL){
+            descstats <- as.data.frame(featdf) %>% group_by(Description) %>% summarize(Sum = sum(NumBases))
+            best_description <- descstats$Description[which(descstats$Sum == max(descstats$Sum))]
+
+            return(best_description)
+        }
+
+        ftt <- data.frame(Accession = unique(featureall$Accession))
+        if (!(analysis %in% c("ECNumber", "MetaCyc", "GO"))){
+            ftt$Description <- sapply(ftt$Accession, function (x) { find_best_description(featdf = subset(featureall, Accession == x)) } )
+        }
+
         #Fix descriptions if ECNumber, GO or MetaCyc
         if (analysis == "ECNumber"){
             ftt$Description <- NULL
@@ -369,7 +383,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
             featuredataall[is.na(featuredataall)] <- 0
             colnames(featuredataall)[1] <- "Sample"
 
-            featcts <- spread(featuredataall, Sample, Count, fill = 0, drop = TRUE)
+            featuredataall <- featuredataall[ , c("Sample", "Accession", "Count")]
+            featcts <- featuredataall %>% pivot_wider(names_from = Sample, values_from = Count, values_fill = 0)
+            featcts <- as.data.frame(cts)
+            featcts[is.na(featcts)] <- 0
+
             #Just double check that there are no dupes
             if (length(which(duplicated(featcts$Accession) == TRUE)) > 0){
                 flog.info(paste("Found", length(which(duplicated(featcts$Accession) == TRUE)), "duplicated accessions. Keeping the first one in each case."))
