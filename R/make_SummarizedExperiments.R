@@ -385,14 +385,16 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
 
             featuredataall <- featuredataall[ , c("Sample", "Accession", "Count")]
             featcts <- featuredataall %>% pivot_wider(names_from = Sample, values_from = Count, values_fill = 0)
-            featcts <- as.data.frame(cts)
+            featcts <- as.data.frame(featcts)
             featcts[is.na(featcts)] <- 0
+            rownames(featcts) <- featcts$Accession
 
             #Just double check that there are no dupes
             if (length(which(duplicated(featcts$Accession) == TRUE)) > 0){
                 flog.info(paste("Found", length(which(duplicated(featcts$Accession) == TRUE)), "duplicated accessions. Keeping the first one in each case."))
                 featcts <- featcts[!(duplicated(featcts$Accession)), ]
             }
+
             featcts$Accession[which(featcts$Accession == "none")] <- paste(analysis, "none", sep = "_")
             rownames(featcts) <- featcts$Accession
             featcts$Accession <- NULL
