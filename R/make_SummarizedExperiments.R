@@ -454,14 +454,14 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                 signalthreshold <- NumBases1PPMthreshold["NumBases" , samp]
                 NonEmptyTaxa <- names(which(colSums(currFeatdose) > 0))
                 currFeatdose <- as.matrix(currFeatdose[ , NonEmptyTaxa])
-                #Transform to sparse matrix
-                featurebytaxonlist[[samp]] <- Matrix::Matrix(data = currFeatdose, sparse = TRUE)
+
+                #featurebytaxonlist[[samp]] <- Matrix::Matrix(data = currFeatdose, sparse = TRUE)
+                #put into list, and transform to sparse later. Will change to sparsing first and then merging later.
+                featurebytaxonlist[[samp]] <- currFeatdose
             }
 
-            #allfeaturesbytaxa <- plyr::rbind.fill(featurebytaxonlist)
-            #allfeaturesbytaxa[is.na(allfeaturesbytaxa)] <- 0
-
-            allfeaturesbytaxa <- merge_sparse_matrix(matlist = featurebytaxonlist[1:2])
+            allfeaturesbytaxa <- plyr::rbind.fill(featurebytaxonlist)
+            allfeaturesbytaxa[is.na(allfeaturesbytaxa)] <- 0
 
             allfeaturesbytaxa <- allfeaturesbytaxa[ , c("Sample", "Accession", (sort(colnames(allfeaturesbytaxa)[which(!colnames(allfeaturesbytaxa) %in% c("Sample", "Accession"))])))]
 
@@ -473,6 +473,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
             allfeaturesbytaxa <- as.matrix(allfeaturesbytaxa)
             rownames(allfeaturesbytaxa) <- 1:nrow(allfeaturesbytaxa)
 
+            #Make sparse
             allfeaturesbytaxa_matrix <- Matrix::Matrix(data = allfeaturesbytaxa, sparse = TRUE)
             allfeaturesbytaxa <- NULL
 
