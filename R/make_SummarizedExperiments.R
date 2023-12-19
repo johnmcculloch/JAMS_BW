@@ -454,7 +454,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                 signalthreshold <- NumBases1PPMthreshold["NumBases" , samp]
                 NonEmptyTaxa <- names(which(colSums(currFeatdose) > 0))
                 currFeatdose <- as.matrix(currFeatdose[ , NonEmptyTaxa])
-
+                currFeatdose <- as.data.frame(currFeatdose)
+                #Annotate which sample it is
+                currFeatdose$Sample <- samp
+                #Add back accession column
+                currFeatdose$Accession <- rownames(currFeatdose)
                 #featurebytaxonlist[[samp]] <- Matrix::Matrix(data = currFeatdose, sparse = TRUE)
                 #put into list, and transform to sparse later. Will change to sparsing first and then merging later.
                 featurebytaxonlist[[samp]] <- as.data.frame(currFeatdose)
