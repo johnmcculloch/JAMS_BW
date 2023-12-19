@@ -457,7 +457,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
 
                 #featurebytaxonlist[[samp]] <- Matrix::Matrix(data = currFeatdose, sparse = TRUE)
                 #put into list, and transform to sparse later. Will change to sparsing first and then merging later.
-                featurebytaxonlist[[samp]] <- currFeatdose
+                featurebytaxonlist[[samp]] <- as.data.frame(currFeatdose)
             }
 
             allfeaturesbytaxa <- plyr::rbind.fill(featurebytaxonlist)
