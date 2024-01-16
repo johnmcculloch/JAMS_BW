@@ -302,7 +302,10 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             #See if current SummarizedExperiment object allows for stratification by taxa.
             if (all(c("allfeaturesbytaxa_index", "allfeaturesbytaxa_matrix") %in% names(metadata(currobj)))){
                 taxsplit <- retrieve_features_by_taxa(FuncExpObj = currobj, wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, PPMthreshold = 0)
-                colnames(taxsplit)[which(colnames(taxsplit) == compareby)] <- "Compareby"
+
+                #colnames(taxsplit)[which(colnames(taxsplit) == compareby)] <- "Compareby"
+                taxsplit$Compareby <- taxsplit[ , which(colnames(taxsplit) == compareby)]
+
             } else {
                 flog.warn("Current SummarizedExperiment object does not contain the necessary data for stratifying this function by taxonomy. Check your input.")
             }
@@ -568,7 +571,10 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 colnames(LKTsupp_mat) <- LKTcolumns
                 LKTsupp_mat$Sample <- missingSamples
                 curr_pt_supp <- as.data.frame(curr_pt)
-                colnames(curr_pt_supp)[which(colnames(curr_pt_supp) == compareby)] <- "Compareby"
+
+                #colnames(curr_pt_supp)[which(colnames(curr_pt_supp) == compareby)] <- "Compareby"
+                curr_pt_supp$Compareby <- curr_pt_supp[ , which(colnames(curr_pt_supp) == compareby)]
+
                 LKTsupp_mat <- left_join(LKTsupp_mat, curr_pt_supp, by = "Sample")
                 LKTsupp_mat$Accession <- rep(unique(currtaxsplit$Accession), nrow(LKTsupp_mat))
                 LKTsupp_mat <- LKTsupp_mat[ , colnames(currtaxsplit)]
@@ -589,7 +595,9 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
                     #Start building a plot
                     dat <- left_join(dat, as.data.frame(curr_pt), by = "Sample")
-                    colnames(dat)[which(colnames(dat) == compareby)] <- "Compareby"
+
+                    #colnames(dat)[which(colnames(dat) == compareby)] <- "Compareby"
+                    dat$Compareby <- dat[ , which(colnames(dat) == compareby)]
 
                     #if there is an explicit order to compareby then set it to that
                     if (!is.null(compareby_order)){
@@ -597,10 +605,12 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     }
 
                     if (!(is.null(shapeby))){
-                        colnames(dat)[which(colnames(dat) == shapeby)] <- "Shape"
+                        #colnames(dat)[which(colnames(dat) == shapeby)] <- "Shape"
+                        dat$Shape <- dat[ , which(colnames(dat) == shapeby)]
                     }
                     if (!(is.null(colourby))){
-                        colnames(dat)[which(colnames(dat) == colourby)] <- "Colour"
+                        #colnames(dat)[which(colnames(dat) == colourby)] <- "Colour"
+                        dat$Colour <- dat[ , which(colnames(dat) == colourby)]
                     }
 
                     #Colour in by phylum
@@ -643,6 +653,11 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     dat <- orddat
 
                     dat$Taxon <- factor(dat$Taxon, levels = unique(dat$Taxon))
+
+                    if (!(is.null(colourby))){
+                        #colnames(dat)[which(colnames(dat) == colourby)] <- "Colour"
+                        dat$Colour <- dat[ , which(colnames(dat) == colourby)]
+                    }
 
                     p <- ggplot(dat, aes(x = Taxon, y = PPM))
 
