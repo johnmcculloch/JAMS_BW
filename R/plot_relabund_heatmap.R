@@ -98,7 +98,7 @@
 
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "exploratory", samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, show_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
+plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "exploratory", samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, row_order = NULL, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, show_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
 
     #Hardwire the minimum number of samples for a side by side secondary heatmap. This may be in a later version added as a function argument.
     threshold_for_double_plot <- 7
@@ -261,6 +261,11 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                 feattable <- rowData(currobj)
                 feattable$Feature <- paste(feattable$Accession, feattable$Description, sep = "-")
                 rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]
+                #Paste descriptions to row_order vector if not LKT space.
+                if (!is.null(row_order)){
+                    row_order <- row_order[row_order %in% rownames(feattable)]
+                    row_order <- paste(feattable[row_order, "Accession"], feattable[row_order, "Description"], sep = "-")
+                }
             }
 
             matrixSamples <- colnames(countmat)
@@ -298,6 +303,11 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
                 }
 
+                #Turn off row clustering if explicitly setting row_order
+                if (!is.null(row_order)){
+                    cluster_rows <- FALSE
+                }
+
                 if (all(c(cluster_rows, (any(!(c(cluster_samples_per_heatmap, cluster_features_per_heatmap))))))){
                     flog.info("Clustering samples and features using entire matrix to obtain sample and feature order for all heatmaps.")
                     #create a heatmap from the entire count matrix for getting column order.
@@ -311,6 +321,21 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
                 if (all(c(!cluster_features_per_heatmap, !is.null(fullheatmap_row_order)))){
                     countmat2 <- countmat2[fullheatmap_row_order, ]
+                    matstats <- matstats[rownames(countmat2), ]
+                }
+
+                if (!is.null(row_order)){
+                    #Ensure all elements in the vector are actually in the matrix
+                    row_order_have <- row_order[row_order %in% rownames(countmat2)]
+                    #warn if any are missing
+                    if (length(row_order) != length(row_order_have)) {
+                        flog.warn("Some elements passed to row_order were not found. Check filtration criteria and/or input SEobj")
+                    }
+                    if (length(row_order_have) < 2){
+                        flog.warn("There are fewer than 2 features available. Impossible to draw a heatmap. Aborting now.")
+                        return(NULL)
+                    }
+                    countmat2 <- countmat2[row_order_have, ]
                     matstats <- matstats[rownames(countmat2), ]
                 }
 
@@ -366,6 +391,21 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
                     if (all(c(cluster_rows, (!cluster_features_per_heatmap)))){
                         countmat2 <- countmat2[fullheatmap_row_order, ]
+                        matstats <- matstats[rownames(countmat2), ]
+                    }
+
+                    if (!is.null(row_order)){
+                        #Ensure all elements in the vector are actually in the matrix
+                        row_order_have <- row_order[row_order %in% rownames(countmat2)]
+                        #warn if any are missing
+                        if (length(row_order) != length(row_order_have)) {
+                            flog.warn("Some elements passed to row_order were not found. Check filtration criteria and/or input SEobj")
+                        }
+                        if (length(row_order_have) < 2){
+                            flog.warn("There are fewer than 2 features available. Impossible to draw a heatmap. Aborting now.")
+                            return(NULL)
+                        }
+                        countmat2 <- countmat2[row_order_have, ]
                         matstats <- matstats[rownames(countmat2), ]
                     }
 
@@ -457,6 +497,21 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
                     if (all(c(cluster_rows, (!cluster_features_per_heatmap)))) {
                         countmat2 <- countmat2[fullheatmap_row_order, ]
+                        matstats <- matstats[rownames(countmat2), ]
+                    }
+
+                    if (!is.null(row_order)){
+                        #Ensure all elements in the vector are actually in the matrix
+                        row_order_have <- row_order[row_order %in% rownames(countmat2)]
+                        #warn if any are missing
+                        if (length(row_order) != length(row_order_have)) {
+                            flog.warn("Some elements passed to row_order were not found. Check filtration criteria and/or input SEobj")
+                        }
+                        if (length(row_order_have) < 2){
+                            flog.warn("There are fewer than 2 features available. Impossible to draw a heatmap. Aborting now.")
+                            return(NULL)
+                        }
+                        countmat2 <- countmat2[row_order_have, ]
                         matstats <- matstats[rownames(countmat2), ]
                     }
 
