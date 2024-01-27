@@ -445,7 +445,6 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
             allfeaturesbytaxa_index <- NULL
             lrn <- 0
             for (samp in SamplesWanted){
-                flog.info(paste("Doing", samp))
                 currFeatdose <- NULL
                 #Get appropriate object with counts
                 wantedobj <- paste(samp, "featuredose", sep = "_")
