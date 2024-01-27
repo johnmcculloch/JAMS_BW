@@ -26,6 +26,7 @@ plot_relabund_heatmap(
   textby = NULL,
   label_samples = TRUE,
   cluster_rows = TRUE,
+  row_order = NULL,
   max_rows_in_heatmap = 50,
   applyfilters = "light",
   featcutoff = NULL,
