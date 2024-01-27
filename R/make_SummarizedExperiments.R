@@ -138,6 +138,9 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         tt <- tt[featureorder, ]
         cts <- cts[, sampleorder]
 
+        #This might be used if stratifying functions by taxa
+        All_LKTs <- rownames(tt)
+
         #Register the total number of NAHS bases sequenced for each sample
         TotBasesSamples <- colSums(cts)
         TotalBasesSequenced <- t(as.matrix(TotBasesSamples))
@@ -438,7 +441,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
             SamplesWanted <- colnames(cts)[!(colnames(cts) %in% emptySamples)]
             wantedfeatures <- rownames(cts)
             NumBases1PPMthreshold <- TotalBasesSequencedinAnalysis / 1000000
+            allfeaturesbytaxa_matrix <- NULL
+            allfeaturesbytaxa_index <- NULL
+            lrn <- 0
             for (samp in SamplesWanted){
+                flog.info(paste("Doing", samp))
                 currFeatdose <- NULL
                 #Get appropriate object with counts
                 wantedobj <- paste(samp, "featuredose", sep = "_")
@@ -454,36 +461,38 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                 signalthreshold <- NumBases1PPMthreshold["NumBases" , samp]
                 NonEmptyTaxa <- names(which(colSums(currFeatdose) > 0))
                 currFeatdose <- as.matrix(currFeatdose[ , NonEmptyTaxa])
-                currFeatdose <- as.data.frame(currFeatdose)
+                currFeatdose <- Matrix::Matrix(data = currFeatdose, sparse = TRUE)
+                #add to sparse matrix empty LKTs, in sparse format
+                curr_Missing_LKTs <- All_LKTs[!(All_LKTs %in% colnames(currFeatdose))]
+
+                compl_matrix <- Matrix(data = 0, nrow = nrow(currFeatdose), ncol = length(curr_Missing_LKTs), sparse = TRUE, forceCheck = TRUE)
+                colnames(compl_matrix) <- curr_Missing_LKTs
+
+                #Bind columns
+                currFeatdose <- cbind(currFeatdose, compl_matrix)
+                #Coerce to default column order
+                currFeatdose <- currFeatdose[ , All_LKTs]
                 #Annotate which sample it is
-                currFeatdose$Sample <- samp
-                #Add back accession column
-                currFeatdose$Accession <- rownames(currFeatdose)
-                #featurebytaxonlist[[samp]] <- Matrix::Matrix(data = currFeatdose, sparse = TRUE)
-                #put into list, and transform to sparse later. Will change to sparsing first and then merging later.
-                featurebytaxonlist[[samp]] <- as.data.frame(currFeatdose)
+                curr_allfeaturesbytaxa_index <- data.frame(Sample = samp, Accession = rownames(currFeatdose))
+                curr_allfeaturesbytaxa_index$RowNumber <- ((1:nrow(currFeatdose)) + lrn)
+                rownames(curr_allfeaturesbytaxa_index) <- curr_allfeaturesbytaxa_index$RowNumber
+                allfeaturesbytaxa_index <- rbind(allfeaturesbytaxa_index, curr_allfeaturesbytaxa_index)
+
+                rownames(currFeatdose) <- ((1:nrow(currFeatdose)) + lrn)
+                #Append to allfeaturesbytaxa_matrix
+                allfeaturesbytaxa_matrix <- rbind(allfeaturesbytaxa_matrix, currFeatdose)
+
+                #increment lrn
+                lrn <- as.numeric(rownames(allfeaturesbytaxa_matrix)[nrow(allfeaturesbytaxa_matrix)])
             }
 
-            allfeaturesbytaxa <- plyr::rbind.fill(featurebytaxonlist)
-            allfeaturesbytaxa[is.na(allfeaturesbytaxa)] <- 0
-
-            allfeaturesbytaxa <- allfeaturesbytaxa[ , c("Sample", "Accession", (sort(colnames(allfeaturesbytaxa)[which(!colnames(allfeaturesbytaxa) %in% c("Sample", "Accession"))])))]
-
-            SampleAccession2Row <- allfeaturesbytaxa[c("Sample", "Accession")]
-            SampleAccession2Row$RowNumber <- 1:nrow(SampleAccession2Row)
-
-            allfeaturesbytaxa$Sample <- NULL
-            allfeaturesbytaxa$Accession <- NULL
-            allfeaturesbytaxa <- as.matrix(allfeaturesbytaxa)
-            rownames(allfeaturesbytaxa) <- 1:nrow(allfeaturesbytaxa)
-
-            #Make sparse
-            allfeaturesbytaxa_matrix <- Matrix::Matrix(data = allfeaturesbytaxa, sparse = TRUE)
-            allfeaturesbytaxa <- NULL
+            #Prune empty LKTs
+            NonEmptyLKTs <- names(which(colSums(allfeaturesbytaxa_matrix) != 0))
+            allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix[ , NonEmptyLKTs]
 
             #Add features-by-taxon matrix and index into SummarizedExperiment object
             metadata(SEobj)$allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix
-            metadata(SEobj)$allfeaturesbytaxa_index <- SampleAccession2Row
+            metadata(SEobj)$allfeaturesbytaxa_index <- curr_allfeaturesbytaxa_index
 
         } #End of splitting features by taxonomy
 
