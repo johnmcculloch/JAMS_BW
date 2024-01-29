@@ -301,7 +301,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             #See if current SummarizedExperiment object allows for stratification by taxa.
             if (all(c("allfeaturesbytaxa_index", "allfeaturesbytaxa_matrix") %in% names(metadata(currobj)))){
-                taxsplit <- retrieve_features_by_taxa(FuncExpObj = currobj, wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, PPMthreshold = 0)
+                taxsplit <- retrieve_features_by_taxa(FuncExpObj = currobj, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, PPMthreshold = 0)
 
                 #colnames(taxsplit)[which(colnames(taxsplit) == compareby)] <- "Compareby"
                 taxsplit$Compareby <- taxsplit[ , which(colnames(taxsplit) == compareby)]
