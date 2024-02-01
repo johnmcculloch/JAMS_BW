@@ -486,7 +486,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
             }
 
             #Prune empty LKTs
-            NonEmptyLKTs <- names(which(colSums(allfeaturesbytaxa_matrix) != 0))
+            NonEmptyLKTs <- names(which(Matrix::colSums(allfeaturesbytaxa_matrix) != 0))
             allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix[ , NonEmptyLKTs]
 
             #Add features-by-taxon matrix and index into SummarizedExperiment object
