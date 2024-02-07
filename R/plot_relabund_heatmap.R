@@ -648,13 +648,15 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     ht1fs <- 10
 
                     #Plot the heatmap
-                    #fontcoefficient <- (-0.04 * nrow(mathm)) + 7.5
-                    fontcoefficient <- (-0.05 * nrow(mathm)) + 7.5
-                    fontsizey <- round((((-1 / 200) * (nrow(mathm))) + 1.01 * fontcoefficient), 2)
+                    fontsizexy <- hm_fontsize_computer(mat_rownames = rownames(mathm), mat_colnames = colnames(mathm))
+                    fontsizex <- fontsizexy[1]
+                    fontsizey <- fontsizexy[2]
+
+                    #Fix row names, add a carriage return (\n) if over 40 characters.
+                    rownames(mathm) <- sapply(rownames(mathm), function(x) { split_featname(featname = x, thresh_featname_split = 40) } )
+
                     if (label_samples == FALSE){
                         fontsizex <- 0
-                    } else {
-                        fontsizex <- as.numeric(unlist(round((((-1 / 200) * (ncol(mathm))) + 1.01) * fontcoefficient, 0)))
                     }
 
                     hmdf <- as.data.frame(matrix(data = 0, nrow = nrow(colData(currobj)), ncol = length(colcategories)))

@@ -735,3 +735,57 @@ infer_column_type <- function(phenotable = NULL, colm = NULL, class_to_ignore = 
     return(colmtype)
 
 }
+
+#' compute_x_font(nx = 1, upper_n = 400, upper_fs = 0.1, lower_n = 10, lower_fs = 8, cex = 0.7)
+#'
+#' Compute the appropriate size of font to be used in JAMS heatmap column (sample) annotations.
+#' @export
+
+compute_x_font <- function(nx = 1, upper_n = 400, upper_fs = 0.1, lower_n = 10, lower_fs = 8, cex = 0.7){
+
+    m <- ((lower_fs - upper_fs) / (upper_n - lower_n)) * -1
+    cnst <- lower_fs - (lower_n * m)
+    fontsizex <- round(((m * nx) + cnst), 2)
+    fontsizex <- fontsizex * cex
+
+    return(fontsizex)
+}
+
+#' hm_fontsize_computer(mat_rownames = NULL, mat_colnames = NULL, upper_n = 400, upper_fs = 0.1, lower_n = 10, lower_fs = 8, cex = 0.7)
+#'
+#' Returns a vector of length 2 with values for the appropriate sizes of fonts to be used in JAMS heatmap columns (samples) and rows (features), respectively.
+#' @export
+
+hm_fontsize_computer <- function(mat_rownames = NULL, mat_colnames = NULL, upper_n = 400, upper_fs = 0.1, lower_n = 10, lower_fs = 8, cex = 0.7){
+
+    fontcoefficienty <- (-0.05 * length(mat_rownames)) + 7.5
+    fontcoefficientcorrector_y <- ((-0.2 / 10) * max(nchar(mat_rownames))) + 1.6
+    #Cap to 1
+    fontcoefficientcorrector_y <- min(fontcoefficientcorrector_y, 1)
+    #Floor to 0.5
+    fontcoefficientcorrector_y <- max(fontcoefficientcorrector_y, 0.5)
+    #Recompute the current coefficients
+    fontcoefficienty <- fontcoefficienty * fontcoefficientcorrector_y
+    fontsizey <- round((((-1 / 200) * (length(mat_rownames))) + 1.01 * fontcoefficienty), 2)
+    fontsizex <- compute_x_font(nx = length(mat_colnames), upper_n = upper_n, upper_fs = upper_fs, lower_n = lower_n, lower_fs = lower_fs, cex = cex)
+    xy_fs <- c(fontsizex, fontsizey)
+
+    return(xy_fs)
+}
+
+#' split_featname(featname = NULL, thresh_featname_split = 40)
+#'
+#' For a feature name (or any string, for that matter) will add a carriage return (\n) to the middle of the string if it exceeds the threshold number of characters. This is used in the heatmap function.
+#' @export
+
+split_featname <- function(featname = NULL, thresh_featname_split = 40){
+    if (nchar(featname) >= thresh_featname_split){
+        len1 <- round((nchar(featname) / 2), 0)
+        len2 <- nchar(featname) - len1
+        part1 <- paste0(unlist(strsplit(featname, split = ""))[1:len1], collapse = "")
+        part2 <- paste0(unlist(strsplit(featname, split = ""))[(1:len2) + len1], collapse = "")
+        featname <- paste0(part1, "-\n", part2)
+    }
+
+    return(featname)
+}
