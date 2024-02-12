@@ -186,8 +186,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         #See if there are enough samples and features to go ahead
         proceed <- TRUE
         curr_pt <- colData(obj)[samplesToKeep, ]
+        tmp_cts <- assays(obj[ , samplesToKeep])[[assay_for_matrix]]
 
-        if ((dim(curr_pt)[1] * dim(curr_pt)[2]) < 4){
+        if ((nrow(curr_pt) * length(which(colSums(tmp_cts) > 0))) < 4){
             #There are less than 4 cells, a heatmap is meaningless.
             proceed <- FALSE
         }
@@ -1074,11 +1075,11 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         } else {
             if (ncol(colData(currobj)) < 2){
                 #There is only one sample in subset, so nothing was done.
-                flog.info(paste(as.character(colnames(colData(currobj))[samplesToKeep]), "was the only sample within", subsetname, "subset. Must have at least two samples for a heatmap."))
+                flog.warn(paste(as.character(colnames(colData(currobj))[samplesToKeep]), "was the only sample within", subsetname, "subset. Must have at least two samples for a heatmap."))
             }
-            if (nrow(colData(currobj)) < 2){
-                #There is only one sample in subset, so nothing was done.
-                flog.info(paste(as.character(rownames(assays(currobj)$BaseCounts)), "was the only feature within", subsetname, "subset. Must have at least two features for a heatmap."))
+            if (length(which(colSums(tmp_cts) > 0))){
+                #There is only one feature in subset, so nothing was done.
+                flog.warn(paste("There are less than 2 features within", subsetname, "subset. Must have at least two features for a heatmap."))
             }
         } #End conditional if there is more than a two samples and or two features in subset
 
