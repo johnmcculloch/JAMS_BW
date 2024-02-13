@@ -37,7 +37,8 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
     }
 
     #Flush out empty rows
-    ExpObj <- ExpObj[(rowSums(rawcts) > 0), ]
+    #Don't do this anymore
+    #ExpObj <- ExpObj[(rowSums(rawcts) > 0), ]
 
     #Flush out empty Samples
     if (flush_out_empty_samples){

@@ -134,18 +134,38 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         PctFromCtgscutoff <- NULL
     }
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, maxl2fc = maxl2fc, minl2fc = minl2fc)
-
-    if (normalization == "compositions"){
-        require("compositions")
-        asPPM <- FALSE
-        #Make scaling default for compositions, as the heatmap colour scale for clr has not yet been resolved in this plotting function. Will turn this off later.
-        scaled <- TRUE
+    #Set applyfilters to null if featuresToKeep is set
+    if (!is.null(featuresToKeep)){
+        applyfilters <- NULL
     }
+
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, maxl2fc = maxl2fc, minl2fc = minl2fc)
 
     if (assay_for_matrix == "GeneCounts"){
         flog.warn("Counts matrix used for heatmap will represent the *number of genes* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
         asPPM <- FALSE
+        global_FTK <- rownames(obj)
+        hmtypemsg <- "Gene count Heatmap"
+    } else {
+        if (normalization == "compositions"){
+            require("compositions")
+            asPPM <- FALSE
+            #Make scaling default for compositions, as the heatmap colour scale for clr has not yet been resolved in this plotting function. Will turn this off later.
+            scaled <- TRUE
+            hmtypemsg <- "Compositional (CLR-transformed) Heatmap"
+            global_FTK <- rownames(obj)
+        } else {
+            hmtypemsg <- "Relative Abundance Heatmap"
+
+            #Obtain "global" list of features if applyfilters is not null, or any of the filtering arguments is not c(0,0) as to maintain same features within subsets, if any.
+            if (any(c(all(presetlist$featcutoff != c(0,0)), all(presetlist$GenomeCompletenessCutoff != c(0,0)), all(presetlist$PctFromCtgscutoff != c(0,0)),
+            !is.null(applyfilters)))){
+                currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = NULL, featuresToKeep = NULL, normalization = normalization, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff, discard_SDoverMean_below = discard_SDoverMean_below)
+                global_FTK <- rownames(currobj)
+            } else {
+                global_FTK <- rownames(obj)
+            }
+        }
     }
 
     if (!(is.null(subsetby))){
@@ -171,33 +191,45 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
     s <- 1
     n <- 1
 
+    #Stop if there is no data to plot
+    if ((dim(obj)[1] * dim(obj)[2]) < 4){
+        flog.warn("There are less than 4 cells in the SummarizedExperiment object matrix, impossible to draw a heatmap. Check your input and try again.")
+
+        return(NULL)
+    }
+
     #subset by metadata column
     for (sp in 1:length(subset_points)){
         if (!(is.null(subsetby))){
-            samplesToKeep <- rownames(colData(obj))[which(colData(obj)[ , subsetby] == subset_points[sp])]
+            samplesToKeep_sp <- rownames(colData(obj))[which(colData(obj)[ , subsetby] == subset_points[sp])]
             flog.info(paste("Plotting within", subset_points[sp]))
-            colcategories <- colcategories[!(colcategories %in% subsetby)]
+            #colcategories <- colcategories[!(colcategories %in% subsetby)]
             subsetname <- subset_points[sp]
         } else {
-            samplesToKeep <- rownames(colData(obj))
+            samplesToKeep_sp <- rownames(colData(obj))
             subsetname <- "no_sub"
         }
 
         #See if there are enough samples and features to go ahead
         proceed <- TRUE
-        curr_pt <- colData(obj)[samplesToKeep, ]
-        tmp_cts <- assays(obj[ , samplesToKeep])[[assay_for_matrix]]
 
-        if ((nrow(curr_pt) * length(which(colSums(tmp_cts) > 0))) < 4){
-            #There are less than 4 cells, a heatmap is meaningless.
+        if (length(samplesToKeep_sp) < 2){
+            skip_HM_reason <- paste0("There are less than 2 samples within", subsetname, ", impossible to plot a heatmap.")
             proceed <- FALSE
         }
 
-        if (all(c(!is.null(compareby), (hmtype != "exploratory")))) {
+
+        if (any(c(!is.null(compareby), (hmtype != "exploratory")))) {
             #investigate if there are at least two of each class of things to compare to go ahead
+            if (length(unique(curr_pt[ , compareby])) < 2){
+                skip_HM_reason <- paste0("There are less than 2 classes within variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
+                proceed <- FALSE
+            }
+
             if (length(unique(curr_pt[ , compareby])) == 2){
                 #Comparison is binary. Is there at least 2 of each class to get a p-value?
                 if ((min(table(curr_pt[ , compareby]))) < 2){
+                    skip_HM_reason <- paste0("There are less than 2 samples within at least one class of variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
                     proceed <- FALSE
                 }
             }
@@ -205,7 +237,6 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
         if (proceed){
 
-            hmtypemsg <- "Relative Abundance Heatmap"
             if (hmtype == "exploratory"){
                 stattype <- "variance"
                 if (is.null(ntop)){
@@ -217,17 +248,15 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                 stattype <- "auto"
             }
 
-            currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, normalization = normalization, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff, discard_SDoverMean_below = discard_SDoverMean_below)
+            if (assay_for_matrix == "BaseCounts"){
+
+                currobj <- filter_experiment(ExpObj = obj, featcutoff = c(0,0), samplesToKeep = samplesToKeep_sp, featuresToKeep = global_FTK, normalization = normalization, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = c(0,0), PctFromCtgscutoff = c(0,0), discard_SDoverMean_below = NULL, flush_out_empty_samples = FALSE)
+
+            } else if (assay_for_matrix == "GeneCounts"){
+                currobj <- obj[global_FTK, samplesToKeep_sp]
+            }
+
             flog.info(paste("Plotting", analysisname, "heatmap."))
-
-        } else {
-            flog.info("Unable to make heatmap with the current metadata for this comparison.")
-            return(NULL)
-        }
-
-        #There must be at least two samples for a heatmap and at least two features
-        if ((nrow(currobj) * ncol(currobj)) >= 4){
-
             fullheatmap_column_order <- NULL
             fullheatmap_column_dend <- NULL
             fullheatmap_row_order <- NULL
@@ -245,10 +274,6 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
             #Get counts matrix
             countmat <- as.matrix(assays(currobj)[[assay_for_matrix]])
-
-            #Protect against rows with empty data
-            rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
-            countmat <- countmat[rowsToKeep, ]
 
             if (ignoreunclassified == TRUE){
                dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified", "hypothetical protein", "putative protein")
@@ -665,6 +690,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
                     hmdf <- as.data.frame(matrix(data = 0, nrow = nrow(colData(currobj)), ncol = length(colcategories)))
                     cores <- vector("list", length = length(colcategories))
+
                     for (g in 1:length(colcategories)){
                         hmdf[ , g] <- colData(currobj)[ , which(colnames(colData(currobj)) == colcategories[g])]
                         colnames(hmdf)[g] <- colcategories[g]
@@ -731,10 +757,22 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                                 relabundheatmapCols <- colorRamp2(HMrelabundBreaks, PctHmColours)
                             } else {
                                 if (assay_for_matrix == "GeneCounts"){
-                                    relabundheatmapCols <- colorRamp2(sort(unique(as.vector(mathm))), c("#000000", rainbow( length(sort(unique(as.vector(mathm)))) - 1 )))
-                                    RelabundBreakPtsLbls <- as.character(sort(unique(as.vector(mathm))))
-                                    HMrelabundBreaks <- sort(unique(as.vector(mathm)))
 
+                                    if (length(sort(unique(as.vector(mathm)))) == 1){
+                                        if (sort(unique(as.vector(mathm))) == 0){
+                                            relabundheatmapCols <- "#000000"
+                                            RelabundBreakPtsLbls <- "0"
+                                            HMrelabundBreaks <- 0
+                                        } else {
+                                            relabundheatmapCols <- "#FF0000"
+                                            RelabundBreakPtsLbls <- as.character(sort(unique(as.vector(mathm))))
+                                            HMrelabundBreaks <- as.numeric(sort(unique(as.vector(mathm))))
+                                        }
+                                    } else {
+                                        relabundheatmapCols <- colorRamp2(sort(unique(as.vector(mathm))), c("#000000", rainbow( length(sort(unique(as.vector(mathm)))) - 1 )))
+                                        RelabundBreakPtsLbls <- as.character(sort(unique(as.vector(mathm))))
+                                        HMrelabundBreaks <- sort(unique(as.vector(mathm)))
+                                    }
                                     relabundscalename <- "Number of genes"
                                 } else {
                                     #matrix cells are BaseCounts in PPM
@@ -797,7 +835,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     ht1fs <- 8
                     hm1tit <- plotit
 
-                    if (show_GenomeCompleteness) {
+                    if (all(c(show_GenomeCompleteness, analysis == "LKT"))) {
                         secondaryheatmap <- "GenomeCompleteness"
                     }
 
@@ -924,7 +962,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
                     #Determine column order explicitly if required and draw heatmap
                     if (!is.null(ordercolsby)) {
-                        if(can_be_made_numeric(colData(currobj)[ , which(colnames(colData(currobj)) == ordercolsby)])){
+                        if (can_be_made_numeric(colData(currobj)[ , which(colnames(colData(currobj)) == ordercolsby)])){
                             column_order <- order(as.numeric(colData(currobj)[ , which(colnames(colData(currobj)) == ordercolsby)]))
                         } else {
                             column_order <- order(colData(currobj)[ , which(colnames(colData(currobj)) == ordercolsby)])
@@ -1073,16 +1111,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
             } #End conditional if there are heatmaps to plot from stats matrix
 
         } else {
-            if (ncol(colData(currobj)) < 2){
-                #There is only one sample in subset, so nothing was done.
-                flog.warn(paste(as.character(colnames(colData(currobj))[samplesToKeep]), "was the only sample within", subsetname, "subset. Must have at least two samples for a heatmap."))
-            }
-            if (length(which(colSums(tmp_cts) > 0))){
-                #There is only one feature in subset, so nothing was done.
-                flog.warn(paste("There are less than 2 features within", subsetname, "subset. Must have at least two features for a heatmap."))
-            }
+            flog.warn(skip_HM_reason)
+            n <- n + 1
         } #End conditional if there is more than a two samples and or two features in subset
-
     } #End subsetby loop
 
     #Redefine stats list as ones only containing data
