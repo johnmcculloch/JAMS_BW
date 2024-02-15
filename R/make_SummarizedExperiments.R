@@ -436,6 +436,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
         #Split functions by taxon, if applicable
         if (stratify_functions_by_taxon){
             flog.info(paste("Splitting", analysis, "features by taxa. This may take a while."))
+            flog.info(paste("Splitting", analysis, "feature BaseCounts into their contributing taxa."))
 
             featurebytaxonlist <- list()
             SamplesWanted <- colnames(cts)[!(colnames(cts) %in% emptySamples)]
@@ -492,6 +493,58 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
             #Add features-by-taxon matrix and index into SummarizedExperiment object
             metadata(SEobj)$allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix
             metadata(SEobj)$allfeaturesbytaxa_index <- curr_allfeaturesbytaxa_index
+
+            #Now do the same for gene counts
+            flog.info(paste("Splitting", analysis, "feature GeneCounts into their contributing taxa."))
+
+            allfeaturesbytaxa_GeneCounts_matrix <- NULL
+            allfeaturesbytaxa_GeneCounts_index <- NULL
+
+            SamplesWanted <- colnames(cts)[!(colnames(cts) %in% emptySamples)]
+            wantedfeatures <- rownames(cts)
+            lrn <- 0
+            for (samp in SamplesWanted){
+                currGeneCount <- NULL
+                #Get appropriate object with counts
+                wantedobj <- paste(samp, "featuredata", sep = "_")
+                currfd <- list.data[[wantedobj]][ , c(analysis, "LKT")]
+                colnames(currfd)[1] <- "Accession"
+                currGeneCount <- suppressMessages(currfd %>% group_by(Accession, LKT) %>% summarise(Count = n()) %>% pivot_wider(names_from = LKT, values_from = Count, values_fill = 0))
+                currAccessions <- currGeneCount$Accession
+                currGeneCount$Accession <- NULL
+                currGeneCount <- as.matrix(currGeneCount)
+                currGeneCount <- Matrix::Matrix(data = currGeneCount, sparse = TRUE)
+                curr_Missing_LKTs <- All_LKTs[!(All_LKTs %in% colnames(currGeneCount))]
+
+                compl_matrix <- Matrix(data = 0, nrow = nrow(currGeneCount), ncol = length(curr_Missing_LKTs), sparse = TRUE, forceCheck = TRUE)
+                colnames(compl_matrix) <- curr_Missing_LKTs
+
+                #Bind columns
+                currGeneCount <- cbind(currGeneCount, compl_matrix)
+                #Coerce to default column order
+                currGeneCount <- currGeneCount[ , All_LKTs]
+
+                #Annotate which sample it is
+                curr_allfeaturesbytaxa_GeneCounts_index <- data.frame(Sample = samp, Accession = currAccessions)
+                curr_allfeaturesbytaxa_GeneCounts_index$RowNumber <- ((1:nrow(currGeneCount)) + lrn)
+                rownames(curr_allfeaturesbytaxa_GeneCounts_index) <- curr_allfeaturesbytaxa_GeneCounts_index$RowNumber
+                allfeaturesbytaxa_GeneCounts_index <- rbind(allfeaturesbytaxa_GeneCounts_index, curr_allfeaturesbytaxa_GeneCounts_index)
+
+                rownames(currGeneCount) <- ((1:nrow(currGeneCount)) + lrn)
+                #Append to allfeaturesbytaxa_matrix
+                allfeaturesbytaxa_GeneCounts_matrix <- rbind(allfeaturesbytaxa_GeneCounts_matrix, currGeneCount)
+
+                #increment lrn
+                lrn <- as.numeric(rownames(allfeaturesbytaxa_GeneCounts_matrix)[nrow(allfeaturesbytaxa_GeneCounts_matrix)])
+            }
+
+            #Prune empty LKTs
+            NonEmptyLKTs <- names(which(Matrix::colSums(allfeaturesbytaxa_GeneCounts_matrix) != 0))
+            allfeaturesbytaxa_GeneCounts_matrix <- allfeaturesbytaxa_GeneCounts_matrix[ , NonEmptyLKTs]
+
+            #Add feature-GeneCount-by-taxon matrix and index into SummarizedExperiment object
+            metadata(SEobj)$allfeaturesbytaxa_GeneCounts_matrix <- allfeaturesbytaxa_GeneCounts_matrix
+            metadata(SEobj)$allfeaturesbytaxa_GeneCounts_index <- allfeaturesbytaxa_GeneCounts_index
 
         } #End of splitting features by taxonomy
 
