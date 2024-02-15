@@ -15,7 +15,9 @@ plot_Ordination(
   applyfilters = NULL,
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
+  discard_SDoverMean_below = NULL,
   asPPM = TRUE,
+  normalization = "relabund",
   PPM_normalize_to_bases_sequenced = FALSE,
   assay_for_matrix = "BaseCounts",
   algorithm = "tUMAP",
@@ -47,6 +49,7 @@ plot_Ordination(
   numthreads = 8,
   return_coordinates_matrix = FALSE,
   permanova_permutations = 10000,
+  include_components_variance_plot = FALSE,
   class_to_ignore = "N_A",
   ...
 )

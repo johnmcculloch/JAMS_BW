@@ -86,7 +86,7 @@
 
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, asPPM = TRUE, normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, include_components_variance_plot = FALSE, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
@@ -124,21 +124,36 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
     flog.info(pcatitbase)
 
-    if (assay_for_matrix == "GeneCounts"){
-        flog.warn("Counts matrix used for ordination will represent the *number of genes* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
-        asPPM <- FALSE
-        log2tran <- FALSE
-        pcatitbase <- paste(pcatitbase, "Counts matrix used for ordination represents the number of genes", sep = "\n")
-    }
-
-    if (asPPM == FALSE){
-        applyfilters <- FALSE
-        featcutoff <- c(0, 0)
-        GenomeCompletenessCutoff <- NULL
-        PctFromCtgscutoff <- NULL
-    }
-
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
+
+    if (assay_for_matrix == "GeneCounts"){
+        flog.warn("Counts matrix used for heatmap will represent the *number of genes* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
+        asPPM <- FALSE
+        global_FTK <- rownames(obj)
+        #log2tran <- FALSE
+        pcatitbase <- paste(pcatitbase, "Counts matrix used for ordination represents the number of genes", sep = "\n")
+
+    } else {
+        if (normalization == "compositions"){
+            require("compositions")
+            asPPM <- FALSE
+            #Make scaling default for compositions, as the heatmap colour scale for clr has not yet been resolved in this plotting function. Will turn this off later.
+            scaled <- TRUE
+            hmtypemsg <-
+            pcatitbase <- paste(pcatitbase, "Using compositional (CLR-transformed) counts matrix", sep = "\n")
+            global_FTK <- rownames(obj)
+        } else {
+
+            #Obtain "global" list of features if applyfilters is not null, or any of the filtering arguments is not c(0,0) as to maintain same features within subsets, if any.
+            if (any(c(all(presetlist$featcutoff != c(0,0)), all(presetlist$GenomeCompletenessCutoff != c(0,0)), all(presetlist$PctFromCtgscutoff != c(0,0)),
+            !is.null(applyfilters)))){
+                currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = NULL, featuresToKeep = NULL, normalization = normalization, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff, discard_SDoverMean_below = discard_SDoverMean_below)
+                global_FTK <- rownames(currobj)
+            } else {
+                global_FTK <- rownames(obj)
+            }
+        }
+    }
 
     if (!(is.null(subsetby))){
         subset_points <- sort(unique(colData(obj)[, which(colnames(colData(obj)) == subsetby)]))
@@ -153,33 +168,40 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     for (sp in 1:length(subset_points)){
 
         if (!(is.null(subsetby))){
-            sp_samplesToKeep <- rownames(colData(obj))[which(colData(obj)[ , subsetby] == subset_points[sp])]
+            samplesToKeep_sp <- rownames(colData(obj))[which(colData(obj)[ , subsetby] == subset_points[sp])]
             flog.info(paste("Plotting within", subset_points[sp]))
             subsetname <- subset_points[sp]
             pcatit <- paste(pcatitbase, "within", subset_points[sp])
         } else {
-            sp_samplesToKeep <- rownames(colData(obj))
+            samplesToKeep_sp <- rownames(colData(obj))
             subsetname <- "no_sub"
             pcatit <- pcatitbase
         }
+
         pcatit <- paste(c(pcatit, presetlist$filtermsg), collapse = "\n")
-        flog.info("filtering")
-        currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = sp_samplesToKeep, featuresToKeep = featuresToKeep, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
+
+        if (assay_for_matrix == "BaseCounts"){
+
+            currobj <- filter_experiment(ExpObj = obj, featcutoff = c(0,0), samplesToKeep = samplesToKeep_sp, featuresToKeep = global_FTK, normalization = normalization, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = c(0,0), PctFromCtgscutoff = c(0,0), discard_SDoverMean_below = NULL, flush_out_empty_samples = FALSE)
+
+            if (PPM_normalize_to_bases_sequenced == TRUE){
+                pcatit <- paste(c(pcatit, "Normalized to total number of bases sequenced in sample"), collapse = "\n")
+            } else {
+                pcatit <- paste(c(pcatit, "Normalized to number of bases for analysis in sample"), collapse = "\n")
+            }
+
+        } else if (assay_for_matrix == "GeneCounts"){
+            currobj <- obj[global_FTK, samplesToKeep_sp]
+        }
 
         currpt <- as.data.frame(colData(currobj))
-
-        if (PPM_normalize_to_bases_sequenced == TRUE){
-            pcatit <- paste(c(pcatit, "Normalized to total number of bases sequenced in sample"), collapse = "\n")
-        } else {
-            pcatit <- paste(c(pcatit, "Normalized to number of bases for analysis in sample"), collapse = "\n")
-        }
 
         #Get counts matrix
         countmat <- as.matrix(assays(currobj)[[assay_for_matrix]])
 
         #Protect against rows with empty data
-        rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
-        countmat <- countmat[rowsToKeep, ]
+        #rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
+        #countmat <- countmat[rowsToKeep, ]
 
         if (ignoreunclassified == TRUE){
             dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")
@@ -208,6 +230,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         if (!is.null(samplesToHighlight)){
             samplesToHighlight <- samplesToHighlight[samplesToHighlight %in% rownames(countmat)]
             currpt_stat <- currpt[(rownames(currpt) %in% samplesToHighlight), ]
+            d_for_plot <- vegdist(countmat, method = distmethod, na.rm = TRUE)
             d <- vegdist(countmat[(rownames(countmat) %in% samplesToHighlight), ], method = distmethod, na.rm = TRUE)
             cats <- currpt_stat[ , compareby]
         } else {
@@ -252,6 +275,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             dford_full <- dford
             xl <- "tSNE 1"
             yl <- "tSNE 2"
+            include_components_variance_plot <- FALSE
 
         } else if (algorithm == "tUMAP"){
             set.seed(2138)
@@ -265,28 +289,31 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             dford_full <- dford
             xl <- "tUMAP 1"
             yl <- "tUMAP 2"
+            include_components_variance_plot <- FALSE
 
         } else {
             if (algorithm == "PCA"){
-                pcaRes <- prcomp(d)
+                pcaRes <- prcomp(d_for_plot)
                 ord <- pcaRes$x
                 vars <- pcaRes$sdev^2
                 vars <- round(vars/sum(vars), 5) * 100
                 axisprefix <- "PC"
             } else {
                 #Default to PCoA
-                pcoaRes <- ape::pcoa(d, correction = "none")
+                pcoaRes <- ape::pcoa(d_for_plot, correction = "none")
                 ord <- pcoaRes$vectors
                 vars <- pcoaRes$values$Broken_stick
                 vars <- round(vars, 5) * 100
                 axisprefix <- "Axis."
             }
 
-            #Make a data frame with how variance is explained by which components
-            vardf <- data.frame(Component = paste0("PC", 1:length(vars)), Variance = vars, Cumulative_variance = cumsum(vars))
-            vardf$Component <- factor(vardf$Component, levels = vardf$Component)
+            if (include_components_variance_plot == TRUE){
+                #Make a data frame with how variance is explained by which components
+                vardf <- data.frame(Component = paste0("PC", 1:length(vars)), Variance = vars, Cumulative_variance = cumsum(vars))
+                vardf$Component <- factor(vardf$Component, levels = vardf$Component)
 
-            varplot <- ggplot(vardf, aes(x = Component)) + geom_bar(aes(y = Variance), fill = 'blue', stat = "identity") + geom_point(aes(y = Cumulative_variance), colour = "black", pch = 16, size = 1) + geom_path(aes(y = Cumulative_variance, group = 1)) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.6, size = rel(0.5))) + labs(title = "Variance explained by each PCoA component", subtitle = pcatit, x = 'Component', y = 'Variance')
+                varplot <- ggplot(vardf, aes(x = Component)) + geom_bar(aes(y = Variance), fill = 'blue', stat = "identity") + geom_point(aes(y = Cumulative_variance), colour = "black", pch = 16, size = 1) + geom_path(aes(y = Cumulative_variance, group = 1)) + theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.6, size = rel(0.5))) + labs(title = paste("Variance explained by each", algorithm, "component"), subtitle = pcatit, x = 'Component', y = 'Variance')
+            }
 
             #Take into account different PCs if applicable
             if (any(PCA_Components != c(1, 2))){
@@ -514,6 +541,10 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         gvec[[plotnum]] <- p
         plotnum <- plotnum + 1
+        if (include_components_variance_plot){
+            gvec[[plotnum]] <- varplot
+            plotnum <- plotnum + 1
+        }
 
     }
 
