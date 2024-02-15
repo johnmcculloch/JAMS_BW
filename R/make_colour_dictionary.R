@@ -31,7 +31,7 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabe
         }
 
         #Define kinds of variables
-        variable_list <- define_kinds_of_variables(phenolabels = phenolabels, phenotable = pheno, maxclass = 15, maxsubclass = 6, class_to_ignore = class_to_ignore)
+        variable_list <- define_kinds_of_variables(phenolabels = phenolabels, phenotable = pheno, maxclass = 100, maxsubclass = 100, class_to_ignore = class_to_ignore)
     }
 
     #See how many different things there are
