@@ -217,23 +217,23 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
             skip_HM_reason <- paste0("There are less than 2 samples within", subsetname, ", impossible to plot a heatmap.")
             proceed <- FALSE
         }
+        #curr_pt <- colData(obj[ , samplesToKeep_sp])
 
-
-        if (any(c(!is.null(compareby), (hmtype != "exploratory")))) {
+        #if (any(c(!is.null(compareby), (hmtype != "exploratory")))) {
             #investigate if there are at least two of each class of things to compare to go ahead
-            if (length(unique(curr_pt[ , compareby])) < 2){
-                skip_HM_reason <- paste0("There are less than 2 classes within variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
-                proceed <- FALSE
-            }
+        #    if (length(unique(curr_pt[ , compareby])) < 2){
+        #        skip_HM_reason <- paste0("There are less than 2 classes within variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
+        #        proceed <- FALSE
+        #    }
 
-            if (length(unique(curr_pt[ , compareby])) == 2){
+        #    if (length(unique(curr_pt[ , compareby])) == 2){
                 #Comparison is binary. Is there at least 2 of each class to get a p-value?
-                if ((min(table(curr_pt[ , compareby]))) < 2){
-                    skip_HM_reason <- paste0("There are less than 2 samples within at least one class of variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
-                    proceed <- FALSE
-                }
-            }
-        }
+        #        if ((min(table(curr_pt[ , compareby]))) < 2){
+        #            skip_HM_reason <- paste0("There are less than 2 samples within at least one class of variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
+        #            proceed <- FALSE
+        #        }
+        #    }
+        #}
 
         if (proceed){
 

@@ -560,6 +560,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             }
 
             if (!is.null(stratify_by_taxlevel)){
+
                 currtaxsplit <- subset(taxsplit, Accession == feat)
 
                 #As per Giorgio's request, re-include samples omitted for not having a particular taxon.
