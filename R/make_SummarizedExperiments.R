@@ -492,7 +492,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
 
             #Add features-by-taxon matrix and index into SummarizedExperiment object
             metadata(SEobj)$allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix
-            metadata(SEobj)$allfeaturesbytaxa_index <- curr_allfeaturesbytaxa_index
+            metadata(SEobj)$allfeaturesbytaxa_index <- allfeaturesbytaxa_index
 
             #Now do the same for gene counts
             flog.info(paste("Splitting", analysis, "feature GeneCounts into their contributing taxa."))
