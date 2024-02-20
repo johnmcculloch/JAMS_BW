@@ -217,23 +217,23 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
             skip_HM_reason <- paste0("There are less than 2 samples within", subsetname, ", impossible to plot a heatmap.")
             proceed <- FALSE
         }
-        #curr_pt <- colData(obj[ , samplesToKeep_sp])
+        curr_pt <- colData(obj[ , samplesToKeep_sp])
 
-        #if (any(c(!is.null(compareby), (hmtype != "exploratory")))) {
+        if (any(c(!is.null(compareby), (hmtype != "exploratory")))) {
             #investigate if there are at least two of each class of things to compare to go ahead
-        #    if (length(unique(curr_pt[ , compareby])) < 2){
-        #        skip_HM_reason <- paste0("There are less than 2 classes within variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
-        #        proceed <- FALSE
-        #    }
+            if (length(unique(curr_pt[ , compareby])) < 2){
+                skip_HM_reason <- paste0("There are less than 2 classes within variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
+                proceed <- FALSE
+            }
 
-        #    if (length(unique(curr_pt[ , compareby])) == 2){
+            if (length(unique(curr_pt[ , compareby])) == 2){
                 #Comparison is binary. Is there at least 2 of each class to get a p-value?
-        #        if ((min(table(curr_pt[ , compareby]))) < 2){
-        #            skip_HM_reason <- paste0("There are less than 2 samples within at least one class of variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
-        #            proceed <- FALSE
-        #        }
-        #    }
-        #}
+                if ((min(table(curr_pt[ , compareby]))) < 2){
+                    skip_HM_reason <- paste0("There are less than 2 samples within at least one class of variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
+                    proceed <- FALSE
+                }
+            }
+        }
 
         if (proceed){
 
@@ -401,8 +401,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                 if (matstats$Method[1] == "variance") {
                     matstats$Colour <- rep("black", nrow(matstats))
                     countmat2 <- countmat[rownames(matstats), ]
-                    #Transform to log2 space
-                    countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
+                    if (assay_for_matrix != "GeneCount"){
+                        #Transform to log2 space
+                        countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
+                    }
 
                     if (all(c(cluster_rows, (any(!(c(cluster_samples_per_heatmap, cluster_features_per_heatmap))))))){
                         flog.info("Clustering samples and features using entire matrix to obtain sample and feature order for all heatmaps.")
@@ -505,8 +507,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         #Transform to Presence/Absence according to threshold space
                         countmat2 <- convert_matrix_PA(mat = countmat2, threshPA = threshPA)
                     } else {
-                        #Transform to log2 space
-                        countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
+                        if (assay_for_matrix != "GeneCounts"){
+                            #Transform to log2 space
+                            countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
+                        }
                     }
 
                     #Decide row and sample ordering
