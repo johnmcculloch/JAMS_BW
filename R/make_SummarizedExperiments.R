@@ -510,6 +510,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL,  onlyan
                 currfd <- list.data[[wantedobj]][ , c(analysis, "LKT")]
                 colnames(currfd)[1] <- "Accession"
                 currGeneCount <- suppressMessages(currfd %>% group_by(Accession, LKT) %>% summarise(Count = n()) %>% pivot_wider(names_from = LKT, values_from = Count, values_fill = 0))
+                currGeneCount$Accession[which(currGeneCount$Accession == "none")] <- paste(analysis, "none", sep = "_")
                 currAccessions <- currGeneCount$Accession
                 currGeneCount$Accession <- NULL
                 currGeneCount <- as.matrix(currGeneCount)
