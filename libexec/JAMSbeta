@@ -214,6 +214,7 @@ if (is.null(opt$jamsfiles_path)) {
 #Set defaults
 asPA <- FALSE
 opt$projimage <- file.path(opt$outdir, ".RData")
+possible_analysis_spaces <- c("LKT", "ECNumber", "Product", "Pfam", "NCBIfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PRINTS")
 
 ###################
 ## Start project ##
@@ -443,12 +444,12 @@ if (!exists("expvec")){
             onlyanalyses <- unique(unlist(strsplit(opt$restrict_to_analyses, split = ",")))
             flog.info(paste("Building of SummarizedExperiments will be restricted to the following analyses:", paste0(onlyanalyses, collapse = ", ")))
         } else {
-            onlyanalyses <- c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PRINTS")
+            onlyanalyses <- possible_analysis_spaces
         }
     }
 
     #Restrict to building only stable analyses
-    onlyanalyses <- intersect(onlyanalyses, c("LKT", "ECNumber", "Product", "Pfam", "Interpro", "GO", "vfdb", "resfinder", "antibiogram", "CDD", "PRINTS"))
+    onlyanalyses <- intersect(onlyanalyses, possible_analysis_spaces)
 
     if (opt$stratify_functions_by_taxon == TRUE){
         flog.info("Functional (non-taxonomic) SummarizedExperiment objects will be stratified by taxonomy.")
