@@ -16,12 +16,6 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabe
         JAMSpalette <- JAMSpalette[shuffle(JAMSpalette)]
     }
 
-    if (print_palette){
-        pdf("JAMSpalette_values.pdf", paper = "a4r")
-        scales::show_col(JAMSpalette)
-        dev.off()
-    }
-
     if (is.null(variable_list)){
         if (is.null(phenolabels)){
             flog.info("Imputing types of columns on the metadata.")
@@ -31,7 +25,7 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabe
         }
 
         #Define kinds of variables
-        variable_list <- define_kinds_of_variables(phenolabels = phenolabels, phenotable = pheno, maxclass = 100, maxsubclass = 100, class_to_ignore = class_to_ignore)
+        variable_list <- define_kinds_of_variables(phenolabels = phenolabels, phenotable = pheno, maxclass = 30, maxsubclass = 100, class_to_ignore = class_to_ignore, verbose = FALSE)
     }
 
     #See how many different things there are
@@ -39,56 +33,74 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabe
     uniqueclasses <- unique(unlist(pheno[ , discretes]))
 
     #Attribute colours to a non-redundant list of classes
+    #Start by attributing colours to things that are named the same
+
     if (length(uniqueclasses) > length(JAMSpalette)){
-        cat("There are far too many different classes in the metadata. Humans cannot possibly distinguish this number of colours.\n")
+        flog.warn(paste0("The number of unique classes on metadata (", length(uniqueclasses), ") is greater than the number of colors in the standard JAMS color palette. JAMS will recycle colors for this colour dictionary, but you may want to ponder over the magnitude of your metadata..."))
 
-        return(NULL)
+        JAMSpalette <- base::rep(JAMSpalette, times = ceiling(length(uniqueclasses) / length(JAMSpalette)))
+    }
+    discrete2colour <- data.frame(Name = uniqueclasses, Colour = JAMSpalette[1:length(uniqueclasses)], stringsAsFactors = FALSE)
+    rownames(discrete2colour) <- uniqueclasses
 
+    #Make class_to_ignore gray
+    if (!is.null(class_to_ignore)){
+        if (class_to_ignore %in% discrete2colour$Name){
+            discrete2colour$Colour[(discrete2colour$Name %in% class_to_ignore)] <- colour_of_class_to_ignore
+        }
+    }
+
+    if (!is.null(colour_table)){
+        rownames(colour_table) <- colour_table$Class_label
+        colour_table <- colour_table[rownames(colour_table) %in% discrete2colour$Name, ]
+        if (nrow(colour_table) > 0){
+            discrete2colour$Colour[match(colour_table$Class_label, discrete2colour$Name)]<-colour_table$Class_colour
+        }
+    }
+
+    cdict <- NULL
+    cdict <- list()
+    for(d in 1:length(discretes)){
+        classnames <- sort(unique(pheno[ , discretes[d]]))
+        ctab <- subset(discrete2colour, Name %in% classnames)
+        ctab$Hex <- ctab$Colour
+        cdict[[d]] <- ctab
+
+        names(cdict)[d] <- discretes[d]
+    }
+
+    ctable_new <- plyr::rbind.fill(cdict)
+    ctable_new <- ctable_new[!duplicated(ctable_new$Name), ]
+    rownames(ctable_new) <- ctable_new$Name
+
+
+    if (FALSE){
+        pdf("JAMSpalette_values.pdf", paper = "a4r")
+
+        show_ncol <- 6 %||% ceiling(sqrt(nrow(ctable_new)))
+        show_nrow <- ceiling(nrow(ctable_new) / show_ncol)
+
+        show_colours <- c(ctable_new$Colour, rep(NA, show_nrow * show_ncol - nrow(ctable_new)))
+        show_colours_mat <- matrix(show_colours, ncol = show_ncol, byrow = TRUE)
+        show_labels <- c(ctable_new$Name, rep(NA, show_nrow * show_ncol - nrow(ctable_new)))
+        show_labels <- unname(sapply(show_labels, function(x){ stringr::str_trunc(x, 20) }))
+        show_labels_mat <- matrix(show_labels, ncol = show_ncol, byrow = TRUE)
+
+        show_size <- max(dim(show_colours_mat))
+
+        plot(c(0, show_size), c(0, -show_size), type = "n", xlab = "", ylab = "", axes = FALSE)
+        rect(col(show_colours_mat) - 1, -row(show_colours_mat) + 1, col(show_colours_mat), -row(show_colours_mat), col = show_colours_mat, border = NULL)
+        hcl <- farver::decode_colour(show_colours_mat, "rgb", "hcl")
+        label_col <- ifelse(hcl[, "l"] > 50, "black", "white")
+        cex_label <- 0.5
+        text(col(show_labels_mat) - 0.5, -row(show_labels_mat) + 0.5, show_labels_mat, cex = cex_label, col = label_col)
+
+        dev.off()
+    }
+
+    if (object_to_return == "ctable"){
+        return(ctable_new)
     } else {
-        #Start by attributing colours to things that are named the same
-        discrete2colour <- data.frame(Name = uniqueclasses, Colour = JAMSpalette[1:length(uniqueclasses)], stringsAsFactors = FALSE)
-        rownames(discrete2colour) <- uniqueclasses
-
-        #Make class_to_ignore gray
-        if (!is.null(class_to_ignore)){
-            if (class_to_ignore %in% discrete2colour$Name){
-                discrete2colour$Colour[(discrete2colour$Name %in% class_to_ignore)] <- colour_of_class_to_ignore
-            }
-        }
-
-        if (!is.null(colour_table)){
-            rownames(colour_table) <- colour_table$Class_label
-            colour_table <- colour_table[rownames(colour_table) %in% discrete2colour$Name, ]
-            if (nrow(colour_table) > 0){
-                discrete2colour$Colour[match(colour_table$Class_label, discrete2colour$Name)]<-colour_table$Class_colour
-            }
-        }
-
-        cdict <- NULL
-        cdict <- list()
-        for(d in 1:length(discretes)){
-            classnames <- sort(unique(pheno[ , discretes[d]]))
-            #if (!is.null(class_to_ignore)){
-            #    classnames <- classnames[!(classnames %in% class_to_ignore)]
-            #}
-
-            ctab <- subset(discrete2colour, Name %in% classnames)
-            ctab$Hex <- ctab$Colour
-            cdict[[d]] <- ctab
-
-            names(cdict)[d] <- discretes[d]
-        }
-
-        if (object_to_return == "ctable"){
-
-            ctable_new <- plyr::rbind.fill(cdict)
-            ctable_new <- ctable_new[!duplicated(ctable_new$Name), ]
-            rownames(ctable_new) <- ctable_new$Name
-
-            return(ctable_new)
-
-        } else {
-            return(cdict)
-        }
+        return(cdict)
     }
 }

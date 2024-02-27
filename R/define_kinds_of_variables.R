@@ -91,7 +91,7 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
         if (verbose){
             flog.info(paste("Found discrete variables", paste0(variables_disc, collapse = ", "), "with", paste0(numcl, collapse = ", "),  "classes, respectively."))
         }
-        variables_disc <- variables_disc[which((numcl > 1) & (numcl < (maxclass + 1)))]
+        variables_disc <- variables_disc[which((numcl > 0) & (numcl < (maxclass + 1)))]
         if (verbose){
             flog.info(paste("Keeping discrete variables", variables_disc))
         }

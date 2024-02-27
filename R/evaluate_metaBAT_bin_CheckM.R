@@ -63,17 +63,17 @@ evaluate_metaBAT_bin_CheckM <- function(opt = NULL){
         write.fasta(sequences = opt$NHcontigs_sequence[Wanted_contigs], names = Wanted_contigs, nbchar = 80, file.out = currtaxfn)
     }
 
+    #Set the CheckM taxonomy database path
+    system2("checkm", args = c("data", "setRoot", opt$CheckMdb))
     #Run CheckM
     system2("checkm", args = c("lineage_wf", "-t", opt$threads, opt$tempCheckMbinfolder, opt$tempCheckMresultsfolder), stdout = FALSE, stderr = FALSE)
+    system2("checkm", args = c("qa", "-f", file.path(opt$tempCheckMresultsfolder, "CheckM_table.tsv"), "--tab_table", "-t", opt$threads, file.path(opt$tempCheckMresultsfolder, "lineage.ms"), opt$tempCheckMresultsfolder), stdout = FALSE, stderr = FALSE)
+
     #Load results from CheckM into opt
+    CheckMout <- fread(file.path(opt$tempCheckMresultsfolder, "CheckM_table.tsv"), header = TRUE, data.table = FALSE, sep = "\t")
+    colnames(CheckMout) <- c("MetaBATbin", "Marker_lineage", "Num_ref_genomes", "Num_ref_markers", "Num_ref_marker_sets", "C0", "C1", "C2", "C3", "C4", "C5_or_more", "Completeness", "Contamination", "Strain heterogeneity")
 
-
-    bin_stats_ext <- fread(file.path(opt$tempCheckMresultsfolder, "storage", "bin_stats_ext.tsv"), header = FALSE, data.table = FALSE)
-    bin_stats_analyze <- fread(file.path(opt$tempCheckMresultsfolder, "storage", "bin_stats.analyze.tsv"), header = FALSE, data.table = FALSE)
-
-
-    #Clean up
-
+    CheckMout <- CheckMout[order(CheckMout$Completeness, decreasing = TRUE), ]
 
     opt$assemblystats_MAGs <- get_assembly_stats_for_MAGs(opt=opt)
 
