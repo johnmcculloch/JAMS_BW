@@ -77,23 +77,23 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabe
     if (FALSE){
         pdf("JAMSpalette_values.pdf", paper = "a4r")
 
-        show_ncol <- 6 %||% ceiling(sqrt(nrow(ctable_new)))
+        show_ncol <- 4 %||% ceiling(sqrt(nrow(ctable_new)))
         show_nrow <- ceiling(nrow(ctable_new) / show_ncol)
 
         show_colours <- c(ctable_new$Colour, rep(NA, show_nrow * show_ncol - nrow(ctable_new)))
         show_colours_mat <- matrix(show_colours, ncol = show_ncol, byrow = TRUE)
         show_labels <- c(ctable_new$Name, rep(NA, show_nrow * show_ncol - nrow(ctable_new)))
-        show_labels <- unname(sapply(show_labels, function(x){ stringr::str_trunc(x, 20) }))
+        show_labels <- unname(sapply(show_labels, function(x){ split_featname(featname = x, thresh_featname_split = 20)}))
         show_labels_mat <- matrix(show_labels, ncol = show_ncol, byrow = TRUE)
-
-        show_size <- max(dim(show_colours_mat))
-
-        plot(c(0, show_size), c(0, -show_size), type = "n", xlab = "", ylab = "", axes = FALSE)
-        rect(col(show_colours_mat) - 1, -row(show_colours_mat) + 1, col(show_colours_mat), -row(show_colours_mat), col = show_colours_mat, border = NULL)
-        hcl <- farver::decode_colour(show_colours_mat, "rgb", "hcl")
+        hcl <- farver::decode_colour(show_colours, "rgb", "hcl")
         label_col <- ifelse(hcl[, "l"] > 50, "black", "white")
-        cex_label <- 0.5
-        text(col(show_labels_mat) - 0.5, -row(show_labels_mat) + 0.5, show_labels_mat, cex = cex_label, col = label_col)
+
+        show_colours_df <- data.frame(fill = show_colours, colour = label_col, label = show_labels)
+
+        gl <- mapply(function(f,l,c) grobTree(rectGrob(gp=gpar(fill=f, col="white",lwd=2)), textGrob(l, gp=gpar(col=c))), f = show_colours_df$fill, l = show_colours_df$label, c = show_colours_df$colour, SIMPLIFY = FALSE)
+
+        print(grid.arrange(grobs=gl, nrow = NULL, ncol = NULL))
+
 
         dev.off()
     }
