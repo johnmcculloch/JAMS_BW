@@ -780,19 +780,12 @@ hm_fontsize_computer <- function(mat_rownames = NULL, mat_colnames = NULL, upper
 
 split_featname <- function(featname = NULL, thresh_featname_split = 40){
     if (nchar(featname) >= thresh_featname_split){
-        numsplits <- ceiling(nchar(featname) / thresh_featname_split)
-        splitlen <- round((nchar(featname) / numsplits), 0)
-        split_coords <- c(seq(from = 1, to = nchar(featname), by = splitlen), nchar(featname))
-
-        s <- 1
-        new_featname <- NULL
-        for (p in 2:length(split_coords)){
-            new_featname <- c(new_featname, paste0(unlist(strsplit(featname, split = ""))[split_coords[s]:split_coords[p]], collapse = ""))
-            s <- sum(s, 1)
-        }
-
-        new_featname <- paste0(new_featname, collapse = "\n")
+        len1 <- round((nchar(featname) / 2), 0)
+        len2 <- nchar(featname) - len1
+        part1 <- paste0(unlist(strsplit(featname, split = ""))[1:len1], collapse = "")
+        part2 <- paste0(unlist(strsplit(featname, split = ""))[(1:len2) + len1], collapse = "")
+        featname <- paste0(part1, "-\n", part2)
     }
 
-    return(new_featname)
+    return(featname)
 }
