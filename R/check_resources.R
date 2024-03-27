@@ -6,7 +6,7 @@
 check_resources <- function(opt = opt, applications_to_check = c("base", "reads", "assembly", "kraken", "host", "annotation", "16S", "blast")){
     opt$abort <- FALSE
 
-    deplist <- list(base = c("pigz", "wget"), reads = c("sratoolkit", "trimmomatic"), host = c("bowtie2"), assembly = c("megahit", "spades", "samtools"), annotation = c("prokka", "convert2bed", "bedtools"), kraken = "kraken2")
+    deplist <- list(base = c("pigz", "wget"), reads = c("sratoolkit", "trimmomatic"), host = c("bowtie2"), assembly = c("megahit", "spades", "samtools", "checkm", "metabat2"), annotation = c("prokka", "convert2bed", "bedtools"), kraken = "kraken2")
 
     dependencies_to_check <- unname(unlist(deplist[applications_to_check]))
 
@@ -56,6 +56,15 @@ check_resources <- function(opt = opt, applications_to_check = c("base", "reads"
                 }
                 flog.info(paste("The JAMS kraken2 database supplied is version", opt$JAMS_Kdb_Version, "and has", round((krakendbsize/1000000000), 1), "Gb."))
             }
+        }
+        flog.info("Checking for presence of CheckM database")
+        checkmfiles <- list.files(opt$dbdir, recursive=TRUE, full.names=TRUE, include.dirs=FALSE, pattern="taxon_marker_sets.tsv")
+        if (length(checkmfiles) > 0){
+            opt$CheckMdb <- paste0(unlist(strsplit(checkmfiles[1], split="/"))[1:length(unlist(strsplit(checkmfiles[1], split="/")))-1], collapse="/")
+        } else {
+            flog.warn("CheckM database not found. Will not evaluate genome completeness using CheckM")
+            #Ensure NULL if db is absent
+            opt$CheckMdb <- NULL
         }
     }
 

@@ -758,16 +758,17 @@ compute_x_font <- function(nx = 1, upper_n = 400, upper_fs = 0.1, lower_n = 10, 
 
 hm_fontsize_computer <- function(mat_rownames = NULL, mat_colnames = NULL, upper_n = 400, upper_fs = 0.1, lower_n = 10, lower_fs = 8, cex = 0.7){
 
-    fontcoefficienty <- (-0.05 * length(mat_rownames)) + 7.5
-    fontcoefficientcorrector_y <- ((-0.2 / 10) * max(nchar(mat_rownames))) + 1.6
-    #Cap to 1
-    fontcoefficientcorrector_y <- min(fontcoefficientcorrector_y, 1)
-    #Floor to 0.5
-    fontcoefficientcorrector_y <- max(fontcoefficientcorrector_y, 0.5)
-    #Recompute the current coefficients
-    fontcoefficienty <- fontcoefficienty * fontcoefficientcorrector_y
-    fontsizey <- round((((-1 / 200) * (length(mat_rownames))) + 1.01 * fontcoefficienty), 2)
+    cexy <- cex
+    #If not LKT and featname is split, then decrease row font size
+    if (!(any(length(grep("^LKT_", mat_rownames) > 0)))){
+        if (max(nchar(mat_rownames)) > 60){
+            cexy <- cex * 0.7
+        }
+    }
     fontsizex <- compute_x_font(nx = length(mat_colnames), upper_n = upper_n, upper_fs = upper_fs, lower_n = lower_n, lower_fs = lower_fs, cex = cex)
+    fontsizey <- compute_x_font(nx = length(mat_rownames), upper_n = upper_n, upper_fs = upper_fs, lower_n = lower_n, lower_fs = lower_fs, cex = cexy)
+    #floor rownames to 0.1
+    fontsizey <- max(0.1, fontsizey)
     xy_fs <- c(fontsizex, fontsizey)
 
     return(xy_fs)

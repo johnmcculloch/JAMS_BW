@@ -3,7 +3,7 @@
 #' Calculates the genome completeness and assembly stats for metaBAT bins using CheckM (must be installed).
 #' @export
 
-evaluate_metaBAT_bin_CheckM <- function(opt = NULL){
+evaluate_metaBAT_bin_CheckM <- function(opt = NULL, verbose = FALSE){
 
     flog.info("Evaluating quality of MAGs with CheckM.")
 
@@ -59,7 +59,9 @@ evaluate_metaBAT_bin_CheckM <- function(opt = NULL){
         currtaxfn <- paste(MAG, "fna", sep = ".")
         currtaxfn <- file.path(opt$tempCheckMbinfolder, currtaxfn)
         Wanted_contigs <- subset(opt$contigsdata, MetaBATbin == MAG)[]$Contig
-        flog.info(paste("Writing", MAG))
+        if (verbose){
+            flog.info(paste("Writing", MAG))
+        }
         write.fasta(sequences = opt$NHcontigs_sequence[Wanted_contigs], names = Wanted_contigs, nbchar = 80, file.out = currtaxfn)
     }
 

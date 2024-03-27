@@ -483,7 +483,6 @@ plotErrors(errR, nominalQ=TRUE)
 dev.off()
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
-
 flog.info("Dereplicating reads")
 derepFs <- derepFastq(filtFs, verbose = TRUE)
 derepRs <- derepFastq(filtRs, verbose = TRUE)

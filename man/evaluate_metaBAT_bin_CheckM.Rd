@@ -4,7 +4,7 @@
 \alias{evaluate_metaBAT_bin_CheckM}
 \title{evaluate_metaBAT_bin_CheckM(opt=NULL)}
 \usage{
-evaluate_metaBAT_bin_CheckM(opt = NULL)
+evaluate_metaBAT_bin_CheckM(opt = NULL, verbose = FALSE)
 }
 \description{
 Calculates the genome completeness and assembly stats for metaBAT bins using CheckM (must be installed).
