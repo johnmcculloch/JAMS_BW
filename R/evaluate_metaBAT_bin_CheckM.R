@@ -75,7 +75,7 @@ evaluate_metaBAT_bin_CheckM <- function(opt = NULL, verbose = FALSE){
     CheckMout <- fread(file.path(opt$tempCheckMresultsfolder, "CheckM_table.tsv"), header = TRUE, data.table = FALSE, sep = "\t")
     colnames(CheckMout) <- c("MetaBATbin", "Marker_lineage", "Num_ref_genomes", "Num_ref_markers", "Num_ref_marker_sets", "C0", "C1", "C2", "C3", "C4", "C5_or_more", "Completeness", "Contamination", "Strain heterogeneity")
 
-    CheckMout <- CheckMout[order(CheckMout$Completeness, decreasing = TRUE), ]
+    opt$CheckMout <- CheckMout[order(CheckMout$Completeness, decreasing = TRUE), ]
 
     opt$assemblystats_MAGs <- get_assembly_stats_for_MAGs(opt=opt)
 

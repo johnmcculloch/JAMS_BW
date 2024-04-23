@@ -24,7 +24,7 @@ check_resources <- function(opt = opt, applications_to_check = c("base", "reads"
 
     if (missingdep == TRUE) {
         flog.info("Please install missing dependencies before using JAMSalpha. Aborting.")
-        opt$abort<-TRUE
+        opt$abort <- TRUE
     }
 
     if ("kraken" %in% applications_to_check){

@@ -4,7 +4,7 @@
 #'
 #' @export
 
-calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 10000){
+calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, paired = FALSE, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 10000){
 
     #Test for silly stuff
     if ((stattype %in% c("binary", "permanova", "anova", "PA")) && (is.null(classesvector))){
@@ -74,7 +74,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         }
 
         discretenames <- sort(unique(classesvector))
-        comparisons <- lapply(1:nrow(countmatrix), function(x) { wilcox.test(countmatrix[x, ] ~ classesvector) })
+        comparisons <- lapply(1:nrow(countmatrix), function(x) { wilcox.test(countmatrix[x, ] ~ classesvector, paired = paired) })
         mwstat <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$statistic) } )
         mwpval <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$p.value) } )
 

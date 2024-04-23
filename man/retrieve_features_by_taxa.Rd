@@ -2,10 +2,11 @@
 % Please edit documentation in R/retrieve_features_by_taxa.R
 \name{retrieve_features_by_taxa}
 \alias{retrieve_features_by_taxa}
-\title{retrieve_features_by_taxa(FuncExpObj = NULL, wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0)}
+\title{retrieve_features_by_taxa(FuncExpObj = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0)}
 \usage{
 retrieve_features_by_taxa(
   FuncExpObj = NULL,
+  assay_for_matrix = "BaseCounts",
   wantedfeatures = NULL,
   wantedsamples = NULL,
   asPPM = TRUE,

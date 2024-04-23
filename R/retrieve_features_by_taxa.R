@@ -1,12 +1,20 @@
-#' retrieve_features_by_taxa(FuncExpObj = NULL, wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0)
+#' retrieve_features_by_taxa(FuncExpObj = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0)
 #'
 #' Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
 #' @export
 
-retrieve_features_by_taxa <- function(FuncExpObj = NULL, wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0){
+retrieve_features_by_taxa <- function(FuncExpObj = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0){
 
-    allfeaturesbytaxa_matrix <- metadata(FuncExpObj)$allfeaturesbytaxa_matrix
-    allfeaturesbytaxa_index <- metadata(FuncExpObj)$allfeaturesbytaxa_index
+    if (assay_for_matrix == "GeneCounts"){
+        sparsematrix_name <- "allfeaturesbytaxa_GeneCounts_matrix"
+        sparsematrix_index_name <- "allfeaturesbytaxa_GeneCounts_index"
+    } else {
+        sparsematrix_name <- "allfeaturesbytaxa_matrix"
+        sparsematrix_index_name <- "allfeaturesbytaxa_index"
+    }
+
+    allfeaturesbytaxa_matrix <- metadata(FuncExpObj)[[sparsematrix_name]]
+    allfeaturesbytaxa_index <- metadata(FuncExpObj)[[sparsematrix_index_name]]
     curr_pt <- colData(FuncExpObj)
 
     #Get appropriate rows

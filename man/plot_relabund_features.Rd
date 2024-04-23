@@ -13,6 +13,7 @@ plot_relabund_features(
   aggregatefeatures_label = "Sum_of_wanted_features",
   subsetby = NULL,
   compareby = NULL,
+  paired = FALSE,
   compareby_order = NULL,
   colourby = NULL,
   shapeby = NULL,

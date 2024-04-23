@@ -3,7 +3,7 @@
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, ...){
+plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, paired = FALSE, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, ...){
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
@@ -183,7 +183,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             cl <- colData(currobj)[ , which(colnames(colData(currobj)) == compareby)]
             discretenames <- sort(unique(cl))
 
-            matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = log2tran_main_plot, statsonlog = FALSE, stattype = stattype, classesvector = cl, invertbinaryorder = FALSE, numthreads = numthreads, nperm = nperm)
+            matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = log2tran_main_plot, statsonlog = FALSE, stattype = stattype, classesvector = cl, paired = paired, invertbinaryorder = FALSE, numthreads = numthreads, nperm = nperm)
 
             ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
 
@@ -405,6 +405,11 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     p <- p + geom_boxplot(outlier.shape = NA)
                 }
 
+                #Jitter only if not connecting samples across boxplot
+                if (is.null(connectby)){
+                    jitfact <- 0
+                }
+
                 if (!(is.null(shapeby))){
                     p <- p + geom_jitter(position = position_jitter(width = jitfact, height = 0.0), aes(shape = Shape))
                     p <- add_shape_to_plot_safely(p = p, shapevec = dat$Shape, shapeby = shapeby, cdict = cdict)
@@ -422,7 +427,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     }
                     #Add pval
                     my_comparisons <- combn(discretenames, m = 2, simplify = FALSE)
-                    p <- p + stat_compare_means(method = "wilcox.test", comparisons = my_comparisons, paired = FALSE, label = signiflabel)
+                    p <- p + stat_compare_means(method = "wilcox.test", comparisons = my_comparisons, paired = paired, label = signiflabel)
                 } else {
                     flog.warn("There are too many combinations to plot significance.")
                 }
