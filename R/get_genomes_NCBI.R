@@ -17,6 +17,7 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
     if (is.null(assembly_summary)){
         flog.info("Downloading assembly_summary.txt from GenBank")
         GBURL <- "https://ftp.ncbi.nlm.nih.gov/genomes/genbank"
+        options(timeout = 600)
         if (!is.null(organisms)){
             ASURL <- paste(GBURL, organisms, "assembly_summary.txt", sep = "/")
         } else {
