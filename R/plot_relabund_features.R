@@ -1,9 +1,9 @@
-#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, ...)
+#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, paired = FALSE, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, annotate_phylum = TRUE, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, paired = FALSE, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, ...){
+plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, paired = FALSE, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, annotate_phylum = TRUE, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, ...){
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
@@ -333,7 +333,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             data(Gram)
             tt <- JAMStaxtable[ , which(colnames(JAMStaxtable) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "LKT"))]
             tt <- tt[!(duplicated(tt$LKT)), ]
-            LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", colnames(curr_pt)))]
+            LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", "Compareby", colnames(curr_pt)))]
             tt <- subset(tt, LKT %in% LKTcolumns)
             tt <- tt[ , c(stratify_by_taxlevel, "Phylum")]
             Gram$Kingdom <- NULL
@@ -406,7 +406,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 }
 
                 #Jitter only if not connecting samples across boxplot
-                if (is.null(connectby)){
+                if (!is.null(connectby)){
                     jitfact <- 0
                 }
 
@@ -466,6 +466,16 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                             ct <- cdict[[colourby]]
                             groupcols <- setNames(as.character(ct$Colour), as.character(ct$Name))
                             p <- p + scale_color_manual(values = groupcols)
+                        } else {
+                            #Use colour table if available
+                            if ("ctable" %in% names(metadata(currobj))){
+                                discretenames <- sort(unique(dat$Colour))
+                                colourshave <- discretenames[discretenames %in% rownames(metadata(currobj)$ctable)]
+                                cores <- as.vector(rainbow(length(discretenames)))
+                                names(cores) <- discretenames
+                                cores[colourshave] <- metadata(currobj)$ctable[colourshave, "Hex"]
+                                p <- p + scale_color_manual(values = cores)
+                            }
                         }
                     }
                 }
@@ -597,7 +607,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     #Eliminate empties
                     LKTsToKeep <- names(which(colSums(currtaxsplitgrp[ , LKTcolumns]) > 0))
                     currtaxsplitgrp <- currtaxsplitgrp[ , c("Sample", LKTsToKeep)]
-                    dat <- currtaxsplitgrp %>% gather(Taxon, PPM, 2:ncol(currtaxsplitgrp))
+                    dat <- currtaxsplitgrp %>% gather(LKT, PPM, 2:ncol(currtaxsplitgrp))
 
                     #Start building a plot
                     dat <- left_join(dat, as.data.frame(curr_pt), by = "Sample")
@@ -620,9 +630,14 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     }
 
                     #Colour in by phylum
-                    Taxon2phylum <- tt[which(tt[ , stratify_by_taxlevel] %in% dat$Taxon), ]
+                    tt <- JAMStaxtable[ , which(colnames(JAMStaxtable) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "LKT"))]
+                    tt <- tt[!(duplicated(tt$LKT)), ]
+                    Taxon2phylum <- tt[which(tt[ , "LKT"] %in% dat$LKT), ]
                     colnames(Taxon2phylum)[which(colnames(Taxon2phylum) == stratify_by_taxlevel)] <- "Taxon"
-                    dat <- left_join(dat, Taxon2phylum, by = "Taxon")
+                    if (stratify_by_taxlevel == "LKT"){
+                        Taxon2phylum$LKT <- Taxon2phylum$Taxon
+                    }
+                    dat <- left_join(dat, Taxon2phylum, by = "LKT")
 
                     #Order and aggregate if more than 30
                     tally <- aggregate(PPM ~ Taxon, data = dat, FUN = "sum")
@@ -652,8 +667,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                         datremainder <- datremainder[!(duplicated(datremainder)), ]
                         aggremainder <- left_join(remaindertally, datremainder, by = "Sample")
                         aggremainder$Phylum <- "Remainder"
-                        aggremainder$Gram <- "Remainder"
-                        orddat <- rbind(orddat, aggremainder)
+                        orddat <- rbind(orddat, aggremainder[ , colnames(orddat)])
                     }
 
                     dat <- orddat
@@ -668,15 +682,17 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     p <- ggplot(dat, aes(x = Taxon, y = PPM))
 
                     if (!overlay_boxplot){
-                        p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
+                        if (annotate_phylum == TRUE){
+                            p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
+                        } else {
+                            p <- p + geom_boxplot(outlier.shape = NA)
+                        }
                     }
 
                     #Rescale to exclude outliers
                     if (!is.null(rescale_axis_quantiles)){
                         p <- p + scale_y_continuous(limits = quantile(dat$PPM, rescale_axis_quantiles))
                     }
-
-                    p <- p + scale_fill_manual(values = phycols[(names(phycols) %in% dat$Phylum)])
 
                     if ((length(unique(dat$Taxon))) < (nrow(dat))){
                         jitfact <- -( 0.3 / (nrow(dat))) * (length(unique(dat$Taxon))) + 0.25
@@ -694,7 +710,15 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     }
 
                     if (overlay_boxplot){
-                        p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
+                        if (annotate_phylum == TRUE){
+                            p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
+                        } else {
+                            p <- p + geom_boxplot(outlier.shape = NA)
+                        }
+                    }
+
+                    if (annotate_phylum == TRUE){
+                        p <- p + scale_fill_manual(values = phycols[(names(phycols) %in% dat$Phylum)])
                     }
 
                     if (!is.null(colourby)){
@@ -719,6 +743,16 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                                     ct <- cdict[[colourby]]
                                     groupcols <- setNames(as.character(ct$Colour), as.character(ct$Name))
                                     p <- p + scale_color_manual(values = groupcols)
+                                } else {
+                                    #Use colour table if available
+                                    if ("ctable" %in% names(metadata(currobj))){
+                                        discretenames <- sort(unique(dat$Colour))
+                                        colourshave <- discretenames[discretenames %in% rownames(metadata(currobj)$ctable)]
+                                        cores <- as.vector(rainbow(length(discretenames)))
+                                        names(cores) <- discretenames
+                                        cores[colourshave] <- metadata(currobj)$ctable[colourshave, "Hex"]
+                                        p <- p + scale_color_manual(values = cores)
+                                    }
                                 }
                             }
                         }
