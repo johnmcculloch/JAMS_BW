@@ -236,6 +236,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         } else {
             currpt_stat <- currpt
             d <- vegdist(countmat, method = distmethod, na.rm = TRUE)
+            d_for_plot <- d
             cats <- currpt_stat[, compareby]
         }
 
