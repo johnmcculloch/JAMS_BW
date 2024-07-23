@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JAMS</title>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <h1>JAMS Heatmap Generator</h1>
+  <form id="r-script-form">
+    <label for="rdata-file">Upload .RData File:</label>
+    <input type="file" id="rdata-file" name="rdata-file" accept=".RData, .rda">
+
+    <label for="summarized-object">Choose Summarized Experiment Object:</label>
+    <select id="summarized-object" name="summarized-object"></select>
+
+
+
+
+
+    <label for="showpval">showpval:</label>
+    <input type="checkbox" id="showpval" name="showpval"><br>
+    <label for="scaled">scaled:</label>
+    <input type="checkbox" id="scaled" name="scaled"><br>
+    <!-- Add more fields as needed -->
+    <button type="submit">Run Heatmap</button>
+  </form>
+  <div id="output"></div>
+  <script src="renderer.js"></script>
+</body>
+</html>
