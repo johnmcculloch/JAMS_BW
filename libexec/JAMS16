@@ -1,6 +1,10 @@
 #!/usr/bin/env Rscript
-suppressMessages(suppressPackageStartupMessages(library(optparse)))
-
+suppressPackageStartupMessages(library(RCurl))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(futile.logger))
+suppressPackageStartupMessages(library(parallel))
+suppressPackageStartupMessages(library(benchmarkme))
 #####################################
 # Define System-specific Functions ##
 #####################################
@@ -15,20 +19,36 @@ if(nchar(slurmjobid) < 3){
     cat(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid, "\n"))
 }
 
-#################
-## Get options ##
-#################
+#########################
+# Get options from args #
+#########################
+#Define defaults
+defopt <- list()
+defopt$projname <- "MyProject"
+defopt$outdir <- getwd()
+defopt$classignore <- "N_A"
+defopt$maxnumclasses <- 15
+defopt$trunclen <- ("240,200")
+defopt$taxamethod <- "dada2"
+defopt$readcountthres <- 500
+defopt$exporttables <- FALSE
+defopt$plot_read_qualities
+defopt$plotreadqual <- TRUE
+#defopt$primerforw <- NULL
+#defopt$primerrev <- NULL
+#defopt$threads <- (as.numeric(detectHardwareResources()["threads"]))
+#defopt$threads <- detectBatchCPUs()
 
 option_list <- list(
     make_option(c("-p", "--projectname"),
-                action="store", default = "MyProject",
+                action="store", default = defopt$projname,
                 type="character",
                 help="Name of project to be used as prefix for output files (required)"),
 
     make_option(c("-o", "--outdir"),
-                action="store", default = getwd(),
+                action="store", default = defopt$outdir,
                 type="character",
-                help ="path to where you want the output."),
+                help ="Path to where you want the output."),
 
     make_option(c("-x", "--excel_metadata"),
                 action="store", default = NULL,
@@ -46,12 +66,12 @@ option_list <- list(
                 help="Phenolabels file in tsv format, describing metadata file headers"),
 
     make_option(c("-c", "--maxnumclasses"),
-                action="store", default = 15,
+                action="store", default = defopt$maxnumclasses,
                 type="numeric",
                 help="Maximum number of classes for a discrete variable to be kept. Default=15"),
 
     make_option(c("-i", "--class_to_ignore"),
-                action="store", default = "N_A",
+                action="store", default = defopt$classignore,
                 type="character",
                 help="Ignore cells containing this text in the metadata. Samples bearing this class of text when comparing within a variable will be omitted from an analysis. Default = N_A"),
 
@@ -66,54 +86,59 @@ option_list <- list(
                 help = "Project ID for downloading reads from Illumina BaseSpace. If using the -b option, any reads from the -y input will be ignored. BaseSpace CLI must be installed. To install, see this: https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview"),
 
     make_option(c("-T", "--trunclen_cutoffs_R1_R2"),
-                action="store", default = "240,200",
+                action="store", default = defopt$trunclen,
                 type="character",
                 help ="Specify truncation lengths for R1,R2 (example: -T 240,200). If not specified, JAMS16 will impute appropriate values for truncation with fastq quality analysis."),
 
     make_option(c("-a", "--taxonomy_database"),
                 action="store", default = NULL,
                 type="character",
-                help ="path to the taxonomy database."),
+                help ="Path to the taxonomy database."),
+
+    make_option(c("-M", "--taxamethod"),
+                action="store", default=defopt$taxamethod,
+                type="character",
+                help = str_c("Choose analysis type (dada2, IDtaxa, dada2pr2, IDtaxapr2). First the program used to assign taxonomy is given (IDtaxa or dada2), then the database used for taxonomic assignment is given (SILVA or PR2), default: ", defopt$taxamethod, ")")),
 
     make_option(c("-u", "--read_count_threshold"),
-                action="store", default = 500,
+                action="store", default = defopt$readcountthres,
                 type="numeric",
                 help ="path to the taxonomy database."),
 
     make_option(c("-e", "--export_tables"),
-                action="store_true", default = FALSE,
+                action="store_true", default = defopt$exporttables,
                 type="logical",
                 help ="Export relative abundance tables and feature data tables in tsv format."),
 
-    make_option(c("-d", "--make_ordination_reports"),
-                action="store", default = NULL,
-                type="character",
-                help ="Generate ordination plots with this algorithm. Choose between PCA, tSNE or tUMAP, or more than one separated by a comma. Example: -d PCA,tUMAP"),
+#    make_option(c("-d", "--make_ordination_reports"),
+#                action="store", default = NULL,
+#                type="character",
+#                help ="Generate ordination plots with this algorithm. Choose between PCA, tSNE or tUMAP, or more than one separated by a comma. Example: -d PCA,tUMAP"),
 
-    make_option(c("-f", "--make_exploratory_reports"),
-                action="store_true", default = FALSE,
-                type="logical",
-                help ="Generate Relative Abundace heatmaps and spreadsheets based on variance analysis."),
+#    make_option(c("-f", "--make_exploratory_reports"),
+#                action="store_true", default = FALSE,
+#                type="logical",
+#                help ="Generate Relative Abundace heatmaps and spreadsheets based on variance analysis."),
 
-    make_option(c("-k", "--make_comparative_reports"),
-                action="store_true", default = FALSE,
-                type="logical",
-                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
+#    make_option(c("-k", "--make_comparative_reports"),
+#                action="store_true", default = FALSE,
+#                type="logical",
+#                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
 
-    make_option(c("-r", "--make_correlation_reports"),
-                action="store_true", default = FALSE,
-                type="logical",
-                help ="Generate Pairwise Feature Correlation heatmaps."),
+#    make_option(c("-r", "--make_correlation_reports"),
+#                 action="store_true", default = FALSE,
+#                type="logical",
+#                help ="Generate Pairwise Feature Correlation heatmaps."),
 
-    make_option(c("-z", "--make_alpha_reports"),
-                action = "store_true", default = FALSE,
-                type = "logical",
-                help = "Generate alpha diversity plots."),
-
-    make_option(c("-m", "--plot_in_parallel"),
-                action = "store_true", default = FALSE,
-                type = "logical",
-                help = "Use multiple CPUs when generating plots. This option is experimental, and is not guaranteed to not crash."),
+#    make_option(c("-z", "--make_alpha_reports"),
+#                action = "store_true", default = FALSE,
+#                type = "logical",
+#                help = "Generate alpha diversity plots."),
+#
+#    make_option(c("-m", "--plot_in_parallel"),
+#                action = "store_true", default = FALSE,
+#                type = "logical",
+#                help = "Use multiple CPUs when generating plots. This option is experimental, and is not guaranteed to not crash."),
 
     make_option(c("-s", "--run_script"),
                 action="store", default = NULL,
@@ -121,9 +146,19 @@ option_list <- list(
                 help ="Path to an R script to run after all other options have been executed. Example: -s /path/to/make_these_specific_plots.R will execute the commands in this script at the end of JAMSbeta."),
 
     make_option(c("-Q", "--plot_read_qualities"),
-                action = "store_true", default = TRUE,
+                action = "store_true", default = defopt$plotreadqual,
                 type = "logical",
                 help = "Plot read qualities to PDF file. Default is to not plot."),
+
+#    make_option(c("-F", "--forward_primer"),
+#                action = "store", default = defopt$primerforw,
+#                type = "character",
+#                help = "Forward primer. Default is NULL."),
+
+#    make_option(c("-R", "--reverse_primer"),
+#                action = "store", default = defopt$primerrev,
+#                type = "character",
+#                help = "Reverse primer. Default is NULL."),
 
     make_option(c("-v", "--version"),
                 action="store_true", help = "report version")
@@ -179,6 +214,13 @@ if (!is.null(opt$run_script)){
     }
 }
 
+#Abort if unreasonable instructions for taxonomy assignment
+if (!(opt$taxamethod %in% c("dada2", "IDtaxa", "IDtaxapr2","dada2pr2"))){
+    print("For an analysis chooose between one of these three options: dada2, IDtaxa, dada2pr2 or IDtaxapr2.")
+    parse_args(OptionParser(option_list = option_list), c("-h"))
+    q()
+}
+
 # Determine output directory
 if (!is.null(opt$outdir)) {
     if (!file.exists(opt$outdir)){
@@ -189,13 +231,6 @@ if (!is.null(opt$outdir)) {
     opt$outdir <- getwd()
 }
 
-
-# give help if needed input option not provided
-#if (is.null(opt$reads_files_path)) {
-#    parse_args(OptionParser(option_list = option_list), c("-h"))
-#    stop("You must supply fastq files with the -r option to build experiments.")
-#}
-
 #Set defaults
 asPA <- FALSE
 opt$projimage <- file.path(opt$outdir, ".RData")
@@ -204,10 +239,11 @@ opt$projimage <- file.path(opt$outdir, ".RData")
 ## Start project ##
 ###################
 suppressMessages(suppressPackageStartupMessages(library(JAMS)))
-if (TRUE){
-    opt$logfile <- file.path(opt$outdir, paste0(opt$projectname, "_JAMS.log"))
-    flog.appender(appender.tee(opt$logfile))
-}
+#The logfile is not an option as of a few JAMS versions ago. Therefore I commented out this loop
+#if (TRUE){
+#    opt$logfile <- file.path(opt$outdir, paste0(opt$projectname, "_JAMS.log"))
+#    flog.appender(appender.tee(opt$logfile))
+#}
 
 flog.info("JAMS - Just A Microbiology System")
 flog.info(authorshipmessage)
@@ -218,9 +254,6 @@ flog.info(paste("Using", project, "for name of project"))
 
 opt$threads <- as.numeric(detectHardwareResources()["threads"])
 flog.info(paste("You have", opt$threads, "CPUs available."))
-
-opt$silva_trainset <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = "train")))[1]
-opt$silva_species_assignment <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = "species")))[1]
 
 flog.info(paste("Content will be output to", opt$outdir))
 
@@ -335,10 +368,9 @@ if (length(Samples_have_R1R2) < length(Samples_have)){
 }
 rawfastqsdf <- subset(rawfastqsdf, OriPrefix %in% Samples_have_R1R2)
 
-#Are there at least two samples?
+#Are there two samples?
 if (nrow(rawfastqsdf) < 3){
     flog.warn(paste("There are only", nrow(rawfastqsdf), "samples that were found in the fastq file path. Check your metadata and fastq file path! Aborting now."))
-    q()
 }
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
@@ -504,42 +536,171 @@ flog.info("Building counts table")
 seqtab <- makeSequenceTable(mergers)
 flog.info("Removing chimeras")
 seqtab.nochim <- removeBimeraDenovo(seqtab, method = "consensus", multithread = max((opt$threads - 2), 1), verbose = TRUE)
+##Adding rownames to seqtab.nochim which we need for expvec later if there is only one sample
+if (length(sample.names) == 1){
+    rownames(seqtab.nochim) <- sample.names
+}
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 getN <- function(x) { sum(getUniques(x)) }
-track <- as.data.frame(cbind(sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim)))
+##this breaks here if there is only one sample so fixing it so one sample can run no problem
+##Fixing track so that if there is only one sample things will still run
+if (length(sample.names) == 1){
+    track <- as.data.frame(cbind(getN(dadaFs), getN(dadaRs), getN(mergers), rowSums(seqtab.nochim)))
+}else{
+    track <- as.data.frame(cbind(sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim)))
+}
 colnames(track) <- c("DenoisedF", "DenoisedR", "Merged", "NonChim")
 track$OriPrefix <- sample.names
 rawfastqsdf <- left_join(rawfastqsdf, track, by = "OriPrefix")
 flog.info("Exporting read stats")
-write.xlsx(rawfastqsdf, file = paste0(opt$projectname, "_Reads_Statistics.xlsx"), col.names = TRUE, row.names = FALSE, colWidths = "auto", borders = "all")
+write.xlsx(rawfastqsdf, file = paste0(opt$projectname, "_Reads_Statistics.xlsx"), colNames = TRUE, rowNames = FALSE, colWidths = "auto", borders = "all")
 
-flog.info("Assigning taxonomy down to Genus taxlevel")
-taxa <- assignTaxonomy(seqtab.nochim, opt$silva_trainset, multithread = max((opt$threads - 2), 1))
-flog.info("Assigning taxonomy down to Species level")
-taxa <- addSpecies(taxa, opt$silva_species_assignment)
+##########################
+## Assigning Taxonomy ##
+##########################
+#Set training taxonomy depending for each method of taxonomy assignment
+if (opt$taxamethod == "dada2"){
+    opt$silva_trainset <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = "train_")))[1]
+    opt$silva_species_assignment <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = "species")))[1]
+}else if(opt$taxamethod == "IDtaxa"){
+    opt$trainingset <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = glob2rx("SILVA*.RData"))))[1]
+}else if(opt$taxamethod == "dada2pr2"){
+    opt$trainingset <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = glob2rx("pr*.fasta.gz"))))[1]
+}else if (opt$taxamethod == "IDtaxapr2"){
+    opt$trainingset <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = glob2rx("pr*.rds"))))[1]
+}
+
+## IDtaxa with Silva ##
+if (opt$taxamethod %in% c("IDtaxa")){
+    flog.info("Obtaining DNAstringset from ASVs")
+    dnafrommyseq <- DNAStringSet(getSequences(seqtab.nochim))
+    flog.info("Assigning taxonomy with IDtaxa down to Species taxlevel. Please be patient")
+    load(opt$trainingset)
+    taxids <- IdTaxa(dnafrommyseq, trainingSet, strand="both", threshold = 60, processors=NULL, verbose=TRUE)
+    ranks <- c("domain", "phylum", "class", "order", "family", "genus", "species")
+    #Convert the output object of class "Taxa" to a matrix analogous to the output from assignTaxonomy
+    taxid <- t(sapply(taxids, function(x) {
+            m <- match(ranks, x$rank)
+            taxa <- x$taxon[m]
+            taxa[startsWith(taxa, "unclassified_")] <- NA
+            taxa
+    }))
+    colnames(taxid) <- ranks; rownames(taxid) <- getSequences(seqtab.nochim)
+
+    flog.info("Building JAMS-style SummarizedExperiment")
+    #n.b. Pump all these objects into opt to declutter workspace.
+    opt$tt <- as.data.frame(taxid)
+    #Fix names to capital letters
+    names(opt$tt) <- c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+    opt$tt$Kingdom <- opt$tt$Domain
+    opt$tt <- opt$tt[ , c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")]
+    taxlvls <- c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus")
+    taxtags <- c("d__", "k__", "p__", "c__", "o__", "f__", "g__")
+
+## IDtaxa with PR2 ##
+} else if (opt$taxamethod == "IDtaxapr2"){
+flog.info("Obtaining DNAstringset from ASVs")
+    dnafrommyseq <- DNAStringSet(getSequences(seqtab.nochim))
+    flog.info("Assigning taxonomy with IDtaxa down to Species taxlevel. Please be patient")
+    trainingSet <- readRDS(opt$trainingset)
+    taxids <- IdTaxa(dnafrommyseq, trainingSet, strand="both", threshold = 60, processors=NULL, verbose=TRUE)
+    IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+    #No more Phylum and instead there is Supergroup, Division and Subdivision
+    ranks <- c("Root","Domain","Supergroup","Division","Subdivision","Class","Order","Family","Genus","Species")
+    #Convert the output object of class "Taxa" to a matrix analogous to the output from assignTaxonomy
+    n_seq <- length(taxids)
+    df_rows <- list()
+
+    for(i in 1:n_seq){
+        taxonomy<- taxids[[i]]$taxon
+        apndlength= 10-length(taxonomy)
+        taxonomy <- c(taxonomy,rep("Unclassifed",apndlength))
+        #confidence <- taxids[[i]]$confidence
+        #apndlength= 10-length(confidence)
+        #confidence <- c(confidence,rep("100",apndlength))
+        df_rows[[i]] = data.frame(taxonomy)
+    }
+    taxid <- t(as.data.frame(df_rows))
+    colnames(taxid) <- ranks; rownames(taxid) <- getSequences(seqtab.nochim)
+
+    flog.info("Building JAMS-style SummarizedExperiment")
+    #n.b. Pump all these objects into opt to declutter workspace.
+    #Fix names to capital letters
+    opt$tt <- as.data.frame(taxid)
+    opt$tt$Kingdom <- opt$tt$Domain
+    opt$tt <- opt$tt[ , c("Domain", "Kingdom", "Supergroup","Division","Subdivision", "Class", "Order", "Family", "Genus", "Species")]
+    taxlvls <- c("Domain", "Kingdom", "Supergroup", "Division", "Subdivision","Class", "Order", "Family", "Genus")
+    taxtags <- c("d__", "k__", "sg__", "dv__", "sd__", "c__", "o__", "f__", "g__", "s__")
+
+## DADA2 with PR2 ##
+} else if (opt$taxamethod == "dada2pr2"){
+    #Using Dada2 with PR2
+    flog.info("Assigning taxonomy down to Species taxlevel with pr2")
+    #No more Phylum and instead there is Supergroup, Division and Subdivision
+    taxa <- assignTaxonomy(seqtab.nochim, opt$trainingset, taxLevels = c("Domain","Supergroup","Division","Subdivision","Class","Order","Family","Genus","Species"), multithread = max((opt$threads - 2), 1))
+    IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
+    flog.info("Building JAMS-style SummarizedExperiment")
+    #n.b. Pump all these objects into opt to declutter workspace.
+    opt$tt <- as.data.frame(taxa)
+    #Fix names to capital letters
+    names(opt$tt) <- c("Domain", "Supergroup", "Division", "Subdivision","Class", "Order", "Family", "Genus", "Species")
+    opt$tt$Kingdom <- opt$tt$Domain
+    opt$tt <- opt$tt[ , c("Domain", "Kingdom", "Supergroup","Division","Subdivision", "Class", "Order", "Family", "Genus", "Species")]
+    taxlvls <- c("Domain", "Kingdom", "Supergroup", "Division", "Subdivision","Class", "Order", "Family", "Genus", "Species")
+    taxtags <- c("d__", "k__", "sg__", "dv__", "sd__", "c__", "o__", "f__", "g__", "s__")
+
+
+} else if (opt$taxamethod == "dada2"){
+## DADA2 with Silva ##
+    flog.info("Assigning taxonomy down to Genus taxlevel")
+    taxa <- assignTaxonomy(seqtab.nochim, opt$silva_trainset, multithread = max((opt$threads - 2), 1))
+    flog.info("Assigning taxonomy down to Species level")
+    taxa <- addSpecies(taxa, opt$silva_species_assignment)
+    IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
+    flog.info("Building JAMS-style SummarizedExperiment")
+    #n.b. Pump all these objects into opt to declutter workspace.
+    opt$tt <- as.data.frame(taxa)
+    opt$tt$Domain <- opt$tt$Kingdom
+    opt$tt <- opt$tt[ , c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")]
+    taxlvls <- c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus")
+    taxtags <- c("d__", "k__", "p__", "c__", "o__", "f__", "g__")
+}
+
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
-flog.info("Building JAMS-style SummarizedExperiment")
-#n.b. Pump all these objects into opt to declutter workspace.
-opt$tt <- as.data.frame(taxa)
-opt$tt$Domain <- opt$tt$Kingdom
-opt$tt <- opt$tt[ , c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")]
-taxlvls <- c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus")
-taxtags <- c("d__", "k__", "p__", "c__", "o__", "f__", "g__")
+######################################
+## Cleaning and Joining to Metadata ##
+######################################
 
-for(lvl in 1:length(taxlvls)){
+if(opt$taxamethod %in% c("dada2", "dada2pr2","IDtaxa")){
+    for(lvl in 1:length(taxlvls)){
     taxlvl <- taxlvls[lvl]
     opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl] <- paste0(taxtags[lvl], opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl])
     opt$tt[which(is.na(opt$tt[ , taxlvl]) == TRUE) , taxlvl] <- "Unclassified"
+    }
 }
-
 #Add genus-species to species column, like kraken does it so infer_LKT will work as is.
 #tt[which(is.na(tt[ , "Species"]) == FALSE) , "Species"] <- paste(tt[which(is.na(tt[ , "Species"]) == FALSE), "Genus"], tt[which(is.na(tt[ , "Species"]) == FALSE) , "Species"], sep = "_")
 #tt$Species <- gsub("^g__", "s__", tt$Species)
 
 opt$tt[which(is.na(opt$tt[ , "Species"]) == TRUE) , "Species"] <- "Unclassified"
-opt$tt <- infer_LKT(opt$tt)
+##Inferring LKT based on taxonomic database
+if(opt$taxamethod %in% c("dada2","IDtaxa")){
+    opt$tt <- infer_LKT(opt$tt)
+    }else if (opt$taxamethod %in% c("dada2pr2","IDtaxapr2")){
+    opt$tt <- infer_LKT_pr2(opt$tt)
+    }
+
+if(opt$taxamethod %in% c("IDtaxapr2")){
+    for(lvl in 1:length(taxlvls)){
+    taxlvl <- taxlvls[lvl]
+    opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl] <- paste0(taxtags[lvl], opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl])
+    }
+}
+
 opt$tt$Species <- opt$tt$LKT
 opt$tt$LKT <- make.unique(opt$tt$LKT)
 
@@ -564,12 +725,23 @@ pheno <- opt$phenotable
 pheno <- left_join(pheno, Sample2Depth)
 
 rownames(pheno) <- pheno$Sample
-pheno <- pheno[colnames(opt$cts), ]
+
+#Pheno for more than one sample.
+if (length(sample.names) > 1){
+    pheno <- pheno[colnames(opt$cts), ]
+}
 
 variable_list <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenotable = pheno, maxclass = 15, maxsubclass = 4, class_to_ignore = "N_A", verbose = TRUE)
-
 cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE)
 
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
+
+#Stop here and save if nothing else is required (if one sample only)
+if (length(sample.names) == 1){
+flog.info("Thank you for using JAMS16 for one sample")
+    q()
+}
+##Otherwise build an expvec
 expvec <- list()
 expvec$LKT <- make_SummarizedExperiment_from_tables(pheno = pheno, counttable = opt$cts, featuretable = opt$tt, analysisname = "LKT")
 
