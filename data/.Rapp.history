@@ -1,0 +1,23 @@
+load("/Users/mossingtonta/Projects/JAMS_BW/data/expvec_MR50.rda")
+ls
+ls()
+names(expvec_MR50)
+obj <- ls()
+obj
+names(obj)
+list_objs <- ls()
+list_objs <- list_objs[sapply(list_objs, function(x) is.list(get(x)))]#
+list_objs
+if (length(list_objs) > 0) {#
+  first_list <- get(list_objs[1])#
+  obj_names <- names(first_list)#
+  print(obj_names)  # This should print the names of elements in the list#
+}
+load("/Users/mossingtonta/Projects/JAMS_BW/data/blast_lookup.rda")
+ls()
+names("blast_lookup")
+class(blast_lookup$resfinder_lookup)
+class(blast_lookup)
+load("/Users/mossingtonta/Projects/JAMS_BW/data/expvec_MR50.rda")
+ls()
+class(expvec_MR50$LKT)

@@ -7,6 +7,11 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
+//try {
+ // require('electron-reloader')(module);
+//} catch (_) {}
+
+
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -30,7 +35,6 @@ const createWindow = () => {
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   createWindow();
 
@@ -49,14 +53,20 @@ app.on('window-all-closed', () => {
   }
 });
 
-// R Heatmap script
-
+// Load r-data-file containing Expvec
 ipcMain.handle('load-rdata-file', async (event, filePath) => {
   const script = `
     Rscript -e '
       load("${filePath}");
-      objs <- names(expvec_MR50);
-      writeLines(objs, stdout());
+      list_objs <- ls();
+      list_objs <- list_objs[sapply(list_objs, function(x) is.list(get(x)))]
+      if (length(list_objs) > 0) {
+        first_list <- get(list_objs[1])
+        obj_names <- names(first_list)
+        writeLines(paste(list_objs[1], obj_names, sep="$"), stdout());
+      } else {
+        writeLines("", stdout());
+      }
     '
   `;
 
@@ -71,6 +81,7 @@ ipcMain.handle('load-rdata-file', async (event, filePath) => {
         return;
       }
       const objects = stdout.split('\n').filter(name => name.trim() !== '');
+      listObjs = objects
       resolve(objects); // Ensure objects are returned here
     });
   });
@@ -78,13 +89,36 @@ ipcMain.handle('load-rdata-file', async (event, filePath) => {
 
 
 
+// get user defined parameters then execute R heatmap script
 ipcMain.handle('run-r-script', async (event, params) => {
-  const paramStr = Object.entries(params)
-    .map(([key, value]) => `${key}=${typeof value === 'string' ? `"${value}"` : value}`)
-    .join(', ');
+  // Log the params object for debugging
+  console.log('Recieved params:', params);
+
+  const { filePath, ExpObj, ...otherParams } = params;
+
+
+  // Log individual properties for debugging
+  console.log('filePath:', filePath);
+  console.log('ExpObj:', ExpObj);
+  console.log('otherParams:', otherParams);
+
+
+
+  // Construct paramStr dynamically
+  const paramStr = `ExpObj = ${ExpObj}, ` +
+    Object.entries(otherParams)
+      .map(([key, value]) => `${key}=${typeof value === 'string' ? `"${value}"` : value}`)
+      .join(', ');
+
+  // Send paramStr to the renderer process for debugging
+  event.sender.send('param-str', paramStr);
 
   const script = `
-    Rscript -e 'library(JAMS); source("/Users/mossingtonta/Projects/JAMS_BW/R/plot_relabund_heatmap.R"); plot_relabund_heatmap(${paramStr})'
+    Rscript -e '
+    load("${filePath}");
+    library(JAMS); 
+    source("/Users/mossingtonta/Projects/JAMS_BW/R/plot_relabund_heatmap.R"); 
+    plot_relabund_heatmap(${paramStr})'
   `;
 
   return new Promise((resolve, reject) => {
