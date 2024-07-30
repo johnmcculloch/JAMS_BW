@@ -107,8 +107,23 @@ ipcMain.handle('run-r-script', async (event, params) => {
   // Construct paramStr dynamically
   const paramStr = `ExpObj = ${ExpObj}, ` +
     Object.entries(otherParams)
-      .map(([key, value]) => `${key}=${typeof value === 'string' ? `"${value}"` : value}`)
+      .map(([key, value]) => {
+        if (value === null || value === 'null' || value === 'NULL') {
+          return `${key}=NULL`;
+        } else if (typeof value === 'boolean') {
+          return `${key}=${value}`;
+        } else if (typeof value ==='number' || !isNaN(value)) {
+          return `${key}=${Number(value)}`
+        } else if (typeof value === 'string') {
+          return `${key}="${value}"`;
+        } else {
+          return `${key}=${value}`;
+        }
+      })
+
       .join(', ');
+
+  console.log(paramStr);
 
   // Send paramStr to the renderer process for debugging
   event.sender.send('param-str', paramStr);
