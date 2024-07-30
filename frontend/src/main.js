@@ -132,10 +132,12 @@ ipcMain.handle('run-r-script', async (event, params) => {
 
   const script = `
     Rscript -e '
+    suppressPackageStartupMessages({
     load("${filePath}");
     library(JAMS); 
     source("/Users/mossingtonta/Projects/JAMS_BW/R/plot_relabund_heatmap.R"); 
-    plot_relabund_heatmap(${paramStr})'
+    plot_relabund_heatmap(${paramStr})
+    })'
   `;
 
   return new Promise((resolve, reject) => {
