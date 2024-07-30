@@ -48,7 +48,22 @@ document.getElementById('r-script-form').addEventListener('submit', async (event
     const params = {};
     
     formData.forEach((value, key) => {
-      params[key] = value === 'on' ? true : value; // Convert checkboxes to boolean
+      // Convert checkboxes to boolean
+      const element = form.elements[key]; //get form element
+      if (element.type === 'checkbox') { 
+        params[key] = element.checked; // TRUE if checked, false if unchecked
+      } else {
+        params[key] = value === '' ? null : value; // convert empty strings to null
+      }
+
+    });
+
+    // Add unchecked boxes as false
+    const checkboxes = form.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach((checkbox) => {
+      if (!checkbox.checked && !(checkbox.name in params)){
+        params[checkbox.name] = false;
+      }
     });
 
    // Add file path to params if available

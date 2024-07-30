@@ -108,10 +108,10 @@ ipcMain.handle('run-r-script', async (event, params) => {
   const paramStr = `ExpObj = ${ExpObj}, ` +
     Object.entries(otherParams)
       .map(([key, value]) => {
-        if (value === null || value === 'null' || value === 'NULL') {
+        if (value === "" || value === null || value === 'null' || value === 'NULL') {
           return `${key}=NULL`;
         } else if (typeof value === 'boolean') {
-          return `${key}=${value}`;
+          return `${key}=${value ? 'TRUE' : 'FALSE'}`;
         } else if (typeof value ==='number' || !isNaN(value)) {
           return `${key}=${Number(value)}`
         } else if (typeof value === 'string') {
