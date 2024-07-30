@@ -49,13 +49,21 @@ document.getElementById('r-script-form').addEventListener('submit', async (event
     
     formData.forEach((value, key) => {
       // Convert checkboxes to boolean
-      const element = form.elements[key]; //get form element
+      const element = form.elements[key]; // get form element
       if (element.type === 'checkbox') { 
         params[key] = element.checked; // TRUE if checked, false if unchecked
+      } else if (key === 'colcategories') {
+        // Split the input string by commas and trim whitespace
+        const colcategoriesArray = value.split(',').map(item => item.trim());
+        // Convert the array to R vector format
+        params[key] = `c(${colcategoriesArray.map(item => `"${item}"`).join(', ')})`;
+      } else if (value === 'TRUE' || value === 'FALSE') {
+        params[key] = (value === 'TRUE'); // Convert TRUE/FALSE to boolean
+      } else if (!isNaN(value) && value !== '') {
+        params[key] = parseInt(value); // Convert number strings to integers
       } else {
         params[key] = value === '' ? null : value; // convert empty strings to null
       }
-
     });
 
     // Add unchecked boxes as false

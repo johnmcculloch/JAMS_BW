@@ -110,6 +110,8 @@ ipcMain.handle('run-r-script', async (event, params) => {
       .map(([key, value]) => {
         if (value === "" || value === null || value === 'null' || value === 'NULL') {
           return `${key}=NULL`;
+        } else if (typeof value === 'string' && value.startsWith('c(')) { // Check if param is a R variable
+          return `${key}=${value}`;
         } else if (typeof value === 'boolean') {
           return `${key}=${value ? 'TRUE' : 'FALSE'}`;
         } else if (typeof value ==='number' || !isNaN(value)) {
