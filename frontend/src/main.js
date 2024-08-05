@@ -1,3 +1,5 @@
+// main.js
+
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { exec } = require('child_process');
 const path = require('path');
@@ -98,9 +100,9 @@ ipcMain.handle('run-r-script', async (event, params) => {
 
 
   // Log individual properties for debugging
-  console.log('filePath:', filePath);
-  console.log('ExpObj:', ExpObj);
-  console.log('otherParams:', otherParams);
+  //console.log('filePath:', filePath);
+  //console.log('ExpObj:', ExpObj);
+  //console.log('otherParams:', otherParams);
 
 
 
@@ -130,15 +132,20 @@ ipcMain.handle('run-r-script', async (event, params) => {
   // Send paramStr to the renderer process for debugging
   event.sender.send('param-str', paramStr);
 
+  const outputFilePath = path.join(__dirname, 'heatmap.pdf');
   const script = `
     Rscript -e '
     suppressPackageStartupMessages({
     load("${filePath}");
     library(JAMS); 
     source("/Users/mossingtonta/Projects/JAMS_BW/R/plot_relabund_heatmap.R"); 
+    pdf("${outputFilePath}");
     plot_relabund_heatmap(${paramStr})
+    dev.off();
     })'
   `;
+
+
 
   return new Promise((resolve, reject) => {
     exec(script, (error, stdout, stderr) => {
@@ -150,7 +157,7 @@ ipcMain.handle('run-r-script', async (event, params) => {
         reject(`Stderr: ${stderr}`);
         return;
       }
-      resolve(`Stdout: ${stdout}`);
+      resolve({ stdout: stdout, imagePath: outputFilePath });
     });
   });
 });

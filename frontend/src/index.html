@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JAMS</title>
   <link rel="stylesheet" href="index.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
   <h1>JAMS Heatmap Generator</h1>
@@ -104,10 +105,15 @@
 
     <label for="addtit">Add Title:</label>
     <input type="text" id="addtit" name="addtit"><br>
+
+
     <button type="submit">Run Heatmap</button><br>
   </form>
+
+  <h2>Output</h2>
   <div id="output"></div>
-  <div id="param-str-output"></div>
+  <div id="pdf-container"></div>
+  <img id="heatmap-image" src="" alt="Generated Heatmap" />
   <script src="renderer.js"></script>
 </body>
 </html>
