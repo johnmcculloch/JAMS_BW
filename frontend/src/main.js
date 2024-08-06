@@ -28,7 +28,7 @@ const createWindow = () => {
   });
 
   // and load the index.html of the app.
-  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, 'renderer', 'heatmap', 'heatmap.html'));
 
 
   // Open the DevTools.
@@ -132,7 +132,7 @@ ipcMain.handle('run-r-script', async (event, params) => {
   // Send paramStr to the renderer process for debugging
   event.sender.send('param-str', paramStr);
 
-  const outputFilePath = path.join(__dirname, 'heatmap.pdf');
+  const outputFilePath = path.join(__dirname, 'assets', 'heatmap.pdf');
   const script = `
     Rscript -e '
     suppressPackageStartupMessages({
