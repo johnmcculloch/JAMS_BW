@@ -2,7 +2,7 @@
 
 
 document.getElementById('home-btn').addEventListener('click', () => {
-    // send IPC message to main process to navigate to heatmap page
+    // send IPC message to main process to navigate to home page
     window.electron.send('navigate-to', 'renderer/home/home.html');
 });
 
@@ -127,7 +127,9 @@ window.electron.onParamStr((paramStr) => {
   // Function to render a PDF
   async function renderPDF(pdfPath) {
   const pdfContainer = document.getElementById('pdf-container');
+  const pdfPathElement = document.getElementById('pdf-path');
   pdfContainer.innerHTML = ''; // Clear previous content
+  pdfPathElement.textContent = `PDF saved to: ${pdfPath}`;
   
   try {
   const pdf = await pdfjsLib.getDocument(pdfPath).promise;
