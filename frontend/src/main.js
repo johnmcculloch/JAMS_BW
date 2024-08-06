@@ -13,10 +13,13 @@ if (require('electron-squirrel-startup')) {
  // require('electron-reloader')(module);
 //} catch (_) {}
 
+// Global variable
+let mainWindow;
+
 // Create and display the heatmap code window
 const createWindow = () => {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
@@ -27,18 +30,31 @@ const createWindow = () => {
     },
   });
 
-  // and load the heatmap.html of the app to actually run
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'heatmap', 'heatmap.html'));
+  // and load the homepage
+  mainWindow.loadFile(path.join(__dirname, 'renderer', 'home', 'home.html'));
 
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
+
+  mainWindow.on('ready-to-show', () => {
+    console.log('Main window is ready and visible');
+  });
 };
+
+// IPC handler for page navigation
+ipcMain.on('navigate-to', (event, page) => {
+  // Verify mainWindow is initialized
+  if (mainWindow) {
+    mainWindow.loadFile(path.join(__dirname, 'renderer', 'heatmap', page));
+  } else {
+    console.error('mainWindow is not defined.');
+  }
+});
 
 // This method will be called when Electron has finished initialization and is ready to create browser windows.
 app.whenReady().then(() => {
   createWindow();
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
