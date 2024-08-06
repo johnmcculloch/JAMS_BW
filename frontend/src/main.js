@@ -46,7 +46,7 @@ const createWindow = () => {
 ipcMain.on('navigate-to', (event, page) => {
   // Verify mainWindow is initialized
   if (mainWindow) {
-    mainWindow.loadFile(path.join(__dirname, 'renderer', 'heatmap', page));
+    mainWindow.loadFile(path.join(__dirname, page));
   } else {
     console.error('mainWindow is not defined.');
   }

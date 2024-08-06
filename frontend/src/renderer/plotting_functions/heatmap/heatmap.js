@@ -2,8 +2,10 @@
 
 document.getElementById('home-btn').addEventListener('click', () => {
     // send IPC message to main process to navigate to heatmap page
-    window.electron.send('navigate-to', '../home/home.html');
+    window.electron.send('navigate-to', 'renderer/home/home.html');
 });
+
+
 
 // Listen for the param-str event and display paramStr
 window.electron.onParamStr((paramStr) => {
