@@ -1,10 +1,14 @@
 // heatmap.js
 
+
 document.getElementById('home-btn').addEventListener('click', () => {
     // send IPC message to main process to navigate to heatmap page
     window.electron.send('navigate-to', 'renderer/home/home.html');
 });
 
+document.getElementById('openFileLocation').addEventListener('click', () => {
+  window.electron.send('open-file-location');
+});
 
 
 // Listen for the param-str event and display paramStr

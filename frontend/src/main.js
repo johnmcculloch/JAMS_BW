@@ -1,6 +1,6 @@
 // main.js
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const { exec } = require('child_process');
 const path = require('path');
 
@@ -163,5 +163,18 @@ ipcMain.handle('run-r-script', async (event, params) => {
       }
       resolve({ stdout: stdout, imagePath: outputFilePath });
     });
+  });
+});
+
+
+// IPC handler for opening the file location in Finder/Explorer
+ipcMain.on('open-file-location', (event) => {
+  const outputFilePath = path.join(__dirname, 'assets', 'heatmap.pdf');
+  shell.openPath(outputFilePath).then((error) => {
+    if (error) {
+      console.error('Failed to open file location:', error);
+    } else {
+      console.log('File location opened successfully!');
+    }
   });
 });
