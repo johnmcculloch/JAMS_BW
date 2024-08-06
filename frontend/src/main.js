@@ -13,7 +13,7 @@ if (require('electron-squirrel-startup')) {
  // require('electron-reloader')(module);
 //} catch (_) {}
 
-
+// Create and display the heatmap code window
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -27,7 +27,7 @@ const createWindow = () => {
     },
   });
 
-  // and load the index.html of the app.
+  // and load the heatmap.html of the app to actually run
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'heatmap', 'heatmap.html'));
 
 
@@ -35,11 +35,9 @@ const createWindow = () => {
   mainWindow.webContents.openDevTools();
 };
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
+// This method will be called when Electron has finished initialization and is ready to create browser windows.
 app.whenReady().then(() => {
   createWindow();
-
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -48,14 +46,13 @@ app.whenReady().then(() => {
   });
 });
 
-
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
-// Load r-data-file containing Expvec
+// Load user provided r-data-file containing Expvec
 ipcMain.handle('load-rdata-file', async (event, filePath) => {
   const script = `
     Rscript -e '
@@ -98,15 +95,7 @@ ipcMain.handle('run-r-script', async (event, params) => {
 
   const { filePath, ExpObj, ...otherParams } = params;
 
-
-  // Log individual properties for debugging
-  //console.log('filePath:', filePath);
-  //console.log('ExpObj:', ExpObj);
-  //console.log('otherParams:', otherParams);
-
-
-
-  // Construct paramStr dynamically
+  // Construct paramStr dynamically to account for anything the user inputs
   const paramStr = `ExpObj = ${ExpObj}, ` +
     Object.entries(otherParams)
       .map(([key, value]) => {
@@ -132,6 +121,7 @@ ipcMain.handle('run-r-script', async (event, params) => {
   // Send paramStr to the renderer process for debugging
   event.sender.send('param-str', paramStr);
 
+// Run plot_relabund_heatmap command with user-defined parameters
   const outputFilePath = path.join(__dirname, 'assets', 'heatmap.pdf');
   const script = `
     Rscript -e '
@@ -144,8 +134,6 @@ ipcMain.handle('run-r-script', async (event, params) => {
     dev.off();
     })'
   `;
-
-
 
   return new Promise((resolve, reject) => {
     exec(script, (error, stdout, stderr) => {

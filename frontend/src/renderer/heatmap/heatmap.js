@@ -1,4 +1,4 @@
-// renderer.js
+// heatmap.js
 
 
 // Listen for the param-str event and display paramStr
