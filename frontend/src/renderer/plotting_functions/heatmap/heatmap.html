@@ -26,7 +26,10 @@
     <input type="text" id="glomby" name="glomby"><br>
 
     <label for="hmtype">Heatmap type:</label>
-    <input type="text" id="hmtype" name="hmtype"><br>
+    <select name="hmtype" id="hmtype">
+      <option value="exploratory">exploratory</option>
+      <option value="comparative">comparative</option>
+    </select>
 
     <label for="samplesToKeep">Samples To Keep:</label>
     <input type="text" id="samplesToKeep" name="samplesToKeep"><br>
@@ -115,6 +118,7 @@
   <h2>Output</h2>
   <div id="param-str-output"></div><br>
   <div id="output"></div><br>
+  <label for="openFileLocation">PDF saved to assets folder:</label>
   <button id="openFileLocation">Open PDF</button>
   <div id="pdf-container"></div>
   <img id="heatmap-image" src="" alt="Generated Heatmap" />
