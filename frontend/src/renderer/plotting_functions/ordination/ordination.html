@@ -5,12 +5,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Homepage</title>
-    <link rel="stylesheet" href="../shared/styles/index.css">
+    <title>JAMS Ordination Plot</title>
+    <link rel="stylesheet" href="../../shared/styles/index.css">
 </head>
 <body>
     <h1>Ordination Plot Generator</h1>
-    <button id="home-btn">Return Home</button>
+<button id="home-btn">Return Home</button>
+
+    <!-- separate form for .RData file upload that will be ignored by the R script -->
+    <form id="rdata-file-form">
+        <label for="rdata-file">Upload .RData File:</label>
+        <input type="file" id="rdata-file" name="rdata-file" accept=".RData, .rda">
+        <label for="ExpObj">Choose Summarized Experiment Object:</label>
+        <select id="ExpObj" name="ExpObj"></select>
+      </form>
     <script src="ordination.js"></script>
 </body>
 </html>
