@@ -109,7 +109,7 @@ ipcMain.handle('run-r-script', async (event, params) => {
   // Log the params object for debugging
   console.log('Recieved params:', params);
 
-  const { filePath, ExpObj, ...otherParams } = params;
+  const { filePath, ExpObj, advancedSettings, ...otherParams } = params;
 
   // Construct paramStr dynamically to account for anything the user inputs
   const paramStr = `ExpObj = ${ExpObj}, ` +

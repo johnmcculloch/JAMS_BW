@@ -6,6 +6,12 @@
   <title>JAMS</title>
   <link rel="stylesheet" href="../shared/styles/index.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <style>
+    #advanced-settings {
+      display: none;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
   <h1>JAMS Heatmap Generator</h1>
@@ -111,6 +117,93 @@
     <label for="addtit">Add Title:</label>
     <input type="text" id="addtit" name="addtit"><br>
 
+    <!-- toggle switch for advanced settings -->
+     <label for="toggle-advanced-settings">
+        <input type="checkbox" id="toggle-advanced-settings" name="advancedSettings">
+        Show Advanced Settings
+     </label>
+
+     <!-- Advanced settings section -->
+     <div id="advanced-settings">
+      <label for="hmasPA">hmasPA</label>
+      <input type="checkbox" id="hmasPA" name="hmasPA"><br>
+
+      <label for="threshPA">threshPA</label>
+      <input type="number" id="threshPA" name="threshPA" value="0"><br>
+
+      <label for="cluster_column_slices">Cluster Column Slices</label>
+      <input type="checkbox" id="cluster_column_slices" name="cluster_column_slices" value="true" checked><br>
+
+      <label for="column_split_group_order">column_split_group_order</label>
+      <input type="text" id="column_split_group_order" name="column_split_group_order"><br>
+
+      <label for="row_order">Row Order</label>
+      <input type="text" id="row_order" name="row_order"><br>
+
+      <label for="discard_SDoverMean_below">discard_SDoverMean_below</label>
+      <input type="text" id="discard_SDoverMean_below" name="discard_SDoverMean_below"><br>
+
+      <label for="maxl2fc">Maximum Log 2-Fold Change</label>
+      <input type="text" id="maxl2fc" name="maxl2fc"><br>
+
+      <label for="minl2fc">Minimum Log 2-Fold Change</label>
+      <input type="text" id="minl2fc" name="minl2fc"><br>
+
+      <label for="fun_for_l2fc">fun_for_l2fc</label>
+      <input type="text" id="fun_for_l2fc" name="fun_for_l2fc" value="geom_mean"><br>
+
+      <label for="showpval">Show p-value</label>
+      <input type="checkbox" id="showpval" name="showpval" value="true" checked><br>
+
+      <label for="showroundedpval">Show Rounded p-value</label>
+      <input type="checkbox" id="showroundedpval" name="showroundedpval" value="true" checked><br>
+
+      <label for="showl2fc">Show Log 2-Fold Change</label>
+      <input type="checkbox" id="showl2fc" name="showl2fc" value="true" checked><br>
+
+      <label for="assay_for_matrix">Assay for Matrix</label>
+      <select name="assay_for_matrix" id="assay_for_matrix">
+        <option value="BaseCounts">BaseCounts</option>
+        <option value="GeneCounts">GeneCounts</option>
+      </select><br>
+
+      <label for="normalization">Normalization</label>
+      <select name="normalization" id="normalization">
+        <option value="relabund">relabund</option>
+        <option value="compositions">compositions</option>
+      </select><br>
+
+      <label for="asPPM">As Parts Per Million</label>
+      <input type="checkbox" id="asPPM" name="asPPM" value="true" checked><br>
+
+      <label for="scaled">Scaled</label>
+      <input type="checkbox" id="scaled" name="scaled"><br>
+
+      <label for="cdict">Colour Dictionary</label>
+      <input type="text" id="cdict" name="cdict"><br>
+
+      <label for="maxnumheatmaps">Maximum Number of Heatmaps</label>
+      <input type="text" id="maxnumheatmaps" name="maxnumheatmaps"><br>
+
+      <label for="numthreads">Number of Threads Used</label>
+      <input type="number" id="numthreads" name="numthreads" value="1"><br>
+
+      <label for="statsonlog">statsonlog</label>
+      <input type="checkbox" id="statsonlog" name="statsonlog"><br>
+
+      <label for="ignoreunclassified">Ignore Unclassified</label>
+      <input type="checkbox" id="ignoreunclassified" name="ignoreunclassified" value="true" checked><br>
+
+      <label for="returnstats"> Return Stats</label>
+      <input type="checkbox" id="returnstats" name="returnstats"><br>
+
+      <label for="class_to_ignore">Class to Ignore? (Default is N_A)</label>
+      <input type="text" id="class_to_ignore" name="class_to_ignore" value="N_A"><br>
+
+     </div>
+
+
+
   
     <button type="submit">Run Heatmap</button><br>
   </form>
@@ -123,5 +216,15 @@
   <div id="pdf-container"></div>
   <img id="heatmap-image" src="" alt="Generated Heatmap" />
   <script src="heatmap.js"></script>
+  <script>
+    document.getElementById('toggle-advanced-settings').addEventListener('change', function() {
+      const advancedSettings = document.getElementById('advanced-settings');
+      if(this.checked) {
+        advancedSettings.style.display = 'block';
+      } else {
+        advancedSettings.style.display = 'none';
+      }
+    });
+  </script>
 </body>
 </html>
