@@ -53,7 +53,7 @@ window.electron.onParamStr((paramStr) => {
   
   
   // Run plot_relabund_heatmap script
-  document.getElementById('r-script-form').addEventListener('submit', async (event) => {
+  document.getElementById('heatmap-script-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.target;
     const formData = new FormData(form);
