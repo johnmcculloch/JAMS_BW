@@ -50,3 +50,5 @@ window.electron.onParamStr((paramStr) => {
         const dropdown = document.getElementById('ExpObj');
         return dropdown ? dropdown.value : null;
       }
+
+      
