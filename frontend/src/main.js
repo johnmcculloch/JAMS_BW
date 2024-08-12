@@ -105,7 +105,7 @@ ipcMain.handle('load-rdata-file', async (event, filePath) => {
 
 
 // get user defined parameters then execute R heatmap script
-ipcMain.handle('run-r-script', async (event, params) => {
+ipcMain.handle('run-heatmap-script', async (event, params) => {
   // Log the params object for debugging
   console.log('Recieved params:', params);
 
@@ -178,3 +178,5 @@ ipcMain.on('open-file-location', (event) => {
     }
   });
 });
+
+
