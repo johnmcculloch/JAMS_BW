@@ -6,11 +6,188 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Homepage</title>
-    <link rel="stylesheet" href="../shared/styles/index.css">
+    <link rel="stylesheet" href="../../shared/styles/index.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
     <h1>Relabund Features Plot Generator</h1>
     <button id="home-btn">Return Home</button>
+
+    <!-- separate form for .RData file upload that will be ignored by the R script -->
+    <form id="rdata-file-form">
+        <label for="rdata-file">Upload .RData File:</label>
+        <input type="file" id="rdata-file" name="rdata-file" accept=".RData, .rda">
+        <label for="ExpObj">Choose Summarized Experiment Object:</label>
+        <select id="ExpObj" name="ExpObj"></select>
+      </form>
+
+    <!-- Normal form for all other parameters -->
+        <form id="relabund_feature-script-form">
+        <label for="glomby">glomby:</label>
+        <input type="text" id="glomby" name="glomby"><br>
+
+        <label for="samplesToKeep">Samples To Keep:</label>
+        <input type="text" id="samplesToKeep" name="samplesToKeep"><br>
+
+        <label for="featuresToKeep">Features to Keep:</label>
+        <input type="text" id="featuresToKeep" name="featuresToKeep"><br>
+
+        <label for="aggregatefeatures">aggregatefeatures</label>
+        <input type="checkbox" id="aggregatefeatures" name="aggregatefeatures"><br>
+
+        <label for="aggregatefeatures_label">aggregatefeatures_label</label>
+        <input type="text" id="aggregatefeatures_label" name="aggregatefeatures_label" value="Sum_of_wanted_features"><br>
+
+        <label for="subsetby">Subset By:</label>
+        <input type="text" id="subsetby" name="subsetby"><br>
+
+        <label for="compareby">Compare by:</label>
+        <input type="text" id="compareby" name="compareby"><br>
+
+        <label for="paired">Paired</label>
+        <input type="checkbox" id="paired" name="paired"><br>
+
+        <label for="compareby_order">Compareby Order</label>
+        <input type="text" id="compareby_order" name="compareby_order"><br>
+
+        <label for="colourby">Colour By</label>
+        <input type="text" id="colourby" name="colourby"><br>
+
+        <label for="shapeby">Shape By</label>
+        <input type="text" id="shapeby" name="shapeby"><br>
+
+        <label for="fillby">fillby</label>
+        <input type="text" id="fillby" name="fillby"><br>
+
+        <label for="connectby">Connect By:</label>
+        <input type="text" id="connectby" name="connectby"><br>
+
+        <label for="facetby">facetby</label>
+        <input type="text" id="facetby" name="facetby"><br>
+
+        <label for="wrap_facet">Wrap Facet</label>
+        <input type="checkbox" id="wrap_facet" name="wrap_facet"><br>
+
+        <label for="overlay_boxplot">Overlay Boxplot</label>
+        <input type="checkbox" id="overlay_boxplot" name="overlay_boxplot"><br>
+
+
+        <label for="applyfilters">Apply Filters:</label>
+        <select name="applyfilters" id="applyfilters">
+            <option value="none">none</option>
+            <option value="light">light</option>
+            <option value="moderate">moderate</option>
+            <option value="stringent">stringent</option>
+        </select><br>
+
+        <label for="featcutoff">Feature Cutoff:</label>
+        <input type="text" id="featcutoff" name="featcutoff"><br>
+
+        <label for="GenomeCompletenessCutoff">Genome Completeness Cutoff:</label>
+        <input type="text" id="GenomeCompletenessCutoff" name="GenomeCompletenessCutoff"><br>
+
+        <label for="PctFromCtgscutoff">PctFromCtgscutoff</label>
+        <input type="text" id="PctFromCtgscutoff" name="PctFromCtgscutoff"><br>
+
+        <label for="ntop">ntop</label>
+        <input type="text" id="ntop" name="ntop"><br>
+
+        <label for="minabscorrcoeff">Minimum Absolute Correctness Coefficient</label>
+        <input type="text" id="minabscorrcoeff" name="minabscorrcoeff"><br>
+
+        <label for="adjustpval">Adjusted P-Value</label>
+        <input type="checkbox" id="adjustpval" name="adjustpval" value="true" checked><br>
+
+        <label for="padjmeth">padjmeth</label>
+        <input type="text" id="padjmeth" name="padjmeth" value="fdr"><br>
+
+        <label for="showonlypbelow">Show Only P-value Below</label>
+        <input type="text" id="showonlypbelow" name="showonlypbelow"><br>
+
+        <label for="showonlypadjusted">Show Only Adjusted P-value</label>
+        <input type="checkbox" id="showonlypadjusted" name="showonlypadjusted"><br>
+
+        <label for="maxl2fc">Maximum Log 2-fold change</label>
+        <input type=text id="maxl2fc" name="maxl2fc"><br>
+
+        <label for="minl2fc">Minimum Log 2-fold change</label>
+        <input type="text" id="minl2fc" name="minl2fc"><br>
+
+        <label for="addtit">Add Title</label>
+        <input type="text" id="addtit" name="addtit"><br>
+
+        <label for="PPM_normalize_to_bases_sequenced">PPM_normalize_to_bases_sequenced</label>
+        <input type="checkbox" id="PPM_normalize_to_bases_sequenced" name="PPM_normalize_to_bases_sequenced"><br>
+
+        <label for="log2tran_main_plot">log2tran_main_plot</label>
+        <input type="checkbox" id="log2tran_main_plot" name="log2tran_main_plot"><br>
+
+        <label for="log2tran_strat_plot">log2tran_strat_plot</label>
+        <input type="checkbox" id="log2tran_strat_plot" name="log2tran_strat_plot"><br>
+
+        <label for="statsonlog">Stats on Log?</label>
+        <input type="checkbox" id="statsonlog" name="statsonlog"><br>
+
+        <label for="y_axis_range">Y Axis Range</label>
+        <input type="text" id="y_axis_range" name="y_axis_range"><br>
+
+        <label for="cdict">Colour Dictionary</label>
+        <input type="text" id="cdict" name="cdict"><br>
+
+        <label for="stratify_by_taxlevel">stratify_by_taxlevel</label>
+        <input type="text" id="stratify_by_taxlevel" name="stratify_by_taxlevel">
+
+        <label for="annotate_phylum">Annotate Phylum</label>
+        <input type="checkbox" id="annotate_phylum" name="annotate_phylum" value="true" checked><br>
+
+        <label for="maxnumplots">Maximum number of plots</label>
+        <input type="number" id="maxnumplots" name="maxnumplots"><br>
+
+        <label for="signiflabel">signiflabel</label>
+        <input type="text" id="signiflabel" name="signiflabel" value="p.format"><br>
+
+        <label for="max_pairwise_cats">Maximum Pairwise Categories</label>
+        <input type="number" id="max_pairwise_cats" name="max_pairwise_cats" value="4"><br>
+
+        <label for="dump_interpro_descriptions_to_plot">dump_interpro_descriptions_to_plot</label>
+        <input type="checkbox" id="dump_interpro_descriptions_to_plot" name="dump_interpro_descriptions_to_plot"><br>
+
+        <label for="numthreads">Number of Threads</label>
+        <input type="number" id="numthreads" name="numthreads"><br>
+
+        <label for="nperm">Number of Permutations</label>
+        <input type="number" id="nperm" name="nperm" value="99"><br>
+
+        <label for="ignoreunclassified">Ignore Unclassified</label>
+        <input type="checkbox" id="ignoreunclassified" name="ignoreunclassified" value="true" checked><br>
+
+        <label for="class_to_ignore">Class to Ignore? (Default is N_A)</label>
+        <input type="text" id="class_to_ignore" name="class_to_ignore" value="N_A"><br>
+
+        <label for="maxnumtaxa">Maximum Number of Taxa</label>
+        <input type="number" id="maxnumtaxa" name="maxnumtaxa" value="20"><br>
+
+        <label for="horizontal">Horizontal</label>
+        <input type="checkbox" id="horizontal" name="horizontal" value="true" checked><br>
+
+        <label for="plot_points_on_taxonomy">Plot Points on Taxonomy</label>
+        <input type="checkbox" id="plot_points_on_taxonomy" name="plot_points_on_taxonomy"><br>
+
+        <label for="use_heatmap_for_stratification">Use Heatmap for Stratification</label>
+        <input type="checkbox" id="use_heatmap_for_stratification" name="use_heatmap_for_stratification" value="true" checked><br>
+
+        <label for="return_taxon_stratification_df">Return Taxon Stratification Dataframe</label>
+        <input type="checkbox" id="return_taxon_stratification_df" name="return_taxon_stratification_df"><br>
+
+        <label for="return_plots">Return Plots</label>
+        <input type="checkbox" id="return_plots" name="return_plots"><br>
+
+        <label for="rescale_axis_quantiles">rescale_axis_quantiles</label>
+        <input type="text" id="rescale_axis_quantiles" name="rescale_axis_quantiles"><br>
+
+        <button type="submit">Run Relabund Features Plot</button>
+    </form>
+
     <script src="relabund_features.js"></script>
 </body>
 </html>
