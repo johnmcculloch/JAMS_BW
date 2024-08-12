@@ -6,8 +6,8 @@ document.getElementById('home-btn').addEventListener('click', () => {
     window.electron.send('navigate-to', 'renderer/home/home.html');
 });
 
-document.getElementById('openFileLocation').addEventListener('click', () => {
-  window.electron.send('open-file-location');
+document.getElementById('openHeatmapLocation').addEventListener('click', () => {
+  window.electron.send('open-heatmap-location');
 });
 
 
@@ -103,7 +103,7 @@ window.electron.onParamStr((paramStr) => {
     }
   
     try {
-      const result = await window.electron.runRScript(params);
+      const result = await window.electron.runHeatmapScript(params);
       document.getElementById('output').textContent = result.stdout;
   
   // Display the generated image or PDF

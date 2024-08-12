@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JAMS Ordination Plot</title>
     <link rel="stylesheet" href="../../shared/styles/index.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body>
     <h1>Ordination Plot Generator</h1>
@@ -118,7 +119,7 @@
         <input type="text" id="ellipseby" name="ellipseby"><br>
 
         <label for="dotsize">Dot Size</label>
-        <input type="number" id="dotsize" name="dotsize"><br>
+        <input type="number" id="dotsize" name="dotsize" value="2"><br>
 
         <label for="log2tran">log2tran</label>
         <input type="checkbox" id="log2tran" name="log2tran"><br>
@@ -174,7 +175,15 @@
 
         <button type="submit">Run Ordination Plot</button><br>
       </form>
-    <script src="ordination.js"></script>
+
+      <h2>Output</h2>
+      <div id="param-str-output"></div>
+      <div id="output"></div>
+      <p id="pdf-path"></p>
+      <button id="openOrdinationLocation">Open PDF</button>
+      <div id="pdf-container"></div>
+      <img id="ordination-image" src="" alt="Generated Ordination Plot" />
+      <script src="ordination.js"></script>
 </body>
 </html>
 

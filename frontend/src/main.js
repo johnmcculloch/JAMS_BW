@@ -166,9 +166,69 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
   });
 });
 
+// get user defined parameters then execute R ordination plot script
+ipcMain.handle('run-ordination-script', async (event, params) => {
+  // Log the params object for debugging
+  console.log('Recieved params:', params);
 
-// IPC handler for opening the file location in Finder/Explorer
-ipcMain.on('open-file-location', (event) => {
+  const { filePath, ExpObj, ...otherParams } = params;
+
+  // Construct paramStr dynamically to account for anything the user inputs
+  const paramStr = `ExpObj = ${ExpObj}, ` +
+    Object.entries(otherParams)
+      .map(([key, value]) => {
+        if (value === "" || value === null || value === 'null' || value === 'NULL') {
+          return `${key}=NULL`;
+        } else if (typeof value === 'string' && value.startsWith('c(')) { // Check if param is a R variable
+          return `${key}=${value}`;
+        } else if (typeof value === 'boolean') {
+          return `${key}=${value ? 'TRUE' : 'FALSE'}`;
+        } else if (typeof value ==='number' || !isNaN(value)) {
+          return `${key}=${Number(value)}`
+        } else if (typeof value === 'string') {
+          return `${key}="${value}"`;
+        } else {
+          return `${key}=${value}`;
+        }
+      })
+
+      .join(', ');
+
+  console.log(paramStr);
+
+  // Send paramStr to the renderer process for debugging
+  event.sender.send('param-str', paramStr);
+
+// Run plot_Ordination command with user-defined parameters
+  const outputFilePath = path.join(__dirname, 'assets', 'ordination.pdf');
+  const script = `
+    Rscript -e '
+    suppressPackageStartupMessages({
+    load("${filePath}");
+    library(JAMS); 
+    source("/Users/mossingtonta/Projects/JAMS_BW/R/plot_Ordination.R"); 
+    pdf("${outputFilePath}", paper = "a4r");
+    print(plot_Ordination(${paramStr}))
+    dev.off();
+    })'
+  `;
+
+  return new Promise((resolve, reject) => {
+    exec(script, (error, stdout, stderr) => {
+      if (error) {
+        reject(`Error: ${error.message}`);
+        return;
+      }
+      if (stderr) {
+        reject(`Stderr: ${stderr}`);
+        return;
+      }
+      resolve({ stdout: stdout, imagePath: outputFilePath });
+    });
+  });
+});
+// IPC handler for opening the file of the heatmap
+ipcMain.on('open-heatmap-location', (event) => {
   const outputFilePath = path.join(__dirname, 'assets', 'heatmap.pdf');
   shell.openPath(outputFilePath).then((error) => {
     if (error) {
@@ -178,5 +238,14 @@ ipcMain.on('open-file-location', (event) => {
     }
   });
 });
-
-
+// IPC handler for opening the file of the ordination plot 
+ipcMain.on('open-ordination-location', (event) => {
+  const outputFilePath = path.join(__dirname, 'assets', 'ordination.pdf');
+  shell.openPath(outputFilePath).then((error) => {
+    if (error) {
+      console.error('Failed to open file location:', error);
+    } else {
+      console.log('File location opened successfully!');
+    }
+  });
+});
