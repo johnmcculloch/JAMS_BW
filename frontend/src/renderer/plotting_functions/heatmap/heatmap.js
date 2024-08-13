@@ -18,7 +18,7 @@ window.electron.onParamStr((paramStr) => {
     paramStrOutput.textContent = `Generated Command: ${paramStr}`;
   });
   
-  // Loading R Data File for summarized experiment object selection
+  // Function to load R Data File for summarized experiment object selection
   document.getElementById('rdata-file').addEventListener('change', async (event) => {
     const file = event.target.files[0];
     if (file) {
