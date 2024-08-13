@@ -13,19 +13,18 @@
     <h1>Alpha Diversity Plot Generator</h1>
     <button id="home-btn">Return Home</button>
 
-    <!-- Separate form for .RData file upload that will be ignored by the R script -->
-    <form id="rdata-file-form">
-        <label for="rdata-file">Upload .RData File:</label>
-        <input type="file" id="rdata-file" name="rdata-file" accept=".RData, .rda">
-
-        <label for="ExpObj">Choose Sumarized Experiment Object:</label>
-        <select id="ExpObj" name="ExpObj"></select>
-    </form>
+  <!-- Separate form for .RData file upload that will be ignored by the R script -->
+  <form id="rdata-file-form">
+    <label for="rdata-file">Upload .RData File:</label>
+    <input type="file" id="rdata-file" name="rdata-file" accept=".RData, .rda">
+    <label for="ExpObj">Choose Summarized Experiment Object:</label>
+    <select id="ExpObj" name="ExpObj"></select>
+  </form>
 
     <!-- Form for user parameters-->
-    <form id="alpha_diversity-script-form">
+    <form id="alphaDiversity-script-form">
         <label for="measures">Measures</label>
-        <input type="text" id="measures" name="measures" value="c('Observed', 'Chao1', 'Shannon', 'Simpson', 'InvSimpson', 'GeneCount')"><br>
+        <input type="text" id="measures" name="measures"><br>
 
         <label for="stratify_by_kingdoms">Stratify By Kingdoms</label>
         <input type="checkbox" id="stratify_by_kingdoms" name="stratify_by_kingdoms" value="TRUE"><br>
@@ -108,8 +107,13 @@
         <button type="submit">Run Alpha Diversity Plot</button><br>
     </form>
 
-
-
+    <h2>Output</h2>
+    <div id="param-str-output"></div><br>
+    <div id="output"></div><br>
+    <p id="pdf-path"></p>
+    <button id="openAlphaDiversityLocation">Open PDF</button>
+    <div id="pdf-container"></div>
+    <img id="alphaDiversity-image" src="" alt="Generated Alpha Diversity Plot" />
     <script src="alpha_diversity.js"></script>
 </body>
 </html>

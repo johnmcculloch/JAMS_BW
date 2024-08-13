@@ -6,5 +6,6 @@ contextBridge.exposeInMainWorld('electron', {
   loadRDataFile: (filePath) => ipcRenderer.invoke('load-rdata-file', filePath),
   runHeatmapScript: (params) => ipcRenderer.invoke('run-heatmap-script', params),
   runOrdinationScript: (params) => ipcRenderer.invoke('run-ordination-script', params),
+  runAlphaDiversityScript: (params) => ipcRenderer.invoke('run-alphaDiversity-script', params),
   onParamStr: (callback) => ipcRenderer.on('param-str', (event, paramStr) => callback(paramStr))
 });
