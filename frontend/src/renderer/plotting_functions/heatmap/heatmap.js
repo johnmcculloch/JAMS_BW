@@ -6,6 +6,7 @@ document.getElementById('home-btn').addEventListener('click', () => {
     window.electron.send('navigate-to', 'renderer/home/home.html');
 });
 
+// Listener to open the heatmap pdf when button is clicked
 document.getElementById('openHeatmapLocation').addEventListener('click', () => {
   window.electron.send('open-heatmap-location');
 });
