@@ -227,7 +227,7 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
     });
   });
 });
-// IPC handler for opening the file of the heatmap
+// IPC handler for opening the heatmap file (heatmap.js)
 ipcMain.on('open-heatmap-location', (event) => {
   const outputFilePath = path.join(__dirname, 'assets', 'heatmap.pdf');
   shell.openPath(outputFilePath).then((error) => {
@@ -238,9 +238,22 @@ ipcMain.on('open-heatmap-location', (event) => {
     }
   });
 });
-// IPC handler for opening the file of the ordination plot 
+// IPC handler for opening the ordination plot file (ordination.js)
 ipcMain.on('open-ordination-location', (event) => {
   const outputFilePath = path.join(__dirname, 'assets', 'ordination.pdf');
+  shell.openPath(outputFilePath).then((error) => {
+    if (error) {
+      console.error('Failed to open file location:', error);
+    } else {
+      console.log('File location opened successfully!');
+    }
+  });
+});
+
+
+// IPC handler for opening the alpha diversity file (alpha_diversity.js)
+ipcMain.on('open-alphadiversity-location', (event) => {
+  const outputFilePath = path.join(__dirname, 'assets', 'alpha_diversity.pdf');
   shell.openPath(outputFilePath).then((error) => {
     if (error) {
       console.error('Failed to open file location:', error);
