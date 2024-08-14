@@ -31,7 +31,7 @@ const createWindow = () => {
   });
 
   // and load the homepage
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'home', 'home.html'));
+  mainWindow.loadFile(path.join(__dirname, 'dist', 'home.html'));
 
 
   // Open the DevTools.
