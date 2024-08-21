@@ -53,5 +53,59 @@ const Heatmap = () => {
         returnstats: false,
         class_to_ignore: 'N_A'
     });
-    
-}
+    const [heatmapData, setHeatmapData] = useState(null);
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setParameters({
+            ...parameters,
+            [name]: type === 'checkbox' ? checked : value
+        });
+    };
+    const handleSubmit = (e) => {
+        e.preventDefault();
+
+
+        // add logic to generate heatmap based on parameters here
+
+    };
+    return (
+        <div>
+            <h1>Generate Heatmap</h1>
+            <form onSubmit={handleSubmit}>
+                {Object.keys(parameters).map((key) => (
+                    <div key={key}>
+                        <label htmlFor={key}>{key}:</label>
+                        {typeof parameters[key] === 'boolean' ? (
+                            <input
+                            type="checkbox"
+                            id={key}
+                            name={key}
+                            checked={parameters[key]}
+                            onChange={handleChange}
+                            />
+                        ): (
+                            <input
+                            type="text"
+                            id={key}
+                            name={key}
+                            value={parameters[key]}
+                            onChange={handleChange}
+                            />
+                        )}
+                    </div>
+                ))}
+                <button type="submit">Generate Heatmap</button>
+            </form>
+            {heatmapData && (
+                <div id="heatmap=container">
+                    <h2>Heatmap</h2>
+                    <p>{heatmapData}</p>
+                    {/* Placeholder for actual heatmap visualization */}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default Heatmap;
