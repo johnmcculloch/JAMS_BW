@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
+const { exec } require('child_process');
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -48,5 +49,41 @@ app.on('window-all-closed', () => {
   }
 });
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
+
+// ** Main Processes ** 
+
+
+// Load user provided r-data-file containing Expvec
+ipcMain.handle('load-rdata-file', async (event, filePath) => {
+  const script = `
+    Rscript -e '
+      load("${filePath}");
+      list_objs <- ls();
+      list_objs <- list_objs[sapply(list_objs, function(x) is.list(get(x)))]
+      if (length(list_objs) > 0) {
+        first_list <- get(list_objs[1])
+        obj_names <- names(first_list)
+        writeLines(paste(list_objs[1], obj_names, sep="$"), stdout());
+      } else {
+        writeLines("", stdout());
+      }
+    '
+  `;
+
+  return new Promise((resolve, reject) => {
+    exec(script, (error, stdout, stderr) => {
+      if (error) {
+        reject(`Error: ${error.message}`);
+        return;
+      }
+      if (stderr) {
+        reject(`Stderr: ${stderr}`);
+        return;
+      }
+      const objects = stdout.split('\n').filter(name => name.trim() !== '');
+      listObjs = objects
+      resolve(objects); // Ensure objects are returned here
+    });
+  });
+});
+
