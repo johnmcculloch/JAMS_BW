@@ -9,7 +9,6 @@ calculate_matrix_stats(
   uselog = NULL,
   statsonlog = TRUE,
   stattype = NULL,
-  paired = FALSE,
   classesvector = NULL,
   invertbinaryorder = FALSE,
   fun_for_l2fc = "geom_mean",
