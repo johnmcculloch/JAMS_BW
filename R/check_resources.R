@@ -6,7 +6,7 @@
 check_resources <- function(opt = opt, applications_to_check = c("base", "reads", "assembly", "kraken", "host", "annotation", "16S", "blast")){
     opt$abort <- FALSE
 
-    deplist <- list(base = c("pigz", "wget"), reads = c("sratoolkit", "trimmomatic"), host = c("bowtie2"), assembly = c("megahit", "spades", "samtools", "checkm", "metabat2"), annotation = c("prokka", "convert2bed", "bedtools"), kraken = "kraken2")
+    deplist <- list(base = c("pigz", "wget"), reads = c("sratoolkit", "trimmomatic"), host = c("bowtie2"), assembly = c("megahit", "spades", "samtools", "metabat2"), annotation = c("prokka", "convert2bed", "bedtools"), kraken = "kraken2")
 
     dependencies_to_check <- unname(unlist(deplist[applications_to_check]))
 
