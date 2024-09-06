@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 
+
 const Heatmap = () => {
     const [parameters, setParameters] = useState({
         glomby: '',
@@ -69,8 +70,18 @@ const Heatmap = () => {
         // add logic to generate heatmap based on parameters here
 
     };
+
+    const handleClick = () => {
+        window.electron.send('navigate-to', 'home');
+    };
+
     return (
         <div>
+            <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
+                <button onClick={handleClick}>
+                    Go Back to Home Page
+                </button>
+            </div>
             <h1>Generate Heatmap</h1>
             <form onSubmit={handleSubmit}>
                 {Object.keys(parameters).map((key) => (
