@@ -1,8 +1,7 @@
 module.exports = [
   // Add support for native node modules
   {
-    // We're specifying native_modules in the test because the asset relocator loader generates a
-    // "fake" .node file which is really a cjs file.
+    // Support for native modules
     test: /native_modules[/\\].+\.node$/,
     use: 'node-loader',
   },
@@ -17,29 +16,24 @@ module.exports = [
     },
   },
   {
+    // JavaScript and JSX files
     test: /\.jsx?$/,
+    exclude: /node_modules/,  // Moved outside of options
     use: {
       loader: 'babel-loader',
       options: {
-        exclude: /node_modules/,
-        presets: ['@babel/preset-react']
-      }
-    }
-  }
-  // Put your webpack loader rules in this array.  This is where you would put
-  // your ts-loader configuration for instance:
-  /**
-   * Typescript Example:
-   *
-   * {
-   *   test: /\.tsx?$/,
-   *   exclude: /(node_modules|.webpack)/,
-   *   loaders: [{
-   *     loader: 'ts-loader',
-   *     options: {
-   *       transpileOnly: true
-   *     }
-   *   }]
-   * }
-   */
+        presets: ['@babel/preset-env', '@babel/preset-react'], // Make sure to include @babel/preset-env
+      },
+    },
+  },
+  {
+    // CSS Loader
+    test: /\.css$/,
+    use: ['style-loader', 'css-loader'],
+  },
+  {
+    // File loader for images and other assets
+    test: /\.(png|jpg|gif|svg)$/,
+    use: ['file-loader'],
+  },
 ];
