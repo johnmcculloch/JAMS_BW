@@ -2,6 +2,8 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('node:path');
 const { exec } = require('child_process');
 
+let mainWindow;
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
   app.quit();
@@ -9,11 +11,14 @@ if (require('electron-squirrel-startup')) {
 
 const createWindow = () => {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
+      contextIsolation: true,
+      enableRemoteModule: false,
+      nodeIntegration: false,
     },
     autoHideMenuBar: true,
   });
@@ -51,6 +56,12 @@ app.on('window-all-closed', () => {
 
 
 // ** Main Processes ** 
+
+// Handle Page Navigation IPC event
+ipcMain.on('navigate-to', (event, page) => {
+  // Send the navigation event to the renderer
+  mainWindow.webContents.send('navigate-to', page);
+});
 
 
 // Load user provided r-data-file containing Expvec
