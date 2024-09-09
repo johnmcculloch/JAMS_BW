@@ -68,6 +68,14 @@ contextBridge.exposeInMainWorld('electron', {
   },
   invoke: function invoke(channel, data) {
     return ipcRenderer.invoke(channel, data);
+  },
+  runHeatmapScript: function runHeatmapScript(params) {
+    return ipcRenderer.invoke('run-heatmap-script', params);
+  },
+  onParamStr: function onParamStr(callback) {
+    return ipcRenderer.on('param-str', function (event, paramStr) {
+      return callback(paramStr);
+    });
   }
 });
 module.exports = __webpack_exports__;

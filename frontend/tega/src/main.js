@@ -1,6 +1,8 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const path = require('node:path');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const path = require('path');
 const { exec } = require('child_process');
+const fs = require('fs');
+
 
 let mainWindow;
 
@@ -35,6 +37,7 @@ const createWindow = () => {
 app.whenReady().then(() => {
   createWindow();
 
+
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   app.on('activate', () => {
@@ -60,6 +63,23 @@ app.on('window-all-closed', () => {
 ipcMain.on('navigate-to', (event, page) => {
   // Send the navigation event to the renderer
   mainWindow.webContents.send('navigate-to', page);
+});
+
+
+// Function to handle RData session files
+ipcMain.handle('open-file-dialog', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: 'RData Files', extensions: ['rdata', 'rda'] }
+    ]
+  });
+
+  if (canceled) {
+    return null;
+  } else {
+    return filePaths[0];
+  }
 });
 
 
@@ -98,19 +118,76 @@ ipcMain.handle('load-rdata-file', async (event, filePath) => {
 });
 
 
-const { dialog } = require('electron');
+// HEATMAP Script 
+ipcMain.handle('run-heatmap-script', async (event, params) => {
+  // Log the params object for debugging
+  console.log('Recieved params:', params);
 
-ipcMain.handle('open-file-dialog', async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    filters: [
-      { name: 'RData Files', extensions: ['rdata', 'rda'] }
-    ]
+  const { filePath, ExpObj, advancedSettings, ...otherParams } = params;
+
+  // Construct paramStr dynamically to account for anything the user inputs
+  const paramStr = `ExpObj = ${ExpObj}, ` +
+    Object.entries(otherParams)
+      .map(([key, value]) => {
+        if (value === "" || value === null || value === 'null' || value === 'NULL') {
+          return `${key}=NULL`;
+        } else if (typeof value === 'string' && value.startsWith('c(')) { // Check if param is a R variable
+          return `${key}=${value}`;
+        } else if (typeof value === 'boolean') {
+          return `${key}=${value ? 'TRUE' : 'FALSE'}`;
+        } else if (typeof value ==='number' || !isNaN(value)) {
+          return `${key}=${Number(value)}`
+        } else if (typeof value === 'string') {
+          return `${key}="${value}"`;
+        } else {
+          return `${key}=${value}`;
+        }
+      })
+
+      .join(', ');
+
+  console.log(paramStr);
+
+  // Send paramStr to the renderer process for debugging
+  event.sender.send('param-str', paramStr);
+
+// Run plot_relabund_heatmap command with user-defined parameters
+  const outputFilePath = path.join(__dirname, 'assets', 'heatmap.pdf');
+  const script = `
+    Rscript -e '
+    suppressPackageStartupMessages({
+    load("${filePath}");
+    library(JAMS); 
+    source("/Users/mossingtonta/Projects/JAMS_BW/R/plot_relabund_heatmap.R"); 
+    pdf("${outputFilePath}");
+    plot_relabund_heatmap(${paramStr})
+    dev.off();
+    })'
+  `;
+
+  return new Promise((resolve, reject) => {
+    exec(script, (error, stdout, stderr) => {
+      if (error) {
+        reject(`Error: ${error.message}`);
+        return;
+      }
+      if (stderr) {
+        reject(`Stderr: ${stderr}`);
+        return;
+      }
+      resolve({ stdout: stdout, imagePath: outputFilePath });
+    });
   });
+});
 
-  if (canceled) {
-    return null;
-  } else {
-    return filePaths[0];
-  }
+// IPC handler for opening the heatmap file
+ipcMain.on('open-heatmap-location', (event) => {
+  const outputFilePath = path.join(__dirname, 'assets', 'heatmap.pdf');
+  shell.openPath(outputFilePath).then((error) => {
+    if (error) {
+      console.error('Failed to open file location:', error);
+    } else {
+      console.log('File location opened successfully!');
+    }
+  });
 });

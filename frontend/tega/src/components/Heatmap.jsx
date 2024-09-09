@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 
 const Heatmap = () => {
@@ -68,9 +68,26 @@ const Heatmap = () => {
         });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // logic for heatmap generation
+        console.log('Selected ExpObj:', selectedObj);
+        try {
+            // Combine the parameters with selected objects and file path
+            const params = {
+                filePath,
+                ExpObj: selectedObj,
+                advancedSettings: {},
+                ...parameters
+            };
+
+            // Call IPC method to run the heatmap script
+            const result = await window.electron.runHeatmapScript(params);
+
+            // Update the heatmap data or any other relevant state with the result
+            setHeatmapData(result);
+        } catch (error) {
+            console.error('Error generating heatmap:', error);
+        }
     };
 
 
@@ -81,6 +98,11 @@ const Heatmap = () => {
                 setFilePath(filePath);
                 const result = await window.electron.invoke('load-rdata-file', filePath);
                 setObjects(result);
+
+                // Set default selection to the first object, otherwise it will not default to any
+                if (result.length > 0) {
+                    setSelectedObj(result[0]);
+                }
             }
         } catch (error) {
             console.error('Error opening file dialog:', error);
@@ -88,13 +110,27 @@ const Heatmap = () => {
     };
 
     const handleObjSelect = (e) => {
-        setSelectedObj(e.target.value);
+        const value = e.target.value;
+        setSelectedObj(value);
+        console.log('Selected object state:', value);
     };
 
 
     const handleClick = () => {
         window.electron.send('navigate-to', 'home');
     };
+
+    const handleDownloadClick = () => {
+        // Send IPC event to open the heatmap PDF
+        window.electron.send('open-heatmap-location');
+    };
+
+    useEffect(() => {
+        // Set default selection if objects array changes
+        if (objects.length > 0 && !selectedObj) {
+            setSelectedObj(objects[0]);
+        }
+    }, [objects, selectedObj]);
 
     return (
         <div>
@@ -154,11 +190,11 @@ const Heatmap = () => {
                 ))}
                 <button type="submit">Generate Heatmap</button>
             </form>
+
             {heatmapData && (
                 <div id="heatmap=container">
                     <h2>Heatmap</h2>
-                    <p>{heatmapData}</p>
-                    {/* Placeholder for actual heatmap visualization */}
+                    <button onClick={handleDownloadClick}>Open Heatmap PDF</button>
                 </div>
             )}
         </div>
