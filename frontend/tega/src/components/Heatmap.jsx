@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 
 
 const Heatmap = () => {
@@ -54,7 +54,11 @@ const Heatmap = () => {
         returnstats: false,
         class_to_ignore: 'N_A'
     });
+
     const [heatmapData, setHeatmapData] = useState(null);
+    const [objects, setObjects] = useState([]); // for ExpObj dropdown
+    const [filePath, setFilePath] = useState('');
+    const [selectedObj, setSelectedObj] = useState('');
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -63,13 +67,30 @@ const Heatmap = () => {
             [name]: type === 'checkbox' ? checked : value
         });
     };
+
     const handleSubmit = (e) => {
         e.preventDefault();
-
-
-        // add logic to generate heatmap based on parameters here
-
+        // logic for heatmap generation
     };
+
+
+    const handleFileUpload = async () => {
+        try {
+            const filePath = await window.electron.invoke('open-file-dialog');
+            if (filePath) {
+                setFilePath(filePath);
+                const result = await window.electron.invoke('load-rdata-file', filePath);
+                setObjects(result);
+            }
+        } catch (error) {
+            console.error('Error opening file dialog:', error);
+        }
+    };
+
+    const handleObjSelect = (e) => {
+        setSelectedObj(e.target.value);
+    };
+
 
     const handleClick = () => {
         window.electron.send('navigate-to', 'home');
@@ -82,7 +103,32 @@ const Heatmap = () => {
                     Go Back to Home Page
                 </button>
             </div>
+
+
             <h1>Generate Heatmap</h1>
+        <div>
+
+            {/* File upload for RData file */}
+            <h3>Upload R Data File for Heatmap</h3>
+            <button onClick={handleFileUpload}>Upload RData File</button>
+        </div>
+
+            {/* Dropdown for selecting Summarized Experiment Object */}
+            {objects.length > 0 && (
+                <div>
+                    <h3>Select Summarized Experiment Object</h3>
+                    <select onChange={handleObjSelect} value={selectedObj}>
+                        {objects.map((obj, index) => (
+                            <option key={index} value={obj}>
+                                {obj}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+
+            {/* Form for Heatmap Parameters */}
             <form onSubmit={handleSubmit}>
                 {Object.keys(parameters).map((key) => (
                     <div key={key}>

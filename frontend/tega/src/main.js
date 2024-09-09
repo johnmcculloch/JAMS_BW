@@ -17,7 +17,6 @@ const createWindow = () => {
     webPreferences: {
       preload: MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY,
       contextIsolation: true,
-      enableRemoteModule: false,
       nodeIntegration: false,
     },
     autoHideMenuBar: true,
@@ -98,3 +97,20 @@ ipcMain.handle('load-rdata-file', async (event, filePath) => {
   });
 });
 
+
+const { dialog } = require('electron');
+
+ipcMain.handle('open-file-dialog', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: 'RData Files', extensions: ['rdata', 'rda'] }
+    ]
+  });
+
+  if (canceled) {
+    return null;
+  } else {
+    return filePaths[0];
+  }
+});

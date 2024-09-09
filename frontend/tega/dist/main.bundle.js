@@ -1043,7 +1043,6 @@ var createWindow = function createWindow() {
     webPreferences: {
       preload: '/Users/mossingtonta/Projects/JAMS_BW/frontend/tega/.webpack/renderer/main_window/preload.js',
       contextIsolation: true,
-      enableRemoteModule: false,
       nodeIntegration: false
     },
     autoHideMenuBar: true
@@ -1123,6 +1122,38 @@ ipcMain.handle('load-rdata-file', /*#__PURE__*/function () {
     return _ref.apply(this, arguments);
   };
 }());
+var _require3 = __webpack_require__(/*! electron */ "electron"),
+  dialog = _require3.dialog;
+ipcMain.handle('open-file-dialog', /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee2() {
+  var _yield$dialog$showOpe, canceled, filePaths;
+  return _regeneratorRuntime().wrap(function _callee2$(_context2) {
+    while (1) switch (_context2.prev = _context2.next) {
+      case 0:
+        _context2.next = 2;
+        return dialog.showOpenDialog({
+          properties: ['openFile'],
+          filters: [{
+            name: 'RData Files',
+            extensions: ['rdata', 'rda']
+          }]
+        });
+      case 2:
+        _yield$dialog$showOpe = _context2.sent;
+        canceled = _yield$dialog$showOpe.canceled;
+        filePaths = _yield$dialog$showOpe.filePaths;
+        if (!canceled) {
+          _context2.next = 9;
+          break;
+        }
+        return _context2.abrupt("return", null);
+      case 9:
+        return _context2.abrupt("return", filePaths[0]);
+      case 10:
+      case "end":
+        return _context2.stop();
+    }
+  }, _callee2);
+})));
 module.exports = __webpack_exports__;
 /******/ })()
 ;

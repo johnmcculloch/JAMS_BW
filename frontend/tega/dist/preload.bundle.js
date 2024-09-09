@@ -62,6 +62,12 @@ contextBridge.exposeInMainWorld('electron', {
       }
       return func.apply(void 0, args);
     });
+  },
+  loadRDataFile: function loadRDataFile(filePath) {
+    return ipcRenderer.invoke('load-rdata-file', filePath);
+  },
+  invoke: function invoke(channel, data) {
+    return ipcRenderer.invoke(channel, data);
   }
 });
 module.exports = __webpack_exports__;
