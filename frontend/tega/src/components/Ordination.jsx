@@ -78,7 +78,7 @@ const Ordination = () => {
             };
 
             // Call IPC method to run ordination script
-            const result = await window.electron.runOrdinationScript(params) // verify this line
+            const result = await window.electron.runOrdinationScript(params)
             
             // Update the ordination data with result
             setOrdinationData(result);
