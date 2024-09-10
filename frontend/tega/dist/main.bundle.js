@@ -1004,7 +1004,8 @@ var __webpack_exports__ = {};
   \*********************/
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 var _excluded = ["filePath", "ExpObj", "advancedSettings"],
-  _excluded2 = ["filePath", "ExpObj"];
+  _excluded2 = ["filePath", "ExpObj"],
+  _excluded3 = ["filePath", "ExpObj"];
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
@@ -1295,6 +1296,82 @@ ipcMain.handle('run-ordination-script', /*#__PURE__*/function () {
 // IPC handler for opening the ordination plot file (ordination.js)
 ipcMain.on('open-ordination-location', function (event) {
   var outputFilePath = path.join(__dirname, 'assets', 'ordination.pdf');
+  shell.openPath(outputFilePath).then(function (error) {
+    if (error) {
+      console.error('Failed to open file location:', error);
+    } else {
+      console.log('File location opened successfully!');
+    }
+  });
+});
+
+// get user defined parameters then execute R alpha diversity plot script
+ipcMain.handle('run-alphaDiversity-script', /*#__PURE__*/function () {
+  var _ref9 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee5(event, params) {
+    var filePath, ExpObj, otherParams, paramStr, outputFilePath, script;
+    return _regeneratorRuntime().wrap(function _callee5$(_context5) {
+      while (1) switch (_context5.prev = _context5.next) {
+        case 0:
+          // Log the params object for debugging
+          console.log('Recieved params:', params);
+          filePath = params.filePath, ExpObj = params.ExpObj, otherParams = _objectWithoutProperties(params, _excluded3); // Construct paramStr dynamically to account for anything the user inputs
+          paramStr = "ExpObj = ".concat(ExpObj, ", ") + Object.entries(otherParams).map(function (_ref10) {
+            var _ref11 = _slicedToArray(_ref10, 2),
+              key = _ref11[0],
+              value = _ref11[1];
+            if (value === "" || value === null || value === 'null' || value === 'NULL') {
+              return "".concat(key, "=NULL");
+            } else if (typeof value === 'string' && value.startsWith('c(')) {
+              // Check if param is a R variable
+              return "".concat(key, "=").concat(value);
+            } else if (typeof value === 'boolean') {
+              return "".concat(key, "=").concat(value ? 'TRUE' : 'FALSE');
+            } else if (typeof value === 'number' || !isNaN(value)) {
+              return "".concat(key, "=").concat(Number(value));
+            } else if (typeof value === 'string') {
+              return "".concat(key, "=\"").concat(value, "\"");
+            } else {
+              return "".concat(key, "=").concat(value);
+            }
+          }).join(', ');
+          console.log(paramStr);
+
+          // Send paramStr to the renderer process for debugging
+          event.sender.send('param-str', paramStr);
+
+          // Run plot_Ordination command with user-defined parameters
+          outputFilePath = path.join(__dirname, 'assets', 'alphaDiversity.pdf');
+          script = "\n    Rscript -e '\n    suppressPackageStartupMessages({\n    load(\"".concat(filePath, "\");\n    library(JAMS); \n    source(\"/Users/mossingtonta/Projects/JAMS_BW/R/plot_alpha_diversity.R\"); \n    pdf(\"").concat(outputFilePath, "\", paper = \"a4r\");\n    print(plot_alpha_diversity(").concat(paramStr, "))\n    dev.off();\n    })'\n  ");
+          return _context5.abrupt("return", new Promise(function (resolve, reject) {
+            exec(script, function (error, stdout, stderr) {
+              if (error) {
+                reject("Error: ".concat(error.message));
+                return;
+              }
+              if (stderr) {
+                reject("Stderr: ".concat(stderr));
+                return;
+              }
+              resolve({
+                stdout: stdout,
+                imagePath: outputFilePath
+              });
+            });
+          }));
+        case 8:
+        case "end":
+          return _context5.stop();
+      }
+    }, _callee5);
+  }));
+  return function (_x7, _x8) {
+    return _ref9.apply(this, arguments);
+  };
+}());
+
+// IPC handler for opening the alpha diversity file (alpha_diversity.js)
+ipcMain.on('open-alphadiversity-location', function (event) {
+  var outputFilePath = path.join(__dirname, 'assets', 'alphaDiversity.pdf');
   shell.openPath(outputFilePath).then(function (error) {
     if (error) {
       console.error('Failed to open file location:', error);
