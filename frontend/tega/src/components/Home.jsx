@@ -2,9 +2,14 @@ import React from 'react';
 import Button from '@mui/material/Button';
 
 export default function Home() {
-    const handleClick = () => {
+    const handleNavigateToHeatmap = () => {
         // send IPC message to main process to navigate to heatmap page
         window.electron.send('navigate-to', 'heatmap');
+    };
+
+    const handleNavigateToOrdination = () => {
+        // send IPC message to main process to navigate to ordination page
+        window.electron.send('navigate-to', 'ordination');
     };
 
     return (
@@ -13,10 +18,18 @@ export default function Home() {
             <Button
                     variant="outlined"
                     color='primary'
-                    onClick={handleClick}
+                    onClick={handleNavigateToHeatmap}
                     >
                         Go to Relabund Heatmap Analysis
                     </Button>
+            
+            <Button
+                variant="outlined"
+                color='primary'
+                onClick={handleNavigateToOrdination}
+                >
+                    Go to Plot Ordination Analysis
+                </Button>
         </div>
     );
 }
