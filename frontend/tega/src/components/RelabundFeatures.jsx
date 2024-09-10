@@ -42,7 +42,7 @@ const RelabundFeatures = () => {
         stratify_by_taxlevel: '',
         annotate_phylum: true,
         maxnumplots: '',
-        signiflabel: '',
+        signiflabel: 'p.format',
         max_pairwise_cats: 4,
         dump_interpro_descriptions_to_plot: false,
         numthreads: 1,
@@ -88,7 +88,7 @@ const RelabundFeatures = () => {
             // Update the AD data with result
             setRelabundFeatureData(result);
         } catch (error) {
-            console.error("Error generating AlphaDiversity plot:", error);
+            console.error("Error generating RelabundFeature plot:", error);
         }
     };
 
@@ -121,8 +121,8 @@ const RelabundFeatures = () => {
     };
 
     const handleDownloadClick = () => {
-        // Send IPC event to open the alphadiversity PDF
-        window.electron.send('open-alphadiversity-location');
+        // Send IPC event to open the relabundfeature PDF
+        window.electron.send('open-relabundfeature-location');
     };
 
     useEffect(() => {
@@ -144,7 +144,7 @@ const RelabundFeatures = () => {
 
         <div>
             {/* File upload for RData file */}
-            <h3>Upload R Data File for AlphaDiversity Plot</h3>
+            <h3>Upload R Data File for Relabund Feature Plot</h3>
             <Button 
             component="label"
             variant="contained" 
