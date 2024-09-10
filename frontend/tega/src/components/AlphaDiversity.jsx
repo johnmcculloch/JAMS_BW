@@ -61,7 +61,7 @@ const AlphaDiversity = () => {
             // Update the AD data with result
             setAlphaDiversityData(result);
         } catch (error) {
-            console.error("Error generating ordination plot:", error);
+            console.error("Error generating AlphaDiversity plot:", error);
         }
     };
 
@@ -113,7 +113,82 @@ const AlphaDiversity = () => {
                 </button>
             </div>
 
+            <h1>Generate AlphaDiversity Plot</h1>
+
+        <div>
+            {/* File upload for RData file */}
+            <h3>Upload R Data File for AlphaDiversity Plot</h3>
+            <Button 
+            component="label"
+            variant="contained" 
+            startIcon={<CloudUploadIcon />}
+                >
+                    Upload RData File
+                    <input
+                    type='file'
+                    accept='.rdata, .rda'
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                    />
+                    </Button>
         </div>
+
+        {/* Dropdown for selecting Summarized Experiment Object */}
+        {objects.length > 0 && (
+            <div>
+                <h3>Select Summarized Experiment Object</h3>
+                <select onChange={handleObjSelect} value={selectedObj}>
+                    {objects.map((obj, index) => (
+                        <option key={index} value={obj}>
+                            {obj}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        )}
+
+        {/* Form for AlphaDiversity Parameters */}
+        <form onSubmit={handleSubmit}>
+            {Object.keys(parameters).map((key) => (
+                <div key={key}>
+                    <label htmlFor={key}>{key}:</label>
+                    {typeof parameters[key] === 'boolean' ? (
+                        <input
+                        type="checkbox"
+                        id={key}
+                        name={key}
+                        checked={parameters[key]}
+                        onChange={handleChange}
+                        />
+                    ): (
+                        <input
+                        type="text"
+                        id={key}
+                        name={key}
+                        value={parameters[key]}
+                        onChange={handleChange}
+                        />
+                    )}
+                </div>
+            ))}
+            <Button type='submit' variant='outlined' color='primary'>
+                Generate Alpha Diversity Plot
+            </Button>
+        </form> 
+
+        {alphadiversityData && (
+            <div id="alphadiversity=container">
+                <h2>AlphaDiversity Plot</h2>
+                <Button
+                variant="contained"
+                color='primary'
+                onClick={handleDownloadClick}
+                >
+                    Open AlphaDiversty Plot PDF
+                </Button>
+            </div>
+        )}
+    </div>
     );
 };
 
