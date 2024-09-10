@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import Button from '@mui/material/Button';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 const RelabundFeatures = () => {
     const [parameters, setParameters] = useState({
@@ -137,6 +139,83 @@ const RelabundFeatures = () => {
                     Go Back to Home Page
                 </button>
             </div>
+
+            <h1>Generate Relabund Feature Plot</h1>
+
+        <div>
+            {/* File upload for RData file */}
+            <h3>Upload R Data File for AlphaDiversity Plot</h3>
+            <Button 
+            component="label"
+            variant="contained" 
+            startIcon={<CloudUploadIcon />}
+                >
+                    Upload RData File
+                    <input
+                    type='file'
+                    accept='.rdata, .rda'
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                    />
+                    </Button>
+        </div>
+
+        {/* Dropdown for selecting Summarized Experiment Object */}
+        {objects.length > 0 && (
+            <div>
+                <h3>Select Summarized Experiment Object</h3>
+                <select onChange={handleObjSelect} value={selectedObj}>
+                    {objects.map((obj, index) => (
+                        <option key={index} value={obj}>
+                            {obj}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        )}
+
+        {/* Form for RelabundFeatures Parameters */}
+        <form onSubmit={handleSubmit}>
+            {Object.keys(parameters).map((key) => (
+                <div key={key}>
+                    <label htmlFor={key}>{key}:</label>
+                    {typeof parameters[key] === 'boolean' ? (
+                        <input
+                        type="checkbox"
+                        id={key}
+                        name={key}
+                        checked={parameters[key]}
+                        onChange={handleChange}
+                        />
+                    ): (
+                        <input
+                        type="text"
+                        id={key}
+                        name={key}
+                        value={parameters[key]}
+                        onChange={handleChange}
+                        />
+                    )}
+                </div>
+            ))}
+            <Button type='submit' variant='outlined' color='primary'>
+                Generate Relabund Features Plot
+            </Button>
+        </form> 
+
+        {relabundfeatureData && (
+            <div id="relabundfeature=container">
+                <h2>Relabund Feature Plot</h2>
+                <Button
+                variant="contained"
+                color='primary'
+                onClick={handleDownloadClick}
+                >
+                    Open Relabund Feature Plot PDF
+                </Button>
+            </div>
+        )}
+
         </div>
     );
 };
