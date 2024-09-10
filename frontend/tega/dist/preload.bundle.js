@@ -39,11 +39,6 @@ module.exports = require("electron");
 /******/ 	}
 /******/ 	
 /************************************************************************/
-/******/ 	/* webpack/runtime/compat */
-/******/ 	
-/******/ 	if (typeof __webpack_require__ !== 'undefined') __webpack_require__.ab = __dirname + "/native_modules/";
-/******/ 	
-/************************************************************************/
 var __webpack_exports__ = {};
 /*!************************!*\
   !*** ./src/preload.js ***!
@@ -74,6 +69,9 @@ contextBridge.exposeInMainWorld('electron', {
   },
   runOrdinationScript: function runOrdinationScript(params) {
     return ipcRenderer.invoke('run-ordination-script', params);
+  },
+  runAlphaDiversityScript: function runAlphaDiversityScript(params) {
+    return ipcRenderer.invoke('run-alphaDiversity-script', params);
   },
   onParamStr: function onParamStr(callback) {
     return ipcRenderer.on('param-str', function (event, paramStr) {
