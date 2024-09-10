@@ -12,6 +12,11 @@ export default function Home() {
         window.electron.send('navigate-to', 'ordination');
     };
 
+    const handleNavigateToAlphaDiversity = () => {
+        // Send IPC message to main process to navigate to alpha diversity page
+        window.electron.send('navigate-to', 'alphadiversity')
+    };
+
     return (
         <div>
             Home<br></br>
@@ -29,6 +34,14 @@ export default function Home() {
                 onClick={handleNavigateToOrdination}
                 >
                     Go to Plot Ordination Analysis
+                </Button>
+
+            <Button
+                variant='outlined'
+                color='primary'
+                onClick={handleNavigateToAlphaDiversity}
+                >
+                    Go to Alpha Diversity Analysis
                 </Button>
         </div>
     );
