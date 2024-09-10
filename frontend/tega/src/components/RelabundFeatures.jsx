@@ -122,7 +122,7 @@ const RelabundFeatures = () => {
 
     const handleDownloadClick = () => {
         // Send IPC event to open the relabundfeature PDF
-        window.electron.send('open-relabundfeature-location');
+        window.electron.send('open-RelabundFeatures-location');
     };
 
     useEffect(() => {
