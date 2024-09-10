@@ -85,7 +85,7 @@ const Heatmap = () => {
             // Call IPC method to run the heatmap script
             const result = await window.electron.runHeatmapScript(params);
 
-            // Update the heatmap data or any other relevant state with the result
+            // Update the heatmap data with result
             setHeatmapData(result);
         } catch (error) {
             console.error('Error generating heatmap:', error);
