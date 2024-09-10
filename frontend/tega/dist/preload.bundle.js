@@ -72,6 +72,9 @@ contextBridge.exposeInMainWorld('electron', {
   runHeatmapScript: function runHeatmapScript(params) {
     return ipcRenderer.invoke('run-heatmap-script', params);
   },
+  runOrdinationScript: function runOrdinationScript(params) {
+    return ipcRenderer.invoke('run-ordination-script', params);
+  },
   onParamStr: function onParamStr(callback) {
     return ipcRenderer.on('param-str', function (event, paramStr) {
       return callback(paramStr);

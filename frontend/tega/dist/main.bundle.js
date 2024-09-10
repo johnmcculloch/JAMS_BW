@@ -1008,7 +1008,8 @@ var __webpack_exports__ = {};
   !*** ./src/main.js ***!
   \*********************/
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
-var _excluded = ["filePath", "ExpObj", "advancedSettings"];
+var _excluded = ["filePath", "ExpObj", "advancedSettings"],
+  _excluded2 = ["filePath", "ExpObj"];
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
@@ -1223,6 +1224,82 @@ ipcMain.handle('run-heatmap-script', /*#__PURE__*/function () {
 // IPC handler for opening the heatmap file
 ipcMain.on('open-heatmap-location', function (event) {
   var outputFilePath = path.join(__dirname, 'assets', 'heatmap.pdf');
+  shell.openPath(outputFilePath).then(function (error) {
+    if (error) {
+      console.error('Failed to open file location:', error);
+    } else {
+      console.log('File location opened successfully!');
+    }
+  });
+});
+
+// get user defined parameters then execute R ordination plot script
+ipcMain.handle('run-ordination-script', /*#__PURE__*/function () {
+  var _ref6 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee4(event, params) {
+    var filePath, ExpObj, otherParams, paramStr, outputFilePath, script;
+    return _regeneratorRuntime().wrap(function _callee4$(_context4) {
+      while (1) switch (_context4.prev = _context4.next) {
+        case 0:
+          // Log the params object for debugging
+          console.log('Recieved params:', params);
+          filePath = params.filePath, ExpObj = params.ExpObj, otherParams = _objectWithoutProperties(params, _excluded2); // Construct paramStr dynamically to account for anything the user inputs
+          paramStr = "ExpObj = ".concat(ExpObj, ", ") + Object.entries(otherParams).map(function (_ref7) {
+            var _ref8 = _slicedToArray(_ref7, 2),
+              key = _ref8[0],
+              value = _ref8[1];
+            if (value === "" || value === null || value === 'null' || value === 'NULL') {
+              return "".concat(key, "=NULL");
+            } else if (typeof value === 'string' && value.startsWith('c(')) {
+              // Check if param is a R variable
+              return "".concat(key, "=").concat(value);
+            } else if (typeof value === 'boolean') {
+              return "".concat(key, "=").concat(value ? 'TRUE' : 'FALSE');
+            } else if (typeof value === 'number' || !isNaN(value)) {
+              return "".concat(key, "=").concat(Number(value));
+            } else if (typeof value === 'string') {
+              return "".concat(key, "=\"").concat(value, "\"");
+            } else {
+              return "".concat(key, "=").concat(value);
+            }
+          }).join(', ');
+          console.log(paramStr);
+
+          // Send paramStr to the renderer process for debugging
+          event.sender.send('param-str', paramStr);
+
+          // Run plot_Ordination command with user-defined parameters
+          outputFilePath = path.join(__dirname, 'assets', 'ordination.pdf');
+          script = "\n    Rscript -e '\n    suppressPackageStartupMessages({\n    load(\"".concat(filePath, "\");\n    library(JAMS); \n    source(\"/Users/mossingtonta/Projects/JAMS_BW/R/plot_Ordination.R\"); \n    pdf(\"").concat(outputFilePath, "\", paper = \"a4r\");\n    print(plot_Ordination(").concat(paramStr, "))\n    dev.off();\n    })'\n  ");
+          return _context4.abrupt("return", new Promise(function (resolve, reject) {
+            exec(script, function (error, stdout, stderr) {
+              if (error) {
+                reject("Error: ".concat(error.message));
+                return;
+              }
+              if (stderr) {
+                reject("Stderr: ".concat(stderr));
+                return;
+              }
+              resolve({
+                stdout: stdout,
+                imagePath: outputFilePath
+              });
+            });
+          }));
+        case 8:
+        case "end":
+          return _context4.stop();
+      }
+    }, _callee4);
+  }));
+  return function (_x5, _x6) {
+    return _ref6.apply(this, arguments);
+  };
+}());
+
+// IPC handler for opening the ordination plot file (ordination.js)
+ipcMain.on('open-ordination-location', function (event) {
+  var outputFilePath = path.join(__dirname, 'assets', 'ordination.pdf');
   shell.openPath(outputFilePath).then(function (error) {
     if (error) {
       console.error('Failed to open file location:', error);
