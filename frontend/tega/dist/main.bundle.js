@@ -998,6 +998,11 @@ module.exports = require("util");
 /******/ 	}
 /******/ 	
 /************************************************************************/
+/******/ 	/* webpack/runtime/compat */
+/******/ 	
+/******/ 	if (typeof __webpack_require__ !== 'undefined') __webpack_require__.ab = __dirname + "/native_modules/";
+/******/ 	
+/************************************************************************/
 var __webpack_exports__ = {};
 /*!*********************!*\
   !*** ./src/main.js ***!
@@ -1005,7 +1010,8 @@ var __webpack_exports__ = {};
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 var _excluded = ["filePath", "ExpObj", "advancedSettings"],
   _excluded2 = ["filePath", "ExpObj"],
-  _excluded3 = ["filePath", "ExpObj"];
+  _excluded3 = ["filePath", "ExpObj"],
+  _excluded4 = ["filePath", "ExpObj"];
 function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
 function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
@@ -1372,6 +1378,82 @@ ipcMain.handle('run-alphaDiversity-script', /*#__PURE__*/function () {
 // IPC handler for opening the alpha diversity file (alpha_diversity.js)
 ipcMain.on('open-alphadiversity-location', function (event) {
   var outputFilePath = path.join(__dirname, 'assets', 'alphaDiversity.pdf');
+  shell.openPath(outputFilePath).then(function (error) {
+    if (error) {
+      console.error('Failed to open file location:', error);
+    } else {
+      console.log('File location opened successfully!');
+    }
+  });
+});
+
+// get user defined parameters then execute R relabund features plot script
+ipcMain.handle('run-relabundFeatures-script', /*#__PURE__*/function () {
+  var _ref12 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee6(event, params) {
+    var filePath, ExpObj, otherParams, paramStr, outputFilePath, script;
+    return _regeneratorRuntime().wrap(function _callee6$(_context6) {
+      while (1) switch (_context6.prev = _context6.next) {
+        case 0:
+          // Log the params object for debugging
+          console.log('Recieved params:', params);
+          filePath = params.filePath, ExpObj = params.ExpObj, otherParams = _objectWithoutProperties(params, _excluded4); // Construct paramStr dynamically to account for anything the user inputs
+          paramStr = "ExpObj = ".concat(ExpObj, ", ") + Object.entries(otherParams).map(function (_ref13) {
+            var _ref14 = _slicedToArray(_ref13, 2),
+              key = _ref14[0],
+              value = _ref14[1];
+            if (value === "" || value === null || value === 'null' || value === 'NULL') {
+              return "".concat(key, "=NULL");
+            } else if (typeof value === 'string' && value.startsWith('c(')) {
+              // Check if param is a R variable
+              return "".concat(key, "=").concat(value);
+            } else if (typeof value === 'boolean') {
+              return "".concat(key, "=").concat(value ? 'TRUE' : 'FALSE');
+            } else if (typeof value === 'number' || !isNaN(value)) {
+              return "".concat(key, "=").concat(Number(value));
+            } else if (typeof value === 'string') {
+              return "".concat(key, "=\"").concat(value, "\"");
+            } else {
+              return "".concat(key, "=").concat(value);
+            }
+          }).join(', ');
+          console.log(paramStr);
+
+          // Send paramStr to the renderer process for debugging
+          event.sender.send('param-str', paramStr);
+
+          // Run plot_Ordination command with user-defined parameters
+          outputFilePath = path.join(__dirname, 'assets', 'relabundFeatures.pdf');
+          script = "\n    Rscript -e '\n    suppressPackageStartupMessages({\n    suppressWarnings({\n      load(\"".concat(filePath, "\");\n      library(JAMS);  \n      pdf(\"").concat(outputFilePath, "\", paper = \"a4r\");\n      print(plot_relabund_features(").concat(paramStr, "))\n      dev.off();\n      })\n    })'\n  ");
+          return _context6.abrupt("return", new Promise(function (resolve, reject) {
+            exec(script, function (error, stdout, stderr) {
+              if (error) {
+                reject("Error: ".concat(error.message));
+                return;
+              }
+              if (stderr) {
+                reject("Stderr: ".concat(stderr));
+                return;
+              }
+              resolve({
+                stdout: stdout,
+                imagePath: outputFilePath
+              });
+            });
+          }));
+        case 8:
+        case "end":
+          return _context6.stop();
+      }
+    }, _callee6);
+  }));
+  return function (_x9, _x10) {
+    return _ref12.apply(this, arguments);
+  };
+}());
+
+// IPC handler for opening the relabund features file (plot_relabund_features.js)
+ipcMain.on('open-RelabundFeatures-location', function (event) {
+  var outputFilePath = path.join(__dirname, 'assets', 'relabundFeatures.pdf');
   shell.openPath(outputFilePath).then(function (error) {
     if (error) {
       console.error('Failed to open file location:', error);

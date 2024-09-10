@@ -39,6 +39,11 @@ module.exports = require("electron");
 /******/ 	}
 /******/ 	
 /************************************************************************/
+/******/ 	/* webpack/runtime/compat */
+/******/ 	
+/******/ 	if (typeof __webpack_require__ !== 'undefined') __webpack_require__.ab = __dirname + "/native_modules/";
+/******/ 	
+/************************************************************************/
 var __webpack_exports__ = {};
 /*!************************!*\
   !*** ./src/preload.js ***!
