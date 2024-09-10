@@ -32,10 +32,10 @@ const Ordination = () => {
         connection_orderby: '',
         textby: '',
         ellipseby: '',
-        dotsize: '',
+        dotsize: 2,
         log2tran: false,
         tsne_perplx: '',
-        max_neighbors: '',
+        max_neighbors: 15,
         permanova: false,
         plotcentroids: false,
         highlight_centroids: false,
@@ -45,9 +45,9 @@ const Ordination = () => {
         cdict: '',
         grid: false,
         forceaspectratio: '',
-        numthreads: '',
+        numthreads: 1,
         return_coordinates_matrix: false,
-        permanova_permutations: '',
+        permanova_permutations: 10000,
         include_components_variance_plot: false,
         class_to_ignore: 'N_A',
     });
@@ -73,7 +73,6 @@ const Ordination = () => {
             const params = {
                 filePath,
                 ExpObj: selectedObj,
-                advancedSettings: {},
                 ...parameters
             };
 
