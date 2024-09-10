@@ -302,17 +302,19 @@ ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
   // Send paramStr to the renderer process for debugging
   event.sender.send('param-str', paramStr);
 
-// Run plot_Ordination command with user-defined parameters
+// Run plot_alphadiversity command with user-defined parameters
   const outputFilePath = path.join(__dirname, 'assets', 'alphaDiversity.pdf');
   const script = `
     Rscript -e '
     suppressPackageStartupMessages({
-    load("${filePath}");
-    library(JAMS); 
-    source("/Users/mossingtonta/Projects/JAMS_BW/R/plot_alpha_diversity.R"); 
-    pdf("${outputFilePath}", paper = "a4r");
-    print(plot_alpha_diversity(${paramStr}))
-    dev.off();
+    suppressWarnings({
+      load("${filePath}");
+      library(JAMS); 
+      source("/Users/mossingtonta/Projects/JAMS_BW/R/plot_alpha_diversity.R"); 
+      pdf("${outputFilePath}", paper = "a4r");
+      print(plot_alpha_diversity(${paramStr}))
+      dev.off();
+      })
     })'
   `;
 

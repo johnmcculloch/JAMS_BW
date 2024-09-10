@@ -998,6 +998,11 @@ module.exports = require("util");
 /******/ 	}
 /******/ 	
 /************************************************************************/
+/******/ 	/* webpack/runtime/compat */
+/******/ 	
+/******/ 	if (typeof __webpack_require__ !== 'undefined') __webpack_require__.ab = __dirname + "/native_modules/";
+/******/ 	
+/************************************************************************/
 var __webpack_exports__ = {};
 /*!*********************!*\
   !*** ./src/main.js ***!
@@ -1339,9 +1344,9 @@ ipcMain.handle('run-alphaDiversity-script', /*#__PURE__*/function () {
           // Send paramStr to the renderer process for debugging
           event.sender.send('param-str', paramStr);
 
-          // Run plot_Ordination command with user-defined parameters
+          // Run plot_alphadiversity command with user-defined parameters
           outputFilePath = path.join(__dirname, 'assets', 'alphaDiversity.pdf');
-          script = "\n    Rscript -e '\n    suppressPackageStartupMessages({\n    load(\"".concat(filePath, "\");\n    library(JAMS); \n    source(\"/Users/mossingtonta/Projects/JAMS_BW/R/plot_alpha_diversity.R\"); \n    pdf(\"").concat(outputFilePath, "\", paper = \"a4r\");\n    print(plot_alpha_diversity(").concat(paramStr, "))\n    dev.off();\n    })'\n  ");
+          script = "\n    Rscript -e '\n    suppressPackageStartupMessages({\n    suppressWarnings({\n      load(\"".concat(filePath, "\");\n      library(JAMS); \n      source(\"/Users/mossingtonta/Projects/JAMS_BW/R/plot_alpha_diversity.R\"); \n      pdf(\"").concat(outputFilePath, "\", paper = \"a4r\");\n      print(plot_alpha_diversity(").concat(paramStr, "))\n      dev.off();\n      })\n    })'\n  ");
           return _context5.abrupt("return", new Promise(function (resolve, reject) {
             exec(script, function (error, stdout, stderr) {
               if (error) {
