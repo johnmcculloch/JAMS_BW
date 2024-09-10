@@ -4,7 +4,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 const AlphaDiversity = () => {
     const [parameters, setParameters] = useState({
-        measures: '',
+        measures: 'c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount")',
         stratify_by_kingdoms: true,
         glomby: '',
         samplesToKeep: '',
@@ -51,12 +51,11 @@ const AlphaDiversity = () => {
             const params = {
                 filePath,
                 ExpObj: selectedObj,
-                advancedSettings: {},
                 ...parameters
             };
 
             // Call IPC Method to run AlphaDiversity script
-            const result = await window.electron.runAlphaDiversityScript(params) // Verify
+            const result = await window.electron.runAlphaDiversityScript(params)
 
             // Update the AD data with result
             setAlphaDiversityData(result);
