@@ -5,6 +5,7 @@ import Home from './components/Home.jsx';
 import Heatmap from './components/Heatmap.jsx';
 import Ordination from './components/Ordination.jsx';
 import AlphaDiversity from './components/AlphaDiversity.jsx';
+import RelabundFeatures from './components/RelabundFeatures.jsx';
 
 function App() {
     const [currentPage, setCurrentPage] = useState('home');
@@ -22,6 +23,7 @@ function App() {
             {currentPage == 'heatmap' && <Heatmap />}
             {currentPage == 'ordination' && <Ordination />}
             {currentPage == 'alphadiversity' && <AlphaDiversity />}
+            {currentPage == 'relabundfeatures' && <RelabundFeatures />}
         </>
     );
 }

@@ -17,6 +17,11 @@ export default function Home() {
         window.electron.send('navigate-to', 'alphadiversity')
     };
 
+    const handleNavigateToRelabundFeatures = () => {
+        // Send IPC message to main process to navigate to relabund features page
+        window.electron.send('navigate-to', 'relabundfeatures')
+    };
+
     return (
         <div>
             Home<br></br>
@@ -42,6 +47,14 @@ export default function Home() {
                 onClick={handleNavigateToAlphaDiversity}
                 >
                     Go to Alpha Diversity Analysis
+                </Button>
+
+            <Button
+                variant='outlined'
+                color='primary'
+                onClick={handleNavigateToRelabundFeatures}
+                >
+                    Go to Relabund Features Analysis
                 </Button>
         </div>
     );
