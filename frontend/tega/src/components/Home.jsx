@@ -1,4 +1,5 @@
-import React from 'react'
+import React from 'react';
+import Button from '@mui/material/Button';
 
 export default function Home() {
     const handleClick = () => {
@@ -9,9 +10,13 @@ export default function Home() {
     return (
         <div>
             Home<br></br>
-            <button onClick={handleClick}>
-                Go to Relabund Heatmap Analysis
-            </button>
+            <Button
+                    variant="outlined"
+                    color='primary'
+                    onClick={handleClick}
+                    >
+                        Go to Relabund Heatmap Analysis
+                    </Button>
         </div>
     );
 }

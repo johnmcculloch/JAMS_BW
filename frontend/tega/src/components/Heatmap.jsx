@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import Button from '@mui/material/Button';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 
 const Heatmap = () => {
@@ -146,7 +148,19 @@ const Heatmap = () => {
 
             {/* File upload for RData file */}
             <h3>Upload R Data File for Heatmap</h3>
-            <button onClick={handleFileUpload}>Upload RData File</button>
+            <Button 
+            component="label"
+            variant="contained" 
+            startIcon={<CloudUploadIcon />}
+                >
+                    Upload RData File
+                    <input
+                    type='file'
+                    accept='.rdata, .rda'
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                    />
+                    </Button>
         </div>
 
             {/* Dropdown for selecting Summarized Experiment Object */}
@@ -188,13 +202,21 @@ const Heatmap = () => {
                         )}
                     </div>
                 ))}
-                <button type="submit">Generate Heatmap</button>
-            </form>
+                <Button type='submit' variant='outlined' color='primary'>
+                    Generate Heatmap
+                </Button>
+            </form> 
 
             {heatmapData && (
                 <div id="heatmap=container">
                     <h2>Heatmap</h2>
-                    <button onClick={handleDownloadClick}>Open Heatmap PDF</button>
+                    <Button
+                    variant="contained"
+                    color='primary'
+                    onClick={handleDownloadClick}
+                    >
+                        Open Heatmap PDF
+                    </Button>
                 </div>
             )}
         </div>
