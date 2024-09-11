@@ -57,6 +57,59 @@ const Heatmap = () => {
         class_to_ignore: 'N_A'
     });
 
+    const displayNames = {
+        glomby: 'Glom By',
+        hmtype: 'Heatmap Type',
+        samplesToKeep: 'Samples to Keep',
+        featuresToKeep: 'Features to Keep',
+        applyfilters: 'Apply Filters',
+        featcutoff: 'Feature Cutoff',
+        GenomeCompletenessCutoff: 'Genome Completeness Cutoff',
+        PPM_normalize_to_bases_sequenced: 'PPM Normalize to Bases Sequenced',
+        subsetby: 'Subset By',
+        compareby: 'Compare By',
+        invertbinaryorder: 'Invert Binary Order',
+        showonlypbelow: 'Show Only P Below',
+        adj_pval_for_threshold: 'Adjust P-Value for Threshold',
+        ntop: 'N Top',
+        colcategories: 'Column Categories',
+        splitcolsby: 'Split Columns By',
+        ordercolsby: 'Order Columns By',
+        textby: 'Text By',
+        cluster_samples_per_heatmap: 'Cluster Samples per Heatmap',
+        cluster_features_per_heatmap: 'Cluster Features per Heatmap',
+        label_samples: 'Label Samples',
+        cluster_rows: 'Cluster Rows',
+        max_rows_in_heatmap: 'Max Rows in Heatmap',
+        no_underscores: 'No Underscores',
+        showGram: 'Show Gram',
+        show_GenomeCompleteness: 'Show Genome Completeness',
+        addtit: 'Add Title',
+        hmasPA: 'Heatmap as PA',
+        threshPA: 'Threshold PA',
+        cluster_column_slices: 'Cluster Column Slices',
+        column_split_group_order: 'Column Split Group Order',
+        row_order: 'Row Order',
+        discard_SDoverMean_below: 'Discard SD over Mean Below',
+        maxl2fc: 'Max L2FC',
+        minl2fc: 'Min L2FC',
+        fun_for_l2fc: 'Function for L2FC',
+        showpval: 'Show P-Value',
+        showroundedpval: 'Show Rounded P-Value',
+        showl2fc: 'Show L2FC',
+        assay_for_matrix: 'Assay for Matrix',
+        normalization: 'Normalization',
+        asPPM: 'As PPM',
+        scaled: 'Scaled',
+        cdict: 'Color Dictionary',
+        maxnumheatmaps: 'Max Number of Heatmaps',
+        numthreads: 'Number of Threads',
+        statsonlog: 'Stats on Log',
+        ignoreunclassified: 'Ignore Unclassified',
+        returnstats: 'Return Stats',
+        class_to_ignore: 'Class to Ignore'
+    };
+
     const [heatmapData, setHeatmapData] = useState(null);
     const [objects, setObjects] = useState([]); // for ExpObj dropdown
     const [filePath, setFilePath] = useState('');
@@ -182,7 +235,7 @@ const Heatmap = () => {
             <form onSubmit={handleSubmit}>
                 {Object.keys(parameters).map((key) => (
                     <div key={key}>
-                        <label htmlFor={key}>{key}:</label>
+                        <label htmlFor={key}>{displayNames[key] || key}:</label>
                         {key === 'applyfilters' ? (
                             <select
                             id={key}
