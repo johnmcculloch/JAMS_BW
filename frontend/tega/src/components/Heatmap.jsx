@@ -183,13 +183,25 @@ const Heatmap = () => {
                 {Object.keys(parameters).map((key) => (
                     <div key={key}>
                         <label htmlFor={key}>{key}:</label>
-                        {typeof parameters[key] === 'boolean' ? (
-                            <input
-                            type="checkbox"
+                        {key === 'applyfilters' ? (
+                            <select
                             id={key}
                             name={key}
-                            checked={parameters[key]}
+                            value={parameters[key]}
                             onChange={handleChange}
+                            >
+                                <option value='none'>none</option>
+                                <option value='light'>light</option>
+                                <option value='moderate'>moderate</option>
+                                <option value='stringent'>stringent</option>
+                            </select>
+                        ) : typeof parameters[key] === 'boolean' ? (
+                            <input
+                                type="checkbox"
+                                id={key}
+                                name={key}
+                                checked={parameters[key]}
+                                onChange={handleChange}
                             />
                         ): (
                             <input
