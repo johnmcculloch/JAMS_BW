@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
-
-const Heatmap = () => {
+const Heatmap = ({ handleNavigateTo }) => {
     const [parameters, setParameters] = useState({
         glomby: '',
         hmtype: 'exploratory',
@@ -145,7 +144,6 @@ const Heatmap = () => {
         }
     };
 
-
     const handleFileUpload = async () => {
         try {
             const filePath = await window.electron.invoke('open-file-dialog');
@@ -170,11 +168,6 @@ const Heatmap = () => {
         console.log('Selected object state:', value);
     };
 
-
-    const handleClick = () => {
-        window.electron.send('navigate-to', 'home');
-    };
-
     const handleDownloadClick = () => {
         // Send IPC event to open the heatmap PDF
         window.electron.send('open-heatmap-location');
@@ -190,31 +183,24 @@ const Heatmap = () => {
     return (
         <div>
             <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
-                <button onClick={handleClick}>
+                <button onClick={handleNavigateTo('home')}>
                     Go Back to Home Page
                 </button>
             </div>
 
-
             <h1>Generate Heatmap</h1>
-        <div>
-
-            {/* File upload for RData file */}
-            <h3>Upload R Data File for Heatmap</h3>
-            <Button 
-            component="label"
-            variant="contained" 
-            startIcon={<CloudUploadIcon />}
+            <div>
+                {/* File upload for RData file */}
+                <h3>Upload R Data File for Heatmap</h3>
+                <Button 
+                    component="label"
+                    variant="contained" 
+                    startIcon={<CloudUploadIcon />}
+                    onClick={handleFileUpload}
                 >
                     Upload RData File
-                    <input
-                    type='file'
-                    accept='.rdata, .rda'
-                    onChange={handleFileUpload}
-                    style={{ display: 'none' }}
-                    />
-                    </Button>
-        </div>
+                </Button>
+            </div>
 
             {/* Dropdown for selecting Summarized Experiment Object */}
             {objects.length > 0 && (
@@ -230,7 +216,6 @@ const Heatmap = () => {
                 </div>
             )}
 
-
             {/* Form for Heatmap Parameters */}
             <form onSubmit={handleSubmit}>
                 {Object.keys(parameters).map((key) => (
@@ -238,10 +223,10 @@ const Heatmap = () => {
                         <label htmlFor={key}>{displayNames[key] || key}:</label>
                         {key === 'applyfilters' ? (
                             <select
-                            id={key}
-                            name={key}
-                            value={parameters[key]}
-                            onChange={handleChange}
+                                id={key}
+                                name={key}
+                                value={parameters[key]}
+                                onChange={handleChange}
                             >
                                 <option value='none'>none</option>
                                 <option value='light'>light</option>
@@ -258,11 +243,11 @@ const Heatmap = () => {
                             />
                         ): (
                             <input
-                            type="text"
-                            id={key}
-                            name={key}
-                            value={parameters[key]}
-                            onChange={handleChange}
+                                type="text"
+                                id={key}
+                                name={key}
+                                value={parameters[key]}
+                                onChange={handleChange}
                             />
                         )}
                     </div>
@@ -276,9 +261,9 @@ const Heatmap = () => {
                 <div id="heatmap=container">
                     <h2>Heatmap</h2>
                     <Button
-                    variant="contained"
-                    color='primary'
-                    onClick={handleDownloadClick}
+                        variant="contained"
+                        color='primary'
+                        onClick={handleDownloadClick}
                     >
                         Open Heatmap PDF
                     </Button>
