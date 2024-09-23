@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
-const AlphaDiversity = () => {
+const AlphaDiversity = ({ handleNavigateTo }) => {
     const [parameters, setParameters] = useState({
         measures: 'c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount")',
         stratify_by_kingdoms: true,
@@ -115,10 +115,6 @@ const AlphaDiversity = () => {
         console.log('Selected object state:', value);
     };
 
-    const handleClick = () => {
-        window.electron.send('navigate-to', 'home');
-    };
-
     const handleDownloadClick = () => {
         // Send IPC event to open the alphadiversity PDF
         window.electron.send('open-alphadiversity-location');
@@ -134,7 +130,7 @@ const AlphaDiversity = () => {
     return (
         <div>
             <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
-                <button onClick={handleClick}>
+                <button onClick={handleNavigateTo('home')}>
                     Go Back to Home Page
                 </button>
             </div>

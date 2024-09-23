@@ -3,7 +3,7 @@ import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 
-const Ordination = () => {
+const Ordination = ({ handleNavigateTo }) => {
     const [parameters, setParameters] = useState({
         glomby: '',
         algorithm: '',
@@ -159,10 +159,6 @@ const Ordination = () => {
         console.log('Selected object state:', value);
     };
 
-    const handleClick = () => {
-        window.electron.send('navigate-to', 'home');
-    };
-
     const handleDownloadClick = () => {
         // Send IPC event to open the ordination PDF
         window.electron.send('open-ordination-location');
@@ -178,7 +174,7 @@ const Ordination = () => {
     return (
         <div>
             <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
-                <button onClick={handleClick}>
+                <button onClick={handleNavigateTo('home')}>
                     Go Back to Home Page
                 </button>
             </div>

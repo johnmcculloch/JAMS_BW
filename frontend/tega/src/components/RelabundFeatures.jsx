@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
-const RelabundFeatures = () => {
+const RelabundFeatures = ({ handleNavigateTo }) => {
     const [parameters, setParameters] = useState({
         glomby: '',
         samplesToKeep: '',
@@ -172,10 +172,6 @@ const RelabundFeatures = () => {
         console.log('Selected object state:', value);
     };
 
-    const handleClick = () => {
-        window.electron.send('navigate-to', 'home');
-    };
-
     const handleDownloadClick = () => {
         // Send IPC event to open the relabundfeature PDF
         window.electron.send('open-RelabundFeatures-location');
@@ -191,7 +187,7 @@ const RelabundFeatures = () => {
     return (
         <div>
             <div style={{ position: 'absolute', top: '10px', right: '10px'}}>
-                <button onClick={handleClick}>
+                <button onClick={handleNavigateTo('home')}>
                     Go Back to Home Page
                 </button>
             </div>
