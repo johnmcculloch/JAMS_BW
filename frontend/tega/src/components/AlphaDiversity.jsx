@@ -141,18 +141,13 @@ const AlphaDiversity = ({ handleNavigateTo }) => {
             {/* File upload for RData file */}
             <h3>Upload R Data File for AlphaDiversity Plot</h3>
             <Button 
-            component="label"
-            variant="contained" 
-            startIcon={<CloudUploadIcon />}
-                >
-                    Upload RData File
-                    <input
-                    type='file'
-                    accept='.rdata, .rda'
-                    onChange={handleFileUpload}
-                    style={{ display: 'none' }}
-                    />
-                    </Button>
+                component="label"
+                variant="contained" 
+                startIcon={<CloudUploadIcon />}
+                onClick={handleFileUpload}
+            >
+                Upload RData File
+            </Button>
         </div>
 
         {/* Dropdown for selecting Summarized Experiment Object */}
