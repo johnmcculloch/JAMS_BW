@@ -1,61 +1,73 @@
 import React from 'react';
-import Button from '@mui/material/Button';
+import { Grid, Paper, Typography, Button } from '@mui/material';
 
-export default function Home() {
-    const handleNavigateToHeatmap = () => {
-        // send IPC message to main process to navigate to heatmap page
-        window.electron.send('navigate-to', 'heatmap');
-    };
-
-    const handleNavigateToOrdination = () => {
-        // send IPC message to main process to navigate to ordination page
-        window.electron.send('navigate-to', 'ordination');
-    };
-
-    const handleNavigateToAlphaDiversity = () => {
-        // Send IPC message to main process to navigate to alpha diversity page
-        window.electron.send('navigate-to', 'alphadiversity')
-    };
-
-    const handleNavigateToRelabundFeatures = () => {
-        // Send IPC message to main process to navigate to relabund features page
-        window.electron.send('navigate-to', 'relabundfeatures')
-    };
-
+export default function Home({ handleNavigateTo }) {
     return (
         <div>
-            Home<br></br>
-            <Button
-                    variant="outlined"
-                    color='primary'
-                    onClick={handleNavigateToHeatmap}
-                    >
-                        Go to Relabund Heatmap Analysis
-                    </Button>
-            
-            <Button
-                variant="outlined"
-                color='primary'
-                onClick={handleNavigateToOrdination}
-                >
-                    Go to Plot Ordination Analysis
-                </Button>
+            {/* Main content area */}
+            <Grid container spacing={3}>
+                <Grid item xs={12}>
+                    <Typography variant="h4" gutterBottom>
+                        Analysis Dashboard
+                    </Typography>
+                </Grid>
 
-            <Button
-                variant='outlined'
-                color='primary'
-                onClick={handleNavigateToAlphaDiversity}
-                >
-                    Go to Alpha Diversity Analysis
-                </Button>
+                <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={3} sx={{ padding: 2 }}>
+                        <Typography variant="h6">Heatmap Analysis</Typography>
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            onClick={handleNavigateTo('heatmap')}
+                            fullWidth
+                        >
+                            Go to Heatmap Analysis
+                        </Button>
+                    </Paper>
+                </Grid>
 
-            <Button
-                variant='outlined'
-                color='primary'
-                onClick={handleNavigateToRelabundFeatures}
-                >
-                    Go to Relabund Features Analysis
-                </Button>
+                <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={3} sx={{ padding: 2 }}>
+                        <Typography variant="h6">Ordination Analysis</Typography>
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            onClick={handleNavigateTo('ordination')}
+                            fullWidth
+                        >
+                            Go to Ordination Analysis
+                        </Button>
+                    </Paper>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={3} sx={{ padding: 2 }}>
+                        <Typography variant="h6">Alpha Diversity Analysis</Typography>
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            onClick={handleNavigateTo('alphadiversity')}
+                            fullWidth
+                        >
+                            Go to Alpha Diversity Analysis
+                        </Button>
+                    </Paper>
+                </Grid>
+
+                <Grid item xs={12} sm={6} md={4}>
+                    <Paper elevation={3} sx={{ padding: 2 }}>
+                        <Typography variant="h6">Relabund Features Analysis</Typography>
+                        <Button
+                            variant="outlined"
+                            color="primary"
+                            onClick={handleNavigateTo('relabundfeatures')}
+                            fullWidth
+                        >
+                            Go to Relabund Features Analysis
+                        </Button>
+                    </Paper>
+                </Grid>
+            </Grid>
         </div>
     );
 }
