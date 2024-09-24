@@ -97,7 +97,7 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
 
             if (docorrelations == TRUE){
                 #Calculate matrix stats and get new matrix with correlations.
-                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = FALSE, stattype = stattype, classesvector = NULL)
+                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = FALSE, stattype = stattype, classesdf = classesdf)
 
                 if (!is.null(minabscorrcoeff)){
                     flog.info(paste("Eliminating features which do not correlate with other features with a coefficient of at least", minabscorrcoeff))

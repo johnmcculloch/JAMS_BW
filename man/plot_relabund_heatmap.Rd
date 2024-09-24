@@ -12,6 +12,7 @@ plot_relabund_heatmap(
   featuresToKeep = NULL,
   subsetby = NULL,
   compareby = NULL,
+  wilcox_paired_by = NULL,
   invertbinaryorder = FALSE,
   hmasPA = FALSE,
   threshPA = 0,
@@ -21,7 +22,7 @@ plot_relabund_heatmap(
   column_split_group_order = NULL,
   ordercolsby = NULL,
   cluster_samples_per_heatmap = TRUE,
-  cluster_features_per_heatmap = FALSE,
+  cluster_features_per_heatmap = TRUE,
   colcategories = NULL,
   textby = NULL,
   label_samples = TRUE,
@@ -73,6 +74,8 @@ plot_relabund_heatmap(
 \item{subsetby}{String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.}
 
 \item{compareby}{String specifying the metadata variable name for grouping samples when the hmtype argument is set to "comparative". This will calculate p-values for each feature using the Mann-Whitney-Wilcoxon U-test when there are exactly two classes within the variable, and the log2 foldchange between the two groups will be calculated. When there are three or more classes within the variable, the p-value will be calculated using ANOVA. If there is only a single class within the variable, hmtype will default to "exploratory" and features will be ranked by variance across samples.}
+
+\item{wilcox_paired_by}{String specifying metadata variable name for pairing samples if compareby has exactly two classes. If passed and not NULL, the Mann-Whitney-Wilcoxon U-test will be paired with samples paired by duplicate values in the wilcox_paired_by column. In this case, a test will be made to ascertain whether there are exactly two samples, one in each compareby class, bearing an identical value for wilcox_paired_by. If there is an odd number of samples, or somehow they cannot be unambiguously paired, the Mann-Whitney-Wilcoxon test will be run in the paired=FALSE mode, with a warning message.}
 
 \item{invertbinaryorder}{Requires a logical value. If set to TRUE, when using compareby when there are exactly two classes within the variable, the log2 foldchange signs of the two groups will be inverted. Default is FALSE.}
 

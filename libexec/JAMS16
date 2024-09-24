@@ -32,7 +32,7 @@ defopt$trunclen <- ("240,200")
 defopt$taxamethod <- "dada2"
 defopt$readcountthres <- 500
 defopt$exporttables <- FALSE
-defopt$plot_read_qualities
+defopt$plot_read_qualities <- FALSE
 defopt$plotreadqual <- TRUE
 #defopt$primerforw <- NULL
 #defopt$primerrev <- NULL

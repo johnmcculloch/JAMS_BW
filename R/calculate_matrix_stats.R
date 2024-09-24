@@ -1,25 +1,31 @@
-#' calculate_matrix_stats(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 999)
+#' calculate_matrix_stats(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesdf = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 10000, paired = FALSE)
 #'
 #' Returns a data frame with the statistics for a feature count matrix ordered by highest variance or lowest Mann-Whitney-Wilcoxon test between binary categories.
+#' This function is used internally by the JAMS plotting functions, plot_Ordination, plot_relabund_heatmap, plot_correlation_heatmpap and plot_relabund_features.
 #'
 #' @export
 
-calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 10000){
+calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesdf = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 10000, paired = FALSE){
 
     #Test for silly stuff
-    if ((stattype %in% c("binary", "permanova", "anova", "PA")) && (is.null(classesvector))){
-        stop("If rows are to be selected by highest significant difference between classes in a discrete category, you must determine the category using the argument *classesvector*")
+    if ((stattype %in% c("binary", "permanova", "anova", "PA")) && (is.null(classesdf))){
+        stop("If rows are to be selected by highest significant difference between classes in a discrete category, you must determine the category using the argument *classesdf*. See the documentation for make_classes_df")
     }
 
     #Decide if we are comparing anything
-    if (!(is.null(classesvector))){
+    if (!(is.null(classesdf))){
         #Decide if variable is continuous or discrete
-        if (is.numeric(classesvector)){
+        if (can_be_made_numeric(classesdf$cl)){
             numclass <- "continuous"
+            classesdf$cl <- as.numeric(classesdf$cl)
         } else {
             #Determine if there are two or more classes
-            numclass <- length(unique(classesvector))
+            numclass <- length(unique(classesdf$cl))
         }
+        classesvector <- classesdf$cl
+        #Ensure same order of samples on counts matrix and classesdf. Should be the same already, but better safe than sorry.
+        countmatrix <- countmatrix[ , rownames(classesdf)]
+
     } else {
         #No comparing, use variance
         numclass <- 0
@@ -27,7 +33,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
 
     #If auto, decide what to do
     if (stattype %in% c("auto", "PA")){
-        if (is.null(classesvector)){
+        if (is.null(classesdf)){
             stattype <- "variance"
         } else {
             if(numclass > 2){
@@ -53,7 +59,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
     #countmatrix <- countmatrix[rowsToKeep, ]
 
     #Calculate matrix stats and get new matrix.
-    if(stattype == "variance"){
+    if (stattype == "variance"){
 
         flog.info("Calculating variance across samples.")
         featStatsSD <- apply(countmatrix, 1, sd)
@@ -73,8 +79,17 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
             stop("To calculate p-values with Mann-Whitney-Wilcoxon test, the comparison variable must have exactly two classes.")
         }
 
-        discretenames <- sort(unique(classesvector))
-        comparisons <- lapply(1:nrow(countmatrix), function(x) { wilcox.test(countmatrix[x, ] ~ classesvector) })
+        discretenames <- sort(unique(classesdf$cl))
+        pair_wilcox_test <- ("wilcox_pairs" %in% colnames(classesdf))
+
+        #When using paired give a global warning that it may be impossible to calculate exact p-values when there are zeroes, and suppress the warnings for each event.
+        if (pair_wilcox_test){
+            flog.warn("Using ")
+            suppressWarnings(comparisons <- lapply(1:nrow(countmatrix), function(rw) { wilcox.test(x = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[1])]], y = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[2])]], paired = pair_wilcox_test, exact = TRUE) }))
+        } else {
+            comparisons <- lapply(1:nrow(countmatrix), function(rw) { wilcox.test(x = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[1])]], y = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[2])]], paired = pair_wilcox_test, exact = TRUE) })
+        }
+
         mwstat <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$statistic) } )
         mwpval <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$p.value) } )
 
@@ -104,7 +119,6 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
             return(l2fc)
         }
 
-        #l2fc <- sapply(1:nrow(countmatrix), function(x) { getl2fc(countsvec = countmatrix[x, ], classesvector = classesvector, discretenames = discretenames, countsinlog = uselog, method = "median") })
         l2fc <- sapply(1:nrow(countmatrix), function(x) { getl2fc(countsvec = countmatrix[x, ], classesvector = classesvector, discretenames = discretenames, countsinlog = uselog, method = fun_for_l2fc) })
 
         if (invertbinaryorder == TRUE){

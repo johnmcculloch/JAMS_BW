@@ -2,21 +2,23 @@
 % Please edit documentation in R/calculate_matrix_stats.R
 \name{calculate_matrix_stats}
 \alias{calculate_matrix_stats}
-\title{calculate_matrix_stats(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesvector = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 999)}
+\title{calculate_matrix_stats(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesdf = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 10000, paired = FALSE)}
 \usage{
 calculate_matrix_stats(
   countmatrix = NULL,
   uselog = NULL,
   statsonlog = TRUE,
   stattype = NULL,
-  classesvector = NULL,
+  classesdf = NULL,
   invertbinaryorder = FALSE,
   fun_for_l2fc = "geom_mean",
   threshPA = 0,
   numthreads = 1,
-  nperm = 10000
+  nperm = 10000,
+  paired = FALSE
 )
 }
 \description{
 Returns a data frame with the statistics for a feature count matrix ordered by highest variance or lowest Mann-Whitney-Wilcoxon test between binary categories.
+This function is used internally by the JAMS plotting functions, plot_Ordination, plot_relabund_heatmap, plot_correlation_heatmpap and plot_relabund_features.
 }

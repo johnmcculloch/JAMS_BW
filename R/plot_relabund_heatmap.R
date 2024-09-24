@@ -8,6 +8,8 @@
 
 #' @param compareby String specifying the metadata variable name for grouping samples when the hmtype argument is set to "comparative". This will calculate p-values for each feature using the Mann-Whitney-Wilcoxon U-test when there are exactly two classes within the variable, and the log2 foldchange between the two groups will be calculated. When there are three or more classes within the variable, the p-value will be calculated using ANOVA. If there is only a single class within the variable, hmtype will default to "exploratory" and features will be ranked by variance across samples.
 
+#' @param wilcox_paired_by String specifying metadata variable name for pairing samples if compareby has exactly two classes. If passed and not NULL, the Mann-Whitney-Wilcoxon U-test will be paired with samples paired by duplicate values in the wilcox_paired_by column. In this case, a test will be made to ascertain whether there are exactly two samples, one in each compareby class, bearing an identical value for wilcox_paired_by. If there is an odd number of samples, or somehow they cannot be unambiguously paired, the Mann-Whitney-Wilcoxon test will be run in the paired=FALSE mode, with a warning message.
+
 #' @param colcategories Vector with variables to include on the header sample annotation. A key legend for each variable will be included. If set to NULL, all variables contained in the SummarizedExperiment object metadata containing between 2 and 10 classes will be included. Variables containing continuous data will be plot with a gradient scale.
 
 #' @param samplesToKeep Vector with sample names to keep. If NULL, all samples within the SummarizedExperiment object are kept. Default is NULL.
@@ -98,7 +100,7 @@
 
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "exploratory", samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = FALSE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, row_order = NULL, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, show_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
+plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "exploratory", samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = TRUE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, row_order = NULL, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, show_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
 
     #Hardwire the minimum number of samples for a side by side secondary heatmap. This may be in a later version added as a function argument.
     threshold_for_double_plot <- 7
@@ -107,7 +109,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
     #Test for silly stuff
     if ((hmtype %in% c("comparative", "PA")) && (is.null(compareby))){
-        stop("If rows are to be selected by highest significant difference between classes in a discrete category, you must determine the category using the argument *classesvector*")
+        stop("If rows are to be selected by highest significant difference between classes in a discrete category, you must determine the category using the argument *compareby*")
     }
 
     #Fix metadata classes and remove classes to ignore, if present
@@ -374,10 +376,17 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                 statmsg <- stattype
 
             } else {
-                cl <- colData(currobj)[ , which(colnames(colData(currobj)) == compareby)]
-                discretenames <- sort(unique(cl))
+                if (!is.null(wilcox_paired_by)){
+                    flog.info(paste("Will attempt to pair samples by", wilcox_paired_by, "for Mann-Whitney-Wilcoxon test"))
+                }
+                classesdf <- make_classes_df(curr_pt = colData(currobj), compareby = compareby, wilcox_paired_by = wilcox_paired_by)
 
-                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = statsonlog, stattype = stattype, classesvector = cl, invertbinaryorder = invertbinaryorder, numthreads = numthreads, threshPA = threshPA, fun_for_l2fc = fun_for_l2fc)
+                discretenames <- sort(unique(classesdf$cl))
+                if ("wilcox_pairs" %in% colnames(classesdf)){
+                    flog.info(paste("Mann-Whitney-Wilcoxon test between", discretenames[1], "and", discretenames[2], "will be paired by", wilcox_paired_by))
+                }
+
+                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = statsonlog, stattype = stattype, classesdf = classesdf, invertbinaryorder = invertbinaryorder, numthreads = numthreads, threshPA = threshPA, fun_for_l2fc = fun_for_l2fc)
 
                 ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
 
@@ -585,7 +594,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         rowlblcol_list <- lapply(1:length(rowlist), function(x) { matstats$Colour[rowlist[[x]]] })
 
                         if (matstats$Method[1] == "MannWhitneyWilcoxon") {
-                            stattit <- paste("Top", topcats, "different between", compareby, "using MannWhitneyWilcoxon")
+                            stattit <- paste("Top", topcats, "different between", compareby, "using Mann-Whitney-Wilcoxon U-test")
+                            if ("wilcox_pairs" %in% colnames(classesdf)){
+                                stattit <- paste(stattit, paste0("Mann-Whitney-Wilcoxon U-test paired by ", wilcox_paired_by), sep = "\n")
+                            }
                         } else if (matstats$Method[1] == "permanova"){
                             stattit <- paste("Top", topcats, "different between", compareby, "using PERMANOVA")
                         } else if (matstats$Method[1] == "anova"){
@@ -617,7 +629,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                             matlist <- lapply(1:length(rowlist), function(x){ countmat2[rowlist[[x]], ] })
                             statslist <- lapply(1:length(rowlist), function(x){ matstats[rowlist[[x]], ] })
                             if (matstats$Method[1] == "MannWhitneyWilcoxon") {
-                                stattit <- paste(sigmeas, "<", showonlypbelow, "different between", compareby, "using MannWhitneyWilcoxon")
+                                stattit <- paste(sigmeas, "<", showonlypbelow, "different between", compareby, "using Mann-Whitney-Wilcoxon")
+                                if ("wilcox_pairs" %in% colnames(classesdf)){
+                                    stattit <- paste(stattit, paste0("Mann-Whitney-Wilcoxon U-test paired by ", wilcox_paired_by), sep = "\n")
+                                }
                             } else if (matstats$Method[1] == "permanova"){
                                 stattit <- paste(sigmeas, "<", showonlypbelow, "different between", compareby, "using PERMANOVA")
                             } else if (matstats$Method[1] == "anova"){
@@ -635,6 +650,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                             if (!(is.na(matstats$Method[1]))) {
                                 if (matstats$Method[1] == "MannWhitneyWilcoxon") {
                                     stattit <- c(paste(sigmeas, "<", showonlypbelow, "different between"), paste(compareby, "using MannWhitneyWilcoxon"))
+                                    if ("wilcox_pairs" %in% colnames(classesdf)){
+                                        stattit <- paste(stattit, paste0("Mann-Whitney-Wilcoxon U-test paired by ", wilcox_paired_by), sep = "\n")
+                                    }
                                 } else if (matstats$Method[1] == "permanova"){
                                     stattit <- c(paste(sigmeas, "<", showonlypbelow, "different between"), paste(compareby, "using PERMANOVA"))
                                 } else if (matstats$Method[1] == "anova"){

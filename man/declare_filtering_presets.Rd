@@ -6,6 +6,7 @@
 \usage{
 declare_filtering_presets(
   analysis = NULL,
+  is16S = FALSE,
   applyfilters = NULL,
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
