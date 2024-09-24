@@ -1045,7 +1045,7 @@ var createWindow = function createWindow() {
     width: 800,
     height: 600,
     webPreferences: {
-      preload: '/Users/mossingtonta/Projects/JAMS_BW/frontend/tega/.webpack/renderer/main_window/preload.js',
+      preload: path.join(__dirname, 'preload.bundle.js'),
       contextIsolation: true,
       nodeIntegration: false
     },
@@ -1053,7 +1053,7 @@ var createWindow = function createWindow() {
   });
 
   // and load the index.html of the app.
-  mainWindow.loadURL('http://localhost:3000/main_window');
+  mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
