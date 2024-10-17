@@ -84,10 +84,13 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
 
         #When using paired give a global warning that it may be impossible to calculate exact p-values when there are zeroes, and suppress the warnings for each event.
         if (pair_wilcox_test){
-            flog.warn("Using ")
+            flog.warn("Using paired test")
             suppressWarnings(comparisons <- lapply(1:nrow(countmatrix), function(rw) { wilcox.test(x = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[1])]], y = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[2])]], paired = pair_wilcox_test, exact = TRUE) }))
         } else {
-            comparisons <- lapply(1:nrow(countmatrix), function(rw) { wilcox.test(x = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[1])]], y = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[2])]], paired = pair_wilcox_test, exact = TRUE) })
+            flog.warn("Using unpaired test")
+            #comparisons <- lapply(1:nrow(countmatrix), function(rw) { wilcox.test(x = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[1])]], y = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[2])]], paired = pair_wilcox_test) })
+            #Revert to formula notation, as it is much, much, much faster.
+            comparisons <- lapply(1:nrow(countmatrix), function(rw) { wilcox.test(countmatrix[rw, classesdf$Sample] ~ classesdf$cl) })
         }
 
         mwstat <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$statistic) } )
