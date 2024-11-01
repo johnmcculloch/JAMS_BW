@@ -790,3 +790,16 @@ split_featname <- function(featname = NULL, thresh_featname_split = 40){
 
     return(featname)
 }
+
+
+#' post_message(msg = NULL, face = "plain", just = "centre", color = "black", size = 20)
+#'
+#' Wrapper function for plotting text to a full page on a pdf.
+#' @export
+
+post_message <- function(msg = NULL, face = "plain", just = "centre", color = "black", size = 20){
+    text_msg <- paste0(msg, collapse = "\n")
+    tgrob <- text_grob(text_msg, face = face, color = color, just = just, size = size)
+    print(as_ggplot(tgrob))
+}
+
