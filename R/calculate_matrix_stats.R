@@ -24,7 +24,9 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         }
         classesvector <- classesdf$cl
         #Ensure same order of samples on counts matrix and classesdf. Should be the same already, but better safe than sorry.
-        countmatrix <- countmatrix[ , rownames(classesdf)]
+        if (nrow(countmatrix) > 1){
+            countmatrix <- countmatrix[ , rownames(classesdf)]
+        }
 
     } else {
         #No comparing, use variance
@@ -89,8 +91,14 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         } else {
             flog.warn("Using unpaired test")
             #comparisons <- lapply(1:nrow(countmatrix), function(rw) { wilcox.test(x = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[1])]], y = countmatrix[rw, classesdf$Sample[which(classesdf$cl == discretenames[2])]], paired = pair_wilcox_test) })
-            #Revert to formula notation, as it is much, much, much faster.
-            comparisons <- lapply(1:nrow(countmatrix), function(rw) { wilcox.test(countmatrix[rw, classesdf$Sample] ~ classesdf$cl) })
+            #Revert to formula notation, as it is much, much, much faster, unless the df has less than 2 rows (like when agregating features in plot_relabund_features)
+            if (nrow(countmatrix) > 1){
+                comparisons <- lapply(1:nrow(countmatrix), function(rw) { wilcox.test(as.numeric(countmatrix[rw, classesdf$Sample]) ~ classesdf$cl) })
+            } else {
+                #Counts is a single row
+                comparisons <- list()
+                comparisons[[1]] <- wilcox.test(as.numeric(countmatrix[ , rownames(classesdf)]) ~ classesdf$cl)
+            }
         }
 
         mwstat <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$statistic) } )
