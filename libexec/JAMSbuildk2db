@@ -134,7 +134,7 @@ option_list <- list(
                 help = str_c("Comma separated list of organisms to include in database. Choose from Bacteria, Archaea, Fungi, Viruses, Protozoa, HumanAndMouse and Invertebrates (default: ", defopt$organisms, ")")),
 
     make_option(c("-e", "--exclude_derived_from_metagenomes"), action="store_true",
-                help = "Exclude assemblies derived from metagenomes as flagged by GenBank's assembly_summary manifest.")
+                help = "Exclude assemblies derived from metagenomes as flagged by GenBank's assembly_summary manifest."),
 
     make_option(c("-d", "--defer_building_database"), action="store_true",
                 help = "Defer actually building the database with kraken2. If this option is used, all genomes will be downloaded, a JAMStaxtable will be computed and saved, genomes will be added to the kraken2 database, but NOT built. All these aforementioned steps take a very long time while not using much RAM memory, so actual building of the kraken2 database can then be launched using a different RAM memory configuration at a later time, manually. This might be useful for not blocking a node with large RAM without using said RAM for most of the time. When using this option, a script will be generated for building the database, that can be launched manually."),
