@@ -1,9 +1,9 @@
-#' get_genomes_NCBI(organisms="bacteria", assembly_summary=NULL, outputdir=NULL, assembly_accession=NULL, organism_name=NULL, infraspecific_name=NULL, taxid=NULL, species_taxid=NULL, asm_name=NULL, as_general_expression=FALSE, assembly_level=NULL, assembly_upto=NULL, bioproject=NULL, biosample=NULL, refseq_category_upto=NULL, ntop=NULL, nobs=TRUE, fileformat="fasta", simulate=TRUE)
+#' get_genomes_NCBI(organisms = "bacteria", assembly_summary = NULL, outputdir = NULL, assembly_accession = NULL, organism_name = NULL, infraspecific_name = NULL, taxid = NULL, species_taxid = NULL, asm_name = NULL, as_general_expression = FALSE, assembly_level = NULL, assembly_upto = NULL, bioproject = NULL, biosample = NULL, refseq_category_upto = NULL, ntop = NULL, nobs = TRUE, allow_assemblies_from_metagenomes = TRUE, fileformat = "fasta", simulate = TRUE)
 #'
 #' Downloads Genomes from NCBI GenBank based on matching criteria
 #' @export
 
-get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, outputdir = NULL, assembly_accession = NULL, organism_name = NULL, infraspecific_name = NULL, taxid = NULL, species_taxid = NULL, asm_name = NULL, as_general_expression = FALSE, assembly_level = NULL, assembly_upto = NULL, bioproject = NULL, biosample = NULL, refseq_category_upto = NULL, ntop = NULL, nobs = TRUE, fileformat = "fasta", simulate = TRUE){
+get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, outputdir = NULL, assembly_accession = NULL, organism_name = NULL, infraspecific_name = NULL, taxid = NULL, species_taxid = NULL, asm_name = NULL, as_general_expression = FALSE, assembly_level = NULL, assembly_upto = NULL, bioproject = NULL, biosample = NULL, refseq_category_upto = NULL, ntop = NULL, nobs = TRUE, allow_assemblies_from_metagenomes = TRUE, fileformat = "fasta", simulate = TRUE){
 
     require(data.table)
     if (is.null(outputdir)){
@@ -152,6 +152,13 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
     }
 
     if (nobs == TRUE){
+        if (allow_assemblies_from_metagenomes) {
+            flog.info("Assemblies which are derived from metagenomes will be included.")
+            permissible_flags <- c("", "na", "derived from metagenome")
+        } else {
+            flog.info("Assemblies which are derived from metagenomes will be EXCLUDED.")
+            permissible_flags <- c("", "na")
+        }
         flog.info("Filtering out entries which have been tagged as being problematic or low quality.")
         noproblem <- which(wanted_assembly_summary$excluded_from_refseq %in% c("", "na"))
         wanted_assembly_summary <- wanted_assembly_summary[noproblem, ]
