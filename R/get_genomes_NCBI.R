@@ -160,7 +160,7 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
             permissible_flags <- c("", "na")
         }
         flog.info("Filtering out entries which have been tagged as being problematic or low quality.")
-        noproblem <- which(wanted_assembly_summary$excluded_from_refseq %in% c("", "na"))
+        noproblem <- which(wanted_assembly_summary$excluded_from_refseq %in% permissible_flags)
         wanted_assembly_summary <- wanted_assembly_summary[noproblem, ]
         flog.info(paste("There are", nrow(wanted_assembly_summary), "entries which have NOT been flagged as being problematic or low quality."))
     }
