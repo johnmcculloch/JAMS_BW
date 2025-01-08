@@ -1,6 +1,13 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
-const isDev = require('electron-is-dev');
+
+
+let isDev = false;
+try {
+  isDev = require('electron-is-dev');
+} catch (error) {
+  //electron dev is not available in production
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
