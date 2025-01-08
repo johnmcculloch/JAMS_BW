@@ -1,0 +1,43 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "A React application",
+  "main": "main.js",
+  "scripts": {
+    "start": "parcel public/index.html --open",
+    "build": "parcel build public/index.html --out-dir dist",
+    "electron-dev": "concurrently \"npm:start\" \"wait-on http://localhost:1234 && electron .\"",
+    "electron": "npm run build && electron ."
+  },
+  "dependencies": {
+    "electron": "^33.3.1",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
+  },
+  "devDependencies": {
+    "parcel-bundler": "^1.12.5",
+    "concurrently": "^6.2.1",
+    "wait-on": "^5.3.0",
+    "electron-is-dev": "^2.0.0"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
