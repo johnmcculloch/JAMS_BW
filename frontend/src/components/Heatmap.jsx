@@ -179,3 +179,29 @@ const Heatmap = ({ handleNavigateTo }) => {
             setSelectedObj(objects[0]);
         }
     }, [objects, selectedObj]);
+
+    return (
+        <div>
+            <div style={{ positionL: 'absolute', top: '10px', right: '10px' }}>
+                <button onClick={handleNavigateTo('home')}>
+                    Go Back to Home Page
+                </button>
+            </div>
+            <h1>Generate Heatmap</h1>
+            <div>
+                {/* File upload for RData file */}
+                <h3>Upload R Data File for Heatmap</h3>
+                <Button
+                    component="label"
+                    variant='contained'
+                    startIcon={<CloudUploadIcon />}
+                    onClick={handleFileUpload}
+                >
+                    Upload RData File
+                </Button>
+            </div>
+        </div>
+
+
+
+    )
