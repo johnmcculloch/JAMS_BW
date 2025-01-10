@@ -266,10 +266,10 @@ const Heatmap = ({ handleNavigateTo }) => {
                     >
                         Open Heatmap PDF
                     </Button>
+                </div>
             )}
-
         </div>
+    );
+};
 
-
-
-    )
+export default Heatmap;
