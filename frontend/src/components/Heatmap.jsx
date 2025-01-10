@@ -251,7 +251,9 @@ const Heatmap = ({ handleNavigateTo }) => {
                         )}
                     </div>
                 ))}
-
+                <Button type='submit' variant='outlined' color='primary'>
+                    Generate Heatmap
+                </Button>
             </form>
 
         </div>
