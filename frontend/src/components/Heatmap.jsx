@@ -121,3 +121,25 @@ const Heatmap = ({ handleNavigateTo }) => {
             [name]: type === 'checkbox' ? checked : value
         });
     };
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        console.log('Selected ExpObj:', selectedObj);
+        try {
+            // Combine the parameters with selected objects and file path
+            const params = {
+                filePath,
+                ExpObj: selectedObj,
+                advancedSettings: {},
+                ...parameters
+            };
+
+            // Call IPC method to run the heatmap script
+            const result = await window.electron.runHeatmapScript(params);
+
+            // Update the heatmap data with result
+            setHeatmapData(result);
+        } catch (error) {
+            console.error('Error generating heatmap:', error);
+        }
+    };
