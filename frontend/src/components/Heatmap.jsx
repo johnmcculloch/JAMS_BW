@@ -161,3 +161,9 @@ const Heatmap = ({ handleNavigateTo }) => {
             console.error('Error opening file dialog:', error);
         }
     };
+
+    const handleObjSelect = (e) => {
+        const value = e.target.value;
+        setSelectedObj(value);
+        console.log('Selected object state:', value);
+    };
