@@ -172,3 +172,10 @@ const Heatmap = ({ handleNavigateTo }) => {
         // Send IPC event to open the heatmap PDF
         window.electron.send('open-heatmap-location');
     };
+
+    useEffect(() => {
+        // Set default selection if objects array changes
+        if (objects.length > 0 && !selectedObj) {
+            setSelectedObj(objects[0]);
+        }
+    }, [objects, selectedObj]);
