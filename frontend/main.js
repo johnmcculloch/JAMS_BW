@@ -29,3 +29,11 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+// ** Main Processes ** 
+
+// Handle Page Navigation IPC event
+ipcMain.on('navigate-to', (event, page) => {
+  // Send the navigation event to the renderer
+  mainWindow.webContents.send('navigate-to', page);
+});
