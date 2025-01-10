@@ -200,6 +200,60 @@ const Heatmap = ({ handleNavigateTo }) => {
                     Upload RData File
                 </Button>
             </div>
+
+            {/* Dropdown for selecting Summarized Experiment Object */}
+            {objects.length > 0 && (
+                <div>
+                    <h3>Select Summarized Experiment Object</h3>
+                    <select onChange={handleObjSelect} value={selectedObj}>
+                        {objects.map((obj, index) => (
+                            <option key={index} value={obj}>
+                                {obj}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {/* Form for Heatmap Parameters */}
+            <form onSubmit={handleSubmit}>
+                {Object.keys(parameters).map((key) => (
+                    <div key={key}>
+                        <label htmlFor={key}>{displayNames[key] || key}:</label>
+                        {key === 'applyfilters' ? (
+                            <select
+                                id={key}
+                                name={key}
+                                value={parameters[key]}
+                                onChange={handleChange}
+                            >
+                                <option value='none'>none</option>
+                                <option value='light'>light</option>
+                                <option value='moderate'>moderate</option>
+                                <option value='stringent'>stringent</option>
+                            </select>
+                        ) : typeof parameters[key] === 'boolean' ? (
+                            <input
+                                type='checkbox'
+                                id={key}
+                                name={key}
+                                checked={parameters[key]}
+                                onChange={handleChange}
+                                />
+                        ): (
+                            <input
+                                type="text"
+                                id={key}
+                                name={key}
+                                value={parameters[key]}
+                                onChange={handleChange}
+                            />
+                        )}
+                    </div>
+                ))}
+
+            </form>
+
         </div>
 
 
