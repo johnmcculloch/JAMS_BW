@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "parcel public/index.html --open",
-    "build": "parcel build public/index.html --out-dir dist",
+    "build": "parcel build public/index.html --out-dir dist --public-url ./",
     "electron-dev": "concurrently \"npm:start\" \"wait-on http://localhost:1234 && electron .\"",
     "electron": "npm run build && electron .",
     "dist": "npm run build && electron-builder"
