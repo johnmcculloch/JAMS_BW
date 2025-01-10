@@ -167,3 +167,8 @@ const Heatmap = ({ handleNavigateTo }) => {
         setSelectedObj(value);
         console.log('Selected object state:', value);
     };
+
+    const handleDownloadClick = () => {
+        // Send IPC event to open the heatmap PDF
+        window.electron.send('open-heatmap-location');
+    };
