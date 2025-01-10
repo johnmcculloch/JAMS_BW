@@ -1,13 +1,10 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
+console.log(`app.isPackaged: ${app.isPackaged}`); // Add this line for debugging
+let isDev = !app.isPackaged;
 
-let isDev = false;
-try {
-  isDev = require('electron-is-dev');
-} catch (error) {
-  //electron dev is not available in production
-}
+console.log(`isDev: ${isDev}`);
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -21,6 +18,7 @@ function createWindow() {
   const startUrl = isDev
     ? 'http://localhost:1234'
     : `file://${path.join(__dirname, 'dist', 'index.html')}`;
+  console.log(`Loading URL: ${startUrl}`); 
   mainWindow.loadURL(startUrl);
 }
 
@@ -29,11 +27,5 @@ app.on('ready', createWindow);
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
-  }
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
   }
 });
