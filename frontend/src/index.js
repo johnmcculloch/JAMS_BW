@@ -1,6 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import App from './components/App';
-import './styles/App.css';
 
-ReactDOM.render(<App />, document.getElementById('root'));
+ReactDOM.render(
+    <React.StrictMode>
+        <App handleNavigateTo={(page) => console.log(`Navigate to ${page}`)} />
+    </React.StrictMode>,
+    document.getElementById('root')
+);
+
