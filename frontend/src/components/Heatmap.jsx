@@ -108,3 +108,16 @@ const Heatmap = ({ handleNavigateTo }) => {
         returnstats: 'Return Stats',
         class_to_ignore: 'Class to Ignore'
     };
+
+    const [heatmapData, setHeatmapData] = useState(null);
+    const [objects, setObjects] = useState([]); // for ExpObj dropdown
+    const [filePath, setFilePath] = useState('');
+    const [selectedObj, setSelectedObj] = useState('');
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setParameters({
+            ...parameters,
+            [name]: type === 'checkbox' ? checked : value
+        });
+    };
