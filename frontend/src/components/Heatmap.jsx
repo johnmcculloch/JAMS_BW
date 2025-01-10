@@ -256,6 +256,18 @@ const Heatmap = ({ handleNavigateTo }) => {
                 </Button>
             </form>
 
+            {heatmapData && (
+                <div id='heatmap=container'>
+                    <h2>Heatmap</h2>
+                    <Button
+                        variant='contained'
+                        color='primary'
+                        onClick={handleDownloadClick}
+                    >
+                        Open Heatmap PDF
+                    </Button>
+            )}
+
         </div>
 
 
