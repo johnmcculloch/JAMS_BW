@@ -98,4 +98,9 @@ const Ordination = ({ handleNavigateTo }) => {
         include_components_variance_plot: 'Include Components Variance Plot',
         class_to_ignore: 'Class to Ignore' 
     };
+
+    const [ordinationData, setOrdinationData] = useState(null);
+    const [objects, setObjects] = useState([]);
+    const [filePath, setFilePath] = useState('');
+    const [selectedObj, setSelectedObj] = useState('');
 }
