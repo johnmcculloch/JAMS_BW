@@ -1,4 +1,3 @@
-// filepath: /Users/mossingtonta/Projects/JAMS_BW_dev/frontend/src/components/App.jsx
 import React from 'react';
 import { Grid, Paper, Typography, Button } from '@mui/material';
 
@@ -19,7 +18,7 @@ export default function Home({ handleNavigateTo }) {
                         <Button
                             variant="outlined"
                             color="primary"
-                            onClick={() => handleNavigateTo('heatmap')}
+                            onClick={handleNavigateTo('heatmap')}
                             fullWidth
                         >
                             Go to Heatmap Analysis
@@ -33,7 +32,7 @@ export default function Home({ handleNavigateTo }) {
                         <Button
                             variant="outlined"
                             color="primary"
-                            onClick={() => handleNavigateTo('ordination')}
+                            onClick={handleNavigateTo('ordination')}
                             fullWidth
                         >
                             Go to Ordination Analysis
@@ -47,7 +46,7 @@ export default function Home({ handleNavigateTo }) {
                         <Button
                             variant="outlined"
                             color="primary"
-                            onClick={() => handleNavigateTo('alphadiversity')}
+                            onClick={handleNavigateTo('alphadiversity')}
                             fullWidth
                         >
                             Go to Alpha Diversity Analysis
@@ -61,7 +60,7 @@ export default function Home({ handleNavigateTo }) {
                         <Button
                             variant="outlined"
                             color="primary"
-                            onClick={() => handleNavigateTo('relabundfeatures')}
+                            onClick={handleNavigateTo('relabundfeatures')}
                             fullWidth
                         >
                             Go to Relabund Features Analysis
@@ -71,4 +70,4 @@ export default function Home({ handleNavigateTo }) {
             </Grid>
         </div>
     );
-};
+}
