@@ -2,7 +2,7 @@
 import React from 'react';
 import { Grid, Paper, Typography, Button } from '@mui/material';
 
-const App = ({ handleNavigateTo }) => {
+export default function Home({ handleNavigateTo }) {
     return (
         <div>
             {/* Main content area */}
@@ -72,5 +72,3 @@ const App = ({ handleNavigateTo }) => {
         </div>
     );
 };
-
-export default App;
