@@ -8,9 +8,9 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import Home from './components/Home.jsx';
 import Heatmap from './components/Heatmap.jsx';
-//import Ordination from './components/Ordination.jsx';
-//import AlphaDiversity from './components/AlphaDiversity.jsx';
-//import RelabundFeatures from './components/RelabundFeatures.jsx';
+import Ordination from './components/Ordination.jsx';
+import AlphaDiversity from './components/AlphaDiversity.jsx';
+import RelabundFeatures from './components/RelabundFeatures.jsx';
 
 function App() {
     const [currentPage, setCurrentPage] = useState('home');
