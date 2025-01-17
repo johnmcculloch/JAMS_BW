@@ -128,6 +128,8 @@ const Ordination = ({ handleNavigateTo }) => {
 
             // Update the ordination data with the result
             setOrdinationData(result);
+        } catch (error) {
+            console.error("Error generating ordination plot:", error);
         }
     };
 
