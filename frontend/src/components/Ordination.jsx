@@ -111,5 +111,24 @@ const Ordination = ({ handleNavigateTo }) => {
             [name]: type === 'checkbox' ? checked: value
         });
     };
-    
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        console.log('Selected ExpObj:', selectedObj);
+        try {
+            // Combine the parameters with the selected objects and file path
+            const params = {
+                filePath,
+                ExpObj: selectedObj,
+                ...parameters
+            };
+
+            // Call IPC method to run ordination script
+            const result = await window.electron.runOrdinationScript(params)
+
+            // Update the ordination data with the result
+            setOrdinationData(result);
+        }
+    };
+
 }
