@@ -109,6 +109,11 @@ const AlphaDiversity =({ handleNavigateTo }) => {
         }
     };
 
-    
+    const handleObjSelect = (e) => {
+        const value = e.target.value;
+        setSelectedObj(value);
+        console.log('Selected object state:', value);
+    };
+
 
 }
