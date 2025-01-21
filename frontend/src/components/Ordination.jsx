@@ -160,4 +160,10 @@ const Ordination = ({ handleNavigateTo }) => {
         console.log('Selected object state:', value);
     };
 
+    // Function to open the generated PDF file
+    const handleDownloadClick = () => {
+        // Send IPC event to open the ordination plot file
+        window.electron.send('open-ordination-location');
+    };
+
 }
