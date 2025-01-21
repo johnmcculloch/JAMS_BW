@@ -112,6 +112,7 @@ const Ordination = ({ handleNavigateTo }) => {
         });
     };
 
+    // Function to handle the submission of user-defined parameters
     const handleSubmit = async (e) => {
         e.preventDefault();
         console.log('Selected ExpObj:', selectedObj);
@@ -133,6 +134,7 @@ const Ordination = ({ handleNavigateTo }) => {
         }
     };
 
+    // Function that allows a file to be opened
     const handleFileUpload = async () => {
         try {
             const filePath = await window.electron.invoke('open-file-dialog');
@@ -149,6 +151,13 @@ const Ordination = ({ handleNavigateTo }) => {
         } catch (error) {
             console.error('Error opening file dialog:', error);
         }
+    };
+
+    // Function to handle selecting an object after RData file upload
+    const handleObjSelect = (e) => {
+        const value = e.target.value;
+        setSelectedObj(value);
+        console.log('Selected object state:', value);
     };
 
 }
