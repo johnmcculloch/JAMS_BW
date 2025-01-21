@@ -29,5 +29,31 @@ const AlphaDiversity =({ handleNavigateTo }) => {
         ignoreunclassified: true,
         class_to_ignore: 'N_A',
     });
-    
+
+    const displayNames = {
+        measures: 'Measures',
+        stratify_by_kingdoms: 'Stratify by Kingdoms',
+        glomby: 'Glom By',
+        samplesToKeep: 'Samples to Keep',
+        subsetby: 'Subset By',
+        compareby: 'Compare By',
+        compareby_order: 'Order to Compare By',
+        colourby: 'Colour By',
+        shapeby: 'Shape By',
+        fillby: 'Fill By',
+        pairby: 'Pair By',
+        connectby: 'Connect By',
+        facetby: 'Facet By',
+        wrap_facet: 'Wrap Facet',
+        overlay_boxplot: 'Overlay Boxplot',
+        applyfilters: 'Apply Filters',
+        featcutoff: 'Feature Cutoff',
+        GenomeCompletenessCutoff: 'Genome Completeness Cutoff',
+        PPM_normalize_to_bases_sequenced: 'PPM Normalize to Bases Sequenced',
+        addtit: 'Add Title',
+        signiflabel: 'Significance Label',
+        max_pairwise_cats: 'Maximum Pairwise Categories',
+        ignoreunclassified: 'Ignore Unclassified',
+        class_to_ignore: 'Class to Ignore'
+    };
 }
