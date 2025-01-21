@@ -174,4 +174,13 @@ const Ordination = ({ handleNavigateTo }) => {
         }
     }, [objects, selectedObj]);
 
+    return (
+        <div>
+            <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
+                <button onClick={handleNavigateTo('home')}>
+                    Go Back to Home Page
+                </button>
+            </div>
+        </div>
+    )
 }
