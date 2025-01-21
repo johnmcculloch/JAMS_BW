@@ -3,6 +3,7 @@ import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 const Ordination = ({ handleNavigateTo }) => {
+    // Parameter options
     const [parameters, setParameters] = useState({
         glomby: '',
         algorithm: '',
@@ -50,7 +51,7 @@ const Ordination = ({ handleNavigateTo }) => {
         include_components_variance_plot: false,
         class_to_ignore: 'N_A',
     });
-
+    // Parameter display names
     const displayNames = {
         glomby: 'Glom By',
         algorithm: 'Algorithm',
