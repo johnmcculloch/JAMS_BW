@@ -120,5 +120,12 @@ const AlphaDiversity =({ handleNavigateTo }) => {
         window.electron.send('open-alphadiversity-location');
     };
 
+    useEffect (() => {
+        // Set the default selection if objects array changes
+        if (objects.length > 0 && !selectedObj) {
+            setSelectedObj(objects[0]);
+        }
+    }, [objects, selectedObj]);
+
     
 }
