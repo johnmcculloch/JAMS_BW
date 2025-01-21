@@ -115,5 +115,10 @@ const AlphaDiversity =({ handleNavigateTo }) => {
         console.log('Selected object state:', value);
     };
 
+    const handleDownloadClick = () => {
+        // Send IPC event to open the alphadiversity PDF
+        window.electron.send('open-alphadiversity-location');
+    };
 
+    
 }
