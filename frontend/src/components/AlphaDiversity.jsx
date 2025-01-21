@@ -56,4 +56,9 @@ const AlphaDiversity =({ handleNavigateTo }) => {
         ignoreunclassified: 'Ignore Unclassified',
         class_to_ignore: 'Class to Ignore'
     };
+
+    const [alphaDiversityData, setAlphaDiversityData] = useState(null);
+    const [objects, setObjects] = useState([]);
+    const [filePath, setFilePath] = useState('');
+    const [selectedObj, setSelectedObj] = useState('');
 }
