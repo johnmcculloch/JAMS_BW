@@ -167,11 +167,11 @@ const Ordination = ({ handleNavigateTo }) => {
     };
 
     // Set default selection if objects array changes
+    // Ensure selectedObj is set to the first element of objects array if not already set (this initializes the selected object when the objects array is first populated)
     useEffect(() => {
         if (objects.length > 0 && !selectedObj) {
             setSelectedObj(objects[0]);
         }
     }, [objects, selectedObj]);
-    
 
 }
