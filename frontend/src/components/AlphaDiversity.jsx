@@ -149,6 +149,20 @@ const AlphaDiversity =({ handleNavigateTo }) => {
             </Button>
         </div>
 
+        {/* Dropdown for selecting Summarized Experiment Object */}
+        {objects.length > 0 && (
+            <div>
+                <h3>Select Summarized Experiment Object</h3>
+                <select onChange={handleObjSelect} value={selectedObj}>
+                    {objects.map((obj, index) => (
+                        <option key={index} value={obj}>
+                            {obj}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        )}
+
 
 
         </div>
