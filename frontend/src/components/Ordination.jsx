@@ -252,7 +252,18 @@ const Ordination = ({ handleNavigateTo }) => {
             </Button>
         </form>
 
+        {ordinationData && (
+            <div id="ordination=container">
+                <h2>Ordination Plot</h2>
+                <Button
+                variant='contained'
+                color='primary'
+                onClick={handleDownloadClick}
+                >
+                    Open Ordination Plot PDF
+                </Button>
+            </div>
+        )}
         </div>
-
     )
 }
