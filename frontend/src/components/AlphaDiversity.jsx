@@ -200,6 +200,9 @@ const AlphaDiversity =({ handleNavigateTo }) => {
                     )}
                 </div>
             ))}
+            <Button type='submit' variant='outlined' color='primary'>
+                Generate Alpha Diversity Plot
+            </Button>
         </form>
 
 
