@@ -166,4 +166,12 @@ const Ordination = ({ handleNavigateTo }) => {
         window.electron.send('open-ordination-location');
     };
 
+    // Set default selection if objects array changes
+    useEffect(() => {
+        if (objects.length > 0 && !selectedObj) {
+            setSelectedObj(objects[0]);
+        }
+    }, [objects, selectedObj]);
+    
+
 }
