@@ -205,8 +205,20 @@ const AlphaDiversity =({ handleNavigateTo }) => {
             </Button>
         </form>
 
+        {alphaDiversityData && (
+            <div id='alphadiversity=container'>
+                <h2>AlphaDiversity Plot</h2>
+                <Button
+                variant='contained'
+                color='primary'
+                onClick={handleDownloadClick}
+                >
+                    Open AlphaDiversity Plot PDF
+                </Button>
+            </div>
+        )}
+    </div>
+    );
+};
 
-
-        </div>
-    )
-}
+export default AlphaDiversity;
