@@ -265,5 +265,7 @@ const Ordination = ({ handleNavigateTo }) => {
             </div>
         )}
         </div>
-    )
-}
+    );
+};
+
+export default Ordination;
