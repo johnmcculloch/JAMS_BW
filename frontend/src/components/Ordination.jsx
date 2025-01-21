@@ -211,6 +211,44 @@ const Ordination = ({ handleNavigateTo }) => {
             </div>
         )}
 
+        {/* Form for Ordination Parameters */}
+        <form onSubmit={handleSubmit}>
+            {Object.keys(parameters).map((key) => (
+                <div key={key}>
+                    <label htmlFor={key}>{displayNames[key] || key}:</label>
+                    {key === 'applyfilters' ? (
+                        <select
+                        id={key}
+                        name={key}
+                        value={parameters[key]}
+                        onChange={handleChange}
+                        >
+                            <option value='none'>none</option>
+                            <option value='light'>light</option>
+                            <option value='moderate'>moderate</option>
+                            <option value='stringent'>stringent</option>
+                        </select>
+                    ) : typeof parameters[key] === 'boolean' ? (
+                        <input
+                        type='checkbox'
+                        id={key}
+                        name={key}
+                        checked={parameters[key]}
+                        onChange={handleChange}
+                        />
+                    ) : (
+                        <input
+                        type="text"
+                        id={key}
+                        name={key}
+                        value={parameters[key]}
+                        onChange={handleChange}
+                        />
+                    )}
+                </div>
+            ))}
+        </form>
+
         </div>
 
     )
