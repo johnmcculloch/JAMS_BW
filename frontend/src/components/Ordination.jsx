@@ -181,6 +181,22 @@ const Ordination = ({ handleNavigateTo }) => {
                     Go Back to Home Page
                 </button>
             </div>
+
+            <h1>Generate Ordination Plot</h1>
+        <div>
+            {/* File upload for RData File */}
+            <h3>Upload RData File for Ordination Plot</h3>
+            <Button
+                component="label"
+                variant="contained"
+                startIcon={<CloudUploadIcon />}
+                onClick={handleFileUpload}
+            >
+                Upload RData File
+            </Button>
         </div>
+
+        </div>
+
     )
 }
