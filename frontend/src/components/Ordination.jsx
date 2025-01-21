@@ -247,6 +247,9 @@ const Ordination = ({ handleNavigateTo }) => {
                     )}
                 </div>
             ))}
+            <Button type='submit' variant='outlined' color='primary'>
+                Generate Ordination Plot PDF
+            </Button>
         </form>
 
         </div>
