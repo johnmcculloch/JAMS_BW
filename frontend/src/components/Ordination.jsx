@@ -133,4 +133,22 @@ const Ordination = ({ handleNavigateTo }) => {
         }
     };
 
+    const handleFileUpload = async () => {
+        try {
+            const filePath = await window.electron.invoke('open-file-dialog');
+            if (filePath) {
+                setFilePath(filePath);
+                const result = await window.electron.invoke('load-rdata-file', filePath);
+                setObjects(result);
+
+                // Set default selection to the first object, otherwise it will not default to any
+                if (result.length > 0) {
+                    setSelectedObj(result[0]);
+                }
+            }
+        } catch (error) {
+            console.error('Error opening file dialog:', error);
+        }
+    };
+
 }
