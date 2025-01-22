@@ -177,7 +177,7 @@ const AlphaDiversity =({ handleNavigateTo }) => {
                         >
                             <option value='none'>none</option>
                             <option value='light'>light</option>
-                            <option value='moderate'></option>
+                            <option value='moderate'>moderate</option>
                             <option value='stringent'>stringent</option>
                         </select>
 
