@@ -193,6 +193,24 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
             </div>
 
             <h1>Generate Relabund Feature Plot</h1>
+
+            <div>
+                {/* File upload for RData file */}
+                <h3>Upload RData File for Relabund Feature Plot</h3>
+                <Button
+                    component='label'
+                    variant='contained'
+                    startIcon={<CloudUploadIcon />}
+                    onClick={handleFileUpload}
+                >
+                    Upload RData File
+                </Button>
+            </div>
+
+            
+
+
+
         </div>
     )
 }
