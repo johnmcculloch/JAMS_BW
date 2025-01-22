@@ -177,4 +177,11 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
         window.electron.send('open-RelabundFeatures-location');
     };
 
+    useEffect(() => {
+        // Set default selection if objects array changes
+        if (objects.length > 0 && !selectedObj) {
+            setSelectedObj(objects[0]);
+        }
+    }, [objects, selectedObj]);
+
 }
