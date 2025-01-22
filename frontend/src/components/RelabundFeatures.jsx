@@ -112,4 +112,9 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
         return_plots: 'Return Plots',
         rescale_axis_quantiles: 'Rescale Axis Quantiles'
     };
+
+    const [relabundfeatureData, setRelabundFeatureData] = useState(null);
+    const [objects, setObjects] = useState([]);
+    const [filePath, setFilePath] = useState('');
+    const [selectedObj, setSelectedObj] = useState('')
 }
