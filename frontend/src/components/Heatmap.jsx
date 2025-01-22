@@ -182,7 +182,7 @@ const Heatmap = ({ handleNavigateTo }) => {
 
     return (
         <div>
-            <div style={{ positionL: 'absolute', top: '10px', right: '10px' }}>
+            <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
                 <button onClick={handleNavigateTo('home')}>
                     Go Back to Home Page
                 </button>
