@@ -117,4 +117,15 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
     const [objects, setObjects] = useState([]);
     const [filePath, setFilePath] = useState('');
     const [selectedObj, setSelectedObj] = useState('')
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setParameters({
+            ...parameters,
+            [name]: type === 'checkbox' ? checked : value
+        });
+    };
+
+
+    
 }
