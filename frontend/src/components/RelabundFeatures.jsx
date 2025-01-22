@@ -166,6 +166,15 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
         }
     };
 
-    
+    const handleObjSelect = (e) => {
+        const value = e.target.value;
+        setSelectedObj(value);
+        console.log('Selected object state:', value);
+    };
+
+    const handleDownloadClick = () => {
+        // Send IPC event to open the relabundfeature PDF
+        window.electron.send('open-RelabundFeatures-location');
+    };
 
 }
