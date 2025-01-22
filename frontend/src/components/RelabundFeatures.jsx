@@ -184,4 +184,15 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
         }
     }, [objects, selectedObj]);
 
+    return (
+        <div>
+            <div style={{ position: 'absolute', top: '10px', right: '10px'}}>
+                <button onClick={handleNavigateTo('home')}>
+                    Go Back to Home Page
+                </button>
+            </div>
+
+            <h1>Generate Relabund Feature Plot</h1>
+        </div>
+    )
 }
