@@ -263,7 +263,21 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
                 </Button>
             </form>
 
+            {relabundfeatureData && (
+                <div id="relabundfeature=container">
+                    <h2>Relabund Feature Plot</h2>
+                    <Button
+                    variant='contained'
+                    color='primary'
+                    onClick={handleDownloadClick}
+                    >
+                        Open Relabund Feature Plot PDf
+                    </Button>
+                </div>
+            )}
 
         </div>
-    )
-}
+    );
+};
+
+export default RelabundFeatures
