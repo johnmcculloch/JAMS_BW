@@ -126,6 +126,26 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
         });
     };
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        console.log('Selected ExpObj:', selectedObj);
+        try {
+            // Combine the parameters with selected objects and file path
+            const params = {
+                filePath,
+                ExpObj: selectedObj,
+                ...parameters
+            };
 
-    
+            // Call IPC method to run RelabundFeatures script
+            const result = await window.electron.runRelabundFeaturesScript(params)
+
+            // Update the AD data with result
+            setRelabundFeatureData(result);
+        } catch (error) {
+            console.error("Error generating RelabundFeature plot:", error);
+        }
+    };
+
+
 }
