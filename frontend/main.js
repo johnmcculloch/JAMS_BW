@@ -220,7 +220,7 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
     suppressPackageStartupMessages({
     load("${filePath}");
     library(JAMS); 
-    source("/Users/mossingtonta/Projects/JAMS_BW_DEV_DEV/R/plot_Ordination.R"); 
+    source("/Users/mossingtonta/Projects/JAMS_BW_DEV/R/plot_Ordination.R"); 
     pdf("${outputFilePath}", paper = "a4r");
     print(plot_Ordination(${paramStr}))
     dev.off();
@@ -297,7 +297,7 @@ ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
     suppressWarnings({
       load("${filePath}");
       library(JAMS); 
-      source("/Users/mossingtonta/Projects/JAMS_BW_DEV_DEV/R/plot_alpha_diversity.R"); 
+      source("/Users/mossingtonta/Projects/JAMS_BW_DEV/R/plot_alpha_diversity.R"); 
       pdf("${outputFilePath}", paper = "a4r");
       print(plot_alpha_diversity(${paramStr}))
       dev.off();
