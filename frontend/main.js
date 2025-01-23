@@ -72,8 +72,10 @@ ipcMain.handle('open-file-dialog', async () => {
 
 // Load user provided r-data-file containing Expvec
 ipcMain.handle('load-rdata-file', async (event, filePath) => {
-  const script = `
-    Rscript -e '
+  return new Promise((resolve, reject) => {
+    const rscriptPath = '/usr/local/bin/Rscript'; // locate R on user's system
+    const command = `
+    ${rscriptPath} -e '
       load("${filePath}");
       list_objs <- ls();
       list_objs <- list_objs[sapply(list_objs, function(x) is.list(get(x)))]
@@ -86,20 +88,19 @@ ipcMain.handle('load-rdata-file', async (event, filePath) => {
       }
     '
   `;
-
-  return new Promise((resolve, reject) => {
-    exec(script, (error, stdout, stderr) => {
-      if (error) {
-        reject(`Error: ${error.message}`);
-        return;
-      }
-      if (stderr) {
-        reject(`Stderr: ${stderr}`);
-        return;
-      }
-      const objects = stdout.split('\n').filter(name => name.trim() !== '');
-      listObjs = objects
-      resolve(objects); // Ensure objects are returned here
+  exec(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`exec error: ${error}`);
+      reject(`Error: ${error.message}`);
+      return;
+    }
+    if (stderr) {
+      console.error(`stderr: ${stderr}`);
+      return;
+    }
+    const objects = stdout.split('\n').filter(name => name.trim() !== '');
+    //listObjs = objects (VERIFY REDUNDANCY)
+    resolve(objects); // Ensure objects are returned here
     });
   });
 });
