@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "parcel public/index.html --open",
-    "build": "parcel build public/index.html --dist-dir dist --public-url ./",
+    "build": "parcel build public/index.html --dist-dir dist --public-url ./ && cp -r ../R dist/ && cp main.js dist/ && cp preload.js dist/",
     "electron-dev": "concurrently \"npm:start\" \"wait-on http://localhost:1234 && electron .\"",
     "electron": "npm run build && electron .",
     "dist": "PYTHON=/usr/bin/python3 npm run build && electron-builder"
@@ -23,8 +23,15 @@
     "electron": "^33.3.1",
     "electron-builder": "^25.1.8",
     "electron-is-dev": "^2.0.0",
-    "parcel-bundler": "^1.12.5",
+    "parcel": "^2.13.3",
     "wait-on": "^5.3.0"
+  },
+  "targets": {
+    "main": false, 
+    "default": {
+      "context": "browser",
+      "distDir": "./dist"
+    }
   },
   "build": {
     "appId": "com.example.react-electron-app",
@@ -32,10 +39,7 @@
       "dist/**/*",
       "main.js",
       "preload.js",
-      "package.json"
-    ],
-    "directories": {
-      "buildResources": "assets"
-    }
+      "R/**/*"
+    ]
   }
 }
