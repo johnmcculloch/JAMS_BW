@@ -106,7 +106,7 @@ ipcMain.handle('load-rdata-file', async (event, filePath) => {
 });
 
 
-// HEATMAP Script 
+// ** Heatmap Script **
 ipcMain.handle('run-heatmap-script', async (event, params) => {
   // Log the params object for debugging
   console.log('Recieved params:', params);
@@ -194,7 +194,7 @@ ipcMain.on('open-heatmap-location', (event, filePath) => {
 });
 
 
-// get user defined parameters then execute R ordination plot script
+// ** Ordination Script **
 ipcMain.handle('run-ordination-script', async (event, params) => {
   // Log the params object for debugging
   console.log('Recieved params:', params);
@@ -257,7 +257,7 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
 });
 
 
-// IPC handler for opening the ordination plot file (ordination.js)
+// IPC handler for opening the ordination file
 ipcMain.on('open-ordination-location', (event) => {
   const outputFilePath = path.join(__dirname, 'assets', 'ordination.pdf');
   shell.openPath(outputFilePath).then((error) => {
@@ -270,7 +270,7 @@ ipcMain.on('open-ordination-location', (event) => {
 });
 
 
-// get user defined parameters then execute R alpha diversity plot script
+// ** AlphaDiversity Script **
 ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
   // Log the params object for debugging
   console.log('Recieved params:', params);
@@ -334,7 +334,7 @@ ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
   });
 });
 
-// IPC handler for opening the alpha diversity file (alpha_diversity.js)
+// IPC handler for opening the alpha diversity file
 ipcMain.on('open-alphadiversity-location', (event) => {
   const outputFilePath = path.join(__dirname, 'assets', 'alphaDiversity.pdf');
   shell.openPath(outputFilePath).then((error) => {
@@ -346,7 +346,7 @@ ipcMain.on('open-alphadiversity-location', (event) => {
   });
 });
 
-// get user defined parameters then execute R relabund features plot script
+// ** RelabundFeatures Script **
 ipcMain.handle('run-relabundFeatures-script', async (event, params) => {
   // Log the params object for debugging
   console.log('Recieved params:', params);
@@ -412,7 +412,7 @@ ipcMain.handle('run-relabundFeatures-script', async (event, params) => {
 });
 
 
-// IPC handler for opening the relabund features file (plot_relabund_features.js)
+// IPC handler for opening the relabund features file
 ipcMain.on('open-RelabundFeatures-location', (event) => {
   const outputFilePath = path.join(__dirname, 'assets', 'relabundFeatures.pdf');
   shell.openPath(outputFilePath).then((error) => {
