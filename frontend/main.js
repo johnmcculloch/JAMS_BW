@@ -228,14 +228,31 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
   event.sender.send('param-str', paramStr);
 
 // Run plot_Ordination command with user-defined parameters
-  const outputFilePath = path.join(__dirname, 'assets', 'ordination.pdf');
+  const outputDir = path.join(app.getPath('userData'), 'assets');
+  const outputFilePath = path.join(outputDir, 'ordination.pdf');
+  const rscriptPath = '/usr/local/bin/Rscript';
+
+  // Create output directory and log results
+  try {
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+      console.log(`Created directory: ${outputDir}`);
+    }
+    console.log(`Output directory exists: ${outputDir}`);
+  } catch (err) {
+    console.error(`Error creating directory: ${err}`);
+  }
+
+  // Escape spaces in file path for R
+  const escapedOutputPath = outputFilePath.replace(/ /g, '\\ ');
+
   const script = `
-    Rscript -e '
+    ${rscriptPath} -e '
     suppressPackageStartupMessages({
     load("${filePath}");
     library(JAMS); 
     source("/Users/mossingtonta/Projects/JAMS_BW_DEV/R/plot_Ordination.R"); 
-    pdf("${outputFilePath}", paper = "a4r");
+    pdf("${escapedOutputPath}");
     print(plot_Ordination(${paramStr}))
     dev.off();
     })'
