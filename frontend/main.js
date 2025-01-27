@@ -5,7 +5,7 @@ const fs = require('fs');
 
 let mainWindow;
 
-console.log(`app.isPackaged: ${app.isPackaged}`); // Add this line for debugging
+console.log(`app.isPackaged: ${app.isPackaged}`); // debugging
 let isDev = !app.isPackaged;
 
 console.log(`isDev: ${isDev}`);
@@ -140,18 +140,37 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
   event.sender.send('param-str', paramStr);
 
 // Run plot_relabund_heatmap command with user-defined parameters
-  const outputFilePath = path.join(__dirname, 'assets', 'heatmap.pdf');
+  const outputDir = path.join(app.getPath('userData'), 'assets');
+  const outputFilePath = path.join(outputDir, 'heatmap.pdf');
+  const rscriptPath = '/usr/local/bin/Rscript';
+
+  // Create output directory and log results
+  try {
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+      console.log(`Created directory: ${outputDir}`);
+    }
+    console.log(`Output directory exists: ${outputDir}`);
+  } catch (err) {
+    console.error(`Error creating directory: ${err}`);
+  }
+
+  // Escape spaces in file path for R
+  const escapedOutputPath = outputFilePath.replace(/ /g, '\\ ');
+
   const script = `
-    Rscript -e '
+   ${rscriptPath} -e '
     suppressPackageStartupMessages({
     load("${filePath}");
     library(JAMS); 
     source("/Users/mossingtonta/Projects/JAMS_BW_DEV/R/plot_relabund_heatmap.R"); 
-    pdf("${outputFilePath}");
+    pdf("${escapedOutputPath}");
     plot_relabund_heatmap(${paramStr})
     dev.off();
     })'
   `;
+
+  console.log('Executing command:', script);
 
   return new Promise((resolve, reject) => {
     exec(script, (error, stdout, stderr) => {
@@ -169,15 +188,9 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
 });
 
 // IPC handler for opening the heatmap file
-ipcMain.on('open-heatmap-location', (event) => {
-  const outputFilePath = path.join(__dirname, 'assets', 'heatmap.pdf');
-  shell.openPath(outputFilePath).then((error) => {
-    if (error) {
-      console.error('Failed to open file location:', error);
-    } else {
-      console.log('File location opened successfully!');
-    }
-  });
+ipcMain.on('open-heatmap-location', (event, filePath) => {
+  const outputFilePath = path.join(app.getPath('userData'), 'assets', 'heatmap.pdf');
+  shell.openPath(outputFilePath);
 });
 
 
