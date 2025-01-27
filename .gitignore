@@ -9,3 +9,4 @@ frontend/frontend@1.0.0
 frontend/parcel
 frontend/.parcel-cache/b1352565147d4272-BundleGraph
 frontend/.parcel-cache/b1352565147d4272-BundleGraph
+.DS_Store
