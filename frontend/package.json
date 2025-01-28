@@ -38,8 +38,7 @@
     "files": [
       "dist/**/*",
       "main.js",
-      "preload.js",
-      "R/**/*"
+      "preload.js"
     ]
   }
 }
