@@ -321,15 +321,32 @@ ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
   event.sender.send('param-str', paramStr);
 
 // Run plot_alphadiversity command with user-defined parameters
-  const outputFilePath = path.join(__dirname, 'assets', 'alphaDiversity.pdf');
+  const outputDir = path.join(app.getPath('userData'), 'assets');
+  const outputFilePath = path.join(outputDir, 'alphaDiversity.pdf');
+  const rscriptPath = '/usr/local/bin/Rscript';
+
+  // Create output directory and log results
+  try {
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+      console.log(`Created directory: ${outputDir}`);
+    }
+    console.log(`Output directory exists: ${outputDir}`);
+  } catch (err) {
+    console.error(`Error creating directory: ${err}`);
+  }
+
+  // Escape spaces in file path for R
+  const escapedOutputPath = outputFilePath.replace(/ /g, '\\ ');
+
   const script = `
-    Rscript -e '
+    ${rscriptPath} -e '
     suppressPackageStartupMessages({
     suppressWarnings({
       load("${filePath}");
       library(JAMS); 
       source("/Users/mossingtonta/Projects/JAMS_BW_DEV/R/plot_alpha_diversity.R"); 
-      pdf("${outputFilePath}", paper = "a4r");
+      pdf("${escapedOutputPath}", paper = "a4r");
       print(plot_alpha_diversity(${paramStr}))
       dev.off();
       })
@@ -352,15 +369,9 @@ ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
 });
 
 // IPC handler for opening the alpha diversity file
-ipcMain.on('open-alphadiversity-location', (event) => {
-  const outputFilePath = path.join(__dirname, 'assets', 'alphaDiversity.pdf');
-  shell.openPath(outputFilePath).then((error) => {
-    if (error) {
-      console.error('Failed to open file location:', error);
-    } else {
-      console.log('File location opened successfully!');
-    }
-  });
+ipcMain.on('open-alphadiversity-location', (event, filePath) => {
+  const outputFilePath = path.join(app.getPath('userData'), 'assets', 'alphaDiversity.pdf');
+  shell.openPath(outputFilePath);
 });
 
 // ** RelabundFeatures Script **
