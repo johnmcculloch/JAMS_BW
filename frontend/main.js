@@ -407,15 +407,34 @@ ipcMain.handle('run-relabundFeatures-script', async (event, params) => {
   // Send paramStr to the renderer process for debugging
   event.sender.send('param-str', paramStr);
 
-// Run plot_Ordination command with user-defined parameters
-  const outputFilePath = path.join(__dirname, 'assets', 'relabundFeatures.pdf');
+// Run plot_relabundfeatures command with user-defined parameters
+  const outputDir = path.join(app.getPath('userData'), 'assets');
+  const outputFilePath = path.join(outputDir, 'relabundFeatures.pdf');
+  const rscriptPath = '/usr/local/bin/Rscript';
+
+
+  // Create output directory and log results
+  try {
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+      console.log(`Created directory: ${outputDir}`);
+    }
+    console.log(`Output directory exists: ${outputDir}`);
+  } catch (err) {
+    console.error(`Error creating directory: ${err}`);
+  }
+
+  // Escape spaces in file path for R
+  const escapedOutputPath = outputFilePath.replace(/ /g, '\\ ');
+
+
   const script = `
-    Rscript -e '
+    ${rscriptPath} -e '
     suppressPackageStartupMessages({
     suppressWarnings({
       load("${filePath}");
       library(JAMS);  
-      pdf("${outputFilePath}", paper = "a4r");
+      pdf("${escapedOutputPath}", paper = "a4r");
       print(plot_relabund_features(${paramStr}))
       dev.off();
       })
@@ -441,13 +460,7 @@ ipcMain.handle('run-relabundFeatures-script', async (event, params) => {
 
 
 // IPC handler for opening the relabund features file
-ipcMain.on('open-RelabundFeatures-location', (event) => {
-  const outputFilePath = path.join(__dirname, 'assets', 'relabundFeatures.pdf');
-  shell.openPath(outputFilePath).then((error) => {
-    if (error) {
-      console.error('Failed to open file location:', error);
-    } else {
-      console.log('File location opened successfully!');
-    }
-  });
+ipcMain.on('open-RelabundFeatures-location', (event, filePath) => {
+  const outputFilePath = path.join(app.getPath('userData'), 'assets', 'relabundFeatures.pdf');
+  shell.openPath(outputFilePath);
 });
