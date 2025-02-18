@@ -275,16 +275,12 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
 
 
 // IPC handler for opening the ordination file
-ipcMain.on('open-ordination-location', (event) => {
-  const outputFilePath = path.join(__dirname, 'assets', 'ordination.pdf');
-  shell.openPath(outputFilePath).then((error) => {
-    if (error) {
-      console.error('Failed to open file location:', error);
-    } else {
-      console.log('File location opened successfully!');
-    }
-  });
+ipcMain.on('open-ordination-location', (event, filePath) => {
+  const outputFilePath = path.join(app.getPath('userData'), 'assets', 'ordination.pdf');
+  shell.openPath(outputFilePath);
 });
+
+
 
 
 // ** AlphaDiversity Script **
