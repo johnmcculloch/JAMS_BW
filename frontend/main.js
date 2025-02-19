@@ -109,7 +109,7 @@ ipcMain.handle('load-rdata-file', async (event, filePath) => {
 // ** Heatmap Script **
 ipcMain.handle('run-heatmap-script', async (event, params) => {
   // Log the params object for debugging
-  console.log('Recieved params:', params);
+  console.log('Received params:', params);
 
   const { filePath, ExpObj, advancedSettings, ...otherParams } = params;
 
@@ -197,7 +197,7 @@ ipcMain.on('open-heatmap-location', (event, filePath) => {
 // ** Ordination Script **
 ipcMain.handle('run-ordination-script', async (event, params) => {
   // Log the params object for debugging
-  console.log('Recieved params:', params);
+  console.log('Received params:', params);
 
   const { filePath, ExpObj, ...otherParams } = params;
 
@@ -247,13 +247,13 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
   const escapedOutputPath = outputFilePath.replace(/ /g, '\\ ');
 
   const script = `
-    ${rscriptPath} -e '
+   ${rscriptPath} -e '
     suppressPackageStartupMessages({
     load("${filePath}");
     library(JAMS); 
     source("/Users/mossingtonta/Projects/JAMS_BW_DEV/R/plot_Ordination.R"); 
     pdf("${escapedOutputPath}");
-    print(plot_Ordination(${paramStr}))
+    plot_Ordination(${paramStr})
     dev.off();
     })'
   `;
@@ -286,7 +286,7 @@ ipcMain.on('open-ordination-location', (event, filePath) => {
 // ** AlphaDiversity Script **
 ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
   // Log the params object for debugging
-  console.log('Recieved params:', params);
+  console.log('Received params:', params);
 
   const { filePath, ExpObj, ...otherParams } = params;
 
@@ -373,7 +373,7 @@ ipcMain.on('open-alphadiversity-location', (event, filePath) => {
 // ** RelabundFeatures Script **
 ipcMain.handle('run-relabundFeatures-script', async (event, params) => {
   // Log the params object for debugging
-  console.log('Recieved params:', params);
+  console.log('Received params:', params);
 
   const { filePath, ExpObj, ...otherParams } = params;
 
