@@ -10,5 +10,4 @@ contextBridge.exposeInMainWorld('electron', {
   runAlphaDiversityScript: (params) => ipcRenderer.invoke('run-alphaDiversity-script', params),
   runRelabundFeaturesScript: (params) => ipcRenderer.invoke('run-relabundFeatures-script', params),
   onParamStr: (callback) => ipcRenderer.on('param-str', (event, paramStr) => callback(paramStr))
-  // test
 });
