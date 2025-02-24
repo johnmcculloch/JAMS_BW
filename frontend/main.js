@@ -201,6 +201,10 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
 
   const { filePath, ExpObj, ...otherParams } = params;
 
+  // Split ExpObj to captyure the file name dynamically
+  const [fileName, objName] = ExpObj.split('$');
+  console.log(`File Name: ${fileName}, Object Name: ${objName}`);
+
   // Construct paramStr dynamically to account for anything the user inputs
   const paramStr = `ExpObj = ${ExpObj}, ` +
     Object.entries(otherParams)
@@ -250,6 +254,7 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
    ${rscriptPath} -e '
     suppressPackageStartupMessages({
     load("${filePath}");
+    expvec <- get("${fileName}");
     library(JAMS); 
     source("/Users/mossingtonta/Projects/JAMS_BW_DEV/R/plot_Ordination.R"); 
     pdf("${escapedOutputPath}");
