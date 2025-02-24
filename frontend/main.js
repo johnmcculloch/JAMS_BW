@@ -253,7 +253,7 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
     library(JAMS); 
     source("/Users/mossingtonta/Projects/JAMS_BW_DEV/R/plot_Ordination.R"); 
     pdf("${escapedOutputPath}");
-    plot_Ordination(${paramStr})
+    print(plot_Ordination(${paramStr}))
     dev.off();
     })'
   `;
