@@ -177,12 +177,16 @@ const Ordination = ({ handleNavigateTo }) => {
 
     return (
         <div>
-            <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
-                <button onClick={handleNavigateTo('home')}>
-                    Go Back to Home Page
-                </button>
-            </div>
-
+            <Button
+                onClick={handleNavigateTo('home')}
+                sx={{
+                    position: 'absolute',
+                    top: '60px',
+                    right: '10px',
+                }}
+            >
+                Go Back to Home Page
+            </Button>
             <h1>Generate Ordination Plot</h1>
         <div>
             {/* File upload for RData File */}
