@@ -37,6 +37,7 @@
   "build": {
     "appId": "com.example.react-electron-app",
     "files": [
+      "../JAMS_BW_dev/**/*",
       "dist/**/*",
       "main.js",
       "preload.js"
