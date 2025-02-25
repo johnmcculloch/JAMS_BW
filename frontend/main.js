@@ -28,6 +28,9 @@ function createWindow() {
   mainWindow.on('closed', function () {
     mainWindow = null;
   });
+
+  // Check if JAMS is installed
+  checkJAMSInstallation();
 }
 
 app.on('ready', createWindow);
@@ -43,6 +46,57 @@ app.on('activate', () => {
     createWindow();
   }
 });
+
+function checkJAMSInstallation() {
+  const homeDir = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
+  const binDir = path.join(homeDir, 'bin');
+  const executables = ['JAMSalpha', 'JAMSbeta', 'JAMS16', 'JAMSbuildk2db', 'JAMSjoinlanes', 'JAMSmakeswarm', 'JAMSbankit', 'JAMSfastqprefixrenamer'];
+
+  let allExecutablesExist = true;
+
+  for (const exec of executables) {
+    const execPath = path.join(binDir, exec);
+    if (!fs.existsSync(execPath)) {
+      allExecutablesExist = false;
+      break;
+    }
+  }
+
+  if (allExecutablesExist) {
+    console.log('JAMS is installed.');
+  } else {
+    console.log('JAMS is not installed.');
+    // JAMS is not installed, prompt the user to install it
+    dialog.showMessageBox({
+      type: 'question',
+      buttons: ['Install', 'Cancel'],
+      defaultId: 0,
+      title: 'Install JAMS',
+      message: 'JAMS is not installed. Would you like to install it now?',
+    }).then(result => {
+      if (result.response === 0) {
+        // User chose to install JAMS
+        installJAMS();
+      }
+    });
+  }
+}
+
+function installJAMS() {
+  const installerPath = path.join(app.getAppPath(), 'dist', 'JAMSinstaller_BW');
+
+  exec(` ./${installerPath} --install`, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error installing JAMS: ${error.message}`);
+      return;
+    }
+    if (stderr) {
+      console.error(`Stderr: ${stderr}`);
+      return;
+    }
+    console.log(`JAMS installed successfully: ${stdout}`);
+  });
+}
 
 // ** Main Processes ** 
 
