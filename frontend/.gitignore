@@ -5,7 +5,7 @@ node_modules/
 .cache/
 
 # Build output
-dist/
+
 
 # Logs
 logs
