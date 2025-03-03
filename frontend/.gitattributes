@@ -1,0 +1,2 @@
+frontend/dist/*.dmg filter=lfs diff=lfs merge=lfs -text
+dist/*.dmg filter=lfs diff=lfs merge=lfs -text
