@@ -5,7 +5,8 @@ node_modules/
 .cache/
 
 # Build output
-
+dist/*
+!dist/*.dmg
 
 # Logs
 logs
