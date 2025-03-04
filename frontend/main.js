@@ -83,9 +83,17 @@ function checkJAMSInstallation() {
 }
 
 function installJAMS() {
-  const installerPath = path.join(app.getAppPath(), 'dist', 'JAMSinstaller_BW');
+  const installerPath = path.join(process.resourcesPath, 'JAMSinstaller_BW');
+  const homeDir = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
+  const binDir = path.join(homeDir, 'bin');
 
-  exec(` ./${installerPath} --install`, (error, stdout, stderr) => {
+  // Command to create the bin directory if it doesn't exist
+  const createBinDirCommand = `mkdir -p ${binDir}`;
+
+  // Command to open a new terminal window and run the installer
+  const installCommand = `osascript -e 'tell application "Terminal" to do script "cd ${path.dirname(installerPath)} && ${createBinDirCommand} && ./${path.basename(installerPath)} --install"'`;
+
+  exec(installCommand, (error, stdout, stderr) => {
     if (error) {
       console.error(`Error installing JAMS: ${error.message}`);
       return;

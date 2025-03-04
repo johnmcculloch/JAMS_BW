@@ -40,7 +40,15 @@
       "../JAMS_BW_dev/**/*",
       "dist/**/*",
       "main.js",
-      "preload.js"
+      "preload.js",
+      "../JAMSinstaller_BW",
+      "../DESCRIPTION"
+    ],
+    "extraResources": [
+      {
+        "from": "../JAMSinstaller_BW",
+        "to": "JAMSinstaller_BW"
+      }
     ]
   }
 }
