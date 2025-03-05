@@ -6,8 +6,6 @@ node_modules/
 
 # Build output
 dist/*
-!dist/*.dmg
-!dist/*.zip
 
 # Logs
 logs
