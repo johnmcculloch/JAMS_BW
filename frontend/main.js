@@ -207,7 +207,7 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
   const rscriptPath = '/usr/local/bin/Rscript';
   const scriptPath = isDev
       ? path.join(__dirname, '..', 'R', 'plot_relabund_heatmap.R') // dev path
-      : path.join(process.resourcesPath, 'R', 'plot_relabund_heatmap.R'); // prod path
+      : path.join(process.resourcesPath, 'JAMS_BW_dev', 'R', 'plot_relabund_heatmap.R'); // prod path
 
   // Create output directory and log results
   try {
