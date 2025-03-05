@@ -205,6 +205,9 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
   const outputDir = path.join(app.getPath('userData'), 'assets');
   const outputFilePath = path.join(outputDir, 'heatmap.pdf');
   const rscriptPath = '/usr/local/bin/Rscript';
+  const scriptPath = isDev
+      ? path.join(__dirname, '..', 'R', 'plot_relabund_heatmap.R') // dev path
+      : path.join(process.resourcesPath, 'R', 'plot_relabund_heatmap.R'); // prod path
 
   // Create output directory and log results
   try {
