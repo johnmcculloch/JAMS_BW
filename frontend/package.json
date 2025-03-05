@@ -47,11 +47,12 @@
         "to": "JAMSinstaller_BW"
       },
       {
-        "from": "./",
+        "from": "../",
         "to": "JAMS_BW_dev",
         "filter": [
           "!dist/**",
-          "!node_modules/**"
+          "!node_modules/**",
+          "!frontend/**"
         ]
       }
     ]
