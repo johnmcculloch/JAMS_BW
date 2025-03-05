@@ -302,7 +302,7 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
   const rscriptPath = '/usr/local/bin/Rscript';
   const scriptPath = isDev
       ? path.join(__dirname, '..', 'R', 'plot_Ordination.R') // dev path
-      : path.join(process.resourcesPath, 'R', 'plot_Ordination.R'); // prod path
+      : path.join(process.resourcesPath, 'JAMS_BW_dev', 'R', 'plot_Ordination.R'); // prod path
 
   // Create output directory and log results
   try {
@@ -395,7 +395,7 @@ ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
   const rscriptPath = '/usr/local/bin/Rscript';
   const scriptPath = isDev
       ? path.join(__dirname, '..', 'R', 'plot_alpha_diversity.R') // dev path
-      : path.join(process.resourcesPath, 'R', 'plot_alpha_diversity.R'); // prod path
+      : path.join(process.resourcesPath, 'JAMS_BW_dev', 'R', 'plot_alpha_diversity.R'); // prod path
 
   // Create output directory and log results
   try {
@@ -485,7 +485,7 @@ ipcMain.handle('run-relabundFeatures-script', async (event, params) => {
   const rscriptPath = '/usr/local/bin/Rscript';
   const scriptPath = isDev
       ? path.join(__dirname, '..', 'R', 'plot_relabund_features.R') // dev mode
-      : path.join(process.resourcesPath, 'R', 'plot_relabund_features.R'); // prod mode
+      : path.join(process.resourcesPath, 'JAMS_BW_dev', 'R', 'plot_relabund_features.R'); // prod mode
 
 
   // Create output directory and log results
