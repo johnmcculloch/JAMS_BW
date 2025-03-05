@@ -91,7 +91,7 @@ function installJAMS() {
   const createBinDirCommand = `mkdir -p ${binDir}`;
 
   // Command to open a new terminal window and run the installer
-  const installCommand = `osascript -e 'tell application "Terminal" to do script "cd ${path.dirname(installerPath)} && ${createBinDirCommand} && ./${path.basename(installerPath)} --install"'`;
+  const installCommand = `osascript -e 'tell application "Terminal" to do script "cd ${path.join(process.resourcesPath, 'JAMS_BW_dev')} && ${createBinDirCommand} && ./${path.basename(installerPath)} --install"'`;
 
   exec(installCommand, (error, stdout, stderr) => {
     if (error) {
