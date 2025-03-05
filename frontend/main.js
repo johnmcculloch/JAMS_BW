@@ -228,7 +228,7 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
     suppressPackageStartupMessages({
     load("${filePath}");
     library(JAMS); 
-    source("/Users/mossingtonta/Projects/JAMS_BW_DEV/R/plot_relabund_heatmap.R"); 
+    source("${scriptPath}");
     pdf("${escapedOutputPath}");
     plot_relabund_heatmap(${paramStr})
     dev.off();
@@ -300,6 +300,9 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
   const outputDir = path.join(app.getPath('userData'), 'assets');
   const outputFilePath = path.join(outputDir, 'ordination.pdf');
   const rscriptPath = '/usr/local/bin/Rscript';
+  const scriptPath = isDev
+      ? path.join(__dirname, '..', 'R', 'plot_Ordination.R') // dev path
+      : path.join(process.resourcesPath, 'R', 'plot_Ordination.R'); // prod path
 
   // Create output directory and log results
   try {
@@ -321,7 +324,7 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
     load("${filePath}");
     expvec <- get("${fileName}");
     library(JAMS); 
-    source("/Users/mossingtonta/Projects/JAMS_BW_DEV/R/plot_Ordination.R"); 
+    source("${scriptPath}");
     pdf("${escapedOutputPath}");
     print(plot_Ordination(${paramStr}))
     dev.off();
@@ -390,6 +393,9 @@ ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
   const outputDir = path.join(app.getPath('userData'), 'assets');
   const outputFilePath = path.join(outputDir, 'alphaDiversity.pdf');
   const rscriptPath = '/usr/local/bin/Rscript';
+  const scriptPath = isDev
+      ? path.join(__dirname, '..', 'R', 'plot_alpha_diversity.R') // dev path
+      : path.join(process.resourcesPath, 'R', 'plot_alpha_diversity.R'); // prod path
 
   // Create output directory and log results
   try {
@@ -411,7 +417,7 @@ ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
     suppressWarnings({
       load("${filePath}");
       library(JAMS); 
-      source("/Users/mossingtonta/Projects/JAMS_BW_DEV/R/plot_alpha_diversity.R"); 
+      source("${scriptPath}");
       pdf("${escapedOutputPath}", paper = "a4r");
       print(plot_alpha_diversity(${paramStr}))
       dev.off();
@@ -477,6 +483,9 @@ ipcMain.handle('run-relabundFeatures-script', async (event, params) => {
   const outputDir = path.join(app.getPath('userData'), 'assets');
   const outputFilePath = path.join(outputDir, 'relabundFeatures.pdf');
   const rscriptPath = '/usr/local/bin/Rscript';
+  const scriptPath = isDev
+      ? path.join(__dirname, '..', 'R', 'plot_relabund_features.R') // dev mode
+      : path.join(process.resourcesPath, 'R', 'plot_relabund_features.R'); // prod mode
 
 
   // Create output directory and log results
@@ -500,6 +509,7 @@ ipcMain.handle('run-relabundFeatures-script', async (event, params) => {
     suppressWarnings({
       load("${filePath}");
       library(JAMS);  
+      source("${scriptPath}");
       pdf("${escapedOutputPath}", paper = "a4r");
       print(plot_relabund_features(${paramStr}))
       dev.off();
