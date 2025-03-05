@@ -37,17 +37,22 @@
   "build": {
     "appId": "com.example.react-electron-app",
     "files": [
-      "../JAMS_BW_dev/**/*",
       "dist/**/*",
       "main.js",
-      "preload.js",
-      "../JAMSinstaller_BW",
-      "../DESCRIPTION"
+      "preload.js"
     ],
     "extraResources": [
       {
         "from": "../JAMSinstaller_BW",
         "to": "JAMSinstaller_BW"
+      },
+      {
+        "from": "./",
+        "to": "JAMS_BW_dev",
+        "filter": [
+          "!dist/**",
+          "!node_modules/**"
+        ]
       }
     ]
   }
