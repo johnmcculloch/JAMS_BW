@@ -188,6 +188,10 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
 
   const { filePath, ExpObj, advancedSettings, ...otherParams } = params;
 
+  // Split ExpObj to capture the file name dynamically
+  const [fileName, objName] = ExpObj.split('$');
+  console.log(`File Name: ${fileName}, Object Name: ${objName}`);
+
   // Construct paramStr dynamically to account for anything the user inputs
   const paramStr = `ExpObj = ${ExpObj}, ` +
     Object.entries(otherParams)
@@ -216,7 +220,9 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
 
   // Determine appropriate R command based on file extension
   const fileExtension = path.extname(filePath).toLowerCase();
-  const loadCommand = fileExtension === '.rds' ? `obj <- readRDS("${filePath}")` : `load("${filePath}")`;
+  const loadCommand = fileExtension === '.rds' 
+    ? `obj <- readRDS("${filePath}")` 
+    : `load("${filePath}")`;
 
 // Run plot_relabund_heatmap command with user-defined parameters
   const outputDir = path.join(app.getPath('userData'), 'assets');
@@ -243,12 +249,19 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
   const script = `
    ${rscriptPath} -e '
     suppressPackageStartupMessages({
-    ${loadCommand};
-    library(JAMS); 
-    source("${scriptPath}");
-    pdf("${escapedOutputPath}");
-    plot_relabund_heatmap(${paramStr})
-    dev.off();
+    suppressWarnings({
+      options(encoding = "UTF-8");
+      ${loadCommand}
+      library(JAMS); 
+      source("${scriptPath}");
+      pdf("${escapedOutputPath}");
+      tryCatch({
+        plot_relabund_heatmap(${paramStr})
+      }, error = function(e) {
+        print(paste("Error:", e$message))
+      })
+      dev.off();
+    })
     })'
   `;
 
@@ -283,7 +296,7 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
 
   const { filePath, ExpObj, ...otherParams } = params;
 
-  // Split ExpObj to captyure the file name dynamically
+  // Split ExpObj to capture the file name dynamically
   const [fileName, objName] = ExpObj.split('$');
   console.log(`File Name: ${fileName}, Object Name: ${objName}`);
 
@@ -315,7 +328,9 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
 
   // Determine appropriate R command based on file extension
   const fileExtension = path.extname(filePath).toLowerCase();
-  const loadCommand = fileExtension === '.rds' ? `obj <- readRDS("${filePath}")` : `load("${filePath}")`;
+  const loadCommand = fileExtension === '.rds' 
+    ? `obj <- readRDS("${filePath}")` 
+    : `load("${filePath}")`;
 
 // Run plot_Ordination command with user-defined parameters
   const outputDir = path.join(app.getPath('userData'), 'assets');
@@ -342,13 +357,19 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
   const script = `
    ${rscriptPath} -e '
     suppressPackageStartupMessages({
-    ${loadCommand};
-    expvec <- get("${fileName}");
-    library(JAMS); 
-    source("${scriptPath}");
-    pdf("${escapedOutputPath}");
-    print(plot_Ordination(${paramStr}))
-    dev.off();
+    suppressWarnings({
+      options(encoding = "UTF-8");
+      ${loadCommand}
+      library(JAMS); 
+      source("${scriptPath}");
+      pdf("${escapedOutputPath}");
+      tryCatch({
+        print(plot_Ordination(${paramStr}))
+      }, error = function(e) {
+        print(paste("Error:", e$message))
+      })
+      dev.off();
+    })
     })'
   `;
 
