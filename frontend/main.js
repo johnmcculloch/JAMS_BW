@@ -82,6 +82,7 @@ function checkJAMSInstallation() {
   }
 }
 
+
 function installJAMS() {
   const installerPath = path.join(process.resourcesPath, 'JAMSinstaller_BW');
   const homeDir = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
@@ -120,7 +121,7 @@ ipcMain.handle('open-file-dialog', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     properties: ['openFile'],
     filters: [
-      { name: 'RData Files', extensions: ['rdata', 'rda'] }
+      { name: 'RData Files', extensions: ['rdata', 'rda', 'rds'] }
     ]
   });
 
@@ -132,40 +133,53 @@ ipcMain.handle('open-file-dialog', async () => {
 });
 
 
-// Load user provided r-data-file containing Expvec
+// Load user-provided R data file containing Expvec
 ipcMain.handle('load-rdata-file', async (event, filePath) => {
   return new Promise((resolve, reject) => {
-    const rscriptPath = '/usr/local/bin/Rscript'; // locate R on user's system
+    const rscriptPath = '/usr/local/bin/Rscript'; // Locate R on user's system
+
+    // Check if the file is an .rds file
+    const isRdsFile = path.extname(filePath).toLowerCase() === '.rds';
+
     const command = `
-    ${rscriptPath} -e '
-      load("${filePath}");
-      list_objs <- ls();
+      ${rscriptPath} -e "
+      file_path <- '${filePath}'
+      if (${isRdsFile ? 'TRUE' : 'FALSE'}) {
+        obj <- readRDS(file_path)
+      } else {
+        load(file_path)
+      }
+      list_objs <- ls()
       list_objs <- list_objs[sapply(list_objs, function(x) is.list(get(x)))]
       if (length(list_objs) > 0) {
         first_list <- get(list_objs[1])
         obj_names <- names(first_list)
-        writeLines(paste(list_objs[1], obj_names, sep="$"), stdout());
+        writeLines(paste(list_objs[1], obj_names, sep='$'), stdout())
       } else {
-        writeLines("", stdout());
+        writeLines('', stdout())
       }
-    '
-  `;
-  exec(command, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`exec error: ${error}`);
-      reject(`Error: ${error.message}`);
-      return;
-    }
-    if (stderr) {
-      console.error(`stderr: ${stderr}`);
-      return;
-    }
-    const objects = stdout.split('\n').filter(name => name.trim() !== '');
-    //listObjs = objects (VERIFY REDUNDANCY)
-    resolve(objects); // Ensure objects are returned here
+      "
+    `;
+
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`);
+        reject(`Error: ${error.message}`);
+        return;
+      }
+      if (stderr) {
+        console.error(`stderr: ${stderr}`);
+        if (!stderr.toLowerCase().includes("warning")) {
+          reject(`R error: ${stderr}`);
+          return;
+        }
+      }
+      const objects = stdout.split('\n').filter(name => name.trim() !== '');
+      resolve(objects); // Ensure objects are returned here
     });
   });
 });
+
 
 
 // ** Heatmap Script **
@@ -200,6 +214,7 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
 
   // Send paramStr to the renderer process for debugging
   event.sender.send('param-str', paramStr);
+
 
 // Run plot_relabund_heatmap command with user-defined parameters
   const outputDir = path.join(app.getPath('userData'), 'assets');
