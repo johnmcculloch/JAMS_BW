@@ -82,7 +82,6 @@ function checkJAMSInstallation() {
   }
 }
 
-
 function installJAMS() {
   const installerPath = path.join(process.resourcesPath, 'JAMSinstaller_BW');
   const homeDir = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
@@ -215,6 +214,9 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
   // Send paramStr to the renderer process for debugging
   event.sender.send('param-str', paramStr);
 
+  // Determine appropriate R command based on file extension
+  const fileExtension = path.extname(filePath).toLowerCase();
+  const loadCommand = fileExtension === '.rds' ? `obj <- readRDS("${filePath}")` : `load("${filePath}")`;
 
 // Run plot_relabund_heatmap command with user-defined parameters
   const outputDir = path.join(app.getPath('userData'), 'assets');
@@ -241,7 +243,7 @@ ipcMain.handle('run-heatmap-script', async (event, params) => {
   const script = `
    ${rscriptPath} -e '
     suppressPackageStartupMessages({
-    load("${filePath}");
+    ${loadCommand};
     library(JAMS); 
     source("${scriptPath}");
     pdf("${escapedOutputPath}");
@@ -311,6 +313,10 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
   // Send paramStr to the renderer process for debugging
   event.sender.send('param-str', paramStr);
 
+  // Determine appropriate R command based on file extension
+  const fileExtension = path.extname(filePath).toLowerCase();
+  const loadCommand = fileExtension === '.rds' ? `obj <- readRDS("${filePath}")` : `load("${filePath}")`;
+
 // Run plot_Ordination command with user-defined parameters
   const outputDir = path.join(app.getPath('userData'), 'assets');
   const outputFilePath = path.join(outputDir, 'ordination.pdf');
@@ -336,7 +342,7 @@ ipcMain.handle('run-ordination-script', async (event, params) => {
   const script = `
    ${rscriptPath} -e '
     suppressPackageStartupMessages({
-    load("${filePath}");
+    ${loadCommand};
     expvec <- get("${fileName}");
     library(JAMS); 
     source("${scriptPath}");
@@ -404,6 +410,10 @@ ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
   // Send paramStr to the renderer process for debugging
   event.sender.send('param-str', paramStr);
 
+  // Determine appropriate R command based on file extension
+  const fileExtension = path.extname(filePath).toLowerCase();
+  const loadCommand = fileExtension === '.rds' ? `obj <- readRDS("${filePath}")` : `load("${filePath}")`;
+
 // Run plot_alphadiversity command with user-defined parameters
   const outputDir = path.join(app.getPath('userData'), 'assets');
   const outputFilePath = path.join(outputDir, 'alphaDiversity.pdf');
@@ -430,7 +440,7 @@ ipcMain.handle('run-alphaDiversity-script', async (event, params) => {
     ${rscriptPath} -e '
     suppressPackageStartupMessages({
     suppressWarnings({
-      load("${filePath}");
+      ${loadCommand};
       library(JAMS); 
       source("${scriptPath}");
       pdf("${escapedOutputPath}", paper = "a4r");
@@ -494,6 +504,10 @@ ipcMain.handle('run-relabundFeatures-script', async (event, params) => {
   // Send paramStr to the renderer process for debugging
   event.sender.send('param-str', paramStr);
 
+  // Determine appropriate R command based on file extension
+  const fileExtension = path.extname(filePath).toLowerCase();
+  const loadCommand = fileExtension === '.rds' ? `obj <- readRDS("${filePath}")` : `load("${filePath}")`;
+
 // Run plot_relabundfeatures command with user-defined parameters
   const outputDir = path.join(app.getPath('userData'), 'assets');
   const outputFilePath = path.join(outputDir, 'relabundFeatures.pdf');
@@ -522,7 +536,7 @@ ipcMain.handle('run-relabundFeatures-script', async (event, params) => {
     ${rscriptPath} -e '
     suppressPackageStartupMessages({
     suppressWarnings({
-      load("${filePath}");
+      ${loadCommand};
       library(JAMS);  
       source("${scriptPath}");
       pdf("${escapedOutputPath}", paper = "a4r");
