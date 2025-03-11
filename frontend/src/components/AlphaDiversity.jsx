@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import Box from '@mui/material/Box';
+import useAutoScroll from './common/useAutoScroll';
+import LoadingIndicator from './common/LoadingIndicator';
 
 const AlphaDiversity =({ handleNavigateTo }) => {
     const [parameters, setParameters] = useState({
@@ -61,6 +64,17 @@ const AlphaDiversity =({ handleNavigateTo }) => {
     const [objects, setObjects] = useState([]);
     const [filePath, setFilePath] = useState('');
     const [selectedObj, setSelectedObj] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [generatingAD, setGeneratingAD] = useState(false);
+
+    const resultRef = useRef(null);
+    const loadingRef = useRef(null);
+
+    // auto scroll to results when ready
+    useAutoScroll(alphaDiversityData, resultRef);
+
+    // auto scroll to loading indicator
+    useAutoScroll(generatingAD, loadingRef);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -74,6 +88,8 @@ const AlphaDiversity =({ handleNavigateTo }) => {
         e.preventDefault();
         console.log('Selected ExpObj:', selectedObj);
         try {
+            setLoading(true);
+            setGeneratingAD(true);
             // Combine the parameters with selected objects and file path
             const params = {
                 filePath,
@@ -88,11 +104,15 @@ const AlphaDiversity =({ handleNavigateTo }) => {
             setAlphaDiversityData(result);
         } catch (error) {
             console.error("Error generating AlphaDiversity plot:", error)
+        } finally {
+            setLoading(false);
+            setGeneratingAD(false);
         }
     };
 
     const handleFileUpload = async () => {
         try {
+            setLoading(true);
             const filePath = await window.electron.invoke('open-file-dialog');
             if (filePath) {
                 setFilePath(filePath);
@@ -106,6 +126,8 @@ const AlphaDiversity =({ handleNavigateTo }) => {
             }
         } catch (error) {
             console.error('Error opening file dialog:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -210,8 +232,11 @@ const AlphaDiversity =({ handleNavigateTo }) => {
             </Button>
         </form>
 
-        {alphaDiversityData && (
-            <div id='alphadiversity=container'>
+        {/* Add loading indicator */}
+        {loading && <LoadingIndicator ref={generatingAD ? loadingRef : null} />}
+
+        {alphaDiversityData && !loading && (
+            <div id='alphadiversity=container' ref={resultRef}>
                 <h2>AlphaDiversity Plot</h2>
                 <Button
                 variant='contained'
