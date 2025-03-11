@@ -4,6 +4,8 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import Box from '@mui/material/Box';
 import useAutoScroll from './common/useAutoScroll';
 import LoadingIndicator from './common/LoadingIndicator';
+import WarningSnackbar, { validateRequiredFields, useWarningState } from './common/warningMessage';
+import { SecurityUpdateWarning } from '@mui/icons-material';
 
 const Ordination = ({ handleNavigateTo }) => {
     // Parameter options
@@ -119,6 +121,8 @@ const Ordination = ({ handleNavigateTo }) => {
     // auto scroll to loading indicator
     useAutoScroll(generatingOrdination, loadingRef);
 
+    const { showWarning, warningMessage, handleCloseWarning, showWarningMessage } = useWarningState();
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setParameters({
@@ -130,6 +134,17 @@ const Ordination = ({ handleNavigateTo }) => {
     // Function to handle the submission of user-defined parameters
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        const validationResult = validateRequiredFields({
+            'R data file': filePath,
+            'Summarized Experiment Object': selectedObj
+        });
+
+        if (!validationResult.isValid) {
+            showWarningMessage(validationResult.message);
+            return;
+        }
+
         console.log('Selected ExpObj:', selectedObj);
         try {
             setLoading(true); // start loading circle
@@ -148,6 +163,8 @@ const Ordination = ({ handleNavigateTo }) => {
             setOrdinationData(result);
         } catch (error) {
             console.error("Error generating ordination plot:", error);
+            setWarningMessage(`Error: ${error.message || 'Failed to generate ordination plot'}`);
+            setShowWarning(true);
         } finally {
             setLoading(false); // end loading circle
             setGeneratingOrdination(false);
@@ -209,6 +226,14 @@ const Ordination = ({ handleNavigateTo }) => {
             >
                 Go Back to Home Page
             </Button>
+
+            {/* warning message */}
+            <WarningSnackbar
+                open={showWarning}
+                message={warningMessage}
+                onClose={handleCloseWarning}
+            />
+            
             <h1>Generate Ordination Plot</h1>
         <div>
             {/* File upload for RData File */}
