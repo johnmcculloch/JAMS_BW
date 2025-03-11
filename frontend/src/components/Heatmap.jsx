@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
+import useAutoScroll from './common/useAutoScroll';
+import LoadingIndicator from './common/LoadingIndicator';
 
 
 const Heatmap = ({ handleNavigateTo }) => {
@@ -117,9 +118,16 @@ const Heatmap = ({ handleNavigateTo }) => {
     const [filePath, setFilePath] = useState('');
     const [selectedObj, setSelectedObj] = useState('');
     const [loading, setLoading] = useState(false);
+    const [generatingHeatmap, setGeneratingHeatmap] = useState(false);
 
-    const loadingRef = useRef(null);
     const resultRef = useRef(null);
+    const loadingRef = useRef(null);
+
+    // auto scroll to results when they are ready
+    useAutoScroll(heatmapData, resultRef);
+
+    // auto scroll to loading indicator when loading starts
+    useAutoScroll(generatingHeatmap, loadingRef);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -134,17 +142,7 @@ const Heatmap = ({ handleNavigateTo }) => {
         console.log('Selected ExpObj:', selectedObj);
         try {
             setLoading(true); // Start loading circle
-
-            // Scroll to the loading indicator
-            setTimeout(() => {
-                if (loadingRef.current) {
-                    loadingRef.current.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
-                }
-            }, 100);
-
+            setGeneratingHeatmap(true);
             // Combine the parameters with selected objects and file path
             const params = {
                 filePath,
@@ -152,29 +150,17 @@ const Heatmap = ({ handleNavigateTo }) => {
                 advancedSettings: {},
                 ...parameters
             };
-
             // Call IPC method to run the heatmap script
             const result = await window.electron.runHeatmapScript(params);
-
             // Update the heatmap data with result
             setHeatmapData(result);
         } catch (error) {
             console.error('Error generating heatmap:', error);
         } finally {
             setLoading(false); // End loading circle regardless of success or failure
+            setGeneratingHeatmap(false);
         }
     };
-
-    useEffect(() => {
-        if (heatmapData && !loading && resultRef.current) {
-            setTimeout(() => {
-                resultRef.current.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }, 100);
-        }
-    }, [heatmapData, loading]);
 
     const handleFileUpload = async () => {
         try {
@@ -295,17 +281,10 @@ const Heatmap = ({ handleNavigateTo }) => {
                 <Button type='submit' variant='outlined' color='primary' disabled={loading}>
                     Generate Heatmap
                 </Button>
-
-                {/* Loading Indicator with ref */}
-                {loading && (
-                    <Box 
-                        ref={loadingRef}
-                        sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}
-                    >
-                        <CircularProgress />
-                    </Box>
-                )}
             </form>
+
+            {/* Add loading indicator */}
+            {loading && <LoadingIndicator ref={generatingHeatmap ? loadingRef : null} />}
 
             {heatmapData && !loading && (
                 <div id='heatmap-container' ref={resultRef}>
