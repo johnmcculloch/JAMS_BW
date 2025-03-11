@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import Box from '@mui/material/Box';
+import useAutoScroll from './common/useAutoScroll';
+import LoadingIndicator from './common/LoadingIndicator';
 
 const RelabundFeatures = ({ handleNavigateTo }) => {
     const [parameters, setParameters] = useState({
@@ -117,6 +120,17 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
     const [objects, setObjects] = useState([]);
     const [filePath, setFilePath] = useState('');
     const [selectedObj, setSelectedObj] = useState('')
+    const [loading, setLoading] = useState(false);
+    const [generatingRelabund, setGeneratingRelabnd] = useState(false);
+
+    const resultRef = useRef(null);
+    const loadingRef = useRef(null);
+
+    // auto scroll to results when ready
+    useAutoScroll(relabundfeatureData, resultRef);
+
+    // auto scroll to loading indicator
+    useAutoScroll(generatingRelabund, loadingRef);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -130,6 +144,8 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
         e.preventDefault();
         console.log('Selected ExpObj:', selectedObj);
         try {
+            setLoading(true);
+            setGeneratingRelabnd(true);
             // Combine the parameters with selected objects and file path
             const params = {
                 filePath,
@@ -144,11 +160,15 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
             setRelabundFeatureData(result);
         } catch (error) {
             console.error("Error generating RelabundFeature plot:", error);
+        } finally {
+            setLoading(false);
+            setGeneratingRelabnd(false);
         }
     };
 
     const handleFileUpload = async () => {
         try {
+            setLoading(true);
             const filePath = await window.electron.invoke('open-file-dialog');
             if (filePath) {
                 setFilePath(filePath);
@@ -163,6 +183,8 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
             }
         } catch (error) {
             console.error('Error opening file dialog:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -268,8 +290,11 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
                 </Button>
             </form>
 
-            {relabundfeatureData && (
-                <div id="relabundfeature=container">
+            {/* Add loading indicator */}
+            {loading && <LoadingIndicator ref={generatingRelabund ? loadingRef : null} />}
+
+            {relabundfeatureData && !loading && (
+                <div id="relabundfeature=container" ref={resultRef}>
                     <h2>Relabund Feature Plot</h2>
                     <Button
                     variant='contained'
