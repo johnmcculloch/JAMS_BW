@@ -4,6 +4,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import Box from '@mui/material/Box';
 import useAutoScroll from './common/useAutoScroll';
 import LoadingIndicator from './common/LoadingIndicator';
+import WarningSnackbar, { validateRequiredFields, useWarningState } from './common/warningMessage';
 
 
 const Heatmap = ({ handleNavigateTo }) => {
@@ -125,9 +126,10 @@ const Heatmap = ({ handleNavigateTo }) => {
 
     // auto scroll to results when they are ready
     useAutoScroll(heatmapData, resultRef);
-
-    // auto scroll to loading indicator when loading starts
     useAutoScroll(generatingHeatmap, loadingRef);
+
+    // Use the warning state hook
+    const { showWarning, warningMessage, handleCloseWarning, showWarningMessage } = useWarningState();
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -139,6 +141,17 @@ const Heatmap = ({ handleNavigateTo }) => {
     
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        const validationResult = validateRequiredFields({
+            'R data file': filePath,
+            'Summarized Experiment Object': selectedObj
+        });
+
+        if (!validationResult.isValid) {
+            showWarningMessage(validationResult.message);
+            return;
+        }
+
         console.log('Selected ExpObj:', selectedObj);
         try {
             setLoading(true); // Start loading circle
@@ -156,6 +169,8 @@ const Heatmap = ({ handleNavigateTo }) => {
             setHeatmapData(result);
         } catch (error) {
             console.error('Error generating heatmap:', error);
+            setWarningMessage(`Error: ${error.message || 'Failed to generate heatmap'}`);
+            setShowWarning(true);
         } finally {
             setLoading(false); // End loading circle regardless of success or failure
             setGeneratingHeatmap(false);
@@ -213,6 +228,15 @@ const Heatmap = ({ handleNavigateTo }) => {
             >
                 Go Back to Home Page
             </Button>
+
+            {/* warning message */}
+            <WarningSnackbar
+                open={showWarning}
+                message={warningMessage}
+                onClose={handleCloseWarning}
+            />
+
+
             <h1>Generate Heatmap</h1>
             <div>
                 {/* File upload for RData file */}
