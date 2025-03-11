@@ -1,6 +1,9 @@
-import React, {useEffect, useState } from 'react';
+import React, {useEffect, useState, useRef } from 'react';
 import Button from '@mui/material/Button';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import Box from '@mui/material/Box';
+import useAutoScroll from './common/useAutoScroll';
+import LoadingIndicator from './common/LoadingIndicator';
 
 const Ordination = ({ handleNavigateTo }) => {
     // Parameter options
@@ -104,6 +107,17 @@ const Ordination = ({ handleNavigateTo }) => {
     const [objects, setObjects] = useState([]);
     const [filePath, setFilePath] = useState('');
     const [selectedObj, setSelectedObj] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [generatingOrdination, setGeneratingOrdination] = useState(false);
+
+    const resultRef = useRef(null);
+    const loadingRef = useRef(null);
+
+    // auto scroll to results when ready
+    useAutoScroll(ordinationData, resultRef);
+
+    // auto scroll to loading indicator
+    useAutoScroll(generatingOrdination, loadingRef);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -118,6 +132,8 @@ const Ordination = ({ handleNavigateTo }) => {
         e.preventDefault();
         console.log('Selected ExpObj:', selectedObj);
         try {
+            setLoading(true); // start loading circle
+            setGeneratingOrdination(true);
             // Combine the parameters with the selected objects and file path
             const params = {
                 filePath,
@@ -132,6 +148,9 @@ const Ordination = ({ handleNavigateTo }) => {
             setOrdinationData(result);
         } catch (error) {
             console.error("Error generating ordination plot:", error);
+        } finally {
+            setLoading(false); // end loading circle
+            setGeneratingOrdination(false);
         }
     };
 
@@ -151,6 +170,8 @@ const Ordination = ({ handleNavigateTo }) => {
             }
         } catch (error) {
             console.error('Error opening file dialog:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -256,8 +277,11 @@ const Ordination = ({ handleNavigateTo }) => {
             </Button>
         </form>
 
-        {ordinationData && (
-            <div id="ordination=container">
+        {/* Add loading indicator */}
+        {loading && <LoadingIndicator ref={generatingOrdination ? loadingRef : null} />}
+
+        {ordinationData && !loading && (
+            <div id="ordination=container" ref={resultRef}>
                 <h2>Ordination Plot</h2>
                 <Button
                 variant='contained'
