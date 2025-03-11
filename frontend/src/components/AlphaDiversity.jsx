@@ -4,6 +4,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import Box from '@mui/material/Box';
 import useAutoScroll from './common/useAutoScroll';
 import LoadingIndicator from './common/LoadingIndicator';
+import WarningSnackbar, { validateRequiredFields, useWarningState } from './common/warningMessage';
 
 const AlphaDiversity =({ handleNavigateTo }) => {
     const [parameters, setParameters] = useState({
@@ -76,6 +77,9 @@ const AlphaDiversity =({ handleNavigateTo }) => {
     // auto scroll to loading indicator
     useAutoScroll(generatingAD, loadingRef);
 
+    // use warning state hook
+    const { showWarning, warningMessage, handleCloseWarning, showWarningMessage } = useWarningState();
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setParameters({
@@ -86,6 +90,17 @@ const AlphaDiversity =({ handleNavigateTo }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        const validationResult = validateRequiredFields({
+            'R data file': filePath,
+            'Summarized Experiment Object': selectedObj
+        });
+
+        if (!validationResult.isValid) {
+            showWarningMessage(validationResult.message);
+            return;
+        }
+
         console.log('Selected ExpObj:', selectedObj);
         try {
             setLoading(true);
@@ -104,6 +119,8 @@ const AlphaDiversity =({ handleNavigateTo }) => {
             setAlphaDiversityData(result);
         } catch (error) {
             console.error("Error generating AlphaDiversity plot:", error)
+            setWarningMessage(`Error: ${error.message || 'Failed to generate alpha diversity plot'}`);
+            setShowWarning(true);
         } finally {
             setLoading(false);
             setGeneratingAD(false);
@@ -161,6 +178,13 @@ const AlphaDiversity =({ handleNavigateTo }) => {
             >
                 Go Back to Home Page
             </Button>
+
+            {/* warning message */}
+            <WarningSnackbar
+                open={showWarning}
+                message={warningMessage}
+                onClose={handleCloseWarning}
+            />
 
             <h1>Generate AlphaDiversity Plot</h1>
         <div>
