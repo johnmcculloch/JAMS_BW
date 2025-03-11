@@ -157,6 +157,7 @@ const Ordination = ({ handleNavigateTo }) => {
     // Function that allows a file to be opened
     const handleFileUpload = async () => {
         try {
+            setLoading(true);
             const filePath = await window.electron.invoke('open-file-dialog');
             if (filePath) {
                 setFilePath(filePath);
