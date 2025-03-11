@@ -4,6 +4,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import Box from '@mui/material/Box';
 import useAutoScroll from './common/useAutoScroll';
 import LoadingIndicator from './common/LoadingIndicator';
+import WarningSnackbar, { validateRequiredFields, useWarningState } from './common/warningMessage';
 
 const RelabundFeatures = ({ handleNavigateTo }) => {
     const [parameters, setParameters] = useState({
@@ -132,6 +133,9 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
     // auto scroll to loading indicator
     useAutoScroll(generatingRelabund, loadingRef);
 
+    // Use the warning state hook
+    const { showWarning, warningMessage, handleCloseWarning, showWarningMessage } = useWarningState();
+
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setParameters({
@@ -142,6 +146,17 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        const validationResult = validateRequiredFields({
+            'R data file': filePath,
+            'Summarized Experiment Object': selectedObj
+        });
+
+        if (!validationResult.isValid) {
+            showWarningMessage(validationResult.message);
+            return;
+        }
+
         console.log('Selected ExpObj:', selectedObj);
         try {
             setLoading(true);
@@ -160,6 +175,8 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
             setRelabundFeatureData(result);
         } catch (error) {
             console.error("Error generating RelabundFeature plot:", error);
+            setWarningMessage(`Error: ${error.message || 'Failed to generate heatmap'}`);
+            setShowWarning(true);
         } finally {
             setLoading(false);
             setGeneratingRelabnd(false);
@@ -218,6 +235,13 @@ const RelabundFeatures = ({ handleNavigateTo }) => {
             >
                 Go Back to Home Page
             </Button>
+
+            {/* warning message */}
+            <WarningSnackbar
+                open={showWarning}
+                message={warningMessage}
+                onClose={handleCloseWarning}
+            />
 
             <h1>Generate Relabund Feature Plot</h1>
 
