@@ -1,5 +1,6 @@
 import React from 'react';
 import { Grid, Paper, Typography, Button } from '@mui/material';
+import VersionDisplay from './VersionDisplay';
 
 export default function Home({ handleNavigateTo }) {
     return (
@@ -68,6 +69,7 @@ export default function Home({ handleNavigateTo }) {
                     </Paper>
                 </Grid>
             </Grid>
+            <VersionDisplay />
         </div>
     );
 }

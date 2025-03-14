@@ -34,3 +34,7 @@ contextBridge.exposeInMainWorld('updater', {
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   testNotification: (type) => ipcRenderer.invoke('test-update-notification', type)
 });
+
+contextBridge.exposeInMainWorld('appInfo', {
+  getVersion: () => ipcRenderer.invoke('get-app-version')
+});
