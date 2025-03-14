@@ -11,3 +11,26 @@ contextBridge.exposeInMainWorld('electron', {
   runRelabundFeaturesScript: (params) => ipcRenderer.invoke('run-relabundFeatures-script', params),
   onParamStr: (callback) => ipcRenderer.on('param-str', (event, paramStr) => callback(paramStr))
 });
+
+contextBridge.exposeInMainWorld('updater', {
+  onUpdateAvailable: (callback) => {
+    console.log('Registering update-available listener');
+    ipcRenderer.on('update-available', () => {
+      console.log('Received update-available event');
+      callback();
+    });
+  },
+  onUpdateDownloaded: (callback) => {
+    console.log('Registering update-downloaded listener');
+    ipcRenderer.on('update-downloaded', () => {
+      console.log('Received update-downloaded event');
+      callback();
+    });
+  },
+  installUpdate: () => {
+    console.log('Sending install-update command');
+    ipcRenderer.send('install-update');
+  },
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  testNotification: (type) => ipcRenderer.invoke('test-update-notification', type)
+});

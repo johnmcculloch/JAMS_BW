@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
 
 let mainWindow;
 
@@ -31,7 +32,26 @@ function createWindow() {
 
   // Check if JAMS is installed
   checkJAMSInstallation();
+
+  // Check for updates (only in prod mode)
+  if (!isDev) {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
 }
+
+autoUpdater.on('update-available', () => {
+  mainWindow.webContents.send('update-available');
+});
+
+autoUpdater.on('update-downloaded', () => {
+  mainWindow.webContents.send('update-downloaded');
+});
+
+// IPC handler for installing the update
+ipcMain.on('install-update', () => {
+  autoUpdater.quitAndInstall();
+});
+
 
 app.on('ready', createWindow);
 
