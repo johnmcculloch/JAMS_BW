@@ -1,6 +1,6 @@
 {
   "name": "JAMS",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Just a Microbiology System (JAMS) - a suite for analyzing microbiological sequencing data for use on NIH HPC systems (Biowulf)",
   "main": "main.js",
   "scripts": {
@@ -37,6 +37,7 @@
   },
   "build": {
     "appId": "com.example.react-electron-app",
+    "compression": "maximum",
     "files": [
       "dist/**/*",
       "main.js",
@@ -53,7 +54,14 @@
         "filter": [
           "!dist/**",
           "!node_modules/**",
-          "!frontend/**"
+          "!frontend/**",
+          "!.git/**",                
+          "!**/.git/**",             
+          "!**/.parcel-cache/**",    
+          "!**/*.dmg",               
+          "!**/*.app/**",            
+          "!**/*.exe",               
+          "!**/node_modules/**"  
         ]
       }
     ],
