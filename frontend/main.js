@@ -2,6 +2,8 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const { exec } = require('child_process');
 const fs = require('fs');
+
+// Import autoUpdater from electron-updater
 const { autoUpdater } = require('electron-updater');
 
 let mainWindow;
@@ -33,29 +35,9 @@ function createWindow() {
   // Check if JAMS is installed
   checkJAMSInstallation();
 
-  // Check for updates (only in prod mode)
-  if (!isDev) {
-    autoUpdater.checkForUpdatesAndNotify();
-  }
+  // Check for updates after creating the window
+  autoUpdater.checkForUpdatesAndNotify();
 }
-
-autoUpdater.on('update-available', () => {
-  mainWindow.webContents.send('update-available');
-});
-
-autoUpdater.on('update-downloaded', () => {
-  mainWindow.webContents.send('update-downloaded');
-});
-
-// IPC handler for installing the update
-ipcMain.on('install-update', () => {
-  autoUpdater.quitAndInstall();
-});
-
-ipcMain.handle('get-app-version', () => {
-  return app.getVersion();
-});
-
 
 app.on('ready', createWindow);
 
@@ -69,6 +51,25 @@ app.on('activate', () => {
   if (mainWindow === null) {
     createWindow();
   }
+});
+
+// Listen for update events
+autoUpdater.on('update-available', () => {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update available',
+    message: 'A new version of the application is available. It will be downloaded now.',
+  });
+});
+
+autoUpdater.on('update-downloaded', () => {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update ready',
+    message: 'A new version of the application has been downloaded. The application will now restart to apply the update.',
+  }).then(() => {
+    autoUpdater.quitAndInstall();
+  });
 });
 
 function checkJAMSInstallation() {
