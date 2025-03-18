@@ -71,12 +71,6 @@
         "owner": "tmossington",
         "repo": "JAMS_BW_dev"
       }
-    ],
-    "mac": {
-      "target": "dmg"
-    },
-    "win": {
-      "target": "nsis"
-    }
+    ]
   }
 }
