@@ -124,7 +124,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
     flog.info(pcatitbase)
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, is16S = ("asv2lkt" %in% names(metadata(expvec$LKT))))
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, is16S = ("asv2lkt" %in% names(metadata(obj)))) # replace expvec with obj from line 115
 
     if (assay_for_matrix == "GeneCounts"){
         flog.warn("Counts matrix used for heatmap will represent the *number of genes* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
