@@ -18,7 +18,24 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
 
     if (!(is.null(subsetby))){
-        subset_points <- sort(unique((colData(obj)[, which(colnames(colData(obj)) == subsetby)])))
+        subset_list <- multiple_subsetting_sample_selector(SEobj = obj, phenotable = NULL, subsetby = subsetby, compareby = NULL, cats_to_ignore = class_to_ignore)
+        #Ensure there are only valid subsets which will plot on a heatmap.
+        subset_df <- subset_list$Subsets_stats
+        subset_df <- subset_df[which(subset_df$Subset_Tier_Level != 0), , drop = FALSE]
+        if (any(subset_df$Num_samples_in_subset < 2)){
+            #Some subsets have less than 2 samples. Eliminate and report.
+            LowSampSubsets <- subset_df[which(subset_df$Num_samples_in_subset < 2), "Subset_Tier_Class_Name"]
+            flog.warn(paste("Subsets", paste0(LowSampSubsets, collapse = ", "), "contain less than 2 samples, and will thus be omitted."))
+            subset_df <- subset_df[which(subset_df$Num_samples_in_subset >= 2), , drop = FALSE]
+        }
+        #Test for valid subsets
+        if (nrow(subset_df) < 1){
+            flog.warn("There are no surviving subset points. Defaulting to no subsetting.")
+            subset_points <- "none"
+            subsetby <- NULL
+        } else {
+            subset_points <- subset_df$Subset_Tier_Class_Name
+        }
     } else {
         subset_points <- "none"
     }
@@ -30,16 +47,17 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
 
     #subset by metadata column
     for (sp in 1:length(subset_points)) {
-        if (!(is.null(subsetby))){
-            samplesToKeep <- rownames(colData(obj))[which(colData(obj)[ , subsetby] == subset_points[sp])]
+
+      if (!(is.null(subsetby))){
+            samplesToKeep_sp <- subset_list[[subset_points[sp]]]
             flog.info(paste("Plotting within", subset_points[sp]))
             subsetname <- subset_points[sp]
         } else {
-            samplesToKeep <- rownames(colData(obj))
+            samplesToKeep_sp <- rownames(colData(obj))
             subsetname <- "no_sub"
         }
 
-        currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
+        currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep_sp, featuresToKeep = featuresToKeep, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
 
         numfeats <- nrow(currobj)
 
@@ -97,7 +115,7 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
 
             if (docorrelations == TRUE){
                 #Calculate matrix stats and get new matrix with correlations.
-                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = FALSE, stattype = stattype, classesdf = classesdf)
+                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = FALSE, stattype = stattype, classesdf = NULL)
 
                 if (!is.null(minabscorrcoeff)){
                     flog.info(paste("Eliminating features which do not correlate with other features with a coefficient of at least", minabscorrcoeff))
