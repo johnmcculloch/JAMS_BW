@@ -31,6 +31,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
     } else {
         #No comparing, use variance
         numclass <- 0
+        classesvector <- NULL
     }
 
     #If auto, decide what to do
