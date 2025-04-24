@@ -124,7 +124,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
     flog.info(pcatitbase)
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, is16S = ("asv2lkt" %in% names(metadata(expvec$LKT))))
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, is16S = ("asv2lkt" %in% names(metadata(obj))))
 
     if (assay_for_matrix == "GeneCounts"){
         flog.warn("Counts matrix used for heatmap will represent the *number of genes* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
@@ -156,7 +156,37 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     }
 
     if (!(is.null(subsetby))){
-        subset_points <- sort(unique(colData(obj)[, which(colnames(colData(obj)) == subsetby)]))
+        subset_list <- multiple_subsetting_sample_selector(SEobj = obj, phenotable = NULL, subsetby = subsetby, compareby = compareby, cats_to_ignore = class_to_ignore)
+        #Ensure there are only valid subsets which will plot on a heatmap.
+        subset_df <- subset_list$Subsets_stats
+        subset_df <- subset_df[which(subset_df$Subset_Tier_Level != 0), , drop = FALSE]
+        #Test for number of samples in subsets
+        if (any(subset_df$Num_samples_in_subset < 1)){
+            #Some subsets have less than 1 samples. Eliminate and report.
+            LowSampSubsets <- subset_df[which(subset_df$Num_samples_in_subset < 1), "Subset_Tier_Class_Name"]
+            flog.warn(paste("Subsets", paste0(LowSampSubsets, collapse = ", "), "contain 0 (ZERO) samples, and will thus be omitted."))
+            subset_df <- subset_df[which(subset_df$Num_samples_in_subset >= 1), , drop = FALSE]
+        }
+
+        #Test for compareby criteria
+        if (!is.null(compareby)){
+            OKsubsets <- subset_df$Subset_Tier_Class_Name[which(subset_df$Compareby_QC_in_subset >= 0.1)]
+            #Some subsets may have low compareby QC. Eliminate and report.
+            LowComparebyQCSubsets <- subset_df$Subset_Tier_Class_Name[!(subset_df$Subset_Tier_Class_Name %in% OKsubsets)]
+            if (length(LowComparebyQCSubsets) > 0){
+                flog.warn(paste0("Subsets ", paste0(LowComparebyQCSubsets, collapse = ", "), " are extremely unbalanced for comparative variable \"", compareby,"\", and will thus be omitted. Consider changing your compareby argument, or subset argument(s)."))
+                subset_df <- subset_df[which(subset_df$Compareby_QC_in_subset >= 0.1), , drop = FALSE]
+            }
+        }
+
+        #Test for valid subsets
+        if (nrow(subset_df) < 1){
+            flog.warn("There are no surviving subset points. Defaulting to no subsetting.")
+            subset_points <- "none"
+            subsetby <- NULL
+        } else {
+            subset_points <- subset_df$Subset_Tier_Class_Name
+        }
     } else {
         subset_points <- "none"
     }
@@ -168,7 +198,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     for (sp in 1:length(subset_points)){
 
         if (!(is.null(subsetby))){
-            samplesToKeep_sp <- rownames(colData(obj))[which(colData(obj)[ , subsetby] == subset_points[sp])]
+            samplesToKeep_sp <- subset_list[[subset_points[sp]]]
             flog.info(paste("Plotting within", subset_points[sp]))
             subsetname <- subset_points[sp]
             pcatit <- paste(pcatitbase, "within", subset_points[sp])
