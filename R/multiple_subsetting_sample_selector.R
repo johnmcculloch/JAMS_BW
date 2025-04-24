@@ -96,6 +96,7 @@ multiple_subsetting_sample_selector <- function(SEobj = NULL, phenotable = NULL,
         tmp_pheno$Compareby <- NA
         compareby <- NA
     }
+
     #What kind of variable is it?
     CVT <- c("discrete", "continuous", NA)[c((compareby %in% variable_list$discrete), (compareby %in% variable_list$continuous), is.na(compareby))]
     CTN <- c("Pielou_J", "Shapiro-Wilk", NA)[c((compareby %in% variable_list$discrete), (compareby %in% variable_list$continuous), is.na(compareby))]
@@ -126,7 +127,7 @@ multiple_subsetting_sample_selector <- function(SEobj = NULL, phenotable = NULL,
     }
 
     #Clean up
-    if (CVT != "discrete") {
+    if (!(CVT %in% "discrete")) {
         Subsets_stats_df$Compareby_min_num_samples_in_class <- NULL
         Subsets_stats_df$Compareby_max_num_samples_in_class <- NULL
     }
