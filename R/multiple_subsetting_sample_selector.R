@@ -53,7 +53,7 @@ multiple_subsetting_sample_selector <- function(SEobj = NULL, phenotable = NULL,
         return(pielou_j)
     }
 
-    apply_appropriate_compareby_test <- function(class_vec = NULL, class_type = NULL){
+    apply_appropriate_compareby_QC_test <- function(class_vec = NULL, class_type = NULL){
         if (!all(is.na(class_vec))) {
             if (class_type == "discrete"){
                 #Test for balance (as gauged by evenness) of classes
@@ -72,6 +72,22 @@ multiple_subsetting_sample_selector <- function(SEobj = NULL, phenotable = NULL,
         return(class_stat)
     }
 
+    apply_appropriate_compareby_samp_num_test <- function(class_vec = NULL, class_type = NULL){
+        if (!all(is.na(class_vec))) {
+            if (class_type == "discrete"){
+                class_samp_minmax <- c(min(table(class_vec)), max(table(class_vec)))
+             } else if (class_type == "continuous"){
+                #Test for normalcy of continuous variable
+                class_samp_minmax <- NA
+            }
+       } else {
+            #no info passed, avoid calculation and return NA
+            class_samp_minmax <- NA
+        }
+
+        return(class_samp_minmax)
+    }
+
     #Make data frame of non-unique combis from highest to lowest levels
     colnamedict <- data.frame(VarName = c(compareby, valid_subsets), AttribName = c("Compareby"[length(compareby)], c("Cats_lvl_1", "Cats_lvl_2", "Cats_lvl_3")[1:length(valid_subsets)]))
     tmp_pheno <- curr_pheno
@@ -85,17 +101,17 @@ multiple_subsetting_sample_selector <- function(SEobj = NULL, phenotable = NULL,
     CTN <- c("Pielou_J", "Shapiro-Wilk", NA)[c((compareby %in% variable_list$discrete), (compareby %in% variable_list$continuous), is.na(compareby))]
 
     #Level 0
-    Subsets_stats_df <- tmp_pheno %>% summarise(Subset_Tier_Level = 0, Subset_Tier_Variable_Name = "No subset", Subset_Tier_Class_Name = NA, Num_samples_in_subset = length(Compareby), Compareby_Variable_Name = compareby, Compareby_Variable_Type = CVT,Num_cats_compareby_in_subset = length(unique(Compareby)), Compareby_QC_in_subset = apply_appropriate_compareby_test(class_vec = Compareby, class_type = CVT), Compareby_Test_Name_in_subset = CTN) %>% as.data.frame()
+    Subsets_stats_df <- tmp_pheno %>% summarise(Subset_Tier_Level = 0, Subset_Tier_Variable_Name = "No subset", Subset_Tier_Class_Name = NA, Num_samples_in_subset = length(Compareby), Compareby_Variable_Name = compareby, Compareby_Variable_Type = CVT, Num_cats_compareby_in_subset = length(unique(Compareby)), Compareby_QC_in_subset = apply_appropriate_compareby_QC_test(class_vec = Compareby, class_type = CVT), Compareby_Test_Name_in_subset = CTN, Compareby_min_num_samples_in_class = apply_appropriate_compareby_samp_num_test(class_vec = Compareby, class_type = CVT)[1], Compareby_max_num_samples_in_class = apply_appropriate_compareby_samp_num_test(class_vec = Compareby, class_type = CVT)[2]) %>% as.data.frame()
 
     #Level 1
-    Subsets_stats_df_suppl <- tmp_pheno %>% group_by(Cats_lvl_1) %>% summarise(Subset_Tier_Level = 1, Subset_Tier_Variable_Name = valid_subsets[1], Subset_Tier_Class_Name = NA, Num_samples_in_subset = length(Compareby), Compareby_Variable_Name = compareby, Compareby_Variable_Type = CVT, Num_cats_compareby_in_subset = length(unique(Compareby)),  Compareby_QC_in_subset = apply_appropriate_compareby_test(class_vec = Compareby, class_type = CVT), Compareby_Test_Name_in_subset = CTN) %>% as.data.frame()
+    Subsets_stats_df_suppl <- tmp_pheno %>% group_by(Cats_lvl_1) %>% summarise(Subset_Tier_Level = 1, Subset_Tier_Variable_Name = valid_subsets[1], Subset_Tier_Class_Name = NA, Num_samples_in_subset = length(Compareby), Compareby_Variable_Name = compareby, Compareby_Variable_Type = CVT, Num_cats_compareby_in_subset = length(unique(Compareby)),  Compareby_QC_in_subset = apply_appropriate_compareby_QC_test(class_vec = Compareby, class_type = CVT), Compareby_Test_Name_in_subset = CTN, Compareby_min_num_samples_in_class = apply_appropriate_compareby_samp_num_test(class_vec = Compareby, class_type = CVT)[1], Compareby_max_num_samples_in_class = apply_appropriate_compareby_samp_num_test(class_vec = Compareby, class_type = CVT)[2]) %>% as.data.frame()
     colnames(Subsets_stats_df_suppl)[which(colnames(Subsets_stats_df_suppl) == "Cats_lvl_1")] <- "Subset_Tier_Class_Name"
     Subsets_stats_df_suppl <- Subsets_stats_df_suppl[ , colnames(Subsets_stats_df)] 
     Subsets_stats_df <- rbind(Subsets_stats_df, Subsets_stats_df_suppl)
 
     #Level 2
     if (length(valid_subsets) > 1) {
-        Subsets_stats_df_suppl <- tmp_pheno %>% group_by(Cats_lvl_1, Cats_lvl_2) %>% summarise(Subset_Tier_Level = 2, Subset_Tier_Variable_Name = valid_subsets[2], Num_samples_in_subset = length(Compareby), Compareby_Variable_Name = compareby, Compareby_Variable_Type = CVT, Num_cats_compareby_in_subset = length(unique(Compareby)),  Compareby_QC_in_subset = apply_appropriate_compareby_test(class_vec = Compareby, class_type = CVT), Compareby_Test_Name_in_subset = CTN) %>% as.data.frame()
+        Subsets_stats_df_suppl <- tmp_pheno %>% group_by(Cats_lvl_1, Cats_lvl_2) %>% summarise(Subset_Tier_Level = 2, Subset_Tier_Variable_Name = valid_subsets[2], Num_samples_in_subset = length(Compareby), Compareby_Variable_Name = compareby, Compareby_Variable_Type = CVT, Num_cats_compareby_in_subset = length(unique(Compareby)),  Compareby_QC_in_subset = apply_appropriate_compareby_QC_test(class_vec = Compareby, class_type = CVT), Compareby_Test_Name_in_subset = CTN, Compareby_min_num_samples_in_class = apply_appropriate_compareby_samp_num_test(class_vec = Compareby, class_type = CVT)[1], Compareby_max_num_samples_in_class = apply_appropriate_compareby_samp_num_test(class_vec = Compareby, class_type = CVT)[2]) %>% as.data.frame()
         Subsets_stats_df_suppl$Subset_Tier_Class_Name <- paste(Subsets_stats_df_suppl$Cats_lvl_1, Subsets_stats_df_suppl$Cats_lvl_2, sep = "§")
         Subsets_stats_df_suppl <- Subsets_stats_df_suppl[ , colnames(Subsets_stats_df)] 
         Subsets_stats_df <- rbind(Subsets_stats_df, Subsets_stats_df_suppl)
@@ -103,10 +119,16 @@ multiple_subsetting_sample_selector <- function(SEobj = NULL, phenotable = NULL,
 
     #Level 3
     if (length(valid_subsets) > 2) {
-        Subsets_stats_df_suppl <- tmp_pheno %>% group_by(Cats_lvl_1, Cats_lvl_2, Cats_lvl_3) %>% summarise(Subset_Tier_Level = 3, Subset_Tier_Variable_Name = valid_subsets[3], Num_samples_in_subset = length(Compareby), Compareby_Variable_Name = compareby, Compareby_Variable_Type = CVT, Num_cats_compareby_in_subset = length(unique(Compareby)), Compareby_QC_in_subset = apply_appropriate_compareby_test(class_vec = Compareby, class_type = CVT), Compareby_Test_Name_in_subset = CTN) %>% as.data.frame()
+        Subsets_stats_df_suppl <- tmp_pheno %>% group_by(Cats_lvl_1, Cats_lvl_2, Cats_lvl_3) %>% summarise(Subset_Tier_Level = 3, Subset_Tier_Variable_Name = valid_subsets[3], Num_samples_in_subset = length(Compareby), Compareby_Variable_Name = compareby, Compareby_Variable_Type = CVT, Num_cats_compareby_in_subset = length(unique(Compareby)), Compareby_QC_in_subset = apply_appropriate_compareby_QC_test(class_vec = Compareby, class_type = CVT), Compareby_Test_Name_in_subset = CTN, Compareby_min_num_samples_in_class = apply_appropriate_compareby_samp_num_test(class_vec = Compareby, class_type = CVT)[1], Compareby_max_num_samples_in_class = apply_appropriate_compareby_samp_num_test(class_vec = Compareby, class_type = CVT)[2]) %>% as.data.frame()
         Subsets_stats_df_suppl$Subset_Tier_Class_Name <- paste(Subsets_stats_df_suppl$Cats_lvl_1, Subsets_stats_df_suppl$Cats_lvl_2, Subsets_stats_df_suppl$Cats_lvl_3, sep = "§")
         Subsets_stats_df_suppl <- Subsets_stats_df_suppl[ , colnames(Subsets_stats_df)] 
         Subsets_stats_df <- rbind(Subsets_stats_df, Subsets_stats_df_suppl)
+    }
+
+    #Clean up
+    if (CVT != "discrete") {
+        Subsets_stats_df$Compareby_min_num_samples_in_class <- NULL
+        Subsets_stats_df$Compareby_max_num_samples_in_class <- NULL
     }
 
     sample_subset_list <- list()
