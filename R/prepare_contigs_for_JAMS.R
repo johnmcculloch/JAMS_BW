@@ -42,7 +42,13 @@ prepare_contigs_for_JAMS <- function(opt = NULL, fastafile = NULL, contig_minlen
     opt$contigsdata$RefScore <- (as.numeric(opt$contigsdata$Num_isolate) * 5) + as.numeric(opt$contigsdata$Num_MAGs)
 
     #Clean_up unwanted columns to keep it simple
-    opt$contigsdata <- opt$contigsdata[ , c("Contig", "Taxid", "Domain", "Species", "LKT", "NCBI_taxonomic_rank", "RefScore", "Median_taxid_genome_size", "SD_taxid_genome_size", "Length","NumBases", "MetaBATbin")[c("Contig", "Taxid", "Domain", "Species", "LKT", "NCBI_taxonomic_rank", "RefScore", "Median_taxid_genome_size", "SD_taxid_genome_size", "Length","NumBases", "MetaBATbin") %in% colnames(opt$contigsdata)]]
+    opt$contigsdata <- opt$contigsdata[ , c("Contig", "Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT", "NCBI_taxonomic_rank", "RefScore", "Median_taxid_genome_size", "SD_taxid_genome_size", "Length", "NumBases", "MetaBATbin")[c("Contig", "Taxid", "Domain", "Species", "LKT", "NCBI_taxonomic_rank", "RefScore", "Median_taxid_genome_size", "SD_taxid_genome_size", "Length", "NumBases", "MetaBATbin") %in% colnames(opt$contigsdata)]]
+
+    #Ensure correct column object class
+    numeric_cols <- c("RefScore", "Median_taxid_genome_size", "SD_taxid_genome_size", "Length", "NumBases")[c("RefScore", "Median_taxid_genome_size", "SD_taxid_genome_size", "Length", "NumBases") %in% colnames(opt$contigsdata)]
+    for (colm in numeric_cols){
+        opt$contigsdata[ , colm] <- as.numeric(opt$contigsdata[ , colm])
+    }
 
     #Bank actual sequences to opt
     opt$NHcontigs_sequence <- filter_sequence_by_name(input_sequences = mycontigs, sequencenames = nonhostcontigs, keep = TRUE)
