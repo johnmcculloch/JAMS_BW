@@ -6,20 +6,20 @@
 get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unpaired_reads = TRUE){
     setwd(opt$workdir)
 
-    flog.info("Using kraken2 with JAMStaxtable")
-    JAMStaxtablefile <- file.path(opt$workingkrakendb, "JAMStaxtable.rda")
-    if (file.exists(JAMStaxtablefile)){
-        load(JAMStaxtablefile)
-    } else {
-        #Fall back on generic taxonomy table and warn user
-        flog.info("JAMS taxonomy table not found. Falling back on generic JAMS taxtable.")
-        data(JAMStaxtable)
-    }
-    JAMStaxtable[] <- lapply(JAMStaxtable, as.character)
-    validtaxlvls <- colnames(JAMStaxtable)[(!(colnames(JAMStaxtable) %in% c("Taxid")))]
+    #flog.info("Using kraken2 with JAMStaxtable")
+    #JAMStaxtablefile <- file.path(opt$workingkrakendb, "JAMStaxtable.rda")
+    #if (file.exists(JAMStaxtablefile)){
+    #    load(JAMStaxtablefile)
+    #} else {
+    #    #Fall back on generic taxonomy table and warn user
+    #    flog.info("JAMS taxonomy table not found. Falling back on generic JAMS taxtable.")
+    #    data(JAMStaxtable)
+    #}
+    #JAMStaxtable[] <- lapply(JAMStaxtable, as.character)
+    #validtaxlvls <- colnames(JAMStaxtable)[(!(colnames(JAMStaxtable) %in% c("Taxid")))]
 
     #Only get coverage from reads if contigs were actually assembled from reads.
-    if("readsdir" %in% names(opt)){
+    if ("readsdir" %in% names(opt)){
 
         #Check if reads are in tmpdir
         if(opt$workdir != opt$sampledir){
@@ -87,7 +87,9 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
         flog.info(paste("Alignment of reads to contigs is complete with", opt$bowtie_cov_output[length(opt$bowtie_cov_output)]))
         NAssfastqs <- list.files(pattern = "*fastq")
 
-        if (opt$classifyunassembled == TRUE){
+        #Classifying from unassembled reads is now deprecated
+        #if (opt$classifyunassembled == TRUE){
+        if (FALSE){
             flog.info("Classifying taxonomy of non assembled reads.")
             makefastacmd <- paste(file.path(opt$bindir, "fastq2fasta4kraken.sh"), paste(NAssfastqs, collapse = " "))
             system(makefastacmd)
@@ -155,8 +157,9 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
         system(paste("samtools", "sort", "--threads", opt$threads, bamfile, ">", sortedbamfile))
         system(paste("samtools", "index", sortedbamfile))
 
-        #mark duplicates with picard
-        if (markduplicates == TRUE){
+        #Marking duplicates with picard is now deprecated
+        #if (markduplicates == TRUE){
+        if (FALSE) {
             flog.info("Removing duplicate reads from alignment.")
             sortedmarkdupbamfile <- paste(paste(opt$prefix, "contigs", sep = "_"), "sorted", "markdup", "bam", sep = ".")
             sortedmarkdupsortedbamfile <- paste(paste(opt$prefix, "contigs", sep = "_"), "sorted", "markdup", "sorted", "bam", sep = ".")
@@ -254,84 +257,6 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
         tmpalldata <- opt$contigsdata
         fromCtgPct <- data.frame(LKT = unique(tmpalldata$LKT), PctFromCtg = rep(100.00, length(unique(tmpalldata$LKT))))
     } #End conditional get doses from short read alignment
-
-    #Compute dose of Last Known Taxa, but maintain kraken1 backwards conmpatibility
-    flog.info("Computing dose of Last Known Taxa.")
-    totaldose <- aggregate(NumBases ~ LKT, FUN = sum, data = tmpalldata)
-
-    tmpalldata$NumBases <- NULL
-    tmpalldata$Sequence <- NULL
-    tmpalldata$Taxid <- NULL
-    tmpalldata$Contig <- NULL
-    tmpalldata$IS1 <- NULL #Cannot left join to something which is more discriminatory
-    #de-duplicate up to LKT. Amazingly, there are some alternative taxonomy lineages for the same species... Crikey.
-    tmpalldata <- tmpalldata[which(!(duplicated(tmpalldata$LKT))), ]
-    totaldose <- left_join(totaldose, tmpalldata, by = "LKT")
-    totaldose <- left_join(totaldose, fromCtgPct, by = "LKT")
-    totaldose$PctFromCtg[which(is.na(totaldose$PctFromCtg))] <- 0 #Just being sure
-    opt$LKTdose <- totaldose[ , c((validtaxlvls[!(validtaxlvls %in% "IS1")]), "NumBases", "PctFromCtg")]
-    opt$LKTdose <- opt$LKTdose[order(-opt$LKTdose$NumBases), ]
-    opt$LKTdose$CumSum <- cumsum(opt$LKTdose$NumBases)
-    opt$LKTdose$PctCumSum <- round(opt$LKTdose$CumSum / sum(opt$LKTdose$NumBases) * 100, 2)
-    #Data should be non-empty and non-redundant, but just make sure
-    opt$LKTdose[is.na(opt$LKTdose)] <- 0
-
-    #If there is assemblydata available, add that to LKTdose dataframe
-    if ("assemblystats" %in% names(opt)){
-        LKTassemblies <- subset(opt$assemblystats, TaxLevel == "LKT")
-        LKTassemblies$TaxLevel <- NULL
-        colnames(LKTassemblies)[which(colnames(LKTassemblies) == "Taxon")] <- "LKT"
-        #join this information onto LKTdose
-        opt$LKTdose <- left_join(opt$LKTdose, LKTassemblies, by = "LKT")
-        opt$LKTdose[is.na(opt$LKTdose)] <- 0
-    }
-
-    #Do MetaBAT if applicable
-    if (opt$bin_contigs_with_metabat){
-        setwd(opt$covdir)
-        flog.info("Binning contigs from assembly with metaBAT2")
-        system(paste("jgi_summarize_bam_contig_depths --outputDepth depth.txt", sortedbamfile))
-        system("metabat2 -i contigscov.fa -a depth.txt -o bins_dir/MAGbin")
-        flog.info("Integrating binning information into JAMS")
-        MAGbin_files <- list.files("bins_dir", pattern = "fa$")
-
-        get_contigs_in_bin <- function(bin_file = NULL){
-            bin_contigs <- NULL
-            if (file.exists(file.path("bins_dir", bin_file))){
-                bin_contigs <- system2("grep", args = c("\'^>\'", file.path("bins_dir", bin_file)), stdout = TRUE, stderr = FALSE)
-                bin_contigs <- gsub("^>", "", bin_contigs)
-            }
-            if (length(bin_contigs) < 1){
-                flog.warn(paste("MetaBAT2 bin file", bin_file, "not found, or empty."))
-            }
-
-            return(bin_contigs)
-        }
-
-        bin_contigs_list <- lapply(MAGbin_files, function(x) { get_contigs_in_bin(bin_file = x) } )
-        names(bin_contigs_list) <- MAGbin_files
-
-        opt$contigsdata$MetaBATbin <- 0
-
-        for (mbl in 1:length(bin_contigs_list)){
-            bin_number <- as.numeric(unlist(strsplit(names(bin_contigs_list)[mbl], split = "\\."))[2])
-            curr_contigs <- bin_contigs_list[[mbl]]
-            opt$contigsdata[which(opt$contigsdata$Contig %in% curr_contigs), "MetaBATbin"] <- bin_number
-        }
-
-        #Standardise number of charaters
-        opt$contigsdata$MetaBATbin <- formatC(opt$contigsdata$MetaBATbin, width = nchar(max(opt$contigsdata$MetaBATbin)), flag = "0")
-        opt$contigsdata$MetaBATbin[which(as.numeric(opt$contigsdata$MetaBATbin) == 0)] <- "none"
-        opt$contigsdata$MetaBATbin[which(opt$contigsdata$MetaBATbin != "none")] <- paste(opt$prefix, "MAGbin", opt$contigsdata$MetaBATbin[which(opt$contigsdata$MetaBATbin != "none")], sep = "_")
-
-        opt$MAGdose <- aggregate(NumBases ~ MetaBATbin, FUN = sum, data = opt$contigsdata)
-
-        #Get assemblystats for MAGs
-        if (length(unique(opt$contigsdata$MetaBATbin[which(opt$contigsdata$MetaBATbin != "none")])) > 0){
-            opt <- evaluate_metaBAT_bin(opt = opt)
-        }
-
-    }
 
     return(opt)
 }
