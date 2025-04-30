@@ -15,14 +15,18 @@ annotate_contigs <- function(opt = NULL){
     flog.info("Annotating contigs with prokka.")
     prokkacmd <- file.path(opt$bindir, "fastannotate_JAMS.sh")
     prokkaargs <- c("-i", "contigstoannot.fa", "-p", opt$prefix, "-t", opt$threads)
+    if (opt$analysis %in% c("metagenome")){
+        prokkaargs <- c(prokkaargs, "-m")
+    }
+ 
     #Use prokkaJAMS and not prokka if there are over 10,000 contigs.
-    if (length(names(opt$NHcontigs_sequence)) > 10000){
-        flog.info("Annotation will skip tbl2asn step in prokka, as this step is unnecessarily lengthy when there are more than 10,000 contigs.")
+    #if (length(names(opt$NHcontigs_sequence)) > 10000){
+        #flog.info("Annotation will skip tbl2asn step in prokka, as this step is unnecessarily lengthy when there are more than 10,000 contigs.")
+        #JAN 2025: skip tbl creation by prokka because it would rarely be used.
         prokkajams <- c("-j")
         prokkaargs <- c(prokkaargs, prokkajams)
-    }
+    #}
 
-    #system2(prokkacmd, args = prokkaargs, stdout = TRUE, stderr = TRUE)
     system(paste(prokkacmd, paste0(prokkaargs, collapse = " ")))
     flog.info("Contigs have been annotated.")
     file.remove("contigstoannot.fa")
@@ -38,7 +42,7 @@ annotate_contigs <- function(opt = NULL){
     flog.info("Making featuredata dataframe from bedfile.")
     opt$featuredata <- make_featuredata_from_bedfile(bedfile = opt$bedfile)
     #Add taxonomy information
-    tmpcontigsdata <- opt$contigsdata[, c("Contig", "LKT")]
+    tmpcontigsdata <- opt$contigsdata[, c("Contig", "Taxid", "LKT")]
     opt$featuredata <- left_join(opt$featuredata, tmpcontigsdata, by = "Contig")
 
     #Bank annotation files to project directory
