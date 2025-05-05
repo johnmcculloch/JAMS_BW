@@ -1,19 +1,29 @@
 #' countfastq(fastqfile)
 #' Wrapper for counting number of reads and number of bases of a fastq file in the system.
 #' Returns a vector with read counts and base counts.
-#' Caveat: Input fastq file must have exactly four lines per sequence. If your fastq files do not fit this criterion, you are totally bonkers.
 #' @export
 
 countfastq <- function(fastqfile){
-
-    countargs <- c(fastqfile, "|", "paste", "-", "-", "-", "-", "|", "cut", "-f", "2", "|", "wc", "-lc")
-    fastqstats <- system2('cat', args = countargs, stdout = TRUE, stderr = FALSE)
-    fastqstats <- unlist(strsplit(fastqstats, split = " "))
+    countargs <- c("size", fastqfile)
+    fastqstats <- system2('seqtk', args = countargs, stdout = TRUE, stderr = FALSE)
+    fastqstats <- unlist(strsplit(fastqstats, split = "\t"))
     fastqstats <- fastqstats[which(fastqstats != "")]
     fastqstats <- as.numeric(fastqstats)
 
     return(fastqstats)
 }
+
+#Deprecated countfastq
+#countfastq <- function(fastqfile){
+
+#    countargs <- c(fastqfile, "|", "paste", "-", "-", "-", "-", "|", "cut", "-f", "2", "|", "wc", "-lc")
+#    fastqstats <- system2('cat', args = countargs, stdout = TRUE, stderr = FALSE)
+#    fastqstats <- unlist(strsplit(fastqstats, split = " "))
+#    fastqstats <- fastqstats[which(fastqstats != "")]
+#    fastqstats <- as.numeric(fastqstats)
+
+#    return(fastqstats)
+#}
 
 
 #' countfastq_files(fastqfiles = NULL, threads = NULL)
@@ -133,4 +143,14 @@ get_sequence_stats<-function(sequences=NULL){
     seqstats<-data.frame(Sequence=sequencenames, Length=sequencelengths, GC=sequenceGCs)
 
     return(seqstats)
+}
+
+#' write_contigs_to_system(opt = NULL, contig_names = NULL, filename = NULL)
+#' Wrapper for writing a list of contigs from opt$contigsdata to a single multifasta file.
+#'
+#' JAMSalpha function
+#' @export
+
+write_contigs_to_system <- function(opt = NULL, contig_names = NULL, filename = NULL){
+    write.fasta(sequences = filter_sequence_by_name(input_sequences = opt$NHcontigs_sequence, sequencenames = contig_names, keep = TRUE), names = contig_names, nbchar = 80, file.out = filename)
 }
