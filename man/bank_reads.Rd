@@ -4,7 +4,7 @@
 \alias{bank_reads}
 \title{bank_reads}
 \usage{
-bank_reads(opt = opt)
+bank_reads(opt = opt, maketarball = FALSE)
 }
 \description{
 JAMSalpha function

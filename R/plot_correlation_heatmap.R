@@ -76,10 +76,6 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
             #Get counts matrix
             countmat <- as.matrix(assays(currobj)$BaseCounts)
 
-            #Protect against rows with empty data
-            rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
-            countmat <- countmat[rowsToKeep, ]
-
             if (ignoreunclassified == TRUE){
                 dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")
                 rowsToKeep <- which(!(rownames(countmat) %in% dunno))

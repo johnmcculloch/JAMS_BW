@@ -8,8 +8,8 @@ denoise_contigs <- function(opt = NULL, small_large_length_threshold = 2000) {
     ## Censor small contigs Taxonomy approach
     #Isolate dark matter contigs
     Dark_matter_contigs_df <- opt$contigsdata[which(opt$contigsdata$Taxid == "0"), , drop = FALSE]
-    Surviving_contigs_df <- subset((opt$contigsdata[which(opt$contigsdata$Taxid != "0"), ]), Length >= small_large_length_threshold)
-    Unvetted_contigs_df <- subset((opt$contigsdata[which(opt$contigsdata$Taxid != "0"), ]), Length < small_large_length_threshold)
+    Surviving_contigs_df <- subset((opt$contigsdata[which(opt$contigsdata$Taxid != "0"), , drop = FALSE]), Length >= small_large_length_threshold)
+    Unvetted_contigs_df <- subset((opt$contigsdata[which(opt$contigsdata$Taxid != "0"), , drop = FALSE]), Length < small_large_length_threshold)
 
     ## The genomic "unit" should in theory resolve at the species level, so use that to be conservative. 
     #1) If small contig Species is in large contigs, leave them alone.

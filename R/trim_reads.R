@@ -127,6 +127,13 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetec
 
     } #End conditionals for sequencing  platform type
 
+    #Disregard unpaired reads from trimming if not assembling an isolate.
+    if (opt$analysis != "isolate"){
+        if (length(opt$trimreads) > 2){
+            opt$trimreads <- opt$trimreads[1:2]
+        }
+    }
+
     if(opt$workdir != opt$sampledir){
         #Bank trimmed reads to project directory
         file.copy(opt$trimreads, opt$readsdir)

@@ -7,7 +7,8 @@
 compute_signature_numbases(
   featuredata = NULL,
   columnname = NULL,
-  blastanalyses = c("abricate", "plasmidfinder", "vfdb")
+  blastanalyses = c("abricate", "resfinder", "plasmidfinder", "vfdb"),
+  taxonomic_space = "LKT"
 )
 }
 \description{

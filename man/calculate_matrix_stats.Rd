@@ -20,5 +20,5 @@ calculate_matrix_stats(
 }
 \description{
 Returns a data frame with the statistics for a feature count matrix ordered by highest variance or lowest Mann-Whitney-Wilcoxon test between binary categories.
-This function is used internally by the JAMS plotting functions, plot_Ordination, plot_relabund_heatmap, plot_correlation_heatmpap and plot_relabund_features.
+This function is used internally by the JAMS plotting functions, plot_Ordination, plot_relabund_heatmap, plot_correlation_heatmap and plot_relabund_features.
 }

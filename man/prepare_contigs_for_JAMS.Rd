@@ -4,7 +4,7 @@
 \alias{prepare_contigs_for_JAMS}
 \title{prepare_contigs_for_JAMS}
 \usage{
-prepare_contigs_for_JAMS(opt = NULL, fastafile = NULL)
+prepare_contigs_for_JAMS(opt = NULL, fastafile = NULL, contig_minlength = 500)
 }
 \description{
 JAMSalpha function

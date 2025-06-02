@@ -4,7 +4,12 @@
 \alias{get_feature_stats}
 \title{get_feature_stats}
 \usage{
-get_feature_stats(opt = NULL, ucoindex = "freq")
+get_feature_stats(
+  opt = NULL,
+  ucoindex = "freq",
+  doContigs = TRUE,
+  doFeatures = FALSE
+)
 }
 \description{
 JAMSalpha function

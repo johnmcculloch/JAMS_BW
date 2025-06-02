@@ -144,27 +144,38 @@ get_feature_to_accession_table <- function(opt = NULL, iproanalysis = NULL){
 #' JAMSalpha function
 #' @export
 
-harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate"), doinparallel = TRUE, check_ipro_jobs_status = TRUE){
+harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate"), taxonomic_spaces = c("LKT", "MetaBATbin", "ConsolidatedGenomeBin"), doinparallel = TRUE, check_ipro_jobs_status = TRUE){
 
     data(ECdescmap)
     data(GOtermdict)
     data(MetaCycAccession2Description)
 
     flog.info("Harvesting functional data.")
+
+    #Due to alternative taxonomic spaces in JAMS2, a featuredose for each different taxonomic space will be generated and exported to a named list called featuredoses (note the plural).
+    featuredoses <- list()
+    interprodoses <- list()
+
+    valid_taxonomic_spaces <- taxonomic_spaces[taxonomic_spaces %in% colnames(opt$featuredata)]
+    flog.info(paste("Taxonomic spaces available for stratifying functional features by taxa are", paste0(valid_taxonomic_spaces, collapse = ", ")))
+
     #Harvest common functions
     basicanalyses <- noninterproanalyses[noninterproanalyses %in% colnames(opt$featuredata)]
-
-    featurenumbaseslist <- lapply(basicanalyses, function(x) { compute_signature_numbases(featuredata = opt$featuredata, columnname =x ) })
-    featurenumbaseslist <- plyr::ldply(featurenumbaseslist, rbind)
-    featurenumbaseslist$`.id` <- NULL
-    rownames(featurenumbaseslist) <- featurenumbaseslist$Accession
+    for (taxonomic_space in valid_taxonomic_spaces){
+        featurenumbaseslist <- lapply(basicanalyses, function(x) { compute_signature_numbases(featuredata = opt$featuredata, taxonomic_space = taxonomic_space, columnname = x ) })
+        featurenumbaseslist <- plyr::ldply(featurenumbaseslist, rbind)
+        featurenumbaseslist$`.id` <- NULL
+        rownames(featurenumbaseslist) <- featurenumbaseslist$Accession
+        featuredoses[[taxonomic_space]] <- featurenumbaseslist
+    }
 
     #Harvest interpro functions, if applicable
     if (opt$skipipro != TRUE){
         opt <- fix_interproscanoutput(opt = opt, check_ipro_jobs_status = check_ipro_jobs_status)
     }
     interpronumbaseslist <- NULL
-    if("interproscanoutput" %in% names(opt)){
+    if ("interproscanoutput" %in% names(opt)){
+
         opt <- add_interpro_to_featuredata(opt = opt, doinparallel = doinparallel)
 
         iproanalyses <- sort(unique(opt$interproscanoutput$Analysis))
@@ -179,55 +190,67 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
         }
 
         flog.info("Creating counts table for Interpro signatures.")
-        interpronumbaseslist <- lapply(iproanalyses, function(x) { compute_signature_numbases(featuredata = opt$featuredata, columnname = x) })
-        names(interpronumbaseslist) <- iproanalyses
-        interpronumbaseslist <- plyr::ldply(interpronumbaseslist, rbind)
-        interpronumbaseslist$`.id` <- NULL
 
-        #New version of Interproscan splits signal peptide analysis into three different classes, Gram Positive, Gram Negative and Eukaryote. Making the accessions non-redundant for these analyses
-        for (analtofix in c("SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SignalP_EUK")){
-            if (analtofix %in% interpronumbaseslist$Analysis){
-                interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"] <- paste(analtofix, interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"], sep = "_")
+        for (taxonomic_space in valid_taxonomic_spaces){
+        
+            interpronumbaseslist <- lapply(iproanalyses, function(x) { compute_signature_numbases(featuredata = opt$featuredata, taxonomic_space = taxonomic_space, columnname = x) })
+            names(interpronumbaseslist) <- iproanalyses
+            interpronumbaseslist <- plyr::ldply(interpronumbaseslist, rbind)
+            interpronumbaseslist$`.id` <- NULL
+
+            #New version of Interproscan splits signal peptide analysis into three different classes, Gram Positive, Gram Negative and Eukaryote. Making the accessions non-redundant for these analyses
+            for (analtofix in c("SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SignalP_EUK")){
+                if (analtofix %in% interpronumbaseslist$Analysis){
+                    interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"] <- paste(analtofix, interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"], sep = "_")
+                }
             }
+
+            #Remove a "-" which is annoyingly being added as an accession for GO and Interpro.
+            interpronumbaseslist <- subset(interpronumbaseslist, Accession != "-")
+
+            rownames(interpronumbaseslist) <- interpronumbaseslist$Accession
+            interprodoses[[taxonomic_space]] <- interpronumbaseslist
+        }
+    }
+
+    for (taxonomic_space in valid_taxonomic_spaces){
+        #Add descriptions to featuredose
+        Taxoncols <- colnames(featuredoses[[taxonomic_space]])[4:ncol(featuredoses[[taxonomic_space]])]
+        featuredoses[[taxonomic_space]]$Description <- rep("none", nrow(featuredoses[[taxonomic_space]]))
+
+        #rearrange
+        featuredoses[[taxonomic_space]] <- featuredoses[[taxonomic_space]][, c("Analysis", "Accession", "Description", "NumBases", Taxoncols)]
+
+        #Add EC numbers
+        descriptions <- ECdescmap$Description[match(featuredoses[[taxonomic_space]]$Accession, ECdescmap$Accession)]
+        featuredoses[[taxonomic_space]]$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
+
+        #Add interpro descriptions, if applicable
+        if ("interproscanoutput" %in% names(opt)){
+            #Add GO descriptions
+            descriptions <- GOtermdict$Description[match(interprodoses[[taxonomic_space]]$Accession, GOtermdict$Accession)]
+            interprodoses[[taxonomic_space]]$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
+            #Add MetaCyc descriptions
+            MetaCycdescriptions <- MetaCycAccession2Description$Description[match(interprodoses[[taxonomic_space]]$Accession, MetaCycAccession2Description$Accession)]
+            interprodoses[[taxonomic_space]]$Description[which(!(is.na(MetaCycdescriptions)))] <- MetaCycdescriptions[which(!(is.na(MetaCycdescriptions)))]
+
+            #Make description dictionary
+            dictaccessions <- opt$interproscanoutput$Accession
+            dictdescriptions <- opt$interproscanoutput$Description
+            dictaccessions <- append(dictaccessions, opt$interproscanoutput$IproAcc, after = length(dictaccessions))
+            dictdescriptions <- append(dictdescriptions, opt$interproscanoutput$IproDesc, after = length(dictdescriptions))
+            acc2desc <- data.frame(Accession = dictaccessions, Description = dictdescriptions, stringsAsFactors = FALSE)
+            acc2desc <- acc2desc[!(duplicated(acc2desc)), ]
+            #Add interpro descriptions to featuredose
+            descriptions <- acc2desc$Description[match(interprodoses[[taxonomic_space]]$Accession, acc2desc$Accession)]
+            interprodoses[[taxonomic_space]]$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
         }
 
-        #Remove a "-" which is annoyingly being added as an accession for GO and Interpro.
-        interpronumbaseslist <- subset(interpronumbaseslist, Accession != "-")
+        featuredoses[[taxonomic_space]] <- rbind(featuredoses[[taxonomic_space]], interprodoses[[taxonomic_space]])
 
-        rownames(interpronumbaseslist) <- interpronumbaseslist$Accession
     }
 
-    opt$featuredose <- rbind(featurenumbaseslist, interpronumbaseslist)
-
-    #Add descriptions to featuredose
-    LKTcols <- colnames(opt$featuredose)[4:ncol(opt$featuredose)]
-    opt$featuredose$Description <- rep("none", nrow(opt$featuredose))
-    #rearrange
-    opt$featuredose <- opt$featuredose[, c("Analysis", "Accession", "Description", "NumBases", LKTcols)]
-    #Add EC numbers
-    descriptions <- ECdescmap$Description[match(opt$featuredose$Accession, ECdescmap$Accession)]
-    opt$featuredose$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
-
-    #Add interpro descriptions, if applicable
-    if ("interproscanoutput" %in% names(opt)){
-        #Add GO descriptions
-        descriptions <- GOtermdict$Description[match(opt$featuredose$Accession, GOtermdict$Accession)]
-        opt$featuredose$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
-        #Add MetaCyc descriptions
-        MetaCycdescriptions <- MetaCycAccession2Description$Description[match(opt$featuredose$Accession, MetaCycAccession2Description$Accession)]
-        opt$featuredose$Description[which(!(is.na(MetaCycdescriptions)))] <- MetaCycdescriptions[which(!(is.na(MetaCycdescriptions)))]
-
-        #Make description dictionary
-        dictaccessions <- opt$interproscanoutput$Accession
-        dictdescriptions <- opt$interproscanoutput$Description
-        dictaccessions <- append(dictaccessions, opt$interproscanoutput$IproAcc, after = length(dictaccessions))
-        dictdescriptions <- append(dictdescriptions, opt$interproscanoutput$IproDesc, after = length(dictdescriptions))
-        acc2desc <- data.frame(Accession = dictaccessions, Description = dictdescriptions, stringsAsFactors = FALSE)
-        acc2desc <- acc2desc[!(duplicated(acc2desc)), ]
-        #Add interpro descriptions to featuredose
-        descriptions <- acc2desc$Description[match(opt$featuredose$Accession, acc2desc$Accession)]
-        opt$featuredose$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
-    }
+    opt$abundances$functional <- featuredoses
 
     return(opt)
 }
@@ -238,16 +261,16 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
 #' JAMSalpha function
 #' @export
 
-compute_signature_numbases <- function (featuredata = NULL, columnname = NULL, blastanalyses = c("abricate", "plasmidfinder", "vfdb")){
+compute_signature_numbases <- function (featuredata = NULL, columnname = NULL, blastanalyses = c("abricate", "resfinder", "plasmidfinder", "vfdb"), taxonomic_space = "LKT"){
 
     if (columnname %in% blastanalyses){
-        numbasesdf <- featuredata %>% dplyr::group_by(get(all_of(columnname)), LKT) %>% dplyr::summarise(NumBases = sum(as.integer(NumBases)))
+        numbasesdf <- featuredata %>% group_by(across(all_of(c(columnname, taxonomic_space)))) %>% dplyr::summarise(NumBases = sum(as.integer(NumBases)), .groups = "keep")
     } else {
-        numbasesdf <- tidyr::separate_rows(featuredata, all_of(columnname), sep = fixed("\\|")) %>% dplyr::group_by(get(columnname), LKT) %>% dplyr::summarise(NumBases = sum(as.integer(NumBases)))
+        numbasesdf <- tidyr::separate_rows(featuredata, all_of(columnname), sep = fixed("\\|")) %>% group_by(across(all_of(c(columnname, taxonomic_space)))) %>% dplyr::summarise(NumBases = sum(as.integer(NumBases)), .groups = "keep")
     }
-    colnames(numbasesdf) <- c("Accession", "LKT", "NumBases")
-    numbasesdf <- numbasesdf[ , c("Accession", "LKT", "NumBases")]
-    numbasesdf <- numbasesdf %>% dplyr::arrange(-NumBases) %>% tidyr::spread(LKT,NumBases)
+    colnames(numbasesdf) <- c("Accession", "Taxon", "NumBases")
+    numbasesdf <- numbasesdf[ , c("Accession", "Taxon", "NumBases")]
+    numbasesdf <- numbasesdf %>% dplyr::arrange(-NumBases) %>% pivot_wider(names_from = Taxon, values_from = NumBases, values_fill = 0)
     numbasesdf <- as.data.frame(numbasesdf)
     numbasesdf[is.na(numbasesdf)] <- 0
     taxa <- colnames(numbasesdf)[2:ncol(numbasesdf)]

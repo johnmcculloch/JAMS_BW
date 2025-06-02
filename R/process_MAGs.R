@@ -5,13 +5,25 @@
 
 process_MAGs <- function(opt = NULL){
 
+    setwd(opt$sampledir)
+
     if ((opt$analysis != "metagenome") || (!("MetaBATbin" %in% colnames(opt$contigsdata)))){
 
         #Nothing to see here, MetaBAT results are not available.
-        opt$MAGsdata <- NULL
+        opt$abundances$taxonomic$MetaBATbin <- NULL
 
     } else {
 
+        #Declare final report objective
+        taxonomic_space <- "MB2bin"
+        Bin_ID_cols <- c("Completeness", "Contamination", "Completeness_Model_Used")
+        Bin_QC_cols <- c("Quality", "NumBases", "PPM")
+        Bin_ass_stats_cols <- c("Genome_Size", "Total_Contigs", "Contig_N50", "Max_Contig_Length", "Total_Coding_Sequences", "GC_Content", "Coding_Density")
+        Taxon_info_cols <- c("Taxid", "NCBI_taxonomic_rank", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT", "Gram")
+        Taxon_Reference_QC_cols <- c("Num_assemblies_in_taxid", "Num_isolate", "Proportion_of_MAG_in_taxid", "RefScore")
+        Final_report_cols <- c(taxonomic_space, Bin_ID_cols, Bin_QC_cols, Bin_ass_stats_cols, Taxon_info_cols, Taxon_Reference_QC_cols)
+
+        #Process MAGs
         MAGnames <- unique(opt$contigsdata$MetaBATbin)[unique(opt$contigsdata$MetaBATbin) != "none"]
         flog.info(paste("There are", length(MAGnames), "metagenome assembled genome (MAG) bins to evaluate."))
 
@@ -28,7 +40,8 @@ process_MAGs <- function(opt = NULL){
         curr_checkM_output_folder <- file.path(curr_bin_output_folder, "CheckM_out")
         dir.create(curr_checkM_output_folder, showWarnings = TRUE, recursive = TRUE)
         binfp <- file.path(curr_bin_output_folder, "*.fasta")
-        chechmArgs <- c("predict", "--threads", opt$threads, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+        appropriatenumcores <- max(2, (opt$threads - 2))
+        chechmArgs <- c("predict", "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
         flog.info("Evaluating quality of MAGs with CheckM2")
         system2('checkm2', args = chechmArgs, stdout = FALSE, stderr = FALSE)
         checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
@@ -44,18 +57,38 @@ process_MAGs <- function(opt = NULL){
         MAG_kraken_df <- kraken_classify_taxonomy(opt = opt, fastafile = file.path(curr_bin_output_folder, "All_concat_MAGs.fasta"), confidence = 0)
         colnames(MAG_kraken_df)[which(colnames(MAG_kraken_df) == "Sequence")] <- "MetaBATbin"
         colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "MetaBATbin"
-        opt$MAGsdata <- left_join(checkm_out, MAG_kraken_df, by = "MetaBATbin")
+        opt$abundances$taxonomic$MB2bin <- left_join(checkm_out, MAG_kraken_df, by = "MetaBATbin")
 
         #Add relative abundance data for downstream quality assessment
-        opt$MAGsdata$NumBases <- NA
+        opt$abundances$taxonomic$MB2bin$NumBases <- NA
         for (wantedMAG in MAGnames){
-            opt$MAGsdata[which(opt$MAGsdata$MetaBATbin == wantedMAG), "NumBases"] <- sum(subset(opt$contigsdata, MetaBATbin == wantedMAG)[]$NumBases)
+            opt$abundances$taxonomic$MB2bin[which(opt$abundances$taxonomic$MB2bin$MetaBATbin == wantedMAG), "NumBases"] <- sum(subset(opt$contigsdata, MetaBATbin == wantedMAG)[]$NumBases)
         }
-        opt$MAGsdata$PPM <- round((opt$MAGsdata$NumBases / sum(opt$contigsdata$NumBases)) * 1E6, 0)
+        opt$abundances$taxonomic$MB2bin$PPM <- round((opt$abundances$taxonomic$MB2bin$NumBases / sum(opt$contigsdata$NumBases)) * 1E6, 0)
+
+        #Add Reference score
+        opt$abundances$taxonomic$MB2bin$RefScore <- (as.numeric(opt$abundances$taxonomic$MB2bin$Num_isolate) * 5) + as.numeric(opt$abundances$taxonomic$MB2bin$Num_MAGs)
+
+        #Rename bins to include LKT in name
+        opt$abundances$taxonomic$MB2bin$BinID <- unname(sapply(opt$abundances$taxonomic$MB2bin$MetaBATbin, function (x) { tail(unlist(strsplit(x, split = "_")), 1) }))
+        opt$abundances$taxonomic$MB2bin$MB2bin <- NA
+        #Construct genome bin name
+        for (rn in 1:nrow(opt$abundances$taxonomic$MB2bin)){
+            opt$abundances$taxonomic$MB2bin[rn, "MB2bin"] <- paste("MB2", opt$abundances$taxonomic$MB2bin[rn, "BinID"], gsub("^LKT__", "", opt$abundances$taxonomic$MB2bin[rn, "LKT"]), sep = "__")
+        }
+        rownames(opt$abundances$taxonomic$MB2bin) <- opt$abundances$taxonomic$MB2bin$MB2bin
+
+        #Rank bins
+        opt$abundances$taxonomic$MB2bin <- rate_bin_quality(completeness_df = opt$abundances$taxonomic$MB2bin)
+        #Reorder columns for standardised output
+        opt$abundances$taxonomic$MB2bin <- opt$abundances$taxonomic$MB2bin[ , Final_report_cols[Final_report_cols %in% colnames(opt$abundances$taxonomic$MB2bin)]]
 
         #Clean up
         unlink(curr_bin_output_folder, recursive = TRUE)
     }
+
+    #Back to where we were
+    setwd(opt$sampledir)
 
     return(opt)
 }

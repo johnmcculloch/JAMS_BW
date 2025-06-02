@@ -229,7 +229,7 @@ if (!dir.exists(opt$k2db)){
 setwd(opt$k2db)
 
 opt$projimage<-file.path(opt$k2db, ".RData")
-save.image(opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 ############################
 ## Get Taxonomy from NCBI
@@ -277,7 +277,7 @@ if (!(all(file.exists(wantedtaxfiles)))){
 }
 flog.info("Taxonomy downloaded from NCBI.")
 
-save.image(opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 ##############
 ## Get genomes
@@ -335,7 +335,6 @@ for (organisms in opt$wantedorganisms){
 
     #Get list of what to download
     if(organisms == "bacteria"){
-        #assembly_upto <- "Scaffold"
         assembly_upto <- "Contig"
     } else {
         assembly_upto <- "Contig"
@@ -368,7 +367,7 @@ for (organisms in opt$wantedorganisms){
     flog.info(paste("Genome deposit categories for", organisms,"are:", paste0(paste(bugprop$Quality, bugprop$pct, "%"), collapse = ", ")))
 
     #Save image
-    save.image(opt$projimage)
+    IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
     bugstodownload$destfn <- file.path(opt$currbugdir, paste(bugstodownload$assembly_accession, "fna.gz", sep = "."))
     #Download files
@@ -397,7 +396,7 @@ for (organisms in opt$wantedorganisms){
             currchunk$gensize <- unlist(gsizelist)
             #Append current chunk info to master_assembly_summary
             opt$master_assembly_summary <- rbind(currchunk, opt$master_assembly_summary)
-            save.image(opt$projimage)
+            IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
         }
     } else {
         flog.info(paste("There are", nrow(bugstodownload), "genomes to decompress and fix. This is less than 1000, so doing this serially."))
@@ -405,7 +404,7 @@ for (organisms in opt$wantedorganisms){
         bugstodownload$gensize <- unlist(gsizelist)
         #Append current chunk info to master_assembly_summary
         opt$master_assembly_summary<-rbind(bugstodownload, opt$master_assembly_summary)
-        save.image(opt$projimage)
+        IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
     }
 } #End loop for downloading and counting different kinds of organisms
 
@@ -417,7 +416,7 @@ opt$master_assembly_summary[] <- lapply(opt$master_assembly_summary, as.characte
 opt$master_assembly_summary$gensize <- as.numeric(opt$master_assembly_summary$gensize)
 
 flog.info("Finished downloading all genomes.")
-save.image(opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 ##########################################
 # derive a valid taxid to taxonomy table
@@ -447,10 +446,12 @@ taxdivisions[] <- lapply(taxdivisions, trimws)
 taxdivisions <- subset(taxdivisions, division_name %in% taxdivisionsorder)
 taxdivisionsIwant <- taxdivisions[match(taxdivisionsorder, taxdivisions$division_name), "division_id"]
 
-save.image(opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Get list of taxids
-taxid2size <- opt$master_assembly_summary[, c("taxid", "gensize")]
+#taxid2size <- opt$master_assembly_summary[, c("taxid", "gensize")]
+#Get genome size info now from assembly_accession, rather than counting like in JAMS ver 1.9.9
+taxid2size <- opt$master_assembly_summary[, c("taxid", "genome_size_ungapped")]
 colnames(taxid2size) <- c("taxid", "Size")
 taxid2size$taxid <- as.character(taxid2size$taxid)
 taxid2size$Size <- as.numeric(taxid2size$Size)
@@ -491,7 +492,7 @@ taxnodes[] <- lapply(taxnodes, gsub, pattern = '\t', replacement = '')
 taxnodes[] <- lapply(taxnodes, trimws)
 rownames(taxnodes) <- taxnodes$tax_id
 
-save.image(opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Get merged taxids file
 mergednodes <- read.table(file = mergedfile, sep = "|", quote = NULL, stringsAsFactors = FALSE, skip = FALSE, fill = TRUE, header = FALSE)
@@ -508,12 +509,12 @@ taxnodeswithnames$name_txt[is.na(taxnodeswithnames$name_txt)] <- "Unclassified"
 for(taxlvl in validtaxlvls){
     taxnodeswithnames[which(taxnodeswithnames$rank == taxlvl) , "name_txt"] <- paste0(validtaxtags[which(validtaxlvls==taxlvl)], taxnodeswithnames[which(taxnodeswithnames$rank == taxlvl) , "name_txt"])
 }
-save.image(opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 tmptaxnodeswithnames <- subset(taxnodeswithnames, division_id %in% taxdivisionsIwant)
 taxidsfromdmp <- unique(subset(tmptaxnodeswithnames, !(rank %in% c("superkingdom", "kingdom", "phylum", "class", "order", "family")))[]$tax_id)
 alltaxids <- unique(c(taxidsfromdmp, taxidpresent))
-save.image(opt$projimage)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 ######################
 ## Define functions ##
@@ -542,7 +543,7 @@ find_new_taxid <- function(taxid){
     return(newtaxid)
 }
 
-find_lineage <- function(taxidint){
+find_lineage <- function(taxidint = NULL, return_full_lineage = TRUE){
     taxidint <- as.character(taxidint)
     #Protect against non existent tax IDs
     if (!(taxidint %in% taxnames$tax_id)){
@@ -656,7 +657,11 @@ find_lineage <- function(taxidint){
 
     fulllineage <- subset(fulllineage, taxid != "none")
 
-    return(fulllineage)
+    if (return_full_lineage){
+        return(fulllineage)
+    } else {
+        return(as.character(fulllineage$taxid))
+    }
 }
 
 #Include Mus musculus and Homo sapiens to the list
@@ -710,7 +715,7 @@ for (cnk in 1:numchunks){
     taxtable <- taxtable[!duplicated(taxtable),]
     flog.info(paste("Current taxtable has", length(unique(taxtable$taxid)), "unique Tax IDs"))
 
-    save.image(opt$projimage)
+    #IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 }
 
 taxtable_backup <- taxtable
@@ -768,38 +773,94 @@ finaltablevalidtaxlvls <- c("superkingdom", "kingdom", "phylum", "class", "order
 finaltablevalidtaxtags <- c("d__", "k__", "p__", "c__", "o__", "f__", "g__", "s__", "is1__")
 JAMStaxtable <- taxtable[ , c("taxid", finaltablevalidtaxlvls)]
 
+#Add information as to NCBI taxid rank to JAMStaxtable
+taxid2rank <- subset(taxnodes, tax_id %in% JAMStaxtable$taxid)[ , c("tax_id", "rank")]
+colnames(taxid2rank) <- c("taxid", "NCBI_taxonomic_rank")
+taxid2rank <- rbind(c("0", "root"), taxid2rank)
+JAMStaxtable <- left_join(JAMStaxtable, taxid2rank, by = "taxid")
+
+#Add information as to the proportion of taxid references coming from MAGs
+
+Terminal_taxid_info <- opt$master_assembly_summary[ , c("taxid", "excluded_from_refseq", "genome_size_ungapped")]
+Terminal_taxid_info <- subset(Terminal_taxid_info, taxid %in% JAMStaxtable$taxid)
+Terminal_taxid_info <- left_join(Terminal_taxid_info, JAMStaxtable, by = "taxid")
+#Mutate names to taxids
+for (taxlvl in finaltablevalidtaxlvls){
+    Terminal_taxid_info[ , taxlvl] <- sapply(1:nrow(Terminal_taxid_info), function (x) { unlist(strsplit(Terminal_taxid_info[x , taxlvl], split = "_"))[3] })
+}
+Terminal_taxid_info$genome_size_ungapped <- as.numeric(Terminal_taxid_info$genome_size_ungapped)
+
+#Find stats
+stats_by_taxid <- NULL
+#Start by aggregating by taxonomic level. This is because there are some taxids which are both at the species and infraspecies level, like for Staphylococcus aureus, for instance.
+for (taxlvl in finaltablevalidtaxlvls[9:1]){
+    tmp_Terminal_taxid_info <- Terminal_taxid_info
+    tmp_Terminal_taxid_info$taxid <- NULL
+    colnames(tmp_Terminal_taxid_info)[which(colnames(tmp_Terminal_taxid_info) == taxlvl)] <- "taxid"
+    stats_by_taxid_suppl <- tmp_Terminal_taxid_info %>% group_by(taxid) %>% summarize(num_isolate = sum(excluded_from_refseq == "na"), num_MAGs = sum(excluded_from_refseq == "derived from metagenome"), num_assemblies_in_taxid = length(excluded_from_refseq), Median_taxid_genome_size = median(genome_size_ungapped), SD_taxid_genome_size = sd(genome_size_ungapped))
+    stats_by_taxid_suppl$Proportion_of_MAG_in_taxid <- round((stats_by_taxid_suppl$num_MAGs / stats_by_taxid_suppl$num_assemblies_in_taxid), 5)
+    stats_by_taxid_suppl <- as.data.frame(stats_by_taxid_suppl)
+    stats_by_taxid_suppl <- subset(stats_by_taxid_suppl, taxid != "none")
+    stats_by_taxid <- rbind(stats_by_taxid, stats_by_taxid_suppl)
+    rm(tmp_Terminal_taxid_info)
+    rm(stats_by_taxid_suppl)
+}
+
+#Compute stats for missing taxids
+missing_taxids <- Terminal_taxid_info$taxid[!(Terminal_taxid_info$taxid %in% stats_by_taxid$taxid)]
+stats_by_taxid_suppl <- subset(Terminal_taxid_info, taxid %in% missing_taxids) %>% group_by(taxid) %>% summarize(num_isolate = sum(excluded_from_refseq == "na"), num_MAGs = sum(excluded_from_refseq == "derived from metagenome"), num_assemblies_in_taxid = length(excluded_from_refseq), Median_taxid_genome_size = median(genome_size_ungapped), SD_taxid_genome_size = sd(genome_size_ungapped))
+stats_by_taxid_suppl$Proportion_of_MAG_in_taxid <- round((stats_by_taxid_suppl$num_MAGs / stats_by_taxid_suppl$num_assemblies_in_taxid), 5)
+stats_by_taxid_suppl <- as.data.frame(stats_by_taxid_suppl)
+stats_by_taxid <- rbind(stats_by_taxid, stats_by_taxid_suppl)
+rm(stats_by_taxid_suppl)
+stats_by_taxid$SD_taxid_genome_size <- round(stats_by_taxid$SD_taxid_genome_size, 0)
+
+#Join to JAMStaxtable
+JAMStaxtable <- left_join(JAMStaxtable, stats_by_taxid, by = "taxid")
+rownames(JAMStaxtable) <- JAMStaxtable$taxid
+JAMStaxtable <- JAMStaxtable[order(as.numeric(JAMStaxtable$taxid)), ]
+
+for (taxlvl in finaltablevalidtaxlvls){
+    JAMStaxtable[ , taxlvl] <- gsub("__none_Missing", "__Missing", JAMStaxtable[ , taxlvl])
+}
+
 #Infer Last Known Taxon for JAMStaxtable
 dunno <- c("Unclassified", "Missing")
 JAMStaxtable$LKT <- rep("LKT__Unclassified", nrow(JAMStaxtable))
-for (lvl in 1:(which(finaltablevalidtaxlvls == "species"))){
+for (lvl in 1:length(finaltablevalidtaxlvls)){
     flog.info(paste("Finding which Last Known Taxa are at the", finaltablevalidtaxlvls[lvl], "level."))
     JAMStaxtable$LKT[which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvl]] %in% paste0(finaltablevalidtaxtags[lvl], dunno)))] <- paste("LKT", JAMStaxtable[which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvl]] %in% paste0(finaltablevalidtaxtags[lvl], dunno))), finaltablevalidtaxlvls[lvl]], sep = "__")
 }
 
+#Rearrange columns for convenience
+JAMStaxtable <- JAMStaxtable[ , c("taxid", "superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species", "is1", "LKT", "NCBI_taxonomic_rank","num_isolate", "num_MAGs", "num_assemblies_in_taxid", "Median_taxid_genome_size", "SD_taxid_genome_size", "Proportion_of_MAG_in_taxid")]
 
-#use method of clipping up to two words at species to get Genus plus species, but only for bacteria. This is a temporary measure for NCBIs annoying habit of overinflating desposits at the species level.
-#bacterialrows <- which(JAMStaxtable$superkingdom == "d__Bacteria")
-#lvlnum <- which(finaltablevalidtaxlvls == "species")
-#speciesLKTrows <- which(!(JAMStaxtable[, finaltablevalidtaxlvls[lvlnum]] %in% paste0(finaltablevalidtaxtags[lvlnum], dunno)))
-#Find which species LKT rows are within the bacterial domain
-#rowstocorrect <- speciesLKTrows[(speciesLKTrows %in% bacterialrows)]
-#JAMStaxtable$LKT[rowstocorrect] <- sapply(1:length(rowstocorrect), function (n) { #paste0(sapply(strsplit(JAMStaxtable$LKT[rowstocorrect[n]], split = '_', fixed = TRUE), function(x) (x[1:6])), collapse = "_") })
-
-colnames(JAMStaxtable) <- c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
+#Rename columns
+colnames(JAMStaxtable) <- c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT", "NCBI_taxonomic_rank","Num_isolate", "Num_MAGs", "Num_assemblies_in_taxid", "Median_taxid_genome_size", "SD_taxid_genome_size", "Proportion_of_MAG_in_taxid")
 rownames(JAMStaxtable) <- JAMStaxtable$Taxid
+
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
+###############
+## Add timestamp
+tmstmp <- as.character(format(Sys.time(), "%Y%m%d"))
+verstmp <- as.character(packageVersion("JAMS"))
+JAMSk2dbver <- paste(opt$dbname, verstmp, tmstmp, sep = "_")
+#write.table(JAMSk2dbver, file = "JAMSKdb.ver", sep = "", row.names = FALSE, col.names = FALSE, quote = FALSE)
+attr(JAMStaxtable, "JAMSk2dbver") <- JAMSk2dbver
 
 #Export to system
 setwd(opt$k2db)
 save(JAMStaxtable, file = "JAMStaxtable.rda")
-save(Median_Genome_Sizes, file = "JAMSMedian_Genome_Sizes.rda")
-write.table(JAMStaxtable, file = "JAMS_taxtable.tsv", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
-write.table(Median_Genome_Sizes, file = "JAMS_Median_Genome_Sizes.tsv", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+saveRDS(JAMStaxtable, file = "JAMStaxtable.rds")
 
-save.image(opt$projimage)
+#save(Median_Genome_Sizes, file = "JAMSMedian_Genome_Sizes.rda")
+#write.table(JAMStaxtable, file = "JAMS_taxtable.tsv", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+#write.table(Median_Genome_Sizes, file = "JAMS_Median_Genome_Sizes.tsv", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
+
 
 ##########################
 # Add genomes to dbase
-
 setwd(opt$k2db)
 for(organisms in opt$wantedorganisms){
     flog.info(paste("Adding", organisms, "genomes to", opt$dbname, "kraken2 database."))
@@ -821,15 +882,8 @@ if (opt$defer_building_database == FALSE){
 } else {
     flog.warn("As requested, building of database will be deferred. To complete the process, please run the following command or launch the Build_JAMSk2db.sh script on a system with appropriate RAM resources.")
     cat(buildcmd)
-    save.image(opt$projimage)
+    IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
     cat('#!/bin/bash', file = "Build_JAMSk2db.sh", sep = "\n")
     cat(buildcmd, file = "Build_JAMSk2db.sh", append = TRUE)
 }
 
-###############
-## Add timestamp
-tmstmp <- as.character(format(Sys.time(), "%Y%m%d"))
-verstmp <- as.character(packageVersion("JAMS"))
-JAMSk2dbver <- paste(opt$dbname, verstmp, tmstmp, sep = "_")
-write.table(JAMSk2dbver, file = "JAMSKdb.ver", sep = "", row.names = FALSE, col.names = FALSE, quote = FALSE)
-save.image(opt$projimage)

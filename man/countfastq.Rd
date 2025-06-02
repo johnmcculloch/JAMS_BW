@@ -4,8 +4,7 @@
 \alias{countfastq}
 \title{countfastq(fastqfile)
 Wrapper for counting number of reads and number of bases of a fastq file in the system.
-Returns a vector with read counts and base counts.
-Caveat: Input fastq file must have exactly four lines per sequence. If your fastq files do not fit this criterion, you are totally bonkers.}
+Returns a vector with read counts and base counts.}
 \usage{
 countfastq(fastqfile)
 }
@@ -13,5 +12,4 @@ countfastq(fastqfile)
 countfastq(fastqfile)
 Wrapper for counting number of reads and number of bases of a fastq file in the system.
 Returns a vector with read counts and base counts.
-Caveat: Input fastq file must have exactly four lines per sequence. If your fastq files do not fit this criterion, you are totally bonkers.
 }

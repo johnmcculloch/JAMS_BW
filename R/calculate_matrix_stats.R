@@ -1,7 +1,7 @@
 #' calculate_matrix_stats(countmatrix = NULL, uselog = NULL, statsonlog = TRUE, stattype = NULL, classesdf = NULL, invertbinaryorder = FALSE, fun_for_l2fc = "geom_mean", threshPA = 0, numthreads = 1, nperm = 10000, paired = FALSE)
 #'
 #' Returns a data frame with the statistics for a feature count matrix ordered by highest variance or lowest Mann-Whitney-Wilcoxon test between binary categories.
-#' This function is used internally by the JAMS plotting functions, plot_Ordination, plot_relabund_heatmap, plot_correlation_heatmpap and plot_relabund_features.
+#' This function is used internally by the JAMS plotting functions, plot_Ordination, plot_relabund_heatmap, plot_correlation_heatmap and plot_relabund_features.
 #'
 #' @export
 
@@ -235,9 +235,10 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         corstat <- stattype
         #Either correlate to variable or do pairwise feature comparison
         if (is.null(classesvector)){
-            flog.info("Calculating pairwise correlation coefficients of all features")
+            use_method <- "pairwise.complete.obs"
+            flog.info(paste("Calculating pairwise correlation coefficients of all features using", use_method))
             tcountmatrix <- t(countmatrix)
-            matstats <- stats::cor(tcountmatrix, method = corstat)
+            matstats <- stats::cor(tcountmatrix, method = corstat, use = use_method)
         } else {
             comparisons <- lapply(1:nrow(countmatrix), function(x) { cor.test(countmatrix[x, ], classesvector, method = corstat) })
             mwstat <- sapply(1:length(comparisons), function(x) { unname(comparisons[[x]]$estimate) } )

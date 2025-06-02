@@ -1,4 +1,4 @@
-#' find_accession_from_keyterm(ExpObj = NULL, keyterm = NULL)
+#' find_accession_from_keyterm(expvec = NULL, analyses = NULL, SEobj = NULL, keyterms = NULL)
 #'
 #' Returns the accession number(s) of a feature(s) matching a general expression present in a SummarizedExperiment or metagenomeSeq object.
 #' @export

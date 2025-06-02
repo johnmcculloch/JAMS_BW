@@ -26,19 +26,14 @@ assemble_contigs <- function(opt = NULL){
     #Set working directory to workdir
     setwd(opt$workdir)
 
+    #Disregard unpaired reads from trimming as an input if RNA.
+
+
     #Choose input. Assemble with either NAHS or if not present, with trim.
-    if ((opt$host=="none") || (opt$analysis %in% c("isolate", "isolaternaseq"))){
+    if ((opt$host == "none") || (opt$analysis %in% c("isolate", "isolaternaseq"))){
         inputreads <- opt$trimreads
     } else {
         inputreads <- opt$nahsreads
-    }
-
-    if (opt$analysis %in% c("metatranscriptome", "isolaternaseq")){
-        #Disregard unpaired reads from trimming as an input if RNA.
-        if (length(inputreads) > 2){
-            inputreads <- inputreads[1:2]
-            flog.info("For assembling RNA with SPAdes, unpaired trimmed reads will be not be used.")
-        }
     }
 
     #Adjust input reads to absolute path
@@ -213,8 +208,6 @@ assemble_contigs <- function(opt = NULL){
     flog.info(paste0("Assembling reads using ", opt$assembler, ". Please be patient..."))
     flog.info(paste0("Assembler command used: ", paste(assemblercmd, paste0(assemblerargs, collapse = " "))))
 
-    #cd into directory using system to see if lscratch issue is resolved
-    system2(paste("cd", opt$workdir))
     system2(assemblercmd, args = assemblerargs, stdout = TRUE, stderr = TRUE)
     flog.info(paste("Assembly of reads using", opt$assembler, "complete."))
 

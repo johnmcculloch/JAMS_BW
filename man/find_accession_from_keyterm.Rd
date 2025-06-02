@@ -2,7 +2,7 @@
 % Please edit documentation in R/find_accession_from_keyterm.R
 \name{find_accession_from_keyterm}
 \alias{find_accession_from_keyterm}
-\title{find_accession_from_keyterm(ExpObj = NULL, keyterm = NULL)}
+\title{find_accession_from_keyterm(expvec = NULL, analyses = NULL, SEobj = NULL, keyterms = NULL)}
 \usage{
 find_accession_from_keyterm(
   expvec = NULL,

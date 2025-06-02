@@ -111,13 +111,13 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             countmat <- as.matrix(assays(currobj)$BaseCounts)
 
             #Protect against rows with empty data
-            rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
-            countmat <- countmat[rowsToKeep, ]
+            #rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
+            #countmat <- countmat[rowsToKeep, ]
 
             if (ignoreunclassified == TRUE){
                 dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")
                 rowsToKeep <- which(!(rownames(countmat) %in% dunno))
-                countmat <- countmat[rowsToKeep, ]
+                countmat <- countmat[rowsToKeep, , drop = FALSE]
                 if (nrow(countmat) < 1){
                     #abort, nothing is left over
                     flog.info("None of the wanted features were found in SummarizedExperiment object when using the current filtration parameters.")
@@ -126,10 +126,9 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             }
 
             #Eliminate non-relevant features if not adjusting p-value
-            #Can't do it this way because when there is a single feature, matrix is reduced to a vector.
-#            if (adjustpval == FALSE){
-#                countmat <- countmat[wantedfeatures, ]
-#            }
+            if (adjustpval == FALSE){
+                countmat <- countmat[wantedfeatures, , drop = FALSE]
+            }
 
             if ("GenomeCompleteness" %in% names(assays(currobj))){
                 genomecompletenessdf <- as.matrix(assays(currobj)$GenomeCompleteness)
@@ -147,7 +146,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             if (aggregatefeatures == TRUE){
                 #If aggregating features, then cull to wantedfeatures now and aggregate
                 wantedfeatures <- wantedfeatures[wantedfeatures %in% rownames(countmat)]
-                countmat <- countmat[wantedfeatures, ]
+                countmat <- countmat[wantedfeatures, , drop = FALSE]
                 originalwantedfeatures <- wantedfeatures
                 #Count matrix should not be in log2 at this point
                 aggcountmat <- colSums(countmat)
@@ -157,7 +156,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
                 #Also aggregate Genome Completeness, if applicable
                 if ("GenomeCompleteness" %in% names(assays(currobj))){
-                    genomecompletenessdf <- genomecompletenessdf[wantedfeatures, ]
+                    genomecompletenessdf <- genomecompletenessdf[wantedfeatures, , drop = FALSE]
                     agggenomecompletenessdf <- colSums(genomecompletenessdf)
                     agggenomecompletenessdf <- t(as.matrix(agggenomecompletenessdf))
                     rownames(agggenomecompletenessdf) <- aggregatefeatures_label
@@ -166,7 +165,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
                 #Also get mean percentage from contigs, if applicable
                 if ("PctFromCtgs" %in% names(assays(currobj))){
-                    PctFromCtgsdf <- PctFromCtgsdf[wantedfeatures, ]
+                    PctFromCtgsdf <- PctFromCtgsdf[wantedfeatures, , drop = FALSE]
                     aggPctFromCtgsdf <- colMeans(PctFromCtgsdf)
                     aggPctFromCtgsdf <- t(as.matrix(aggPctFromCtgsdf))
                     rownames(aggPctFromCtgsdf) <- aggregatefeatures_label
@@ -192,16 +191,15 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 flog.info(paste("Mann-Whitney-Wilcoxon test between", discretenames[1], "and", discretenames[2], "will be paired by", wilcox_paired_by))
             }
 
-
             matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = log2tran_main_plot, statsonlog = FALSE, stattype = stattype, classesdf = classesdf, invertbinaryorder = invertbinaryorder, numthreads = numthreads, threshPA = threshPA, fun_for_l2fc = fun_for_l2fc)
 
             ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
 
             #Cull to only features wanted
             wantedfeatures <- wantedfeatures[wantedfeatures %in% rownames(matstats)]
-            matstats <- matstats[wantedfeatures, ]
+            matstats <- matstats[wantedfeatures, , drop = FALSE]
             #Reorder matrix by p-value
-            matstats <- matstats[order(matstats$pval), ]
+            matstats <- matstats[order(matstats$pval), , drop = FALSE]
             topcats <- nrow(matstats)
             if (!(is.null(ntop))) {
                 topcats <- min(topcats, ntop)
@@ -228,7 +226,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 return(NULL)
             }
 
-            matstats <- matstats[rowcutoff, ]
+            matstats <- matstats[rowcutoff, , drop = FALSE]
 
             #Filter by l2fc if applicable
             if (all(c((!is.null(presetlist$minl2fc)), ("absl2fc" %in% colnames(matstats))))){
@@ -256,16 +254,17 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             }
 
             #Redefine countmat to include only features matching filtering criteria
-            countmat <- countmat[rownames(matstats), ]
+            countmat <- countmat[rownames(matstats), , drop = FALSE]
 
+            #Ensure it has two dimensions
             if (class(countmat)[1] != "matrix"){
-                countmat <- t(as.matrix(countmat))
+                countmat <- t(as.matrfix(countmat))
                 rownames(countmat) <- rownames(matstats)
             }
 
             if ("GenomeCompleteness" %in% names(assays(currobj))){
                 #genomecompletenessdf <- as.matrix(assays(currobj)$GenomeCompleteness)
-                genomecompletenessdf <- genomecompletenessdf[rownames(matstats), ]
+                genomecompletenessdf <- genomecompletenessdf[rownames(matstats), drop = FALSE]
                 if (class(genomecompletenessdf)[1] != "matrix"){
                     genomecompletenessdf <- t(as.matrix(genomecompletenessdf))
                     rownames(genomecompletenessdf) <- rownames(matstats)
@@ -276,7 +275,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             if ("PctFromCtgs" %in% names(assays(currobj))){
                 #PctFromCtgsdf <- as.matrix(assays(currobj)$PctFromCtgs)
-                PctFromCtgsdf <- PctFromCtgsdf[rownames(matstats), ]
+                PctFromCtgsdf <- PctFromCtgsdf[rownames(matstats), , drop = FALSE]
                 if (class(PctFromCtgsdf)[1] != "matrix"){
                     PctFromCtgsdf <- t(as.matrix(PctFromCtgsdf))
                     rownames(PctFromCtgsdf) <- rownames(matstats)
