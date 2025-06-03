@@ -7,14 +7,15 @@ assemble_contigs <- function(opt = NULL){
 
     #Obtain reads to use for assembly
     opt <- get_reads(opt = opt)
-    save.image(file = opt$projimage)
+    #save.image(file = opt$projimage)
 
     #Filter reads if necessary
     opt <- trim_reads(opt = opt)
-    save.image(file = opt$projimage)
+    #save.image(file = opt$projimage)
 
     #Eliminate host reads if applicable
     opt <- filter_host(opt = opt)
+
     #Check if reads are in tmpdir
     if (opt$workdir != opt$sampledir){
         readsworkdir <- file.path(opt$workdir, "reads")
@@ -25,9 +26,6 @@ assemble_contigs <- function(opt = NULL){
 
     #Set working directory to workdir
     setwd(opt$workdir)
-
-    #Disregard unpaired reads from trimming as an input if RNA.
-
 
     #Choose input. Assemble with either NAHS or if not present, with trim.
     if ((opt$host == "none") || (opt$analysis %in% c("isolate", "isolaternaseq"))){

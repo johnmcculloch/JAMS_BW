@@ -49,6 +49,8 @@ check_resources <- function(opt = opt, applications_to_check = c("base", "reads"
                 flog.info("It seems there is not enough RAM memory to use the kraken2 database supplied. Try again on a system with more RAM. Aborting.")
                 opt$abort <- TRUE
             } else {
+                #Pass path to opt$opt$workingkrakendb for backwards compatibility
+                opt$workingkrakendb <- opt$krakendb
                 if (file.exists(file.path(opt$krakendb, "JAMSKdb.ver"))){
                     opt$JAMS_Kdb_Version <- as.character(read.table(file.path(opt$krakendb, "JAMSKdb.ver"), header=FALSE, quote=NULL)[1,1])
                 } else {

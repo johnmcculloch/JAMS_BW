@@ -28,7 +28,7 @@ prepare_contigs_for_JAMS <- function(opt = NULL, fastafile = NULL, contig_minlen
     nonhostcontigs <- opt$contigsdata$Sequence
     #Report host contigs in opt, if applicable
     hostcontigs <- krakendf$Sequence[(!(krakendf$Sequence %in% opt$contigsdata$Sequence))]
-    if (length(hostcontigs)>0){
+    if (length(hostcontigs) > 0){
         flog.info(paste("A total of", length(hostcontigs), "contigs out of", nrow(krakendf), "were eliminated for being classified as metazoa (host) DNA."))
         #Bank host contigs
         opt$hostcontigsdata <- subset(krakendf, Sequence %in% hostcontigs)
@@ -46,10 +46,11 @@ prepare_contigs_for_JAMS <- function(opt = NULL, fastafile = NULL, contig_minlen
     opt$contigsdata <- left_join(opt$contigsdata, seqstats, by = "Contig")
 
     #Clean_up unwanted columns to keep it simple
-    opt$contigsdata <- opt$contigsdata[ , c("Contig", "Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT", "NCBI_taxonomic_rank", "Median_taxid_genome_size", "SD_taxid_genome_size", "Length", "NumBases", "MetaBATbin")[c("Contig", "Taxid", "Domain", "Species", "LKT", "NCBI_taxonomic_rank", "Median_taxid_genome_size", "SD_taxid_genome_size", "Length", "NumBases", "MetaBATbin") %in% colnames(opt$contigsdata)]]
+    wantedcolumns <- c("Contig", "Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT", "NCBI_taxonomic_rank", "Median_taxid_genome_size", "SD_taxid_genome_size", "Length")
+    opt$contigsdata <- opt$contigsdata[ , wantedcolumns[wantedcolumns %in% colnames(opt$contigsdata)]]
 
     #Ensure correct column object class
-    numeric_cols <- c("Median_taxid_genome_size", "SD_taxid_genome_size", "Length", "NumBases")[c("Median_taxid_genome_size", "SD_taxid_genome_size", "Length", "NumBases") %in% colnames(opt$contigsdata)]
+    numeric_cols <- c("Median_taxid_genome_size", "SD_taxid_genome_size", "Length")[c("Median_taxid_genome_size", "SD_taxid_genome_size", "Length") %in% colnames(opt$contigsdata)]
     for (colm in numeric_cols){
         opt$contigsdata[ , colm] <- as.numeric(opt$contigsdata[ , colm])
     }

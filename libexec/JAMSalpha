@@ -337,15 +337,18 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 setwd(opt$workdir)
 opt <- get_contigs(opt = opt)
 
+#Functional annotation
+opt <- annotate_contigs(opt = opt)
+opt <- get_feature_stats(opt = opt, doContigs = TRUE, doFeatures = FALSE)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
+#Get basepair coverage amount of each contig and function
+opt <- get_contig_coverage(opt = opt, markduplicates = FALSE)
+
 #Denoise contigs if metagenome
 if (opt$analysis == "metagenome"){
     opt <- denoise_contigs(opt = opt, small_large_length_threshold = 2000)
 }
-IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
-
-#Functional annotation
-opt <- annotate_contigs(opt = opt)
-opt <- get_feature_stats(opt = opt, doContigs = TRUE, doFeatures = FALSE)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Launch interproscan if on a cluster
@@ -357,9 +360,6 @@ if (nchar(slurmjobid) < 3){
         opt <- launch_interpro(opt = opt)
     }
 }
-
-#Get basepair coverage amount of each contig and function
-opt <- get_contig_coverage(opt = opt, markduplicates = FALSE)
 
 #Initialize index indexorum for storing abundances 
 opt$abundances <- list()

@@ -87,7 +87,7 @@ get_reads <- function(opt = NULL){
                 }
 
                 targetfilename <- file.path(readsworkdir, paste(paste(opt$prefix, rtype, sep="_"), suffix, sep="."))
-                flog.info(paste("Copying", rtype))
+                flog.info(paste("Copying", rtype, myfastqs[[f]]))
                 system2('cp', args = c(myfastqs[[f]], targetfilename), stdout = TRUE, stderr = TRUE)
                 #In case files are gzipped, ungzip them
                 if (suffix == "fastq.gz"){
@@ -108,11 +108,11 @@ get_reads <- function(opt = NULL){
     if(length(rawfiles) == 1){
         flog.info("Found a single fastq file. Will assume this is of unpaired reads.")
         file.rename(rawfiles, paste0(opt$prefix, "_SE.fastq"))
-        opt$libstructure<-"singleend"
+        opt$libstructure <- "singleend"
     } else if (length(rawfiles) == 2){
         flog.info("Found two fastq files. Will assume these are paired reads.")
         file.rename(rawfiles, paste0(opt$prefix, c("_R1.fastq", "_R2.fastq")))
-        opt$libstructure<-"pairedend"
+        opt$libstructure <- "pairedend"
     } else if (length(rawfiles) == 0){
         flog.info("Found NO files. Aborting now.")
         q()
