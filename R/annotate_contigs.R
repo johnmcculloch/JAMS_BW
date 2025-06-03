@@ -45,6 +45,9 @@ annotate_contigs <- function(opt = NULL){
     tmpcontigsdata <- opt$contigsdata[, c("Contig", "Taxid", "LKT")]
     opt$featuredata <- left_join(opt$featuredata, tmpcontigsdata, by = "Contig")
 
+    #Standardise column name to new taxonomic_space annotation
+    colnames(opt$featuredata)[which(colnames(opt$featuredata) == "LKT")] <- "Contig_LKT"
+
     #Bank annotation files to project directory
     if (opt$workdir != opt$sampledir){
         flog.info("Banking annotation to sample directory.")

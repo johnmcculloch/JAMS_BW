@@ -802,3 +802,45 @@ post_message <- function(msg = NULL, face = "plain", just = "centre", color = "b
     tgrob <- text_grob(text_msg, face = face, color = color, just = just, size = size)
     print(as_ggplot(tgrob))
 }
+
+
+#' print_jams_ASCII(palette = "neon")
+#'
+#' Prints to terminal a retro ASCII JAMS logo.
+#' @export
+
+print_jams_ASCII <- function (palette = NULL){
+
+    palettes <- list(
+        #apple2 = c(34, 11, 202, 196, 127, 20),
+        apple2rev = rev(c(34, 11, 202, 196, 127, 20)),
+        neon = c(27, 93, 129, 201, 207, 99),
+        sunset = c(202, 208, 214, 220, 226, 228),
+        ocean = c(25, 31, 38, 44, 50, 56),
+        fire = c(196, 202, 208, 214, 220, 226),
+        grad_dark = c(16, 17, 18, 19, 20, 21),
+        candy = c(21, 57, 93, 129, 165, 201),
+        reds = 52:57,
+        reds2 = (36 * 0:5) + 17,
+        skies = (36 * 0:5) + 37,
+        green_blue = 22:27,
+        greys = 244:249,
+        dark2 = c(16, 17, 18, 54, 53, 52),
+        mono1 = rep(5, 6),
+        mono2 = rep(4, 6),
+        mono3 = rep(124, 6),
+        mono4 = rep(246, 6)
+     )
+
+    if (is.null(palette)){
+        #choose random palette
+        palette <- sample(names(palettes), 1, replace = TRUE)
+        rowvec <- palettes[[palette]]
+    } else {
+        rowvec <- palettes[[palette]]
+    }
+
+    ASCII_lines <- c(sprintf("\033[38;5;%dm         ██╗\033[38;5;%dm     █████╗\033[38;5;%dm     ███╗   ███╗\033[38;5;%dm     ███████╗\033[0m", rowvec[1], rowvec[1], rowvec[1], rowvec[1]), sprintf("\033[38;5;%dm        ██║\033[38;5;%dm    ██╔══██╗\033[38;5;%dm    ████╗ ████║\033[38;5;%dm    ██╔════╝\033[0m", rowvec[2], rowvec[2], rowvec[2], rowvec[2]), sprintf("\033[38;5;%dm       ██║\033[38;5;%dm    ███████║\033[38;5;%dm    ██╔████╔██║\033[38;5;%dm    ███████╗\033[0m", rowvec[3], rowvec[3], rowvec[3], rowvec[3]), sprintf("\033[38;5;%dm  ██   ██║\033[38;5;%dm    ██╔══██║\033[38;5;%dm    ██║╚██╔╝██║\033[38;5;%dm    ╚════██║\033[0m", rowvec[4], rowvec[4], rowvec[4], rowvec[4]),sprintf("\033[38;5;%dm ╚█████╔╝\033[38;5;%dm    ██║  ██║\033[38;5;%dm    ██║ ╚═╝ ██║\033[38;5;%dm    ███████║\033[0m", rowvec[5], rowvec[5], rowvec[5], rowvec[5]), sprintf("\033[38;5;%dm  ╚════╝ \033[38;5;%dm   ╚═╝  ╚═╝\033[38;5;%dm    ╚═╝     ╚═╝\033[38;5;%dm    ╚══════╝\033[0m", rowvec[6], rowvec[6], rowvec[6], rowvec[6]), paste("Microbial genomics analysis software.", paste("Version", packageVersion("JAMS"))))
+
+    cat(paste0(ASCII_lines, collapse = "\n"), "\n")
+}

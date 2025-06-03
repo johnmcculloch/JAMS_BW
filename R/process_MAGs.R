@@ -72,11 +72,20 @@ process_MAGs <- function(opt = NULL){
         #Rename bins to include LKT in name
         opt$abundances$taxonomic$MB2bin$BinID <- unname(sapply(opt$abundances$taxonomic$MB2bin$MetaBATbin, function (x) { tail(unlist(strsplit(x, split = "_")), 1) }))
         opt$abundances$taxonomic$MB2bin$MB2bin <- NA
+        opt$contigsdata$MB2bin <- NA
+
         #Construct genome bin name
         for (rn in 1:nrow(opt$abundances$taxonomic$MB2bin)){
-            opt$abundances$taxonomic$MB2bin[rn, "MB2bin"] <- paste("MB2", opt$abundances$taxonomic$MB2bin[rn, "BinID"], gsub("^LKT__", "", opt$abundances$taxonomic$MB2bin[rn, "LKT"]), sep = "__")
+            curr_MB2name <- paste("MB2", opt$abundances$taxonomic$MB2bin[rn, "BinID"], gsub("^LKT__", "", opt$abundances$taxonomic$MB2bin[rn, "LKT"]), sep = "__")
+            #Final bin name to abundance table
+            opt$abundances$taxonomic$MB2bin[rn, "MB2bin"] <- curr_MB2name
+            #Mirror this information on opt$contigsdata, for use by harvesting functions
+            opt$contigsdata[which(opt$contigsdata$MetaBATbin == opt$abundances$taxonomic$MB2bin[rn, "MetaBATbin"]), "MB2bin"] <- curr_MB2name
         }
         rownames(opt$abundances$taxonomic$MB2bin) <- opt$abundances$taxonomic$MB2bin$MB2bin
+
+        #Add "none" to no bin contigs in opt$contigsdata
+        opt$contigsdata$MB2bin[which(is.na(opt$contigsdata$MB2bin))] <- "none"
 
         #Rank bins
         opt$abundances$taxonomic$MB2bin <- rate_bin_quality(completeness_df = opt$abundances$taxonomic$MB2bin)
@@ -86,6 +95,9 @@ process_MAGs <- function(opt = NULL){
         #Clean up
         unlink(curr_bin_output_folder, recursive = TRUE)
     }
+
+    #Add MB2 information to featuredata
+    opt$featuredata <- left_join(opt$featuredata, opt$contigsdata[ , c("Contig", "MB2bin")], by = "Contig")
 
     #Back to where we were
     setwd(opt$sampledir)

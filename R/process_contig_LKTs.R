@@ -21,11 +21,11 @@ process_contig_LKTs <- function(opt = NULL){
     #Calculate relative abundance in PPM
     opt$abundances$taxonomic$Contig_LKT$PPM <- round((opt$abundances$taxonomic$Contig_LKT$NumBases / sum(opt$contigsdata$NumBases)) * 1E6, 0)
 
-all(Final_report_cols %in% colnames(opt$abundances$taxonomic$Contig_LKT))
-
     #clean up
     opt$taxonomic_completeness_and_counts <- NULL
 
+    #Rearrange columns
+    opt$abundances$taxonomic$Contig_LKT <- opt$abundances$taxonomic$Contig_LKT[ , Final_report_cols]
 
     return(opt)
 

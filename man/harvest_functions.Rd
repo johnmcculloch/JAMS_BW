@@ -8,7 +8,7 @@ harvest_functions(
   opt = opt,
   noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder",
     "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate"),
-  taxonomic_spaces = c("LKT", "MetaBATbin", "ConsolidatedGenomeBin"),
+  taxonomic_spaces = c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin"),
   doinparallel = TRUE,
   check_ipro_jobs_status = TRUE
 )

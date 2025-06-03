@@ -323,6 +323,8 @@ consolidate_entities_in_sample <- function(opt = opt){
         }
     }
 
+    opt$abundances$taxonomic$ConsolidatedGenomeBin <- opt$abundances$taxonomic$ConsolidatedGenomeBin[ , Final_report_cols]
+
     #Add consolidation information to featuredata
     opt$featuredata <- left_join(opt$featuredata, opt$contigsdata[ , c("Contig", "ConsolidatedGenomeBin")], by = "Contig")
 

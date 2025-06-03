@@ -110,7 +110,7 @@ defopt$seqtype <- "illuminape"
 defopt$assembler <- "megahit"
 defopt$analysis <- "metagenome"
 defopt$prefix <- "MySample"
-defopt$skipipro <- FALSE
+defopt$useipro <- FALSE
 defopt$testdependencies <- FALSE
 defopt$threads <- detectBatchCPUs()
 defopt$krakenconfidencescore <- 0.000005
@@ -182,20 +182,21 @@ option_list <- list(
                 type="numeric",
                 help = str_c("cap the number of bases used for assembly to this value. If the number of bases for assembly is larger than this value, input reads will be subset to contain this amount. Default: no subsetting.")),
 
-    make_option(c("-q", "--classifyunassembled"), default=defopt$classifyunassembled,
-                action="store_true",
-                help = str_c("classify unassembled reads by kraken2 and include counts in taxonomic abundance. Irrelevant for isolates. default: ", defopt$classifyunassembled, ")")),
+#Note: taking unassembled reads into account has been deprecated since JAMS ver 2.0.0.
+#    make_option(c("-q", "--classifyunassembled"), default=defopt$classifyunassembled,
+#                action="store_true",
+#                help = str_c("classify unassembled reads by kraken2 and include counts in taxonomic abundance. Irrelevant for isolates. default: ", defopt$classifyunassembled, ")")),
 
     make_option(c("-m", "--bin_contigs_with_metabat"), default=defopt$bin_contigs_with_metabat,
                 action="store_true",
-                help = str_c("bin contigs into Metagenome Assembled Genomes using MetaBAT2. default: ", defopt$bin_contigs_with_metabat, ")")),
+                help = str_c("bin contigs into Metagenome Assembled Genomes using MetaBAT2. Only works if analysis (-A) is set to metagenome, default: ", defopt$bin_contigs_with_metabat, ")")),
 
     make_option(c("-x", "--threads"), default=defopt$threads, action="store",
                 type="numeric",
                 help = str_c("number of threads (default: ", defopt$threads, ")")),
 
-    make_option(c("-n", "--skipipro"), default=defopt$skipipro, action="store_true",
-                help = str_c("skip Interproscan, even if it is available, default: ", defopt$skipipro, ")")),
+    make_option(c("-n", "--useipro"), default=defopt$skipipro, action="store_true",
+                help = str_c("use InterProScan for classifying predicted proteome. Requires the InterProScan module on NIH HPC Biowulf, default: ", defopt$useipro, ")")),
 
     make_option(c("-z", "--testdependencies"), default=defopt$testdependencies, action="store_true",
                 help = str_c("test dependencies only and leave, default: ", defopt$testdependencies, ")")),
@@ -219,14 +220,29 @@ if (!is.null(opt$version)) {
     quit()
 }
 
-#Get Script path
-opt$bindir <- getScriptPath()
+#Get JAMS exexcutables path
+get_JAMS_exec_path <- function(){
+    JAlnk <- system2('which', args = "JAMSalpha", stdout = TRUE, stderr = FALSE)
+    JApath <- system2('readlink', args = JAlnk, stdout = TRUE, stderr = FALSE)
+    folds <- unlist(strsplit(JApath, split = .Platform$file.sep))
+    folds <- folds[1:(length(folds) - 1)]
+    libexecpath <- paste(folds, collapse = .Platform$file.sep)
+
+    return(libexecpath)
+}
+
+opt$bindir <- get_JAMS_exec_path()
 
 #Abort if unreasonable instructions
 if (!(opt$analysis %in% c("metagenome", "metatranscriptome", "isolate", "isolaternaseq"))){
     print("For an analysis chooose between one of these four options: metagenome, metatranscriptome, isolate or isolaternaseq.")
     parse_args(OptionParser(option_list = option_list), c("-h"))
     q()
+}
+
+#No point in running metabat if not a shotgun metagenome
+if (opt$analysis != "metagenome"){
+    opt$bin_contigs_with_metabat <- FALSE
 }
 
 #Fix path relativity
@@ -270,6 +286,11 @@ if (is.null(opt$dbdir)) {
     }
 }
 
+#Flip Interpro use logic to maintain code consistency
+opt$skipipro <- !(opt$useipro)
+#Note: classifying unassambled reads is now being phased out since JAMS ver 2.0.0, JAN 2025.
+opt$classifyunassembled <- FALSE
+
 #Abort if all is not good.
 if (opt$abort == TRUE){
     flog.info("Aborting now.")
@@ -280,6 +301,12 @@ if (opt$abort == TRUE){
 ## Main Function ##
 ###################
 
+#If all is OK, then create the project folder structure
+print_jams_ASCII()
+opt$sampledir <- file.path(opt$outdir, paste0(opt$prefix, "_JAMS"))
+flog.info("Creating Sample output folder")
+dir.create(opt$sampledir, showWarnings = TRUE, recursive = TRUE)
+
 opt$logfile <- file.path(opt$outdir, paste0(opt$prefix, "_JAMS.log"))
 flog.appender(appender.tee(opt$logfile))
 
@@ -287,22 +314,8 @@ flog.info("JAMS - Just A Microbiology System")
 flog.info(paste("Version", opt$verstr))
 flog.info(paste("By:", paste(JAMSauthors, collapse = "; ")))
 
-#If all is OK, then create the project folder structure
-opt$sampledir <- file.path(opt$outdir, paste0(opt$prefix, "_JAMS"))
-flog.info("Creating Sample output folder")
-dir.create(opt$sampledir, showWarnings = FALSE, recursive = TRUE)
-
-#if (!(is.null(opt$tmpdir))){
-#    opt$tmpsampdir <- file.path(opt$tmpdir, paste(opt$prefix, "JAMStemp", sep="_"))
-#    dir.create(opt$tmpsampdir, showWarnings = FALSE, recursive = FALSE)
-#    flog.info(paste("Temporary Sample folder is", opt$tmpsampdir))
-#    flog.info(paste("Will work from within this folder and copy final files to", opt$sampledir))
-#    opt$workdir <- opt$tmpsampdir
-#} else {
-    opt$workdir <- opt$sampledir
-#}
 #note: phasing out temporary directories
-
+opt$workdir <- opt$sampledir
 
 opt$projimage <- file.path(opt$sampledir, ".RData")
 
@@ -323,56 +336,56 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 #Obtain contigs
 setwd(opt$workdir)
 opt <- get_contigs(opt = opt)
-IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
-#Add some contig statistics
-seqstats <- get_sequence_stats(sequences = opt$NHcontigs_sequence)
-colnames(seqstats)[which(colnames(seqstats) == "Sequence")] <- "Contig"
-opt$contigsdata <- left_join(opt$contigsdata, seqstats)
+#Denoise contigs if metagenome
+if (opt$analysis == "metagenome"){
+    opt <- denoise_contigs(opt = opt, small_large_length_threshold = 2000)
+}
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Functional annotation
 opt <- annotate_contigs(opt = opt)
+opt <- get_feature_stats(opt = opt, doContigs = TRUE, doFeatures = FALSE)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Launch interproscan if on a cluster
+#This is a Biowulf-only application. 
 if (nchar(slurmjobid) < 3){
     flog.info("Skipping Interproscan. Interproscan in computationally very intensive and is best run on a computer cluster.")
 } else {
-    if (opt$skipipro == FALSE){
+    if (opt$useipro == TRUE){
         opt <- launch_interpro(opt = opt)
-    } else {
-        flog.info("Skipping Interproscan as requested in options.")
     }
 }
 
-#Classify 16Ss
-opt <- classify_16S_from_contigs(opt = opt)
-IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
-
-#Evaluate assembly
-opt <- evaluate_assembly(opt = opt)
-IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
-
-#Get dose of each taxon and function
-if (opt$analysis %in% c("isolate", "isolaternaseq")){
-    opt$classifyunassembled <- FALSE
-}
+#Get basepair coverage amount of each contig and function
 opt <- get_contig_coverage(opt = opt, markduplicates = FALSE)
 
-#Bank information gathered
-objectstoexport <- names(opt)[names(opt) %in% c("contigsdata", "assemblystats", "contigperbasecoverage", "LKTdose", "MAGdose", "assemblystats_MAGs")]
-export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
+#Initialize index indexorum for storing abundances 
+opt$abundances <- list()
+opt$abundances$taxonomic <- list()
+opt$abundances$functional <- list()
+
+#Process MAGs, if applicable
+if (opt$analysis == "metagenome"){
+    opt <- sort_contigs_into_bins(opt = opt)
+    opt <- process_MAGs(opt = opt)
+}
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
+#Process Contig LKTs
+opt <- process_contig_LKTs(opt = opt)
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
+if (opt$analysis == "metagenome"){
+    opt <- consolidate_entities_in_sample(opt = opt)
+}
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Do specific blast-based analyses
 opt <- blast_databases(opt = opt, blastanalyses = opt$blastanalyses)
-objectstoexport <- names(opt)[names(opt) %in% opt$blastanalyses]
-export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
-IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
-
-#Get feature stats
 opt <- add_blast_results_to_featuredata(opt = opt, blastanalyses = opt$blastanalyses)
+#Get feature stats
 opt <- get_feature_stats(opt = opt)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
@@ -381,66 +394,39 @@ opt <- harvest_functions(opt = opt, doinparallel = TRUE)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Compute readcounts if there are any reads
-if("readsdir" %in% names(opt)){
+if ("readsdir" %in% names(opt)){
     opt <- compute_readcounts(opt = opt)
     #Save reads to outdir if applicable
     bank_reads(opt = opt)
 }
 
-objectstoexport <- names(opt)[names(opt) %in% c("featuredata", "TNF_contigs", "TNF_features", "ucobias", "interproscanoutput", "featuredose", "readstats")]
-export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
-IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+#opt <- consolidate_tables(opt = opt)
+
+#Bank information gathered
+objectstoexport <- names(opt)[names(opt) %in% c("contigsdata", "featuredata", "abundances", opt$blastanalyses, "bam_contig_depths", "TNF_contigs", "readstats", "fastqstats")]
+for (objname in objectstoexport){
+    expfn <- file.path(opt$sampledir, paste(paste(opt$prefix, objname, sep = "_"), "rds", sep = "."))
+    saveRDS(opt[[objname]], file = expfn)
+}
 
 #End the analysis and gather information on the run
 opt$endtime <- Sys.time()
 opt <- gather_run_info(opt = opt)
-opt <- consolidate_tables(opt = opt)
-objectstoexport <- names(opt)[names(opt) %in% c("projinfo", "taxa_16S_cons", opt$blastanalyses)]
+objectstoexport <- names(opt)[names(opt) %in% c("projinfo")]
 export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
-
-#Deal with Ucobias
-#Plot ucobias if proj is isolate and there seems to be contamination and split genomes
-if(opt$analysis == "isolate") {
-    LKTassemblystats <- subset(opt$assemblystats, TaxLevel == "LKT")
-    totnumgenomes <- sum(LKTassemblystats$ProbNumGenomes)
-    if(totnumgenomes > 1.6){
-        print("Isolate might be contaminated. Plotting codon usage bias of different LKTs")
-        minPPM = 5000
-        totcontigbases <- sum(opt$contigsdata$NumBases)
-        completegenomes <- subset(opt$assemblystats, TaxLevel == "LKT")
-        completegenomes <- as.character(subset(completegenomes, ProbNumGenomes > 0.2)[]$Taxon)
-        if (length(completegenomes) > 0){
-            opt$ucoplots <- compare_ucobias(featuredata = opt$featuredata, contigsdata = opt$contigsdata, taxlevel = "LKT", taxaofinterest = completegenomes, ucobias = opt$ucobias, method = "pca", frac = 0.25)
-        }
-        opt <- deconvolute_contaminated_isolates(opt)
-        if (!(is.null(opt$wantedassemblies))){
-            levelinterest <- as.character(unique(opt$wantedassemblies$TaxLevel))
-            taxainterest <- as.character(unique(opt$wantedassemblies$Taxon))
-            for(taxon in taxainterest){
-                contigsinterest <- opt$contigsdata[which(opt$contigsdata[ , levelinterest] == taxon), "Contig"]
-                wantedsequences <- opt$NHcontigs_sequence[contigsinterest]
-                targetname <- paste(opt$prefix, taxon, sep = "_")
-                targetfilename <- paste(targetname, "fasta", sep = ".")
-                flog.info(paste("Writing", targetfilename))
-                write.fasta(sequences = wantedsequences, names = names(wantedsequences), nbchar = 80, file.out = file.path(opt$sampledir, targetfilename))
-            }
-        }
-    } else {
-        flog.info(paste("Isolate genome is predicted to be", round((totnumgenomes * 100), 1), "% complete"))
-    }
-}
 
 #Make a .jams file
 make_jams_file(opt = opt, outdir = opt$outdir, export_to_XL = (opt$analysis == "isolate"))
 
 #Plot report
-print_jams_report(opt = opt, elements = c("readplots", "taxonomy", "SixteenSid", opt$blastanalyses, "func"))
+#print_jams_report(opt = opt, elements = c("readplots", "taxonomy", "SixteenSid", opt$blastanalyses, "func"))
 
 #Cleanup and compress project
 setwd(opt$sampledir)
 unlink(c(opt$tmpsampdir, opt$iprodir, opt$covdir, opt$readsdir), recursive = TRUE)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
+
 
 setwd(opt$outdir)
 JAMStarball <- paste(paste0(opt$prefix, "_JAMS"), "tar", "gz", sep=".")
@@ -449,3 +435,4 @@ flog.info(paste("Compressing JAMS run for sample", opt$prefix))
 system(tarcmd)
 
 flog.info(paste0("JAMS run of sample ", opt$prefix, " is complete. Thank you for using JAMS. Use JAMSbeta to compare between JAMS samples."))
+flog.info(print_jams_ASCII())

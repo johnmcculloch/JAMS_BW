@@ -144,7 +144,7 @@ get_feature_to_accession_table <- function(opt = NULL, iproanalysis = NULL){
 #' JAMSalpha function
 #' @export
 
-harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate"), taxonomic_spaces = c("LKT", "MetaBATbin", "ConsolidatedGenomeBin"), doinparallel = TRUE, check_ipro_jobs_status = TRUE){
+harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "ECNumber", "Product", "resfinder", "plasmidfinder", "napdos", "serofinderH", "serofinderO", "vfdb", "abricate"), taxonomic_spaces = c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin"), doinparallel = TRUE, check_ipro_jobs_status = TRUE){
 
     data(ECdescmap)
     data(GOtermdict)
@@ -152,7 +152,7 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
 
     flog.info("Harvesting functional data.")
 
-    #Due to alternative taxonomic spaces in JAMS2, a featuredose for each different taxonomic space will be generated and exported to a named list called featuredoses (note the plural).
+    #Due to alternative taxonomic spaces in JAMS2, a feature abundance table for each different taxonomic space will be generated and exported to a named list called featuredoses (note the plural).
     featuredoses <- list()
     interprodoses <- list()
 
