@@ -16,7 +16,7 @@ sort_contigs_into_bins <- function(opt = NULL, sortedbamfile = NULL){
         system(paste("jgi_summarize_bam_contig_depths --outputDepth depth.txt", sortedbamfile))
 
         #Bank contig depths for later if needed
-        opt$bam_contig_depths <- fread("depth.txt", data,table = FALSE)
+        opt$bam_contig_depths <- fread("depth.txt", data.table = FALSE)
         rownames(opt$bam_contig_depths) <- opt$bam_contig_depths$contigName
 
         #Run metabat2
