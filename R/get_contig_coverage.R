@@ -221,7 +221,6 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
         opt$contigsdata$NumBases <- as.numeric(opt$contigsdata$NumBases)
         opt$featuredata$NumBases <- as.numeric(opt$featuredata$NumBases)
 
-        #opt$contigperbasecoverage <- shrink_perbasecoverage(perbasecoverage = contigcoverage, percentage = 2)
         #Consolidate LKT dose
         if (opt$classifyunassembled == TRUE){
             #Eliminate redundancy and get the dose
