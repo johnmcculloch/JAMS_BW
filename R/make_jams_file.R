@@ -9,7 +9,7 @@ make_jams_file <- function(opt = opt, outdir = opt$outdir, asRDS = TRUE, export_
 
     flog.info("Making .jams file")
 
-    elements_to_include_in_jamsfile <- c("contigsdata", "featuredata", "abundances", opt$blastanalyses, "bam_contig_depths", "TNF_contigs", "readstats", "fastqstats", "projinfo")
+    elements_to_include_in_jamsfile <- c("contigsdata", "featuredata", "abundances", "taxonomic_Quality_split_list", opt$blastanalyses, "bam_contig_depths", "TNF_contigs", "readstats", "fastqstats", "projinfo")
     JAMSobj <- elements_to_include_in_jamsfile[elements_to_include_in_jamsfile %in% names(opt)]
 
     filesuffix <- "rds"

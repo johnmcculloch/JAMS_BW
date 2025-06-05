@@ -302,7 +302,6 @@ if (opt$abort == TRUE){
 ###################
 
 #If all is OK, then create the project folder structure
-print_jams_ASCII()
 opt$sampledir <- file.path(opt$outdir, paste0(opt$prefix, "_JAMS"))
 flog.info("Creating Sample output folder")
 dir.create(opt$sampledir, showWarnings = TRUE, recursive = TRUE)
@@ -313,6 +312,8 @@ flog.appender(appender.tee(opt$logfile))
 flog.info("JAMS - Just A Microbiology System")
 flog.info(paste("Version", opt$verstr))
 flog.info(paste("By:", paste(JAMSauthors, collapse = "; ")))
+
+flog.info(print_jams_ASCII(palette = "ocean"))
 
 #note: phasing out temporary directories
 opt$workdir <- opt$sampledir
@@ -393,6 +394,9 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 opt <- harvest_functions(opt = opt, doinparallel = TRUE)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
+opt$taxonomic_Quality_split_list  <- lapply(names(opt$abundances$taxonomic), function (x) { evaluate_consolidated_Quality_split_df(consolidated_df = opt$abundances$taxonomic[[x]]) } )
+names(opt$taxonomic_Quality_split_list) <- names(opt$abundances$taxonomic)
+
 #Compute readcounts if there are any reads
 if ("readsdir" %in% names(opt)){
     opt <- compute_readcounts(opt = opt)
@@ -403,7 +407,7 @@ if ("readsdir" %in% names(opt)){
 #opt <- consolidate_tables(opt = opt)
 
 #Bank information gathered
-objectstoexport <- names(opt)[names(opt) %in% c("contigsdata", "featuredata", "abundances", opt$blastanalyses, "bam_contig_depths", "TNF_contigs", "readstats", "fastqstats")]
+objectstoexport <- names(opt)[names(opt) %in% c("contigsdata", "featuredata", "abundances", "taxonomic_Quality_split_list", opt$blastanalyses, "bam_contig_depths", "TNF_contigs", "readstats", "fastqstats")]
 for (objname in objectstoexport){
     expfn <- file.path(opt$sampledir, paste(paste(opt$prefix, objname, sep = "_"), "rds", sep = "."))
     saveRDS(opt[[objname]], file = expfn)

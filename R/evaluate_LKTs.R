@@ -40,6 +40,8 @@ evaluate_LKTs <- function(opt = opt, contigsdata_name = "contigsdata", output_li
                 flog.info(paste("There are", length(wantedtaxa), "bacterial or archaeal taxa at the", taxlvl, "taxonomic level."))
                 #Write contigs to temporary bins for completeness evaluation
                 curr_bin_output_folder <- file.path(opt$sampledir, "temp_bins")
+                #ensure there is no standing bin output folder
+                unlink(curr_bin_output_folder, recursive = TRUE)
                 dir.create(curr_bin_output_folder, showWarnings = TRUE, recursive = TRUE)
                 for (wantedtaxon in wantedtaxa){
                     curr_fn <- paste(wantedtaxon, "fasta", sep = ".")
@@ -49,6 +51,8 @@ evaluate_LKTs <- function(opt = opt, contigsdata_name = "contigsdata", output_li
 
                 #Create a folder for checkM output and run checkm2
                 curr_checkM_output_folder <- file.path(curr_bin_output_folder, "CheckM_out")
+                #ensure there is no standing checkM output folder
+                unlink(curr_checkM_output_folder, recursive = TRUE)
                 dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
                 binfp <- file.path(curr_bin_output_folder, "*.fasta")
                 chechmArgs <- c("predict", "--threads", opt$threads, "--input", binfp, "--output-directory", curr_checkM_output_folder)
