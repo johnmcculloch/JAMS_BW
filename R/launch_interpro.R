@@ -4,11 +4,12 @@
 #' @export
 
 launch_interpro <- function(opt = NULL){
+
     #Set working directory to sampledir
     setwd(opt$sampledir)
 
     #Discard proteins with stop codons in them, as this blocks interpro
-    CDSswithstop<-names(which(sapply(names(opt$proteome), function (x) { length(grep("\\*", opt$proteome[[x]])) } ) > 0))
+    CDSswithstop <- names(which(sapply(names(opt$proteome), function (x) { length(grep("\\*", opt$proteome[[x]])) } ) > 0))
 
     proteomeforipro <- filter_sequence_by_name(input_sequences = opt$proteome, sequencenames = CDSswithstop, keep = FALSE)
 

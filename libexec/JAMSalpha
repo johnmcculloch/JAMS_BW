@@ -182,10 +182,10 @@ option_list <- list(
                 type="numeric",
                 help = str_c("cap the number of bases used for assembly to this value. If the number of bases for assembly is larger than this value, input reads will be subset to contain this amount. Default: no subsetting.")),
 
-#Note: taking unassembled reads into account has been deprecated since JAMS ver 2.0.0.
-#    make_option(c("-q", "--classifyunassembled"), default=defopt$classifyunassembled,
-#                action="store_true",
-#                help = str_c("classify unassembled reads by kraken2 and include counts in taxonomic abundance. Irrelevant for isolates. default: ", defopt$classifyunassembled, ")")),
+    #Note: taking unassembled reads into account has been deprecated since JAMS ver 2.0.0.
+    #    make_option(c("-q", "--classifyunassembled"), default=defopt$classifyunassembled,
+    #                action="store_true",
+    #                help = str_c("classify unassembled reads by kraken2 and include counts in taxonomic abundance. Irrelevant for isolates. default: ", defopt$classifyunassembled, ")")),
 
     make_option(c("-m", "--bin_contigs_with_metabat"), default=defopt$bin_contigs_with_metabat,
                 action="store_true",
@@ -361,6 +361,8 @@ if (nchar(slurmjobid) < 3){
         opt <- launch_interpro(opt = opt)
     }
 }
+IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+
 
 #Initialize index indexorum for storing abundances 
 opt$abundances <- list()
@@ -404,24 +406,22 @@ if ("readsdir" %in% names(opt)){
     bank_reads(opt = opt)
 }
 
-#opt <- consolidate_tables(opt = opt)
-
-#Bank information gathered
-objectstoexport <- names(opt)[names(opt) %in% c("contigsdata", "featuredata", "abundances", "taxonomic_Quality_split_list", opt$blastanalyses, "bam_contig_depths", "TNF_contigs", "readstats", "fastqstats")]
-for (objname in objectstoexport){
-    expfn <- file.path(opt$sampledir, paste(paste(opt$prefix, objname, sep = "_"), "rds", sep = "."))
-    saveRDS(opt[[objname]], file = expfn)
-}
+opt <- consolidate_tables(opt = opt)
 
 #End the analysis and gather information on the run
 opt$endtime <- Sys.time()
 opt <- gather_run_info(opt = opt)
-objectstoexport <- names(opt)[names(opt) %in% c("projinfo")]
-export_from_list(objlist = opt, objnames = objectstoexport, destination = opt$sampledir)
+
+#Bank information gathered
+objectstoexport <- names(opt)[names(opt) %in% c("contigsdata", "featuredata", "abundances", "taxonomic_Quality_split_list", opt$blastanalyses, "bam_contig_depths", "TNF_contigs", "readstats", "fastqstats", "projinfo")]
+for (objname in objectstoexport){
+    expfn <- file.path(opt$sampledir, paste(paste(opt$prefix, objname, sep = "_"), "rds", sep = "."))
+    saveRDS(opt[[objname]], file = expfn)
+}
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Make a .jams file
-make_jams_file(opt = opt, outdir = opt$outdir, export_to_XL = (opt$analysis == "isolate"))
+make_jams_file(opt = opt, objectstoinclude = objectstoexport, outdir = opt$outdir)
 
 #Plot report
 #print_jams_report(opt = opt, elements = c("readplots", "taxonomy", "SixteenSid", opt$blastanalyses, "func"))
@@ -430,7 +430,6 @@ make_jams_file(opt = opt, outdir = opt$outdir, export_to_XL = (opt$analysis == "
 setwd(opt$sampledir)
 unlink(c(opt$tmpsampdir, opt$iprodir, opt$covdir, opt$readsdir), recursive = TRUE)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
-
 
 setwd(opt$outdir)
 JAMStarball <- paste(paste0(opt$prefix, "_JAMS"), "tar", "gz", sep=".")

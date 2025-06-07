@@ -6,9 +6,10 @@
 \usage{
 make_jams_file(
   opt = opt,
-  outdir = opt$outdir,
-  asRDS = TRUE,
-  export_to_XL = FALSE
+  objectstoinclude = c("contigsdata", "featuredata", "abundances",
+    "taxonomic_Quality_split_list", opt$blastanalyses, "bam_contig_depths",
+    "TNF_contigs", "readstats", "fastqstats", "projinfo"),
+  outdir = opt$outdir
 )
 }
 \description{

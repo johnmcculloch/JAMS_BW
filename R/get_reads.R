@@ -47,7 +47,7 @@ get_reads <- function(opt = NULL){
         #Copy supplied reads into readsdir
         if (!(is.null(opt$readstarball))){
             #Copy tarball
-            if((summary(file(opt$readstarball))$class) != "gzfile" ){
+            if ((summary(file(opt$readstarball))$class) != "gzfile" ){
                 flog.info("You chose a tarball as input but it does not look like a tar.gz file. Aborting now.")
                 q()
             }

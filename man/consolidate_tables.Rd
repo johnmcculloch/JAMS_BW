@@ -4,7 +4,11 @@
 \alias{consolidate_tables}
 \title{consolidate_tables(opt=opt)}
 \usage{
-consolidate_tables(opt = opt, elements = NULL)
+consolidate_tables(
+  opt = opt,
+  elements = NULL,
+  taxonomic_spaces = c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin")
+)
 }
 \description{
 JAMSalpha function

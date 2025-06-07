@@ -6,14 +6,14 @@
 bank_reads <- function(opt = opt, maketarball = FALSE){
 
    #Check if reads are in tmpdir
-    if(opt$workdir != opt$sampledir){
+    if (opt$workdir != opt$sampledir){
         readsworkdir <- file.path(opt$workdir, "reads")
     } else {
         readsworkdir <- opt$readsdir
     }
     setwd(readsworkdir)
 
-    if(opt$host != "none"){
+    if (opt$host != "none"){
         flog.info("Banking Non-Aligned to Host Species (microbiota) reads to outdir.")
         fastqstobank <- sort(opt$nahsreads)
         if (maketarball){
@@ -26,13 +26,11 @@ bank_reads <- function(opt = opt, maketarball = FALSE){
             readbankcmds <- sapply(1:length(fastqstobank), function (x) { paste("pigz --best --stdout --processes", opt$threads, fastqstobank[x], ">", file.path(opt$outdir, outfilenames[x]), collapse = " ") })
         }
 
-        sapply(readbankcmds, function (x) { system(x) } )
-
-
     } else {
+
         flog.info("Banking QC trimmed reads to outdir.")
+        fastqstobank <- sort(opt$trimreads)
         if (maketarball){
-            fastqstobank <- sort(opt$trimreads)
             outfilename <- paste(paste(opt$prefix, "QCtrimmed", "reads", sep="_"), "tar", "gz", sep = ".")
             readbankcmds <- paste("tar", "cf", "-", paste0(fastqstobank, collapse=" "), "|", "pigz", "-9", "-p", opt$threads, ">", outfilepath, collapse=" ")
         } else {
@@ -42,6 +40,7 @@ bank_reads <- function(opt = opt, maketarball = FALSE){
         }
     }
 
-    system(tarcmd)
+    #Execute banking commands
+    sapply(readbankcmds, function (x) { system(x) } )
 
 }

@@ -176,7 +176,7 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
     interpronumbaseslist <- NULL
     if ("interproscanoutput" %in% names(opt)){
 
-        opt <- add_interpro_to_featuredata(opt = opt, doinparallel = doinparallel)
+        opt <- add_interpro_to_featuredata(opt = opt, doinparallel = FALSE)
 
         iproanalyses <- sort(unique(opt$interproscanoutput$Analysis))
         if ("IproAcc" %in% colnames(opt$interproscanoutput)){
@@ -185,25 +185,26 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
         if ("GOterms" %in% colnames(opt$interproscanoutput)){
             iproanalyses <- c(iproanalyses, "GO")
         }
-        if ("Pathways" %in% colnames(opt$interproscanoutput)){
-            iproanalyses <- c(iproanalyses, "MetaCyc")
-        }
+        #Pathways were phased out
+        #if ("Pathways" %in% colnames(opt$interproscanoutput)){
+        #    iproanalyses <- c(iproanalyses, "MetaCyc")
+        #}
 
         flog.info("Creating counts table for Interpro signatures.")
 
         for (taxonomic_space in valid_taxonomic_spaces){
-        
+
             interpronumbaseslist <- lapply(iproanalyses, function(x) { compute_signature_numbases(featuredata = opt$featuredata, taxonomic_space = taxonomic_space, columnname = x) })
             names(interpronumbaseslist) <- iproanalyses
             interpronumbaseslist <- plyr::ldply(interpronumbaseslist, rbind)
             interpronumbaseslist$`.id` <- NULL
 
             #New version of Interproscan splits signal peptide analysis into three different classes, Gram Positive, Gram Negative and Eukaryote. Making the accessions non-redundant for these analyses
-            for (analtofix in c("SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SignalP_EUK")){
-                if (analtofix %in% interpronumbaseslist$Analysis){
-                    interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"] <- paste(analtofix, interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"], sep = "_")
-                }
-            }
+            #for (analtofix in c("SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SignalP_EUK")){
+            #    if (analtofix %in% interpronumbaseslist$Analysis){
+            #        interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"] <- paste(analtofix, interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"], sep = "_")
+            #    }
+            #}
 
             #Remove a "-" which is annoyingly being added as an accession for GO and Interpro.
             interpronumbaseslist <- subset(interpronumbaseslist, Accession != "-")
@@ -231,8 +232,8 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
             descriptions <- GOtermdict$Description[match(interprodoses[[taxonomic_space]]$Accession, GOtermdict$Accession)]
             interprodoses[[taxonomic_space]]$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
             #Add MetaCyc descriptions
-            MetaCycdescriptions <- MetaCycAccession2Description$Description[match(interprodoses[[taxonomic_space]]$Accession, MetaCycAccession2Description$Accession)]
-            interprodoses[[taxonomic_space]]$Description[which(!(is.na(MetaCycdescriptions)))] <- MetaCycdescriptions[which(!(is.na(MetaCycdescriptions)))]
+            #MetaCycdescriptions <- MetaCycAccession2Description$Description[match(interprodoses[[taxonomic_space]]$Accession, MetaCycAccession2Description$Accession)]
+            #interprodoses[[taxonomic_space]]$Description[which(!(is.na(MetaCycdescriptions)))] <- MetaCycdescriptions[which(!(is.na(MetaCycdescriptions)))]
 
             #Make description dictionary
             dictaccessions <- opt$interproscanoutput$Accession
@@ -350,32 +351,43 @@ fix_interproscanoutput <- function(opt = NULL, check_ipro_jobs_status = TRUE){
 
         alliprotsvs <- mclapply(interprotsvs, readipro, mc.cores = appropriatenumcores)
         ipro <- plyr::ldply(alliprotsvs, rbind)
+        ipro_spaces_to_keep <- c("CDD", "Pfam", "SUPERFAMILY", "NCBIfam", "ProSitePatterns", "ProSiteProfiles", "SMART")
 
         #Clean-up datafrane
-        ipro <- subset(ipro, Analysis !="MobiDBLite")
+        ipro <- subset(ipro, Analysis %in% ipro_spaces_to_keep)
         ipro$MD5 <- NULL
         ipro$Start <- NULL
         ipro$Stop <- NULL
         ipro$Start <- NULL
-        ipro$Score <- as.numeric(ipro$Score)
-        ipro$Score[is.na(ipro$Score)] <- 0
-        ipro <- subset(ipro, Score < 0.001)
+        #ipro$Score[is.na(ipro$Score)] <- 0
+        #ipro$Score <- as.numeric(ipro$Score)
+        ipro <- subset(ipro, Score <= 0.001)
         ipro <- subset(ipro, Status == "T")
         ipro$Score <- NULL
         ipro$Status <- NULL
         ipro$Date <- NULL
         ipro$AALength <- as.numeric(ipro$AALength)
 
+        #Phase out pathways because there ater way too many entries, likely false positives
+        ipro$Pathways <- NULL
+
         #Fill in the blanks
-        ipro <- ipro %>% mutate(Description = ifelse(Description == "", "none", Description))
+        ipro <- ipro %>% mutate(Description = ifelse(Description == "", "No_description", Description))
         ipro <- ipro %>% mutate(IproAcc = ifelse(IproAcc == "", "none", IproAcc))
-        ipro <- ipro %>% mutate(IproDesc = ifelse(IproDesc == "", "none", IproDesc))
+        ipro <- ipro %>% mutate(IproDesc = ifelse(IproDesc == "", "No_description", IproDesc))
         ipro <- ipro %>% mutate(GOterms = ifelse(GOterms == "", "none", GOterms))
-        ipro <- ipro %>% mutate(Pathways = ifelse(Pathways == "", "none", Pathways))
+        #ipro <- ipro %>% mutate(Pathways = ifelse(Pathways == "", "none", Pathways))
+        ipro$GOterms <- gsub("^-$", "none", ipro$GOterms)
+        ipro$IproAcc <- gsub("^-$", "none", ipro$IproAcc)
+        ipro[which(ipro$IproAcc == "none"), "IproDesc"] <- "No_description"
+
+        #Remove the "(InterPro)" tag added to the new interproscan output. Need to remove to match to GO dictionary.
+        ipro$GOterms <- gsub("\\(InterPro\\)", "", ipro$GOterms)
 
         #remove eventual duplicates
         ipro <- ipro[!duplicated(ipro), ]
         opt$interproscanoutput <- ipro
+
     }
 
     return(opt)

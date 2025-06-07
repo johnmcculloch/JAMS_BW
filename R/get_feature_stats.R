@@ -5,8 +5,6 @@
 
 get_feature_stats <- function(opt = NULL, ucoindex = "freq", doContigs = TRUE, doFeatures = FALSE){
 
-    flog.info("Calculating Tetranucleotide frequencies for all features")
-
     #Cap threads to 32 because of memory issues
     appropriatenumcores <-  min(max(1, (opt$threads - 2)), 32)
 
@@ -39,6 +37,7 @@ get_feature_stats <- function(opt = NULL, ucoindex = "freq", doContigs = TRUE, d
     }
 
     if (doFeatures){ 
+        flog.info("Calculating Tetranucleotide frequencies for all features")
         TNF_list_features <- mclapply(1:length(opt$genes), function (x) { get_TNF(opt$genes[[x]]) }, mc.cores = appropriatenumcores)
         names(TNF_list_features) <- names(opt$genes)
         TNF_features <- plyr::ldply(TNF_list_features, rbind)

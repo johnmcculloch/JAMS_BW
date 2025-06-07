@@ -20,7 +20,7 @@ blast_databases <- function(opt = NULL, blastanalyses = NULL, QcovThreshold = 75
 
     blastanalyses <- blastanalyses[(blastanalyses %in% opt$blastanalyses)]
 
-    for(blastanalysis in blastanalyses){
+    for (blastanalysis in blastanalyses){
         flog.info(paste("Blasting genes against", blastanalysis, "database"))
 
         #Copy database to tmpdir each time for speed.
@@ -31,7 +31,7 @@ blast_databases <- function(opt = NULL, blastanalyses = NULL, QcovThreshold = 75
             blastdb <- file.path("tmpblastdb", "sequences")
 
             #Load lookup table if it exists
-            if(file.exists(file.path(blastdbori, "lookup.tsv"))){
+            if (file.exists(file.path(blastdbori, "lookup.tsv"))){
                 lookup <- read.table(file = file.path(blastdbori, "lookup.tsv"), sep = "\t", header = TRUE, stringsAsFactors = FALSE)
             } else {
                 #Try the newer rda lookups
@@ -71,7 +71,7 @@ blast_databases <- function(opt = NULL, blastanalyses = NULL, QcovThreshold = 75
                 blastout <- subset(blastout, Hitcov > HitcovThreshold)
                 blastout <- subset(blastout, Pident > PidentThreshold)
                 if (nrow(blastout) > 0){
-                    blastout <- left_join(blastout, opt$featuredata)
+                    blastout <- left_join(blastout, opt$featuredata, by = "Feature")
                     blastout$LKT <- opt$contigsdata$LKT[match(blastout$Contig, opt$contigsdata$Contig)]
                     if (!is.null(lookup)){
                         lookup$Feature <- NULL
