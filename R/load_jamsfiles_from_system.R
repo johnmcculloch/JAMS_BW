@@ -50,7 +50,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         flog.info(paste("There are", length(fpfljams), "objects to expand."))
 
         decompress_jamsfile <- function (x){
-            untar(jamsfilesdfwant$FullPath[x], list = FALSE, exdir = jamstempfilespath, compressed = TRUE, verbose = TRUE)
+            untar(jamsfilesdfwant$FullPath[x], list = FALSE, exdir = jamstempfilespath, verbose = TRUE)
         }
 
         if (multithread_decomp == TRUE){

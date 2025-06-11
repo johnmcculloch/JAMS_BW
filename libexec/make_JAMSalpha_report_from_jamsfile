@@ -1,0 +1,256 @@
+#!/usr/bin/env Rscript
+suppressPackageStartupMessages(library(RCurl))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(futile.logger))
+suppressPackageStartupMessages(library(parallel))
+suppressPackageStartupMessages(library(benchmarkme))
+#####################################
+# Define System-specific Functions ##
+#####################################
+if ((.Platform$OS.type) != "unix"){
+    stop("JAMS only works on UNIX. Install Linux and try again.")
+}
+
+#Get slurm job ID
+slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+
+#Decide which kind of system you are on.
+if (nchar(slurmjobid) < 3){
+   print("You are not on a Slurm Workload Cluster")
+   #Define appropriate functions for non-slurm system
+   detectBatchCPUs <- function() {
+        ncores <- detectCores()
+        if (is.na(ncores)) {
+            stop("Could not determine how many CPUs you have. Aborting.")
+        }
+        return(ncores)
+    }
+
+    detectAvailRAM <- function(){
+        totmembytes <- as.numeric(get_ram())
+
+        return(totmembytes)
+    }
+
+} else {
+    print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
+    #Define appropriate functions for slurm system
+    detectBatchCPUs <- function() {
+        slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+        ncores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
+
+        if (is.na(ncores)) {
+            #Try plan B
+            sacctraw <- system2("sacct", args = c("-j", slurmjobid, "-X", "-P"), stdout = TRUE)
+            jobinforaw <- sacctraw[2]
+            jobinfoheaders <- sacctraw[1]
+            jobinfo <- unlist(strsplit(jobinforaw, split="\\|"))
+            names(jobinfo) <- unlist(strsplit(jobinfoheaders, split="\\|"))
+            ncores <- as.integer(jobinfo["AllocCPUS"])
+            print(jobinfo)
+            if (is.na(ncores)) {
+                stop("Could not determine how many CPUs you have. Aborting.")
+            }
+        }
+
+        return(ncores)
+    }
+
+    detectAvailRAM <- function(){
+        mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
+        mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
+        cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
+
+        if (!(is.na(mempernode))){
+            totmem <- mempernode
+        } else {
+            totmem <- mempercpu * cpuspertask
+        }
+
+        totmembytes <- totmem * 1000000
+
+        return(totmembytes)
+    }
+}
+
+############################
+## Define other functions ##
+############################
+filetype <- function(path){
+    f <- file(path)
+    ext <- summary(f)$class
+    close.connection(f)
+    ext
+}
+
+# get path of running script
+getScriptPath <- function() {
+    cmdArgs <- commandArgs(trailingOnly = FALSE)
+    needle <- "--file="
+    match <- grep(needle, cmdArgs)
+    if (length(match) > 0) {
+        return(dirname(normalizePath(sub(needle, "", cmdArgs[match]))))
+    } else {
+        return(dirname(normalizePath(sys.frames()[[1]]$ofile)))
+    }
+}
+
+JAMSauthors <- as.character(as.person(packageDescription("JAMS")$Author))
+
+#########################
+# Get options from args #
+#########################
+#Define defaults
+defopt <- list()
+defopt$verstr <- paste0("JAMS v", packageVersion("JAMS"))
+defopt$outdir <- getwd()
+
+option_list <- list(
+    make_option(c("-j", "--jamsfile"), action="store", default=NULL,
+                type="character",
+                help=".jams file to use"),
+
+    make_option(c("-o", "--outdir"), default=defopt$outdir, action="store",
+                type="character",
+                help = str_c("output folder (default: ", defopt$outdir, ")")),
+
+    make_option(c("-v", "--version"), action="store_true",
+                help ="report version")
+)
+
+# parse the options
+args <- commandArgs(trailingOnly = TRUE)
+opt <- parse_args(OptionParser(option_list = option_list), args)
+opt <- merge.list(opt, defopt)
+
+#####################
+## Set environment ##
+#####################
+
+# print version & exit if -v
+if (!is.null(opt$version)) {
+    print(opt$verstr)
+    quit()
+}
+
+#Get JAMS exexcutables path
+get_JAMS_exec_path <- function(){
+    JAlnk <- system2('which', args = "JAMSalpha", stdout = TRUE, stderr = FALSE)
+    JApath <- system2('readlink', args = JAlnk, stdout = TRUE, stderr = FALSE)
+    folds <- unlist(strsplit(JApath, split = .Platform$file.sep))
+    folds <- folds[1:(length(folds) - 1)]
+    libexecpath <- paste(folds, collapse = .Platform$file.sep)
+
+    return(libexecpath)
+}
+
+opt$bindir <- get_JAMS_exec_path()
+
+#Abort if unreasonable instructions
+if (is.null(opt$jamsfile)){
+    print("You must specify a valid .jams file for uptake.")
+    parse_args(OptionParser(option_list = option_list), c("-h"))
+    q()
+}
+
+#Fix path relativity
+fixrelpath <- function(JAMSpath = NULL){
+    require(R.utils)
+    if (!(isAbsolutePath(JAMSpath))){
+        fixedpath <- getAbsolutePath(JAMSpath)
+    } else {
+        fixedpath <- JAMSpath
+    }
+    #Chomp a "/" from the end of paths
+    fixedpath <- gsub("/$", "", fixedpath)
+
+    return(fixedpath)
+}
+
+for (pathtofix in c("jamsfile", "outdir")){
+    if (!is.null(opt[[pathtofix]])){
+        opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
+    }
+}
+
+# give help if needed input option not provided
+if (!(file.exists(opt$jamsfile))){
+    flog.info(paste("Unable to find jamsfile at", opt$jamsfile))
+    q()
+}
+
+test_writeability <- function(dirpath){
+    touchfile <- file.path(dirpath, "writetestJAMS")
+    testresult <- suppressWarnings(system2('touch', args = touchfile, stderr = TRUE, stdout = FALSE))
+    if (file.exists(touchfile)){
+        dmp <- file.remove(touchfile)
+    }
+
+    if (length(testresult) > 0){
+        writeability <- FALSE
+    } else {
+        writeability <- TRUE
+    }
+
+    return(writeability)
+}
+
+if (file.exists(opt[["outdir"]])){
+    flog.info(paste("Found", opt$outdir, "folder"))
+    if (!test_writeability(opt[["outdir"]])) {
+        flog.info(paste0("You have no writing permissions to ", opt[[subfolder]], ". Aborting now."))
+        q()
+    }
+} else {
+    #Only create if not simulating
+    if (TRUE){
+        flog.info(paste("Creating", opt$outdir, "folder"))
+        dir.create(opt[["outdir"]])
+    }
+}
+
+###################
+## Main Function ##
+###################
+
+#If all is OK, then move forward
+suppressPackageStartupMessages(library(JAMS))
+
+opt$tempdir <- getwd()
+
+#Determine sample prefix
+fn <- tail(unlist(strsplit(opt$jamsfile, split = "/")), n = 1) 
+opt$prefix <- unlist(strsplit(fn, split = "\\."))[1]
+
+#decompress jamsfile
+jams_rds_files <- untar(opt$jamsfile, list = TRUE, exdir = opt$tempdir, verbose = FALSE)
+
+expected_objects <- c("abundances", "taxonomic_Quality_split_list", "resfinder", "plasmidfinder", "readstats", "fastqstats", "projinfo")
+
+expected_files <- paste(paste(opt$prefix, expected_objects, sep = "_"), "rds", sep = ".")
+
+#Stop if missing any crucial info
+if (!all(expected_files %in% jams_rds_files)){
+    missing_files <- expected_files[!(expected_files %in% jams_rds_files)]
+    flog.warn(paste("ABORTING! Could not find the following elements needed for making a JAMSalpha report:\n", paste0(missing_files, collapse = ", ")))
+    q()
+} else {
+    #untar and get the files
+    untar(opt$jamsfile, list = FALSE, exdir = opt$tempdir, verbose = FALSE)
+}
+
+#Suck them up into opt
+for (fn in 1:length(expected_files)){
+    opt[[expected_objects[fn]]] <- readRDS(expected_files[fn])
+}
+
+#clean up
+file.remove(jams_rds_files)
+
+#Add analysis info
+opt$analysis <- opt$projinfo["Run_type", "Run_value"]
+
+
+#create JAMSalpha report
+print_jams_report(opt = opt, outputdir = opt$outdir, elements = c("readplots", "taxonomy", opt$blastanalyses, "func"))
