@@ -406,7 +406,7 @@ if ("readsdir" %in% names(opt)){
     bank_reads(opt = opt)
 }
 
-opt <- consolidate_tables(opt = opt)
+#opt <- consolidate_tables(opt = opt)
 
 #End the analysis and gather information on the run
 opt$endtime <- Sys.time()

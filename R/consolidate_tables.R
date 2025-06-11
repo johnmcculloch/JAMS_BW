@@ -10,7 +10,7 @@ consolidate_tables <- function(opt = opt, elements = NULL, taxonomic_spaces = c(
     #Consolidate resfinder table
     if ("resfinder" %in% colnames(opt$featuredata)){
        resfinder_cons <- subset(opt$featuredata, resfinder != "none")
-       if(nrow(resfinder_cons) > 1){
+       if (nrow(resfinder_cons) > 1){
            resfinder_cons <- resfinder_cons[, c("Feature", "resfinder", "Product", valid_taxonomic_spaces)]
            opt$resfinder_cons <- resfinder_cons
        }

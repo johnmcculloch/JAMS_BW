@@ -92,29 +92,21 @@ print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplo
     availblastanalyses <- elementsinopt[!(elementsinopt %in% c("readplots", "SixteenSid"))]
 
     batp <- NULL
+    taxonomic_spaces_avail <- c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin")[c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin") %in% names(opt$abundances$functional)]
     for (ba in availblastanalyses){
         batp <- opt[[ba]]
         if (ba == "resfinder"){
-            contig2length <- opt$contigsdata[, c("Contig","Length")]
-            batp <- batp[ , c("Accession","Class","Pident","Contig","LKT")]
-            batp <- left_join(batp, contig2length, by = "Contig")
-            colnames(batp) <- c("DB_Hit","Function","Percent_ID","Contig","LKT", "Length")
-            batp <- batp[,c("DB_Hit","Function","Percent_ID","Contig","Length","LKT")]
-        } else if (ba == "abricate"){
-            contig2length <- opt$contigsdata[, c("Contig","Length")]
-            batp <- batp[ , c("Database", "Accession", "Phenotype", "Pident", "Contig", "LKT")]
-            batp <- left_join(batp, contig2length, by = "Contig")
-            colnames(batp) <- c("Database", "DB_Hit", "Phenotype", "Percent_ID", "Contig", "LKT", "Length")
-            batp <- batp[ , c("Database", "DB_Hit", "Phenotype", "Percent_ID", "Contig", "Length", "LKT")]
+             batp <- batp[,c("Accession", "Product", "Pident", "GeneNameNR", "Feature", taxonomic_spaces_avail)]
+             colnames(batp) <- c("DB_Hit", "Function", "Percent_ID", "Gene_symbol", "Gene", taxonomic_spaces_avail)
         } else {
-            batp <- batp[ , c("Accession","Product","Pident","LKT")]
-            colnames(batp) <- c("DB_Hit","Function","Percent_ID","LKT")
+            batp <- batp[ , c("Accession", "Product", "Pident", taxonomic_spaces_avail)]
+            colnames(batp) <- c("DB_Hit", "Function", "Percent_ID", taxonomic_spaces_avail)
         }
 
         #Shorten hit because it is too verbose from resfinder and vfdb
-        batp$DB_Hit <- gsub(":.*", "", batp$DB_Hit)
+        #batp$DB_Hit <- gsub(":.*", "", batp$DB_Hit)
         ti <- switch(ba, "resfinder" = "Known antibiotic resistance genes", "vfdb" = "Virulence factors present in VFDB \n www.ncbi.nlm.nih.gov/pubmed/15608208", "plasmidfinder" = "Plasmid Replicon-associated genes present in PlasmidFinder \n https://www.ncbi.nlm.nih.gov/pubmed/24777092")
-        print_table(tb = batp, tabletitle = ti, fontsize = 6, numrows = 20)
+        print_table(tb = batp, tabletitle = ti, fontsize = 4, numrows = 25)
     }
 
     #if ("func" %in% elements){
