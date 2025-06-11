@@ -358,7 +358,11 @@ for (currPrefix in JAMSalphaorigindf$Prefix){
     }
     #Bank reads
     if (opt$ignorereads != TRUE){
-        readsfilenames <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", sep = "_"), "gz", sep = ".")
+        #find old style and new style (JAMS2) untarred reads
+        readsfilenamesold <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", sep = "_"), "tar", "gz", sep = ".")
+        readsfilenamesnewR1 <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", "R1", sep = "_"), "fastq", "gz", sep = ".")
+        readsfilenamesnewR2 <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", "R1", sep = "_"), "fastq", "gz", sep = ".")
+        readsfilenames <- c(readsfilenamesold, readsfilenamesnewR1, readsfilenamesnewR2)
         readsfilenameswithpaths <- file.path(opt$origin, readsfilenames)
         if (any(file.exists(readsfilenameswithpaths))){
             currreadsfile <- readsfilenameswithpaths[which(file.exists(readsfilenameswithpaths) == TRUE)][1:2]
