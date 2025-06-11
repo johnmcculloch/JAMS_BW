@@ -2,14 +2,12 @@
 % Please edit documentation in R/print_jams_report.R
 \name{print_jams_report}
 \alias{print_jams_report}
-\title{print_jams_report(opt=opt)}
+\title{print_jams_report(opt = opt)}
 \usage{
 print_jams_report(
   opt = opt,
   outputdir = NULL,
-  elements = c("readplots", "taxonomy", "SixteenSid", "resfinder", "abricate",
-    "plasmidfinder", "vfdb", "func"),
-  plotucobias = FALSE,
+  elements = c("readplots", "taxonomy", "resfinder", "plasmidfinder", "func"),
   report_style = NULL
 )
 }

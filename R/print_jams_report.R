@@ -1,13 +1,16 @@
-#' print_jams_report(opt=opt)
+#' print_jams_report(opt = opt)
 #'
 #' JAMSalpha function
 #' @export
 
-print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplots", "taxonomy", "SixteenSid", "resfinder", "abricate", "plasmidfinder", "vfdb", "func"), plotucobias = FALSE, report_style = NULL){
+print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplots", "taxonomy", "resfinder", "plasmidfinder", "func"), report_style = NULL){
 
     if (is.null(report_style)){
         report_style <- opt$analysis
     }
+
+    QualPieColours <- c("#18bf06", "#037c91", "#f2b407", "#f2fa05", "#f71105", "#bcc2c2", "#bcc2c2")
+    names(QualPieColours) <- c("HQ", "MHQ", "MQ", "LQ", "Contaminated", "N_A", "Unused")
 
     #See what is available
     elementsinopt <- elements[elements %in% names(opt)]
@@ -27,7 +30,10 @@ print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplo
 
     #Header with run info
     plot.new()
-    grid.table(opt$projinfo, rows = NULL, cols = NULL, theme = ttheme_default(base_size = 12))
+    info_to_print <- c("JAMS_version", "Run_type", "JAMS_Kdb_Version", "Sample_name", "Process", "Host_species", "Run_start", "Run_end", "Duration_hours", "CPUs_used", "Contigs_supplied", "GenBank_assembly_accession_number", "NCBI_SRA_accession_number", "Reads_source", "Read_chemistry", "Library_strategy", "Contig_assembler","Contig_assembler_version", "Input_number_bp_cap")
+    info_to_print <- info_to_print[info_to_print %in% rownames(opt$projinfo)]
+
+    grid.table(opt$projinfo[info_to_print, c("Run_info", "Run_value")], rows = NULL, cols = NULL, theme = ttheme_default(base_size = 12))
 
     plot.new()
     grid.table(authorshipmessage, rows = NULL, cols = NULL, theme = ttheme_default(base_size = 15))
@@ -39,62 +45,48 @@ print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplo
 
     #Print taxonomic analysis, if applicable
     if (("taxonomy" %in% elements)){
-        taxlvlspresent <- colnames(opt$LKTdose)[colnames(opt$LKTdose) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
+        taxonomic_spaces <- c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin")[c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin") %in% names(opt$abundances$taxonomic)]
 
+        #Print an equivalent report for each available taxonomic space
         if (report_style %in% c("metagenome", "metatranscriptome")){
-            for (taxl in taxlvlspresent){
-                print(pareto_abundance(LKTdose = opt$LKTdose, samplename = samplename, taxlevel = taxl, assemblystats = opt$assemblystats, showcompletenesstext = TRUE, showcompletenessline = FALSE, showcontigline = FALSE, showparetocurve = TRUE, showpercentagetext = TRUE))
+            for (curr_taxonomic_space in taxonomic_spaces){
+                curr_qual_df <- opt$taxonomic_Quality_split_list[[curr_taxonomic_space]]
+                #Account for unused contigs in space
+                if (sum(curr_qual_df$Pct) < 100){
+                    curr_qual_df["Unused", ] <- c("Unused", round((100 - sum(sum(curr_qual_df$Pct))), 2), 100)
+                }
+                curr_qual_df$Pct <- as.numeric(curr_qual_df$Pct)
+                curr_qual_df$CumPct <- as.numeric(curr_qual_df$CumPct)
+                curr_qual_df <- curr_qual_df[rev(curr_qual_df$Quality), ]
+                curr_qual_df$Pos <- (curr_qual_df$Pct / 2) + lead(curr_qual_df$CumPct, 1)
+                curr_qual_df$Pos[which(is.na(curr_qual_df$Pos))] <- curr_qual_df$Pct[which(is.na(curr_qual_df$Pos))] / 2
+                curr_qual_df$Percentage <- paste0(curr_qual_df$Pct, "%")
+                curr_qual_df$Quality <- factor(curr_qual_df$Quality, levels = curr_qual_df$Quality)
+
+                QCplot <- ggplot(curr_qual_df, aes(x = "", y = Pct, fill = Quality)) + geom_bar(width = 1, stat = "identity")
+                QCplot <- QCplot + scale_fill_manual(values = QualPieColours, breaks = names(QualPieColours), name = "Genome Quality")
+                QCplot <- QCplot + geom_bar(stat = "identity", width = 1, colour = "white")
+                QCplot <- QCplot + coord_polar("y", start = 0)
+                QCplot <- QCplot + geom_label_repel(aes(y = Pos, label = Percentage), size = 4.5, nudge_x = 1, show.legend = FALSE) 
+                QCplot <- QCplot + guides(fill = guide_legend(title = "Group"))
+                QCplot <- QCplot + theme_void()
+                QCplot <- QCplot + labs(title = paste("Quality of MAGs in", curr_taxonomic_space, "space"))
+                QCplot <- QCplot + theme(axis.title.x = element_blank(), axis.title.y = element_blank(), panel.border = element_blank(), panel.grid = element_blank(), axis.ticks = element_blank(), plot.title = element_text(size = 16, face = "bold", hjust = 0.5))
+
+                print(QCplot)
+
+                for (ordby in c("Percentage", "Completeness")){
+                    print(pareto_abundance(LKTdose = opt$abundances$taxonomic[[curr_taxonomic_space]], max_num_taxa_to_show = 40, readstats = opt$readstats, read_denominator = "Assembled", orderby = ordby, samplename = opt$prefix, taxlevel = curr_taxonomic_space, showcompletenesstext = TRUE, showcompletenessline = TRUE, showcontaminationline = FALSE, showparetocurve = TRUE, showrelabundtext = TRUE))
+                }
+
             }
-            #Print an extra pareto chart for LKT with genome completeness
-            print(pareto_abundance(LKTdose = opt$LKTdose, assemblystats = opt$assemblystats, samplename = samplename, taxlevel = "LKT", showcompletenesstext = TRUE, showcompletenessline = TRUE, showcontigline = FALSE, showparetocurve = TRUE, showpercentagetext = TRUE))
-        } else if (report_style == "isolate"){
-            donut_list <- lapply(c("LKT", "Species", "IS1"), function (x) { plot_genome_taxonomy_donut(opt = opt, taxlevel = x, percentage_threshold = 99, ntop = 10, brewer_palette = 3) } )
-            names(donut_list) <- c("Species", "IS1", "LKT")
-            Isolateassemblystatstable <- ggtexttable(subset(opt$assemblystats, TaxLevel == "Isolate")[ , 2:ncol(opt$assemblystats)], rows = NULL, theme = ttheme("mBlue", base_size = 8))
-            donuts_top <- ggarrange(plotlist = donut_list, ncol = 3, nrow = 1, align = "h")
-            donuts <- ggarrange(donuts_top, Isolateassemblystatstable, ncol = 1, nrow = 2, align = "hv")
 
-            print(donuts)
+            #Plot aggregated higher taxonomic levels
+            higher_taxlvls_present <- rev(c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus"))[rev(c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus")) %in% colnames(opt$abundances$taxonomic$Contig_LKT)]
+            for (taxlvls in higher_taxlvls_present){
+                print(pareto_abundance(LKTdose = opt$abundances$taxonomic$Contig_LKT, max_num_taxa_to_show = 35, readstats = opt$readstats, read_denominator = "Assembled", orderby = "Percentage", samplename = opt$prefix, taxlevel = taxlvls, showcompletenesstext = FALSE, showcompletenessline = FALSE, showcontaminationline = FALSE, showparetocurve = TRUE, showrelabundtext = TRUE))
+            }
         }
-
-        if ("ucoplots" %in% names(opt)){
-            print(opt$ucoplots)
-        }
-
-    }
-
-    #If transcriptome, report proportion of CDS to rRNA
-    #if(opt$analysis %in% c("metatranscriptome", "isolaternaseq")){
-        RNArelabund <- subset(opt$featuredose, Analysis == "FeatType")
-        RNArelabund <- RNArelabund[, c("Accession", "Description", "NumBases")]
-        totbases <- sum(RNArelabund$NumBases)
-        RNArelabund$PPM <- round((RNArelabund$NumBases/totbases)*1000000, 0)
-        dfRNA <- RNArelabund[,c("Accession", "PPM")]
-        colnames(dfRNA) <- c("FeatType", "PPM")
-        dfRNA$Pct <- round(dfRNA$PPM/10000, 1)
-        dfRNA$lbls <- paste0(dfRNA$FeatType, " = ", dfRNA$Pct, "%")
-        dfRNA$lbls <- as.factor(dfRNA$lbls)
-        dfRNA <- subset(dfRNA, Pct > 0)
-        Featcolours <- c("green", "red", "blue", "yellow", "brown", "black")[1:nrow(dfRNA)]
-        rnaP <- ggplot(dfRNA, aes(x = "", y = Pct, fill = lbls)) + geom_bar(width = 1, stat = "identity") + scale_fill_manual(values = Featcolours) + coord_polar("y") + labs(title = paste(opt$prefix, "% Feature type found in Contigs", sep=" - "))
-        rnaP <- rnaP + labs(fill = "Feature Type")
-        rnaP <- rnaP + theme( axis.title.x = element_blank(), axis.title.y = element_blank(), panel.border = element_blank(), panel.grid=element_blank(), axis.ticks <- element_blank(), plot.title=element_text(size=14, face="bold"))
-        print(rnaP)
-    #}
-
-    #Print consolidated 16S table, if available
-    if (("SixteenSid" %in% colnames(opt$featuredata)) && ("SixteenSid" %in% elements)){
-       taxa_16S_cons <- subset(opt$featuredata, SixteenSid != "none")
-       if (nrow(taxa_16S_cons) > 0){
-           taxa_16S_cons <- taxa_16S_cons[, c("Feature", "LengthDNA", "Contig", "SixteenSid")]
-           taxa_16S_cons <- left_join(taxa_16S_cons, opt$contigsdata)
-           taxa_16S_cons <- taxa_16S_cons[, c("Feature", "LengthDNA", "Contig", "Length", "SixteenSid", "LKT")]
-           colnames(taxa_16S_cons) <- c("Gene", "Length_16S", "Contig", "Contig_Length", "LKT_dada2", "LKT_kraken")
-           ti <- "Consolidated 16S rRNA table"
-           print_table(tb=taxa_16S_cons, tabletitle=ti, fontsize=5, numrows=20)
-       } else {
-           print("No 16S rRNA features found in contigs")
-       }
     }
 
     availblastanalyses <- elementsinopt[!(elementsinopt %in% c("readplots", "SixteenSid"))]
@@ -125,13 +117,12 @@ print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplo
         print_table(tb = batp, tabletitle = ti, fontsize = 6, numrows = 20)
     }
 
-    if("func" %in% elements){
-        funcanalyses <- unique(opt$featuredose$Analysis)[!(unique(opt$featuredose$Analysis) %in% c(availblastanalyses, "napdos", "serofinderO", "serofinderH"))]
-        for(fa in funcanalyses){
-            plot_wordcloud_sample(opt=opt, analysis=fa, removeunclassifieds=TRUE)
-        }
-    }
-
+    #if ("func" %in% elements){
+    #    funcanalyses <- unique(opt$featuredose$Analysis)[!(unique(opt$featuredose$Analysis) %in% c(availblastanalyses, "napdos", "serofinderO", "serofinderH"))]
+    #    for(fa in funcanalyses){
+    #        plot_wordcloud_sample(opt=opt, analysis=fa, removeunclassifieds=TRUE)
+    #    }
+    #}
     plot.new()
     grid.table(authorshipmessage, rows = NULL, cols = NULL, theme = ttheme_default(base_size = 15))
     dev.off()

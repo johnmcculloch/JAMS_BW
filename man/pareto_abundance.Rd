@@ -2,19 +2,22 @@
 % Please edit documentation in R/pareto_abundance.R
 \name{pareto_abundance}
 \alias{pareto_abundance}
-\title{pareto_abundance(LKTdose=NULL, samplename=NULL, taxlevel=NULL, assemblystats=NULL, showcompletenesstext=TRUE, showcompletenessline=TRUE, showcontigline=FALSE, showparetocurve=TRUE, showpercentagetext=TRUE)}
+\title{pareto_abundance(LKTdose = NULL, max_num_taxa_to_show = 30, orderby = "Percentage", readstats = NULL, read_denominator = "Assembled", samplename = NULL, taxlevel = NULL, showrelabundtext = TRUE, showcompletenesstext = TRUE, showcompletenessline = TRUE, showcontaminationline = FALSE, showparetocurve = TRUE, rotate_plot = FALSE)}
 \usage{
 pareto_abundance(
   LKTdose = NULL,
+  max_num_taxa_to_show = 30,
+  orderby = "Percentage",
+  readstats = NULL,
+  read_denominator = "Assembled",
   samplename = NULL,
-  list.data = NULL,
   taxlevel = NULL,
-  assemblystats = NULL,
+  showrelabundtext = TRUE,
   showcompletenesstext = TRUE,
   showcompletenessline = TRUE,
-  showcontigline = FALSE,
+  showcontaminationline = FALSE,
   showparetocurve = TRUE,
-  showpercentagetext = TRUE
+  rotate_plot = FALSE
 )
 }
 \description{

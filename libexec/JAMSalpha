@@ -424,7 +424,7 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 make_jams_file(opt = opt, objectstoinclude = objectstoexport, outdir = opt$outdir)
 
 #Plot report
-#print_jams_report(opt = opt, elements = c("readplots", "taxonomy", "SixteenSid", opt$blastanalyses, "func"))
+print_jams_report(opt = opt, elements = c("readplots", "taxonomy", "SixteenSid", opt$blastanalyses, "func"))
 
 #Cleanup and compress project
 setwd(opt$sampledir)
