@@ -361,7 +361,7 @@ for (currPrefix in JAMSalphaorigindf$Prefix){
         #find old style and new style (JAMS2) untarred reads
         readsfilenamesold <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", sep = "_"), "tar", "gz", sep = ".")
         readsfilenamesnewR1 <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", "R1", sep = "_"), "fastq", "gz", sep = ".")
-        readsfilenamesnewR2 <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", "R1", sep = "_"), "fastq", "gz", sep = ".")
+        readsfilenamesnewR2 <- paste(paste(sampledf$Prefix, c("Microbiota", "QCtrimmed"), "reads", "R2", sep = "_"), "fastq", "gz", sep = ".")
         readsfilenames <- c(readsfilenamesold, readsfilenamesnewR1, readsfilenamesnewR2)
         readsfilenameswithpaths <- file.path(opt$origin, readsfilenames)
         if (any(file.exists(readsfilenameswithpaths))){
