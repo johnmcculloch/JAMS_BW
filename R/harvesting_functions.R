@@ -148,7 +148,7 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
 
     data(ECdescmap)
     data(GOtermdict)
-    data(MetaCycAccession2Description)
+    #data(MetaCycAccession2Description)
 
     flog.info("Harvesting functional data.")
 
@@ -174,6 +174,7 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
         opt <- fix_interproscanoutput(opt = opt, check_ipro_jobs_status = check_ipro_jobs_status)
     }
     interpronumbaseslist <- NULL
+
     if ("interproscanoutput" %in% names(opt)){
 
         opt <- add_interpro_to_featuredata(opt = opt, doinparallel = FALSE)
@@ -199,13 +200,6 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
             interpronumbaseslist <- plyr::ldply(interpronumbaseslist, rbind)
             interpronumbaseslist$`.id` <- NULL
 
-            #New version of Interproscan splits signal peptide analysis into three different classes, Gram Positive, Gram Negative and Eukaryote. Making the accessions non-redundant for these analyses
-            #for (analtofix in c("SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SignalP_EUK")){
-            #    if (analtofix %in% interpronumbaseslist$Analysis){
-            #        interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"] <- paste(analtofix, interpronumbaseslist[which(interpronumbaseslist$Analysis == analtofix), "Accession"], sep = "_")
-            #    }
-            #}
-
             #Remove a "-" which is annoyingly being added as an accession for GO and Interpro.
             interpronumbaseslist <- subset(interpronumbaseslist, Accession != "-")
 
@@ -215,40 +209,38 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
     }
 
     for (taxonomic_space in valid_taxonomic_spaces){
-        #Add descriptions to featuredose
+        ##Add descriptions to featuredose
         Taxoncols <- colnames(featuredoses[[taxonomic_space]])[4:ncol(featuredoses[[taxonomic_space]])]
-        featuredoses[[taxonomic_space]]$Description <- rep("none", nrow(featuredoses[[taxonomic_space]]))
+
+        #Add EC numbers
+        featuredoses[[taxonomic_space]] <- left_join(featuredoses[[taxonomic_space]], ECdescmap[ , c("Accession", "Description")], by = "Accession")
 
         #rearrange
         featuredoses[[taxonomic_space]] <- featuredoses[[taxonomic_space]][, c("Analysis", "Accession", "Description", "NumBases", Taxoncols)]
 
-        #Add EC numbers
-        descriptions <- ECdescmap$Description[match(featuredoses[[taxonomic_space]]$Accession, ECdescmap$Accession)]
-        featuredoses[[taxonomic_space]]$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
-
         #Add interpro descriptions, if applicable
         if ("interproscanoutput" %in% names(opt)){
-            #Add GO descriptions
-            descriptions <- GOtermdict$Description[match(interprodoses[[taxonomic_space]]$Accession, GOtermdict$Accession)]
-            interprodoses[[taxonomic_space]]$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
-            #Add MetaCyc descriptions
-            #MetaCycdescriptions <- MetaCycAccession2Description$Description[match(interprodoses[[taxonomic_space]]$Accession, MetaCycAccession2Description$Accession)]
-            #interprodoses[[taxonomic_space]]$Description[which(!(is.na(MetaCycdescriptions)))] <- MetaCycdescriptions[which(!(is.na(MetaCycdescriptions)))]
-
-            #Make description dictionary
+ 
+            #Make description dictionary from the interproscan output
             dictaccessions <- opt$interproscanoutput$Accession
             dictdescriptions <- opt$interproscanoutput$Description
             dictaccessions <- append(dictaccessions, opt$interproscanoutput$IproAcc, after = length(dictaccessions))
             dictdescriptions <- append(dictdescriptions, opt$interproscanoutput$IproDesc, after = length(dictdescriptions))
             acc2desc <- data.frame(Accession = dictaccessions, Description = dictdescriptions, stringsAsFactors = FALSE)
             acc2desc <- acc2desc[!(duplicated(acc2desc)), ]
+            #Add GO descriptions
+            acc2desc <- rbind(acc2desc, GOtermdict[ , colnames(acc2desc)])
             #Add interpro descriptions to featuredose
-            descriptions <- acc2desc$Description[match(interprodoses[[taxonomic_space]]$Accession, acc2desc$Accession)]
-            interprodoses[[taxonomic_space]]$Description[which(!(is.na(descriptions)))] <- descriptions[which(!(is.na(descriptions)))]
+            interprodoses[[taxonomic_space]] <- left_join(interprodoses[[taxonomic_space]], acc2desc[ , c("Accession", "Description")], by = "Accession")
+            #rearrange
+            interprodoses[[taxonomic_space]] <- interprodoses[[taxonomic_space]][ , c("Analysis", "Accession", "Description", "NumBases", Taxoncols)]
+            #Bank to featuredoses
+            featuredoses[[taxonomic_space]] <- rbind(featuredoses[[taxonomic_space]], interprodoses[[taxonomic_space]])
         }
 
-        featuredoses[[taxonomic_space]] <- rbind(featuredoses[[taxonomic_space]], interprodoses[[taxonomic_space]])
-
+        #Fix NAs and rownames
+        featuredoses[[taxonomic_space]]$Description[which(is.na(featuredoses[[taxonomic_space]]$Description))] <- "none"
+        rownames(featuredoses[[taxonomic_space]]) <- featuredoses[[taxonomic_space]]$Accession
     }
 
     opt$abundances$functional <- featuredoses
