@@ -5,6 +5,8 @@
 
 evaluate_LKTs <- function(opt = opt, contigsdata_name = "contigsdata", output_list_name = "taxonomic_completeness_and_counts", taxlvls = c("LKT", "Species")){
 
+    setwd(opt$sampledir)
+
     #Obtain valid taxonomic table for samples
     #ensure compatibility with JAMS v < 2.0.0
     JAMStaxtablefiles <- list.files(path = opt$workingkrakendb, pattern = "\\.rd")
@@ -46,9 +48,11 @@ evaluate_LKTs <- function(opt = opt, contigsdata_name = "contigsdata", output_li
                 for (wantedtaxon in wantedtaxa){
                     curr_fn <- paste(wantedtaxon, "fasta", sep = ".")
                     curr_contigs_names <- bacterial_contigsdata[which(bacterial_contigsdata[ , taxlvl] == wantedtaxon), "Contig"]
-                    write_contigs_to_system(opt = opt, contig_names = curr_contigs_names, filename = file.path(curr_bin_output_folder, curr_fn))
+                    #test if length > 5000, else, don't bother to write to system, because CheckM will fail.
+                    if (sum(opt$contigsdata[curr_contigs_names, "Length"]) >= 5000){
+                        write_contigs_to_system(opt = opt, contig_names = curr_contigs_names, filename = file.path(curr_bin_output_folder, curr_fn))
+                    }
                 }
-
                 #Create a folder for checkM output and run checkm2
                 curr_checkM_output_folder <- file.path(curr_bin_output_folder, "CheckM_out")
                 #ensure there is no standing checkM output folder

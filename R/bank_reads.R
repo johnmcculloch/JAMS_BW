@@ -43,4 +43,6 @@ bank_reads <- function(opt = opt, maketarball = FALSE){
     #Execute banking commands
     sapply(readbankcmds, function (x) { system(x) } )
 
+    #Back to sample folder
+    setwd(opt$sampledir)
 }

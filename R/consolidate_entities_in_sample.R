@@ -8,6 +8,10 @@ consolidate_entities_in_sample <- function(opt = opt){
 
     flog.info("Consolidating entities in sample")
 
+    setwd(opt$sampledir)
+
+    opt$contigsdata$PPM <- round(((opt$contigsdata$NumBases / sum(opt$contigsdata$NumBases)) * 1E6), 0)
+
     Quality_levels_pecking_order <- c("HQ", "MHQ", "MQ", "LQ", "Contaminated")
 
     #Ensure contigsdata rownames
@@ -191,9 +195,11 @@ consolidate_entities_in_sample <- function(opt = opt){
                 for (wantedtaxon in wantedtaxa){
                     curr_fn <- paste(wantedtaxon, "fasta", sep = ".")
                     curr_contigs_names <- bacterial_contigsdata[which(bacterial_contigsdata[ , "ConsolidatedGenomeBin"] == wantedtaxon), "Contig"]
-                    write_contigs_to_system(opt = opt, contig_names = curr_contigs_names, filename = file.path(curr_bin_output_folder, curr_fn))
+                    #test if length > 5000, else, don't bother to write to system, because CheckM will fail.
+                    if (sum(opt$contigsdata[curr_contigs_names, "Length"]) >= 5000){
+                        write_contigs_to_system(opt = opt, contig_names = curr_contigs_names, filename = file.path(curr_bin_output_folder, curr_fn))
+                    }
                 }
-
                 #Create a folder for checkM output and run checkm2
                 curr_checkM_output_folder <- file.path(curr_bin_output_folder, "CheckM_out")
                 #ensure there is no standing checkM output folder
@@ -346,8 +352,7 @@ consolidate_entities_in_sample <- function(opt = opt){
 
     #Add consolidation information to featuredata
     opt$featuredata <- left_join(opt$featuredata, opt$contigsdata[ , c("Contig", "ConsolidatedGenomeBin")], by = "Contig")
+    opt$contigsdata$PPM <- NULL
 
     return(opt)
 }
-
-

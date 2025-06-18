@@ -50,7 +50,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         flog.info(paste("There are", length(fpfljams), "objects to expand."))
 
         decompress_jamsfile <- function (x){
-            untar(jamsfilesdfwant$FullPath[x], list = FALSE, exdir = jamstempfilespath, verbose = TRUE)
+            untar(jamsfilesdfwant$FullPath[x], list = FALSE, exdir = jamstempfilespath, verbose = FALSE)
         }
 
         if (multithread_decomp == TRUE){
@@ -68,7 +68,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         }
     }
 
-    fl <- list.files(path = jamstempfilespath, pattern = "\\.tsv$|\\.rds$")
+    fl <- list.files(path = jamstempfilespath, pattern = "\\.rds$")
     ## No longer load ucobias, TNF_contigs, TNF_features, taxa_16S_cons as these are not used.
     ##
     fl <- fl[grep("_ucobias\\.", fl, invert = TRUE)]
@@ -76,8 +76,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     fl <- fl[grep("_TNF_features\\.", fl, invert = TRUE)]
     fl <- fl[grep("_taxa_16S_cons\\.", fl, invert = TRUE)]
 
-    on <- gsub("*.tsv$", "", fl)
-    on <- gsub("*.rds$", "", on)
+    on <- gsub("*.rds$", "", fl)
     if (length(which(duplicated(on) == TRUE)) > 0){
         stop("There are duplicated object names. Were different versions of the same jams file loaded? Check files and try again. Aborting now.")
         q()
@@ -88,7 +87,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
 
     flog.info(paste("There are", length(fl), "objects to load."))
 
-    loadobj <- function(objfn = NULL, never_used_columns = c("AntiFam", "CDD", "Coils", "FunFam", "Gene3D", "PANTHER", "Phobius", "ProSitePatterns", "SFLD", "SignalP_EUK", "SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SMART", "SUPERFAMILY", "TIGRFAM", "MetaCyc")){
+    loadobj <- function(objfn = NULL, never_used_columns = c("AntiFam", "CDD", "Coils", "FunFam", "Gene3D", "PANTHER", "Phobius", "ProSitePatterns", "SFLD", "SignalP_EUK", "SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SMART", "TIGRFAM", "MetaCyc")){
         #decide whether it is a TSV or RDS file and load appropriately.
         if ((length(grep("\\.rds$", objfn)) > 0)){
             tryCatch((jamsdf <- readRDS(objfn)), error = function() { flog.warn(paste("Unable to read file", objfn)) } )
@@ -134,7 +133,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     names(list.data) <- on
     #Flush out any object that was not loaded properly
     empties <- sapply(1:length(on), function(x){ is.null(list.data[[on[x]]])})
-    if(sum(empties) > 0){
+    if (sum(empties) > 0){
         flog.warn(paste("Unable to load the following objects:", paste0(on[empties], collapse = ", ")))
     }
 
@@ -146,7 +145,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     prefixespresent <- unique(unname(prefixespresent))
     #minobjlist <- as.vector(sapply(c("projinfo", "contigsdata", "featuredata", "LKTdose", "featuredose"), function(x) { paste(prefixespresent, x, sep = "_") }))
     #Because of MetaPhlAnn
-    minobjlist <- as.vector(sapply(c("projinfo", "LKTdose"), function(x) { paste(prefixespresent, x, sep = "_") }))
+    minobjlist <- as.vector(sapply(c("projinfo", "abundances"), function(x) { paste(prefixespresent, x, sep = "_") }))
 
     if (!all(minobjlist %in% names(list.data))){
         missingobjects <- minobjlist[!minobjlist %in% names(list.data)]

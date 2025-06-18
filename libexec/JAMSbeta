@@ -328,19 +328,7 @@ if (length(Samples_missing) > 0){
     flog.warn(paste("MISSING:", paste0(Samples_missing, collapse = ", ")))
 }
 
-#If replacing metadata, check if they are the same samples.
-if (exists("pheno")){
-    if (any(c("excel_metadata", "phenotable_tsv") %in% opt$replaced)){
-        #Readjust metadata for replacement
-        adjustmetadata <- TRUE
-    } else {
-        #Keep metadata as is.
-        adjustmetadata <- FALSE
-    }
-} else {
-    #Adjust metadata for making experiments
-    adjustmetadata <- TRUE
-}
+adjustmetadata <- TRUE
 
 #Adjust metadata if required
 if (adjustmetadata == TRUE){
@@ -401,16 +389,6 @@ if (adjustmetadata == TRUE){
     }
 }
 
-
-#Export list.data to system and set it as NULL, to decrease RAM burden.
-#flog.info("Saving list.data.rda to system. Please be patient...")
-#list.data_fn <- file.path(opt$outdir, "list_data.rda")
-#if ("fastSave" %in% rownames(installed.packages())) {
-#    save.pigz(list.data, file = list.data_fn, envir = .GlobalEnv, n.cores = opt$threads)
-#} else {
-#    save(list.data, file = list.data_fn)
-#}
-
 pheno <- opt$phenotable
 phenolabels <- opt$phenolabels
 #Make a colour dictionary for plots
@@ -435,6 +413,13 @@ if (!exists("expvec")){
     names(projinfolist) <- Samples
     projinfodf <- bind_rows(projinfolist, .id = "id")
     colnames(projinfodf)[which(colnames(projinfodf) == "id")] <- "Sample"
+
+    JAMS_Kdb_Versions_detected <- unique(subset(projinfodf, Run_info == "JAMS_Kdb_Version")[]$Run_value)
+    #Warn if more than a one JAMS db was used.
+    if (length(JAMS_Kdb_Versions_detected) > 1){
+        flog.warn(paste("WARNING!!! Detected more than one JAMS-compatible Kraken database within jamsfiles used. \nDatabase versions found are:", paste0(JAMS_Kdb_Versions_detected, collapse = ", "), "\nThis is a bad idea and it is possible you might get spurious results. Please check your inputs and use jamsfiles generated using a single database version."))
+    }
+
     if ("Metaphlann" %in% subset(projinfodf, Run_info == "Process")[]$Run_value){
         flog.warn("JAMSfiles found contain MetaPhlAnn data so analysis will be restricted to taxonomy only.")
         onlyanalyses <- "LKT"
@@ -457,41 +442,8 @@ if (!exists("expvec")){
 
     expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data, onlyanalyses = onlyanalyses, stratify_functions_by_taxon = opt$stratify_functions_by_taxon, cdict = cdict)
 
-} else {
-    #Expvec exists. Either do nothing, or replace the metadata.
-    flog.info(paste("Found a list of SummarizedExperiment experiments for the following analyses:", paste0(names(expvec), collapse = ", ")))
-    #Check structure and integrity of experiments and see if they match the metadata.
-    Samples_have <- rownames(pData(expvec[["LKT"]]))
-    pheno <- pheno[(rownames(pheno)[rownames(pheno) %in% Samples_have]), ]
-
-    #Replace metadata in expvec if required
-    if (any(c("excel_metadata", "phenotable_tsv") %in% opt$replaced)) {
-        flog.info("Replacing metadata in current metagenomeSeq experiments.")
-
-        for (e in 1:length(expvec)){
-            analysis <- names(expvec)[e]
-            oldmetadata <- pData(expvec[[e]])
-            wantedsamples <- rownames(pheno)
-            #If there is discrepancy between exising metadata in expvec and metadata available, use intersection
-            Samples_intersect <- intersect(oldmetadata[, ptsampcol], wantedsamples)
-            pheno2 <- pheno[Samples_intersect, ]
-            cts2 <- MRcounts(expvec[[e]])
-            cts2 <- cts2[ , Samples_intersect]
-            #Protect against rows with empty data
-            rowsToKeep <- names(which(rowSums(cts2) > 0 & rownames(cts2) != ""))
-            cts2 <- cts2[rowsToKeep, ]
-            ft2 <- fData(expvec[[e]])
-            ft2 <- ft2[rowsToKeep, ]
-
-            ##Create metagenomeSeq MRexperiment
-            phenotypeData <- AnnotatedDataFrame(pheno2)
-            ttdata <- AnnotatedDataFrame(ft2)
-            mgseq <- newMRexperiment(cts2, phenoData = phenotypeData, featureData = ttdata)
-            attr(mgseq, "analysis") <- analysis
-            expvec[[e]] <- mgseq
-        }
-    } #End conditional for replacing metadata
 }
+
 
 #Get rid of list.data to save RAM
 rm(list.data)
@@ -518,13 +470,6 @@ if (opt$export_tables == TRUE){
 #Save expvec as RDS object
 flog.info("Saving list of SummarizedExperiment objects as .rds file")
 saveRDS(expvec, file = paste(paste(project, "Expvec_list_of_SummarizedExperiment_objects", sep = "_"), "rds", sep = "."))
-
-#Determine reasonable cutoff level
-if (any(c("metatranscriptome", "isolate") %in% pheno$JAMS_Run_type)){
-    applyfilters <- "none"
-} else {
-    applyfilters <- "light"
-}
 
 #Save image
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
