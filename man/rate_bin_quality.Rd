@@ -4,13 +4,7 @@
 \alias{rate_bin_quality}
 \title{rate_bin_quality(completeness_df = NULL, HQ_completeness_threshold = 90, HQ_contamination_threshold = 5, MHQ_completeness_threshold = 70, MHQ_contamination_threshold = 10, MQ_completeness_threshold = 50, MQ_contamination_threshold = 10, LQ_completeness_threshold = 0, LQ_contamination_threshold = 10, High_contamination_threshold = 20)
 From the CheckM2 paper, https://doi.org/10.1038/s41592-023-01940-w
-MIMAG quality bins, modified by McCulloch in JAMS2, adding Medium-High quality bins.
-MIMAGqual   Completeness    Contamination
-HQ          >90%            < 5%
-MHQ         70-90%	        < 10% #Category added by JAMS
-MQ          50-70%	        < 10%
-LQ          < 50%           < 10%
-High_contam -                >20%}
+MIMAG quality bins, modified by McCulloch in JAMS2, adding Medium-High quality bins.}
 \usage{
 rate_bin_quality(
   completeness_df = NULL,
