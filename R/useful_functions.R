@@ -761,7 +761,7 @@ hm_fontsize_computer <- function(mat_rownames = NULL, mat_colnames = NULL, upper
 
 #' split_featname(featname = NULL, thresh_featname_split = 40)
 #'
-#' For a feature name (or any string, for that matter) will add a carriage return (\n) to the middle of the string if it exceeds the threshold number of characters. This is used in the heatmap function.
+#' For a feature name (or any string, for that matter) will add a carriage return to the middle of the string if it exceeds the threshold number of characters. This is used in the heatmap function.
 #' @export
 
 split_featname <- function(featname = NULL, thresh_featname_split = 40){
@@ -828,4 +828,32 @@ print_jams_ASCII <- function (palette = NULL){
     ASCII_lines <- c(sprintf("\033[38;5;%dm         ██╗\033[38;5;%dm     █████╗\033[38;5;%dm     ███╗   ███╗\033[38;5;%dm     ███████╗\033[0m", rowvec[1], rowvec[1], rowvec[1], rowvec[1]), sprintf("\033[38;5;%dm        ██║\033[38;5;%dm    ██╔══██╗\033[38;5;%dm    ████╗ ████║\033[38;5;%dm    ██╔════╝\033[0m", rowvec[2], rowvec[2], rowvec[2], rowvec[2]), sprintf("\033[38;5;%dm       ██║\033[38;5;%dm    ███████║\033[38;5;%dm    ██╔████╔██║\033[38;5;%dm    ███████╗\033[0m", rowvec[3], rowvec[3], rowvec[3], rowvec[3]), sprintf("\033[38;5;%dm  ██   ██║\033[38;5;%dm    ██╔══██║\033[38;5;%dm    ██║╚██╔╝██║\033[38;5;%dm    ╚════██║\033[0m", rowvec[4], rowvec[4], rowvec[4], rowvec[4]),sprintf("\033[38;5;%dm ╚█████╔╝\033[38;5;%dm    ██║  ██║\033[38;5;%dm    ██║ ╚═╝ ██║\033[38;5;%dm    ███████║\033[0m", rowvec[5], rowvec[5], rowvec[5], rowvec[5]), sprintf("\033[38;5;%dm  ╚════╝ \033[38;5;%dm   ╚═╝  ╚═╝\033[38;5;%dm    ╚═╝     ╚═╝\033[38;5;%dm    ╚══════╝\033[0m", rowvec[6], rowvec[6], rowvec[6], rowvec[6]), paste("Microbial genomics analysis software.", paste("Version", packageVersion("JAMS"))))
 
     cat(paste0(ASCII_lines, collapse = "\n"), "\n")
+}
+
+
+
+#' extract_NCBI_taxid_from_featname(Taxon = NULL, NCBI_taxonomic_rank = NULL)
+#'
+#' Securely extracts the NCBI taxid from a JAMS2-style taxonomic feature name
+#' @export
+
+extract_NCBI_taxid_from_featname <- function(Taxon = NULL){
+
+    #MetaBAT bin, so determine whether it is one which contains sample name (JAMSbeta style) or not (JAMSalpha style).
+    #If LKT or cLKT, this will also work
+    split_elements <- unlist(strsplit(Taxon, split = "_"))
+    #Get earliest position matching a taxonomic tag
+    taxtag_pos <- which(split_elements %in% c("d", "k", "p", "c", "o", "f", "g", "s", "is1"))[1]
+    NCBI_taxid <- split_elements[(taxtag_pos + 2)]
+
+    #If not found, then there is no tag, so convert NA to taxid 0 (root)
+    if (is.na(NCBI_taxid)){
+        NCBI_taxid <- "0"
+    }
+    #If is not numeric, like "missing", or "Unclassified", return "0"
+    if (!can_be_made_numeric(NCBI_taxid)){
+         NCBI_taxid <- "0"
+    }
+
+    return(NCBI_taxid)
 }

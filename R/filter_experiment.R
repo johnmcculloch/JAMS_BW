@@ -27,6 +27,12 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
             totbases <- metadata(ExpObj)$TotalBasesSequencedinAnalysis
             #totbases <- t(data.frame(NumBases = colSums(rawcts)))
         }
+        JAMSversion <- assays(ExpObj)$version
+        if (is.null(JAMSversion)){
+            JAMS2_SEobj <- TRUE
+        } else {
+            JAMS2_SEobj <- FALSE
+        }
     } else {
         stop("Object must be a SummarizedExperiment object.")
     }
@@ -152,7 +158,12 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
         if(length(GenomeCompletenessCutoff) != 2){
             stop("Please specify the minimum Genome Completeness in what percentage of the samples you want with a numerical vector of size two. For example, GenomeCompletenessCutoff = c(10, 5) would discard features whose genome completeness is smaller than 10% from contigs in at least 5% of samples.")
         }
-        minGenomeCompleteness <- (GenomeCompletenessCutoff[1] / 100)
+        if (JAMS2_SEobj) {
+            minGenomeCompleteness <- GenomeCompletenessCutoff[1]
+        } else {
+            minGenomeCompleteness <- (GenomeCompletenessCutoff[1] / 100)
+        }
+
         sampcutoffpct <- min(GenomeCompletenessCutoff[2], 100)
         GenomeCompletenessmatrix <- assays(ExpObj)[["GenomeCompleteness"]]
 
@@ -213,204 +224,3 @@ filter_experiment <- function(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff =
 
     return(ExpObj)
 }
-
-
-#' ExpObjVetting(ExpObj = NULL)
-#'
-#' Performs vetting of a SummarizedExperiment object for use in several functions
-#' @export
-
-ExpObjVetting <- function(ExpObj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, glomby = NULL, variables_to_fix = NULL, class_to_ignore = NULL){
-
-        #Get appropriate object to work with
-        if (as.character(class(ExpObj)[1]) != "SummarizedExperiment"){
-            stop("This function can only take a SummarizedExperiment object as input.")
-        }
-        obj <- ExpObj
-
-        if (!(is.null(glomby))){
-            obj <- agglomerate_features(ExpObj = obj, glomby = glomby)
-        }
-
-        #Exclude samples and features if specified
-        if (!(is.null(samplesToKeep))){
-            samplesToKeep <- samplesToKeep[samplesToKeep %in% colnames(obj)]
-            obj <- obj[, samplesToKeep]
-        }
-
-        if (!(is.null(featuresToKeep))){
-            featuresToKeep <- featuresToKeep[featuresToKeep %in% rownames(obj)]
-            obj <- obj[featuresToKeep, ]
-        }
-
-        obj <- suppressWarnings(filter_sample_by_class_to_ignore(SEobj = obj, variables = variables_to_fix, class_to_ignore = class_to_ignore))
-
-    return(obj)
-}
-
-
-#' filter_sample_by_class_to_ignore(SEobj = NULL, variables = NULL, class_to_ignore = NULL)
-#'
-#' Filters a SummarizedExperiment object by several criteria.
-#' @export
-
-filter_sample_by_class_to_ignore <- function(SEobj = NULL, variables = NULL, class_to_ignore = NULL){
-
-    ptb <- as.data.frame(colData(SEobj))
-    allmetadata <- metadata(SEobj)
-    Samples <- rownames(ptb)
-
-    if (!is.null(class_to_ignore)){
-        #Start off with all of them
-        valid_samples <- rownames(ptb)
-        variables <- colnames(ptb)[colnames(ptb) %in% variables]
-        #Keep omitting samples which do not fit the criteria, as long as variables are contained in current metadata
-        if (all(c((!is.null(variables)), (length(variables) > 0)))){
-            for (v in 1:length(variables)){
-                valid_samples <-  valid_samples[valid_samples %in% (rownames(ptb)[!(ptb[ , variables[v]] %in% class_to_ignore)])]
-            }
-        }
-        if (length(valid_samples) < 1){
-            flog.warn("There are no samples matching the criteria. Returning original object with all samples")
-        } else {
-            omitted_samples <- rownames(ptb)[!(rownames(ptb) %in% valid_samples)]
-            flog.info(paste("A total of", length(omitted_samples), "samples were omitted for containing", paste0(class_to_ignore, collapse = ", "), "within metadata variables", paste0(variables, collapse = ", ")))
-            SEobj <- SEobj[ , valid_samples]
-            ptb <- as.data.frame(colData(SEobj))
-        }
-    }
-
-    #Fix categories of metadata within Experiment object
-    for (colm in 1:ncol(ptb)){
-        numtest <- length(which(is.na(as.numeric(ptb[, colm])) == TRUE))
-        if (numtest == 0){
-            ptb[, colm] <- as.numeric(ptb[, colm])
-        }
-    }
-
-    ExpObj <- SummarizedExperiment(assays = assays(SEobj), rowData = rowData(SEobj), colData = ptb)
-    metadata(ExpObj) <- allmetadata
-
-    return(ExpObj)
-}
-
-
-#' declare_filtering_presets(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL)
-#'
-#' Performs vetting of a SummarizedExperiment object for use in several functions
-#' @export
-declare_filtering_presets <- function(analysis = NULL, is16S = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, minabscorrcoeff = NULL){
-
-    if ((analysis != "LKT") && (!(is.null(GenomeCompletenessCutoff)))){
-        warning("Genome completeness only makes sense for taxa. Please choose a taxonomic (non functional) analysis.")
-        GenomeCompletenessCutoff <- NULL
-    }
-
-    presetlist <- list()
-
-    if (!is.null(applyfilters)){
-        if (applyfilters == "stringent"){
-            if (analysis == "LKT"){
-                presetlist$featcutoff <- c(2000, 15)
-                presetlist$GenomeCompletenessCutoff <- c(30, 10)
-                presetlist$PctFromCtgscutoff <- c(70, 50)
-                presetlist$minl2fc <- 2
-            } else {
-                presetlist$featcutoff <- c(50, 15)
-                presetlist$minl2fc <- 2.5
-            }
-            presetlist$minabscorrcoeff <- 0.8
-        } else if (applyfilters == "moderate"){
-            if (analysis == "LKT"){
-                presetlist$featcutoff <- c(250, 15)
-                presetlist$GenomeCompletenessCutoff <- c(10, 5)
-                presetlist$PctFromCtgscutoff <- c(70, 50)
-                presetlist$minl2fc <- 1
-            } else {
-                presetlist$featcutoff <- c(5, 5)
-                presetlist$minl2fc <- 1
-            }
-            presetlist$minabscorrcoeff <- 0.6
-        } else if (applyfilters == "light"){
-            if (analysis == "LKT"){
-                presetlist$featcutoff <- c(50, 5)
-                presetlist$GenomeCompletenessCutoff <- c(5, 5)
-                presetlist$PctFromCtgscutoff <- c(70, 50)
-                presetlist$minl2fc <- 1
-            } else {
-                presetlist$featcutoff <- c(0, 0)
-                presetlist$minl2fc <- 1
-            }
-            presetlist$minabscorrcoeff <- 0.4
-        }
-    }
-
-    #Replace with any values explicitly set by the user
-    argstoset <- c("featcutoff", "GenomeCompletenessCutoff", "PctFromCtgscutoff", "maxl2fc", "minl2fc", "minabscorrcoeff")[!unlist(lapply(list(featcutoff, GenomeCompletenessCutoff, PctFromCtgscutoff, maxl2fc, minl2fc, minabscorrcoeff), is.null))]
-
-    if (length(argstoset) > 0){
-        for (ats in argstoset){
-            presetlist[[ats]] <- get(ats)
-        }
-    }
-
-    #Generate a filtration message
-    presetlist$filtermsg <- NULL
-    #Discard features which do not match certain criteria
-    if (!(is.null(presetlist$featcutoff))){
-        presetlist$thresholdPPM <- presetlist$featcutoff[1]
-        presetlist$sampcutoffpct <- min(presetlist$featcutoff[2], 100)
-        presetlist$filtermsg <- paste("Feature must be >", presetlist$thresholdPPM, "PPM in at least ", presetlist$sampcutoffpct, "% of samples", sep = "")
-    } else {
-        presetlist$filtermsg <- NULL
-        presetlist$featcutoff <- c(0, 0)
-    }
-
-    if (!(is.null(presetlist$PctFromCtgscutoff))){
-        #presetlist$thresholdPctFromCtgs <- presetlist$PctFromCtgscutoff[1]
-        #presetlist$sampcutoffpctPctFromCtgs <- min(presetlist$PctFromCtgscutoff[2], 100)
-        #presetlist$filtermsg <- paste(presetlist$filtermsg, (paste("Taxonomy information must come from >", presetlist$thresholdPctFromCtgs, "% contigs in at least ", presetlist$sampcutoffpctPctFromCtgs, "% of samples", sep = "")), sep = "\n")
-    }
-
-    if (!(is.null(presetlist$GenomeCompletenessCutoff))){
-        if (is16S != FALSE){
-            presetlist$thresholdGenomeCompleteness <- presetlist$GenomeCompletenessCutoff[1]
-            presetlist$sampcutoffpctGenomeCompleteness <- min(presetlist$GenomeCompletenessCutoff[2], 100)
-            presetlist$filtermsg <- paste(presetlist$filtermsg, (paste("Taxon genome completeness must be >", presetlist$thresholdGenomeCompleteness, "% in at least ", presetlist$sampcutoffpctGenomeCompleteness, "% of samples", sep = "")), sep = "\n")
-        }
-    }
-
-    return(presetlist)
-}
-
-#' filter_correlations(corrmat = NULL, mincorrelcoeff = NULL)
-#' Given a pairwise correlation matrix, eliminate features which do not present an absolute correlation coefficient smaller than mincorrelcoeff with all other features other than itself.
-#'
-#' @export
-filter_correlations <- function(corrmat = NULL, mincorrelcoeff = NULL){
-
-     if(nrow(corrmat) != ncol(corrmat)){
-         stop("Correlation matrix must have equal numbers of rows and columns.")
-     }
-
-     featsIwant <- NULL
-
-     for (rw in 1:nrow(corrmat)){
-         featint <- rownames(corrmat)[rw]
-         #print(paste("Checking:", featint))
-         correlations <- corrmat[which(rownames(corrmat) != featint), featint]
-
-         if(max(abs(correlations)) >= mincorrelcoeff){
-             feat <- featint
-         } else {
-             feat <- NULL
-         }
-
-         featsIwant <- append(featsIwant, feat)
-
-     }
-
-     corrmat <- corrmat[featsIwant, featsIwant]
-
-     return(corrmat)
- }

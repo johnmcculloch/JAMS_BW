@@ -217,8 +217,8 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
         names(aggregate_df_list) <- names(covdflist)
         colnames(aggregate_df_list$contigcoverage) <- c("Contig", "NumBases")
         opt$contigsdata <- left_join(opt$contigsdata, as.data.frame(aggregate_df_list$contigcoverage), by = "Contig")
-        opt$featuredata <- left_join(opt$featuredata, as.data.frame(aggregate_df_list$featuredep), by = "Feature")
         opt$contigsdata$NumBases <- as.numeric(opt$contigsdata$NumBases)
+        opt$featuredata <- left_join(opt$featuredata, as.data.frame(aggregate_df_list$featuredep), by = "Feature")
         opt$featuredata$NumBases <- as.numeric(opt$featuredata$NumBases)
 
         #Consolidate LKT dose
@@ -256,6 +256,10 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
         tmpalldata <- opt$contigsdata
         fromCtgPct <- data.frame(LKT = unique(tmpalldata$LKT), PctFromCtg = rep(100.00, length(unique(tmpalldata$LKT))))
     } #End conditional get doses from short read alignment
+
+    #Enforce correct row names to ensure downstream efficiency
+    rownames(opt$contigsdata) <- opt$contigsdata$Contig 
+    rownames(opt$featuredata) <- opt$featuredata$Feature 
 
     return(opt)
 }

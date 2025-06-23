@@ -55,5 +55,7 @@ prepare_contigs_for_JAMS <- function(opt = NULL, fastafile = NULL, contig_minlen
         opt$contigsdata[ , colm] <- as.numeric(opt$contigsdata[ , colm])
     }
 
+    rownames(opt$contigsdata) <- opt$contigsdata$Contig
+
     return(opt)
 }

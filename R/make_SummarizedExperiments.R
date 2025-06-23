@@ -1,9 +1,9 @@
-#' make_SummarizedExperiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8)
+#' make_SummarizedExperiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8)
 #'
 #' Makes a SummarizedExperiment object for every analysis that is possible to make given loaded jams files in list.data.
 #' @export
 
-make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, restricttoLKTs = NULL, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8){
+make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8){
 
     require(SummarizedExperiment)
     require(Matrix)
@@ -71,7 +71,6 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         } else {
             possibleanalyses <- onlyanalyses
         }
-
     }
 
     #Add colour table to expvec, if passed
@@ -110,15 +109,15 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         LKTdoses <- lapply(Samples, function (x) { list.data[[paste(x, "abundances", sep = "_")]]$taxonomic[[taxonomic_space]] } )
         names(LKTdoses) <- Samples
 
-        LKTdosesall <- bind_rows(LKTdoses, .id = "id")
-        colnames(LKTdosesall)[which(colnames(LKTdosesall) == "id")] <- "Sample"
-
-        #De-duplicate features with the same name within the same sample #WILL REVIEW THIS ALGORITHM LATER
-        LKTdosesall$SampFeat <- paste(LKTdosesall$Sample, LKTdosesall[ , taxonomic_space], sep = "§")
-        dupes <- sort(LKTdosesall$SampFeat[duplicated(LKTdosesall$SampFeat)])
-        for (dupe in dupes){
-            LKTdosesall[which(LKTdosesall$SampFeat == dupe), taxonomic_space] <- make.unique(LKTdosesall[which(LKTdosesall$SampFeat == dupe), taxonomic_space])
+        #To avoid duplicated names of MB2 bins across samples, paste Sample name to these bins. This will ensure there are no two different entities with the same SGB name.
+        #Sorry about the for loop, but it is safer like so.
+        for (SN in names(LKTdoses)){
+            LKTdoses[[SN]][grep("^MB2__", LKTdoses[[SN]][ , taxonomic_space]), taxonomic_space] <- sapply(grep("^MB2__", LKTdoses[[SN]][ , taxonomic_space]), function (x) { gsub("^MB2__", paste0("MB2__", SN , "__"), LKTdoses[[SN]][x , taxonomic_space]) })
+            #Make sure there are no leftover duplicates.
+            LKTdoses[[SN]][ , taxonomic_space] <- make.unique(LKTdoses[[SN]][ , taxonomic_space])
         }
+
+        LKTdosesall <- bind_rows(LKTdoses, .id = "Sample")
 
         #Make counts table
         LKTallcounts <- LKTdosesall[, c("Sample", taxonomic_space, "NumBases")]
@@ -132,7 +131,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         featureorder <- rownames(cts)
 
         #Make tax table
-        taxlvlspresent <- colnames(LKTdosesall)[colnames(LKTdosesall) %in% c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT", taxonomic_space, "RefScore")]
+        taxlvlspresent <- colnames(LKTdosesall)[colnames(LKTdosesall) %in% c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT", taxonomic_space, "NCBI_taxonomic_rank", "RefScore")]
 
         tt <- LKTdosesall[ , taxlvlspresent]
         tt <- tt[!(duplicated(tt)), ]
@@ -184,6 +183,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
         metadata(SEobj)$TotalBasesSequencedinAnalysis <- TotalBasesSequenced #LKT is the special case in which all bases sequenced are for the analysis
         metadata(SEobj)$analysis <- taxonomic_space
+        metadata(SEobj)$version <- opt$verstr
         if (!is.null(phenolabels)){
             metadata(SEobj)$phenolabels <- phenolabels
         }
@@ -192,13 +192,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             metadata(SEobj)$ctable <- ctable
         }
 
-        if (is.null(restricttoLKTs)){
-            expvec[[e]] <- SEobj
-            names(expvec)[e] <- taxonomic_space
-            e <- e + 1
-            #Clean memory up
-            gc()
-        }
+        expvec[[e]] <- SEobj
+        names(expvec)[e] <- taxonomic_space
+        e <- e + 1
+        #Clean memory up
+        gc()
     }
 
     if (!is.null(onlyanalyses)){
@@ -264,10 +262,16 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
 
     } else {
 
+        flog.info("Processing functional (non-taxonomic) data.")
+
         featuredoses <- lapply(Samples, function (x) { list.data[[paste(x, "abundances", sep = "_")]]$functional[["Contig_LKT"]] } )
         names(featuredoses) <- Samples
+        #Prune featuredoses to have only relevant analyses as to not waste RAM
+        for (samp in names(featuredoses)){
+            featuredoses[[samp]] <- featuredoses[[samp]][which(featuredoses[[samp]]$Analysis %in% possibleanalyses), c("Analysis", "Accession", "Description", "NumBases")]
+        }
         featuredosesall <- bind_rows(featuredoses, .id = "Sample")
-        featurecountsall <- featuredoses[ , c("Sample", "Analysis", "Accession", "Description", "NumBases")]
+        featurecountsall <- featuredosesall[ , c("Sample", "Analysis", "Accession", "Description", "NumBases")]
         rm(featuredoses)
         gc()
 
@@ -276,6 +280,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
     #Gather all gene information
     featuredata <- list.data[paste(Samples, "featuredata", sep = "_")]
     names(featuredata) <- Samples
+    #To avoid duplicated names of MB2 bins across samples, paste Sample name to these bins. This will ensure there are no two different entities with the same SGB name.
+    #Sorry about the for loop, but it is safer like so.
+    for (SN in names(featuredata)){
+        featuredata[[SN]][grep("^MB2__", featuredata[[SN]][ , taxonomic_space]), taxonomic_space] <- sapply(grep("^MB2__", featuredata[[SN]][ , taxonomic_space]), function (x) { gsub("^MB2__", paste0("MB2__", SN , "__"), featuredata[[SN]][x , taxonomic_space]) })
+    }
     featuredataall <- bind_rows(featuredata, .id = "Sample")
     rm(featuredata)
     gc()
@@ -435,6 +444,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
         metadata(SEobj)$TotalBasesSequencedinAnalysis <- TotalBasesSequencedinAnalysis
         metadata(SEobj)$analysis <- analysis
+        metadata(SEobj)$version <- opt$verstr
         if (!is.null(phenolabels)){
             metadata(SEobj)$phenolabels <- phenolabels
         }

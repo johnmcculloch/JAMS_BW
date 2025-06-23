@@ -102,6 +102,9 @@
 
 plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "exploratory", samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = TRUE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, row_order = NULL, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, show_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
 
+    #Account for JAMS2 spaces
+    taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin")
+
     #Hardwire the minimum number of samples for a side by side secondary heatmap. This may be in a later version added as a function argument.
     threshold_for_double_plot <- 7
 
@@ -301,7 +304,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
             #Rename rows to include description if not taxonomic data or MetaCyc which has enormous descriptions
             #if (!(analysis %in% c("LKT", "MetaCyc"))){
-            if (analysis  != "LKT"){
+            if (!analysis %in% taxonomic_spaces){
                 feattable <- rowData(currobj)
                 feattable$Feature <- paste(feattable$Accession, feattable$Description, sep = "-")
                 rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]
@@ -718,7 +721,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     fontsizey <- fontsizexy[2]
 
                     #Fix row names, add a carriage return (\n) if over 40 characters and not LKT
-                    if (analysis != "LKT"){
+                    if (!analysis %in% taxonomic_spaces){
                         rownames(mathm) <- sapply(rownames(mathm), function(x) { split_featname(featname = x, thresh_featname_split = 60) } )
                     }
 
@@ -786,7 +789,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         } else {
                             #This is the colour spectrum we are aiming to span
                             PctHmColours <- c("blue4", "blue", "slategray1", "khaki", "orange", "tomato", "red", "magenta2", "magenta4")
-                            if (analysis == "LKT"){
+                            if (analysis %in% taxonomic_spaces){
                                 PctBreakPts <- c(0.0001, 0.001, 0.1, 1, 2.5, 5, 10, 50, 100)
                                 RelabundBreakPts <- signif(PctBreakPts, digits = 3)
                                 relabundscalename <- "Relative Abundance (%)"
@@ -873,7 +876,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     ht1fs <- 8
                     hm1tit <- plotit
 
-                    if (all(c(show_GenomeCompleteness, analysis == "LKT"))) {
+                    if (all(c(show_GenomeCompleteness, analysis %in% taxonomic_spaces))) {
                         secondaryheatmap <- "GenomeCompleteness"
                     }
 
@@ -881,7 +884,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         if ("GenomeCompleteness" %in% names(assays(currobj))){
                             gchmdf <- genomecompletenessdf[rownames(mathm), colnames(mathm)]
                             gchmdf <- as.matrix(gchmdf)
-                            gchmdf <- gchmdf * 100
+                            #gchmdf <- gchmdf * 100
                             #Cap genome completeness to 400% max, to preserve scale across heatmaps
                             gchmdf[which(gchmdf[] > 400)] <- 400
                             if (ncol(mathm) < threshold_for_double_plot){
@@ -973,7 +976,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     }
 
                     #Plot Gram and phyla, if applicable
-                    if (all(c(showGram, (analysisname %in% c("LKT", "Species", "Genus", "Family", "Order", "Class"))))){
+                    if (all(c(showGram, (analysisname %in% c(taxonomic_spaces, "Species", "Genus", "Family", "Order", "Class"))))){
                         data(Gram)#only for colours
                         tt <- as.data.frame(rowData(currobj))
                         #Make backwards compatible
@@ -1011,11 +1014,11 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         column_order <- NULL
                     }
 
-                    if (all(c(no_underscores, (analysis == "LKT")))) {
+                    if (all(c(no_underscores, (analysis %in% taxonomic_spaces)))) {
                         #rownames(mathm) <- gsub("__", " ", rownames(mathm))
                         rownames(mathm) <- gsub("_", " ", rownames(mathm))
                     }
-                    if (analysis == "LKT"){
+                    if (analysis %in% taxonomic_spaces){
                         hmfontface <- "italic"
                     } else {
                         hmfontface <- "plain"

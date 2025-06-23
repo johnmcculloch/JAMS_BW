@@ -98,6 +98,7 @@ process_MAGs <- function(opt = NULL){
 
     #Add MB2 information to featuredata
     opt$featuredata <- left_join(opt$featuredata, opt$contigsdata[ , c("Contig", "MB2bin")], by = "Contig")
+    rownames(opt$featuredata) <- opt$featuredata$Feature
 
     #Back to where we were
     setwd(opt$sampledir)

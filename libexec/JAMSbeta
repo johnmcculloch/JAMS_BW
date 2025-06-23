@@ -472,6 +472,6 @@ flog.info("Saving list of SummarizedExperiment objects as .rds file")
 saveRDS(expvec, file = paste(paste(project, "Expvec_list_of_SummarizedExperiment_objects", sep = "_"), "rds", sep = "."))
 
 #Save image
-IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
+#IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 flog.info("Thank you for using JAMSbeta")
 q()

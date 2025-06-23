@@ -46,7 +46,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
 
     #If there are .jams files, expand them.
     if (length(fpfljams) > 0){
-        flog.info("Please be patient. Depending on how much data you have this might take a while.")
+        #flog.info("Please be patient. Depending on how much data you have this might take a while.")
         flog.info(paste("There are", length(fpfljams), "objects to expand."))
 
         decompress_jamsfile <- function (x){

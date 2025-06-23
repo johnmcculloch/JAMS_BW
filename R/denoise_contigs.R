@@ -56,6 +56,7 @@ denoise_contigs <- function(opt = NULL, small_large_length_threshold = 2000) {
 
     #Reconstruct opt$contigsdata
     opt$contigsdata <- rbind(Surviving_contigs_df, Dark_matter_contigs_df, Unvetted_contigs_df)
+    rownames(opt$contigsdata) <- opt$contigsdata$Contig
 
     return(opt)
 

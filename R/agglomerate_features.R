@@ -18,13 +18,15 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
 
     #Find out what kind of an object it is
     analysis <- metadata(ExpObj)$analysis
-    pheno_original <- colData(ExpObj)
+    if (analysis %in% c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin")){
+        JAMS2TaxonomicObj <- TRUE
+    } else {
+        JAMS2TaxonomicObj <- FALSE
+    }
 
-    #Get classes for novel features
-    glomby_feats <- unique(ftt[ , glomby])
-    #Get a novel feature table
-    glom_ftt <- ftt[(!duplicated(ftt[, glomby])), 1:(which(colnames(ftt) == glomby)), drop = FALSE]
-    rownames(glom_ftt) <- glom_ftt[, glomby]
+    pheno_original <- colData(ExpObj)
+    taxonomic_levels <- c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
+    terminal_taxonomic_levels <- c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin")
 
     #Aggregate counts by summing
     cts <- as.data.frame(assays(ExpObj)$BaseCounts)
@@ -38,7 +40,6 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
     featureorder <- rownames(glom_cts)
     sampleorder <- rownames(pheno_original)
     #Check everything is in the same order
-    glom_ftt <- glom_ftt[featureorder, ]
     glom_cts <- glom_cts[, sampleorder]
 
     if ("GenomeCompleteness" %in% as.character(names(assays(ExpObj)))){
@@ -56,25 +57,31 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
         gcdf <- NULL
     }
 
-    if ("PctFromCtgs" %in% as.character(names(assays(ExpObj)))){
-        #Aggregate counts by obtaining max value
-        pfcdf <- as.data.frame(assays(ExpObj)$PctFromCtgs)
-        pfcdf$Feats <- rownames(pfcdf)
-        feats2glomby_feats <- data.frame(Feats = rownames(ftt), Glomby_feats = as.character(ftt[ , glomby]), stringsAsFactors = FALSE)
-        pfcdf <- left_join(pfcdf, feats2glomby_feats, by = "Feats")
-        pfcdf$Feats <- NULL
-        pfcdf <- aggregate(. ~ Glomby_feats, data = pfcdf, FUN = max)
-        rownames(pfcdf) <- pfcdf$Glomby_feats
-        pfcdf$Glomby_feats <- NULL
-        pfcdf <- pfcdf[featureorder, sampleorder]
+    #Iron out the feature table
+    #Determine which version of JAMS the SEobj was made by, ensure backwards compatibility.
+    if (JAMS2TaxonomicObj){
+        #Get a novel feature table
+        glom_ftt <- ftt
+        if (glomby %in% taxonomic_levels){
+            wanted_taxids <- sapply(rownames(glom_cts), function (x) {extract_NCBI_taxid_from_featname(Taxon = x)} )
+            #Remake ftt from JAMStaxtable
+            data(JAMStaxtable)
+            glom_ftt <- JAMStaxtable[wanted_taxids, ]
+            rownames(glom_ftt) <- rownames(glom_cts)
+        }
     } else {
-        pfcdf <- NULL
+        #treat as before
+        #Get classes for novel features
+        glomby_feats <- unique(ftt[ , glomby])
+        #Get a novel feature table
+        glom_ftt <- ftt[(!duplicated(ftt[, glomby])), 1:(which(colnames(ftt) == glomby)), drop = FALSE]
+        rownames(glom_ftt) <- glom_ftt[, glomby]
     }
 
     #Rebuild the SummarizedExperiment object
-    assays <- list(glom_cts, pfcdf, gcdf)
+    assays <- list(glom_cts, gcdf)
     assays <- assays[sapply(1:length(assays), function (x) { !is.null(assays[[x]]) })]
-    names(assays) <- c("BaseCounts", "PctFromCtgs", "GenomeCompleteness")[1:length(assays)]
+    names(assays) <- c("BaseCounts", "GenomeCompleteness")[1:length(assays)]
 
     glomExpObj <- SummarizedExperiment(assays = assays, rowData = glom_ftt, colData = pheno_original)
     metadata(glomExpObj) <- metadata(ExpObj)

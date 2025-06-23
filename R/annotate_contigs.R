@@ -48,6 +48,10 @@ annotate_contigs <- function(opt = NULL){
     #Standardise column name to new taxonomic_space annotation
     colnames(opt$featuredata)[which(colnames(opt$featuredata) == "LKT")] <- "Contig_LKT"
 
+    #Enforce correct row names to ensure downstream efficiency
+    rownames(opt$contigsdata) <- opt$contigsdata$Contig 
+    rownames(opt$featuredata) <- opt$featuredata$Feature 
+
     #Bank annotation files to project directory
     if (opt$workdir != opt$sampledir){
         flog.info("Banking annotation to sample directory.")
