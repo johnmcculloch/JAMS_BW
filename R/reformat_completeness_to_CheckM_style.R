@@ -10,7 +10,7 @@ reformat_completeness_to_CheckM_style <- function(completeness_df = NULL){
         if (!is.na(completeness_df[rn, "Completeness"])){
             if (completeness_df[rn, "Completeness"] > 100){
                 #Cap to 100 and put the remainder in contamination
-                completeness_df[rn, "Contamination"] <- completeness_df[rn, "Completeness"] - 100
+                completeness_df[rn, "Contamination"] <-  completeness_df[rn, "Contamination"] + (completeness_df[rn, "Completeness"] - 100)
                 completeness_df[rn, "Completeness"] <- 100
             } else {
                 #No contamination, so change NA to 0, if "Contamination" is NA
