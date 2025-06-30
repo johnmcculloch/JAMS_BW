@@ -127,13 +127,6 @@ evaluate_LKTs <- function(opt = opt, contigsdata_name = "contigsdata", output_li
             rownames(taxonomic_completeness) <- taxonomic_completeness[ , taxlvl]
             #Compute estimated genome completeness for taxa without checkm available
             if ("Percent contig sum over expected genome size" %in% taxonomic_completeness$Completeness_Model_Used){
-                estimate_genome_completeness <- function(taxonomic_completeness = NULL, taxon = NULL){
-                    curr_ctg_length_sum <- taxonomic_completeness[taxon, "Genome_Size"]
-                    curr_exp_gen_size <- max(as.numeric(taxonomic_completeness[taxon, "Median_taxid_genome_size"])) #should be the same but just err on the safe side
-                    curr_pct_of_egs <- round(((curr_ctg_length_sum / curr_exp_gen_size) * 100), 2)
-
-                    return(curr_pct_of_egs)
-                }
 
                 taxa_to_compute <- rownames(taxonomic_completeness)[which(taxonomic_completeness$Completeness_Model_Used == "Percent contig sum over expected genome size")]
                 taxonomic_completeness[taxa_to_compute, "Completeness"] <- sapply(taxa_to_compute, function(x) {estimate_genome_completeness(taxonomic_completeness = taxonomic_completeness, taxon = x)} )
