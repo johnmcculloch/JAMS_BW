@@ -16,11 +16,11 @@ consolidate_entities_in_sample <- function(opt = opt){
 
     #Ensure contigsdata rownames
     rownames(opt$contigsdata) <- opt$contigsdata$Contig
-    #Copy congtigsdata to subset as contigs are vetted and accounted for.
-    opt$contigsdata_unused <- opt$contigsdata
     #Mark opt$contigsdata with information of how contig was consolidated.
     opt$contigsdata$Consolidation_from <- NA
     opt$contigsdata$ConsolidatedGenomeBin <- NA
+    #Copy congtigsdata to subset as contigs are vetted and accounted for.
+    opt$contigsdata_unused <- opt$contigsdata
 
     consolidated_entities <- NULL
 
@@ -160,6 +160,14 @@ consolidate_entities_in_sample <- function(opt = opt){
                 }
             }
 
+            #Add PPM and NumBases of consolidated MB2 bins
+            curr_agg_df <- as.data.frame(opt$contigsdata[which(opt$contigsdata$ConsolidatedGenomeBin %in% rownames(consolidated_entities)), c("Contig", "ConsolidatedGenomeBin", "NumBases")] %>% group_by(ConsolidatedGenomeBin) %>% summarise(NumBases = sum(NumBases)))
+            rownames(curr_agg_df) <- curr_agg_df$ConsolidatedGenomeBin
+            curr_agg_df$PPM <- round((curr_agg_df$NumBases / sum(opt$contigsdata$NumBases)) * 1E6, 0)
+            consolidated_entities$NumBases <- curr_agg_df[rownames(consolidated_entities), "NumBases"]
+            consolidated_entities$PPM <- curr_agg_df[rownames(consolidated_entities), "PPM"]
+            curr_agg_df <- NULL
+
         } else {
             flog.info(paste("No HQ or MHQ level MetaBAT2 bins found."))
         }
@@ -173,11 +181,14 @@ consolidate_entities_in_sample <- function(opt = opt){
         opt <- evaluate_LKTs(opt = opt, taxlvls = "LKT", contigsdata_name = "contigsdata_unused", output_list_name = "contigs_from_unfit_bins")
     }
 
+    consolidated_LKTs <- NULL
     for (curr_quality_level in Quality_levels_pecking_order){
         if (nrow(opt$contigsdata_unused) > 0){
             #Continue with consolidation via classical approach.
             curr_taxonomic_completeness_df_name <- "contigs_from_unfit_bins"
             curr_taxonomic_completeness_df <- opt[[curr_taxonomic_completeness_df_name]][["LKT"]]
+            ## AVOID double jeapordy by eliminating consolidated LKTs from previous rounds.
+            curr_taxonomic_completeness_df <- curr_taxonomic_completeness_df[which(!(curr_taxonomic_completeness_df$LKT %in% consolidated_LKTs)), ]
 
             flog.info("Estimating genome completeness at higher taxonomic levels for reassigning LKTs. Completeness will subsequently be verified with CheckM2.")
 
@@ -287,41 +298,44 @@ consolidate_entities_in_sample <- function(opt = opt){
                             write_contigs_to_system(opt = opt, contig_names = curr_contigs_names, filename = file.path(curr_bin_output_folder, curr_fn))
                         }
                     }
-                    #Create a folder for checkM output and run checkm2
-                    curr_checkM_output_folder <- file.path(curr_bin_output_folder, "CheckM_out")
-                    #ensure there is no standing checkM output folder
-                    unlink(curr_checkM_output_folder, recursive = TRUE)
-                    dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
-                    binfp <- file.path(curr_bin_output_folder, "*.fasta")
-                    chechmArgs <- c("predict", "--threads", opt$threads, "--input", binfp, "--output-directory", curr_checkM_output_folder)
-                    flog.info(paste("Evaluating quality of bacterial and archaeal taxa with CheckM2"))
-                    system2('checkm2', args = chechmArgs, stdout = FALSE, stderr = FALSE)
+                    #Check first if there are any fasta files written
+                    if (length(list.files(path = curr_bin_output_folder, pattern = "*.fasta")) > 0){
+                        #Create a folder for checkM output and run checkm2
+                        curr_checkM_output_folder <- file.path(curr_bin_output_folder, "CheckM_out")
+                        #ensure there is no standing checkM output folder
+                        unlink(curr_checkM_output_folder, recursive = TRUE)
+                        dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
+                        binfp <- file.path(curr_bin_output_folder, "*.fasta")
+                        chechmArgs <- c("predict", "--threads", opt$threads, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+                        flog.info(paste("Evaluating quality of bacterial and archaeal taxa with CheckM2"))
+                        system2('checkm2', args = chechmArgs, stdout = FALSE, stderr = FALSE)
 
-                    checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
-                    colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "ConsolidatedGenomeBin"
-                    checkm_out$Additional_Notes <- NULL
-                    rownames(checkm_out) <- checkm_out[ , "ConsolidatedGenomeBin"]
+                        checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
+                        colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "ConsolidatedGenomeBin"
+                        checkm_out$Additional_Notes <- NULL
+                        rownames(checkm_out) <- checkm_out[ , "ConsolidatedGenomeBin"]
 
-                    #Some checkm outputs may have failed from the contigs being too small or not having ORFs. If there are any, fall back on estimated genome completeness.
-                    if (nrow(checkm_out) < length(wantedtaxa)){
-                        #Find out missing wantedtaxa
-                        missingtaxa <- wantedtaxa[!(wantedtaxa %in% checkm_out[ , "ConsolidatedGenomeBin"])]
-                        suppl_info <- as.data.frame(bacterial_contigsdata[which(bacterial_contigsdata[ , "ConsolidatedGenomeBin"] %in%  missingtaxa), ] %>% group_by_at("ConsolidatedGenomeBin") %>% summarise(Genome_Size = sum(Length), Total_Contigs = length(Length), Max_Contig_Length = max(Length)))
-                        rownames(suppl_info) <- suppl_info[ , "ConsolidatedGenomeBin"]
-                        suppl_df <- as.data.frame(matrix(data = NA, nrow = length(missingtaxa), ncol = ncol(checkm_out)))
-                        colnames(suppl_df) <- colnames(checkm_out)
-                        suppl_df[ , "ConsolidatedGenomeBin"] <- missingtaxa
-                        rownames(suppl_df) <- suppl_df[ , "ConsolidatedGenomeBin"]
-                        for (colm in c("Genome_Size", "Total_Contigs", "Max_Contig_Length")){
-                            suppl_df[ , colm] <- suppl_info[rownames(suppl_df), colm]
+                        #Some checkm outputs may have failed from the contigs being too small or not having ORFs. If there are any, fall back on estimated genome completeness.
+                        if (nrow(checkm_out) < length(wantedtaxa)){
+                            #Find out missing wantedtaxa
+                            missingtaxa <- wantedtaxa[!(wantedtaxa %in% checkm_out[ , "ConsolidatedGenomeBin"])]
+                            suppl_info <- as.data.frame(bacterial_contigsdata[which(bacterial_contigsdata[ , "ConsolidatedGenomeBin"] %in%  missingtaxa), ] %>% group_by_at("ConsolidatedGenomeBin") %>% summarise(Genome_Size = sum(Length), Total_Contigs = length(Length), Max_Contig_Length = max(Length)))
+                            rownames(suppl_info) <- suppl_info[ , "ConsolidatedGenomeBin"]
+                            suppl_df <- as.data.frame(matrix(data = NA, nrow = length(missingtaxa), ncol = ncol(checkm_out)))
+                            colnames(suppl_df) <- colnames(checkm_out)
+                            suppl_df[ , "ConsolidatedGenomeBin"] <- missingtaxa
+                            rownames(suppl_df) <- suppl_df[ , "ConsolidatedGenomeBin"]
+                            for (colm in c("Genome_Size", "Total_Contigs", "Max_Contig_Length")){
+                                suppl_df[ , colm] <- suppl_info[rownames(suppl_df), colm]
+                            }
+                            suppl_df$Completeness_Model_Used <- "Percent contig sum over expected genome size"
+                            checkm_out <- rbind(checkm_out, suppl_df)
                         }
-                        suppl_df$Completeness_Model_Used <- "Percent contig sum over expected genome size"
-                        checkm_out <- rbind(checkm_out, suppl_df)
-                    }
-                    taxonomic_completeness <- rbind(taxonomic_completeness, checkm_out)
-                    #Clean up
-                    unlink(curr_bin_output_folder, recursive = TRUE)
-                } #end conditional for there being bacterial contigs
+                        taxonomic_completeness <- rbind(taxonomic_completeness, checkm_out)
+                        #Clean up
+                        unlink(curr_bin_output_folder, recursive = TRUE)
+                    } #end conditional that there were contigs written
+                }  #end conditional for there being bacterial contigs
 
                 if (nrow(nonbacterial_contigsdata) > 0){
                     wantedtaxa <- unique(nonbacterial_contigsdata[ , "ConsolidatedGenomeBin"])[!unique(nonbacterial_contigsdata[ , "ConsolidatedGenomeBin"]) %in% c(NA, "none")]
@@ -383,14 +397,21 @@ consolidate_entities_in_sample <- function(opt = opt){
                     #Bank to consolidated_entities
                     consolidated_entities <- rbind(consolidated_entities, curr_consolidated_entities)
 
-                    #Annotate opt$contigsdata
-                    curr_contigs_to_consolidate <- NULL
-                    for (csb in unique(curr_consolidated_entities$ConsolidatedGenomeBin)){
-                        curr_contigs_to_consolidate <- opt$contigsdata_unused[which(opt$contigsdata_unused$ConsolidatedGenomeBin == csb), "Contig"]
-                        opt$contigsdata[curr_contigs_to_consolidate, "ConsolidatedGenomeBin"] <- csb
-                        opt$contigsdata[curr_contigs_to_consolidate, "Consolidation_from"] <- "Kraken2CheckM2"
+                    #Bank these consolidated ("used") LKTs to consolidated_LKTs for avoiding double jeopardy
+                    if (length(curr_contigs_to_consolidate) > 0){
+                        consolidated_LKTs <- c(consolidated_LKTs, unique(opt$contigsdata_unused[curr_contigs_to_consolidate, "LKT"]))
                     }
-                    curr_contigs_to_consolidate <- NULL
+
+                    #Annotate opt$contigsdata
+                    if (length(unique(curr_consolidated_entities$ConsolidatedGenomeBin)) > 0){
+                        curr_contigs_to_consolidate <- NULL
+                        for (csb in unique(curr_consolidated_entities$ConsolidatedGenomeBin)){
+                            curr_contigs_to_consolidate <- opt$contigsdata_unused[which(opt$contigsdata_unused$ConsolidatedGenomeBin == csb), "Contig"]
+                            opt$contigsdata[curr_contigs_to_consolidate, "ConsolidatedGenomeBin"] <- csb
+                            opt$contigsdata[curr_contigs_to_consolidate, "Consolidation_from"] <- "Kraken2CheckM2"
+                        }
+                        curr_contigs_to_consolidate <- NULL
+                    }
 
                     #Remove consolidated contigs from opt$contigsdata_unused
                     opt$contigsdata_unused <- opt$contigsdata_unused[which(is.na(opt$contigsdata_unused$ConsolidatedGenomeBin)), ]
@@ -439,13 +460,15 @@ consolidate_entities_in_sample <- function(opt = opt){
         #Report percentage contig depth was consolidated.
         curr_relabund_consolidated <- round((sum(opt$contigsdata[!is.na(opt$contigsdata$ConsolidatedGenomeBin), "PPM"]) / sum(opt$contigsdata$PPM)) * 100, 2)
         flog.info(paste0("At this point, ", curr_relabund_consolidated, "% of contig sequencing depth has been consolidated."))
-    } 
-
+    } else {
+        #No leftover, bank to opt$abundances$taxonomic
+        opt$abundances$taxonomic$ConsolidatedGenomeBin <- consolidated_entities
+    }
     opt$abundances$taxonomic$ConsolidatedGenomeBin <- opt$abundances$taxonomic$ConsolidatedGenomeBin[ , Final_report_cols]
 
     #Add consolidation information to featuredata
     opt$featuredata <- left_join(opt$featuredata, opt$contigsdata[ , c("Contig", "ConsolidatedGenomeBin")], by = "Contig")
-    opt$contigsdata$PPM <- NULL
+    #opt$contigsdata$PPM <- NULL
 
     return(opt)
 }
