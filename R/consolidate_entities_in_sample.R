@@ -133,9 +133,9 @@ consolidate_entities_in_sample <- function(opt = opt){
                     system2('checkm2', args = chechmArgs, stdout = FALSE, stderr = FALSE)
 
                     checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
-                    colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- taxlvl
+                    colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "ConsolidatedGenomeBin"
                     checkm_out$Additional_Notes <- NULL
-                    rownames(checkm_out) <- checkm_out[ , taxlvl]
+                    rownames(checkm_out) <- checkm_out[ , "ConsolidatedGenomeBin"]
                     #keep only > HQ or MHQ bins
                     checkm_out <- rate_bin_quality(completeness_df = checkm_out)
                     checkm_out <- subset(checkm_out, Quality %in% c("HQ", "MHQ"))
