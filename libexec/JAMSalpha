@@ -187,9 +187,9 @@ option_list <- list(
     #                action="store_true",
     #                help = str_c("classify unassembled reads by kraken2 and include counts in taxonomic abundance. Irrelevant for isolates. default: ", defopt$classifyunassembled, ")")),
 
-    make_option(c("-m", "--bin_contigs_with_metabat"), default=defopt$bin_contigs_with_metabat,
-                action="store_true",
-                help = str_c("bin contigs into Metagenome Assembled Genomes using MetaBAT2. Only works if analysis (-A) is set to metagenome, default: ", defopt$bin_contigs_with_metabat, ")")),
+    #make_option(c("-m", "--bin_contigs_with_metabat"), default=defopt$bin_contigs_with_metabat,
+    #            action="store_true",
+    #            help = str_c("bin contigs into Metagenome Assembled Genomes using MetaBAT2. Only works if analysis (-A) is set to metagenome, default: ", defopt$bin_contigs_with_metabat, ")")),
 
     make_option(c("-x", "--threads"), default=defopt$threads, action="store",
                 type="numeric",
@@ -243,6 +243,8 @@ if (!(opt$analysis %in% c("metagenome", "metatranscriptome", "isolate", "isolate
 #No point in running metabat if not a shotgun metagenome
 if (opt$analysis != "metagenome"){
     opt$bin_contigs_with_metabat <- FALSE
+} else {
+    opt$bin_contigs_with_metabat <- TRUE
 }
 
 #Fix path relativity
