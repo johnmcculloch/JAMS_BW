@@ -830,8 +830,6 @@ print_jams_ASCII <- function (palette = NULL){
     cat(paste0(ASCII_lines, collapse = "\n"), "\n")
 }
 
-
-
 #' extract_NCBI_taxid_from_featname(Taxon = NULL, NCBI_taxonomic_rank = NULL)
 #'
 #' Securely extracts the NCBI taxid from a JAMS2-style taxonomic feature name
