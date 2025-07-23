@@ -430,6 +430,8 @@ consolidate_entities_in_sample <- function(opt = opt){
                         opt$contigsdata_unused$ConsolidatedGenomeBin <- NA
                         opt$contigsdata_unused$Consolidation_from <- NA
                     }
+                } else {
+                    flog.info(paste("There are no taxa to verify if quality is", curr_quality_level, "or above."))
                 } #end conditional that there are any bins_to_eval
 
             } else {
