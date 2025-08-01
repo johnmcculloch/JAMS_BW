@@ -271,7 +271,6 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 }
 
                 if (stratify_functions_by_taxon){
-
                     curr_SM <- Matrix::Matrix(data = as.matrix(curr_FD[ , Taxoncols]), sparse = TRUE)
                     colnames(curr_SM) <- Taxoncols
 
