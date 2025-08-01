@@ -273,10 +273,10 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 if (stratify_functions_by_taxon){
                     curr_SM <- Matrix::Matrix(data = as.matrix(curr_FD[ , Taxoncols]), sparse = TRUE)
                     colnames(curr_SM) <- Taxoncols
-
                     #In order to conserve RAM and the size of the taxonomic stratification sparse matrix, do not include any taxon whose MAXIMUM number of bases for a SINGLE feature is less than 1 PPM of the sequencing depth IN THAT SAMPLE, as this is likely a spurious taxonomic hit.
                     curr_Bases_equal_to_1PPM <- round((metadata(expvec[[valid_taxonomic_space]])$TotalBasesSequenced["NumBases", SN] / 1E6), 0)
-                    curr_taxaToKeep <- colnames(curr_SM)[colSums(curr_SM[rownames(curr_SM)[!(rownames(curr_SM) %in% paste(SN, paste(analysis, "none", sep = "_"), sep = "§"))], , drop = FALSE]) >=  curr_Bases_equal_to_1PPM]
+
+                    curr_taxaToKeep <- colnames(curr_SM)[Matrix::colSums(curr_SM[rownames(curr_SM)[!(rownames(curr_SM) %in% paste(SN, paste(analysis, "none", sep = "_"), sep = "§"))], , drop = FALSE]) >=  curr_Bases_equal_to_1PPM]
 
                     #Proceed only if there is anything worthwile to merge
                     if (length(curr_taxaToKeep) > 0) {
