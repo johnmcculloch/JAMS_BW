@@ -167,17 +167,17 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         LKTallGenCompcts[ , taxonomic_space] <- NULL
         LKTallGenCompcts <- LKTallGenCompcts[featureorder, sampleorder]
 
-        #Get genome Quality matrix
-        LKTallGenQual <- LKTdosesall[, c("Sample", taxonomic_space, "Quality")]
+        #Get genome contamination matrix
+        LKTallGenCont <- LKTdosesall[, c("Sample", taxonomic_space, "Contamination")]
         #Be sure that data is not empty or redundant
-        LKTallGenQual[is.na(LKTallGenQual)] <- "N_A"
-        LKTallGenQualcts <- spread(LKTallGenQual, Sample, Quality, fill = "N_A", drop = FALSE)
-        rownames(LKTallGenQualcts) <- LKTallGenQualcts[ , taxonomic_space]
-        LKTallGenQualcts[ , taxonomic_space] <- NULL
-        LKTallGenQualcts <- LKTallGenQualcts[featureorder, sampleorder]
+        LKTallGenCont[is.na(LKTallGenCont)] <- 0
+        LKTallGenContcts <- spread(LKTallGenCont, Sample, Contamination, fill = 0, drop = FALSE)
+        rownames(LKTallGenContcts) <- LKTallGenContcts[ , taxonomic_space]
+        LKTallGenContcts[ , taxonomic_space] <- NULL
+        LKTallGenContcts <- LKTallGenContcts[featureorder, sampleorder]
 
-        assays <- list(as.matrix(cts), as.matrix(LKTallGenCompcts), as.matrix(LKTallGenQualcts))
-        names(assays) <- c("BaseCounts", "GenomeCompleteness", "GenomeQuality")
+        assays <- list(as.matrix(cts), as.matrix(LKTallGenCompcts), as.matrix(LKTallGenContcts))
+        names(assays) <- c("BaseCounts", "GenomeCompleteness", "GenomeContamination")
 
         SEobj <- SummarizedExperiment(assays = assays, rowData = tt, colData = pheno2)
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
