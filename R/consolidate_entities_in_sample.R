@@ -252,7 +252,7 @@ consolidate_entities_in_sample <- function(opt = opt){
                 for (curr_agg_tax_lvl in unique(LKT_est_completeness_df$Taxonomic_level_to_consolidate)){
                     tmp_df <- subset(LKT_est_completeness_df, Taxonomic_level_to_consolidate == curr_agg_tax_lvl)[ c("LKT", curr_agg_tax_lvl, paste(curr_agg_tax_lvl, c("Completeness", "Contamination", "Quality"), sep = "_"), "PPM")]
 
-                    #Do not mark for concolidation any dark matter which looks complete.
+                    #Do not mark for consolidation any dark matter which looks complete.
                     curr_taxa_to_mark <- unique(tmp_df[ , curr_agg_tax_lvl])
                     curr_taxa_to_mark <- curr_taxa_to_mark[!(curr_taxa_to_mark %in% c("d__Unclassified", "k__Unclassified", "p__Unclassified", "c__Unclassified", "o__Unclassified", "f__Unclassified", "g__Unclassified", "s__Unclassified", "is1__Unclassified"))]
 
