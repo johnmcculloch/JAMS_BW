@@ -215,7 +215,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
     #Stop if there is no data to plot
     if ((dim(obj)[1] * dim(obj)[2]) < 4){
-        flog.warn("There are less than 4 cells in the SummarizedExperiment object matrix, impossible to draw a heatmap. Check your input and try again.")
+        flog.warn("There are fewer than 4 cells in the SummarizedExperiment object matrix, impossible to draw a heatmap. Check your input and try again.")
 
         return(NULL)
     }
@@ -235,23 +235,23 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         proceed <- TRUE
 
         if (length(samplesToKeep_sp) < 2){
-            skip_HM_reason <- paste0("There are less than 2 samples within", subsetname, ", impossible to plot a heatmap.")
+            skip_HM_reason <- paste0("There are fewer than 2 samples within", subsetname, ", impossible to plot a heatmap.")
             proceed <- FALSE
         }
-        curr_pt <- colData(obj[ , samplesToKeep_sp])
+        curr_pt <- colData(obj)[samplesToKeep_sp, ]
 
         if (any(c(!is.null(compareby), (hmtype != "exploratory")))) {
             #investigate if there are at least two of each class of things to compare to go ahead
             if (length(unique(curr_pt[ , compareby])) < 2){
-                skip_HM_reason <- paste0("There are less than 2 classes within variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
+                skip_HM_reason <- paste0("There are fewer than 2 classes within variable ", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
                 proceed <- FALSE
             }
 
             if (length(unique(curr_pt[ , compareby])) == 2){
                 #Comparison is binary. Is there at least 2 of each class to get a p-value?
                 if ((min(table(curr_pt[ , compareby]))) < 2){
-                    skip_HM_reason <- paste0("There are less than 2 samples within at least one class of variable", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
-                    proceed <- FALSE
+                    flog.warn(paste0("There are less than 2 samples within at least one class of variable ", compareby, ", impossible to obtain a p-value. Setting hmtype = 'exploratory'."))
+                    hmtype <- "exploratory"
                 }
             }
         }
@@ -479,7 +479,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     if (all(c((!(is.null(presetlist$minl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
                         #Check if there is enough leftover after filter.
                         if (length(which(matstats$absl2fc > presetlist$minl2fc)) < 2){
-                            flog.info(paste("There are less than 2 features which have >", presetlist$minl2fc, "l2fc."))
+                            flog.info(paste("There are fewer than 2 features which have > ", presetlist$minl2fc, "l2fc."))
                             #Redefine min l2fc to whatever is the lowest available keeping between 2 and 40 features to plot.
                             presetlist$minl2fc <- matstats[order(matstats$absl2fc, decreasing = TRUE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
                             flog.info(paste("Resetting minimum l2fc to", round(presetlist$minl2fc, 2)))
@@ -493,7 +493,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     if (all(c((!(is.null(presetlist$maxl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
                         #Check if there is enough leftover after filter.
                         if (length(which(matstats$absl2fc < presetlist$maxl2fc)) < 2){
-                            flog.info(paste("There are less than 2 features which have <", presetlist$maxl2fc, "l2fc."))
+                            flog.info(paste("There are fewer than 2 features which have < ", presetlist$maxl2fc, "l2fc."))
                             #Redefine max l2fc to whatever is the lowest available keeping between 2 and 40 features to plot.
                             presetlist$maxl2fc <- matstats[order(matstats$absl2fc, decreasing = FALSE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
                             flog.info(paste("Resetting maximum l2fc to", round(presetlist$maxl2fc, 2)))
@@ -1085,7 +1085,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                             ht2 <- Heatmap(gchmdf, name = "PctFromCtgs", column_split = column_split, column_title = "% Taxonomic info from Contigs", column_title_gp = gpar(fontsize = ht1fs), top_annotation = SHM_ha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, left_annotation = hatax, cluster_rows = FALSE, column_order = unlist(HT1ColumnOrder), row_order = RelabundRowOrder, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol, fontface = hmfontface), heatmap_legend_param = list(direction = "horizontal", title = "PctFromCtgs", title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 4)), row_names_max_width = unit(6, "cm"), ...)
                         }
 
-                        #Plot heatmaps side by side if there are less than the threshold number of samples or less. Else plot one on each page.
+                        #Plot heatmaps side by side if there are fewer than the threshold number of samples or less. Else plot one on each page.
                         if (ncol(mathm) < threshold_for_double_plot){
                             ht_list = ht1 + ht2
                             draw(ht_list, heatmap_legend_side = "bottom", annotation_legend_side = "right", ht_gap = unit(0.2, "cm"),padding = unit(c(2, 2, 2, 2), "mm"), column_title = dualHMtit, column_title_gp = gpar(fontsize = ht1fs))

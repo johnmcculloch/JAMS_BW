@@ -10,6 +10,7 @@ plot_Ordination(
   subsetby = NULL,
   samplesToKeep = NULL,
   samplesToHighlight = NULL,
+  unhighlighted_transparency_percentage = 95,
   featuresToKeep = NULL,
   ignoreunclassified = TRUE,
   applyfilters = NULL,
@@ -64,6 +65,8 @@ plot_Ordination(
 \item{samplesToKeep}{Vector with sample names to keep. If NULL, all samples within the SummarizedExperiment object are kept. Default is NULL.}
 
 \item{samplesToHighlight}{Vector with sample names to highlight in respect to all other sample names in the plot. If NULL, all samples within the SummarizedExperiment object are shown at the same luminocity. Default is NULL.}
+
+\item{unhighlighted_transparency_percentage}{Numerical value representing the percentage transparency for unhighlighted samples when using the samplesToHighlight argument. Default is 95 percent, meaning the unhighlighted samples will have 5 percent of the brightness than highlighted samples. To turn off plotting of unhighlighted samples, set unhighlighted_transparency_percentage to 100.}
 
 \item{featuresToKeep}{Vector with feature names to keep. If NULL, all features within the SummarizedExperiment object are kept. Default is NULL. Please note that when agglomerating features with the glomby argument (see above), feature names passed to featuresToKeep must be post-agglomeration feature names. For example, if glomby="Family", featuresToKeep must be family names, such as "f__Enterobacteriaceae", etc.}
 
