@@ -231,14 +231,16 @@ option_list <- list(
     make_option(c("-b", "--prependtoprefix"),
                 default = NULL, action="store", help = str_c("Prepend this string to prefix. Example: -b New123 would generate a prefix in the form of New123Prefix")),
 
-    make_option(c("-n", "--skipinterpro"), default = FALSE, action="store_true",
-                help = str_c("Use -n option in swarm file, for skipping InterproScan, even if available.)")),
+    make_option(c("-n", "--useipro"), default = FALSE, action="store_true",
+                help = str_c("Use -n option in swarm file, for automatically launching InterproScan if on NIH Biowulf, if available.)")),
 
-    make_option(c("-m", "--use_metabat"), default = FALSE, action="store_true",
-                help = str_c("Use -m option in swarm file, for classifying binning contigs into MAGs using MetaBAT2.)")),
+#Phased out in JAMS2
+#    make_option(c("-m", "--use_metabat"), default = FALSE, action="store_true",
+#                help = str_c("Use -m option in swarm file, for classifying binning contigs into MAGs using MetaBAT2.)")),
 
-    make_option(c("-q", "--classifyunassembled"), default = FALSE, action="store_true",
-                help = str_c("Use -q option in swarm file, for classifying unassembled reads.)")),
+#Phased out in JAMS2
+#    make_option(c("-q", "--classifyunassembled"), default = FALSE, action="store_true",
+#                help = str_c("Use -q option in swarm file, for classifying unassembled reads.)")),
 
     make_option(c("-s", "--swarmfile"), default = defopt$swarmfile, action="store",
                 help = str_c("File name for swarm file to be created (default: ", defopt$swarmfile, ")")),
