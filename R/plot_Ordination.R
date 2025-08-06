@@ -14,6 +14,8 @@
 
 #' @param samplesToHighlight Vector with sample names to highlight in respect to all other sample names in the plot. If NULL, all samples within the SummarizedExperiment object are shown at the same luminocity. Default is NULL.
 
+#' @param unhighlighted_transparency_percentage Numerical value representing the percentage transparency for unhighlighted samples when using the samplesToHighlight argument. Default is 95 percent, meaning the unhighlighted samples will have 5 percent of the brightness than highlighted samples. To turn off plotting of unhighlighted samples, set unhighlighted_transparency_percentage to 100.
+
 #' @param featuresToKeep Vector with feature names to keep. If NULL, all features within the SummarizedExperiment object are kept. Default is NULL. Please note that when agglomerating features with the glomby argument (see above), feature names passed to featuresToKeep must be post-agglomeration feature names. For example, if glomby="Family", featuresToKeep must be family names, such as "f__Enterobacteriaceae", etc.
 
 #' @param subsetby String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.
@@ -86,7 +88,7 @@
 
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, asPPM = TRUE, normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, include_components_variance_plot = FALSE, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, unhighlighted_transparency_percentage = 95, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, asPPM = TRUE, normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, include_components_variance_plot = FALSE, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
@@ -395,7 +397,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
 
         if (!is.null(samplesToHighlight)){
-            dford$Alpha <- 0.05
+            dford$Alpha <- (pmin(pmax((100 - unhighlighted_transparency_percentage), 0), 100)) / 100
             dford[samplesToHighlight, "Alpha"] <- 1
         } else {
             dford$Alpha <- 1
