@@ -156,7 +156,7 @@ cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
 #Install devtools and stringr if not present
 repos <- "https://cloud.r-project.org"
 
-if(!(all((c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits") %in% rownames(installed.packages()))))){
+if (!(all((c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits") %in% rownames(installed.packages()))))){
     install.packages(c("devtools", "stringr", "parallel", "benchmarkme", "BiocManager", "prettyunits"), repos = repos, update = TRUE, lib = rlibs)
 }
 #Make sure we have the correct version of Bioconductor
