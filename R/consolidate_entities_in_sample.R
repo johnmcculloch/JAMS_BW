@@ -129,8 +129,9 @@ consolidate_entities_in_sample <- function(opt = opt){
                     unlink(curr_checkM_output_folder, recursive = TRUE)
                     dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
                     binfp <- file.path(curr_bin_output_folder, "*.fasta")
-                    chechmArgs <- c("predict", "--threads", opt$threads, "--input", binfp, "--output-directory", curr_checkM_output_folder)
-                    system2('checkm2', args = chechmArgs, stdout = FALSE, stderr = FALSE)
+                    appropriatenumcores <- max(2, (opt$threads - 2))
+                    checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+                    system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE)
 
                     checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
                     colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "ConsolidatedGenomeBin"
@@ -316,9 +317,10 @@ consolidate_entities_in_sample <- function(opt = opt){
                             unlink(curr_checkM_output_folder, recursive = TRUE)
                             dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
                             binfp <- file.path(curr_bin_output_folder, "*.fasta")
-                            chechmArgs <- c("predict", "--threads", opt$threads, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+                            appropriatenumcores <- max(2, (opt$threads - 2))
+                            checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
                             flog.info(paste("Evaluating quality of bacterial and archaeal taxa with CheckM2"))
-                            system2('checkm2', args = chechmArgs, stdout = FALSE, stderr = FALSE)
+                            system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE)
 
                             checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
                             colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "ConsolidatedGenomeBin"

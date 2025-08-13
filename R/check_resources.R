@@ -62,7 +62,9 @@ check_resources <- function(opt = opt, applications_to_check = c("base", "reads"
         flog.info("Checking for presence of CheckM database")
         checkmfiles <- list.files(opt$dbdir, recursive=TRUE, full.names=TRUE, include.dirs=FALSE, pattern="*.dmnd")
         if (length(checkmfiles) > 0){
-            opt$CheckMdb <- paste0(unlist(strsplit(checkmfiles[1], split="/"))[1:length(unlist(strsplit(checkmfiles[1], split="/")))-1], collapse="/")
+            #opt$CheckMdb <- paste0(unlist(strsplit(checkmfiles[1], split="/"))[1:length(unlist(strsplit(checkmfiles[1], split="/")))-1], collapse="/")
+            opt$CheckMdb <- checkmfiles[1]
+            flog.info(paste("Found CheckM2 database at", opt$CheckMdb))
         } else {
             flog.warn("CheckM database not found. Will not evaluate genome completeness using CheckM")
             #Ensure NULL if db is absent

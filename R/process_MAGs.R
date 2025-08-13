@@ -41,9 +41,9 @@ process_MAGs <- function(opt = NULL){
         dir.create(curr_checkM_output_folder, showWarnings = TRUE, recursive = TRUE)
         binfp <- file.path(curr_bin_output_folder, "*.fasta")
         appropriatenumcores <- max(2, (opt$threads - 2))
-        chechmArgs <- c("predict", "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+        checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
         flog.info("Evaluating quality of MAGs with CheckM2")
-        system2('checkm2', args = chechmArgs, stdout = FALSE, stderr = FALSE)
+        system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE)
         checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
 
         #Classify MAGs taxonomically as a single entity
