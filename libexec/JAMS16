@@ -561,14 +561,22 @@ write.xlsx(rawfastqsdf, file = paste0(opt$projectname, "_Reads_Statistics.xlsx")
 ##########################
 #Set training taxonomy depending for each method of taxonomy assignment
 if (opt$taxamethod == "dada2"){
-    opt$silva_trainset <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = "train_")))[1]
-    opt$silva_species_assignment <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = "species")))[1]
-}else if(opt$taxamethod == "IDtaxa"){
+    #Account for two different versions of filenames depending on Silva dada2 release.
+    opt$silva_trainset <- file.path(opt$taxonomy_database, sort(list.files(path = opt$taxonomy_database, pattern = "_train_set.fa.gz|Genus_trainset.fa.gz"))[1])
+    opt$silva_species_assignment <- file.path(opt$taxonomy_database, sort(list.files(path = opt$taxonomy_database, pattern = "species_assignment_|_assignSpecies.fa.gz"))[1])
+
+} else if (opt$taxamethod == "IDtaxa"){
+
     opt$trainingset <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = glob2rx("SILVA*.RData"))))[1]
-}else if(opt$taxamethod == "dada2pr2"){
+
+} else if (opt$taxamethod == "dada2pr2"){
+
     opt$trainingset <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = glob2rx("pr*.fasta.gz"))))[1]
-}else if (opt$taxamethod == "IDtaxapr2"){
+
+} else if (opt$taxamethod == "IDtaxapr2"){
+
     opt$trainingset <- sort(file.path(opt$taxonomy_database, list.files(path = opt$taxonomy_database, pattern = glob2rx("pr*.rds"))))[1]
+
 }
 
 ## IDtaxa with Silva ##
