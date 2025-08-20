@@ -100,13 +100,21 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
     propsampleswithtaxspace <- numsampwithtaxspace / length(taxspaceslist)
 
     #Consider building an SEobj for a taxonomic space in which there are at least 80% of samples with that taxonomic space available.
-    valid_taxonomic_spaces <- c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin")[c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin") %in% names(propsampleswithtaxspace)[propsampleswithtaxspace > 0.8]]
+    #MB2 space is being phased out after JAMS ver 2.0.3.
+    valid_taxonomic_spaces <- c("Contig_LKT", "ConsolidatedGenomeBin")[c("Contig_LKT", "ConsolidatedGenomeBin") %in% names(propsampleswithtaxspace)[propsampleswithtaxspace > 0.8]]
+
+    retrieve_abundance_table <- function(Sample = NULL, taxonomic_space = NULL, colsToIgnore = NULL){
+        abundance_df <- list.data[[paste(Sample, "abundances", sep = "_")]]$taxonomic[[taxonomic_space]][ , ]
+        abundance_df <- abundance_df[ , which(!colnames(abundance_df) %in% colsToIgnore)]
+
+        return(abundance_df)
+    }
 
     for (taxonomic_space in valid_taxonomic_spaces){
 
         #Start by making LKT experiment
         flog.info(paste("Making", taxonomic_space, "SummarizedExperiment"))
-        LKTdoses <- lapply(Samples, function (x) { list.data[[paste(x, "abundances", sep = "_")]]$taxonomic[[taxonomic_space]] } )
+        LKTdoses <- lapply(Samples, function (x) { retrieve_abundance_table(Sample = x, taxonomic_space = taxonomic_space, colsToIgnore = c("Genome_Size", "PPM", "Genome_Size", "Total_Contigs", "Contig_N50", "Max_Contig_Length", "Quality", "GC_Content", "Total_Coding_Sequences", "Coding_Density", "Num_assemblies_in_taxid", "Num_isolate", "Proportion_of_MAG_in_taxid")) } )
         names(LKTdoses) <- Samples
 
         #To avoid duplicated names of MB2 bins across samples, paste Sample name to these bins. This will ensure there are no two different entities with the same SGB name.
@@ -117,7 +125,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             LKTdoses[[SN]][ , taxonomic_space] <- make.unique(LKTdoses[[SN]][ , taxonomic_space])
         }
 
-        LKTdosesall <- bind_rows(LKTdoses, .id = "Sample")
+        LKTdosesall <- dplyr::bind_rows(LKTdoses, .id = "Sample")
 
         #Make counts table
         LKTallcounts <- LKTdosesall[, c("Sample", taxonomic_space, "NumBases")]
