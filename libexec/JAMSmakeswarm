@@ -379,10 +379,6 @@ if (opt$skipinterpro == TRUE) {
     commonoptions <- paste(commonoptions, "-n", collapse = " ")
 }
 
-if (opt$classifyunassembled == TRUE) {
-    commonoptions <- paste(commonoptions, "-q", collapse = " ")
-}
-
 if (opt$use_metabat == TRUE) {
     commonoptions <- paste(commonoptions, "-m", collapse = " ")
 }
