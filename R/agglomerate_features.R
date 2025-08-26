@@ -10,18 +10,19 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
         stop("This function can only take a SummarizedExperiment object as input.")
     }
 
+
+    #Find out what kind of an object it is
+    analysis <- metadata(ExpObj)$analysis
+    if (analysis %in% c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin", "16S")){
+        JAMS2TaxonomicObj <- TRUE
+    } else {
+        JAMS2TaxonomicObj <- FALSE
+    }
+
     #Get feature table
     ftt <- as.data.frame(rowData(ExpObj))
     if (!(glomby %in% colnames(ftt))){
         stop(paste("Unable to agglomerate by", glomby, "because this category was not found in the feature table of the SummarizedExperiment object."))
-    }
-
-    #Find out what kind of an object it is
-    analysis <- metadata(ExpObj)$analysis
-    if (analysis %in% c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin")){
-        JAMS2TaxonomicObj <- TRUE
-    } else {
-        JAMS2TaxonomicObj <- FALSE
     }
 
     pheno_original <- colData(ExpObj)
@@ -62,12 +63,23 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
     if (JAMS2TaxonomicObj){
         #Get a novel feature table
         glom_ftt <- ftt
-        if (glomby %in% taxonomic_levels){
-            wanted_taxids <- sapply(rownames(glom_cts), function (x) {extract_NCBI_taxid_from_featname(Taxon = x)} )
-            #Remake ftt from JAMStaxtable
-            data(JAMStaxtable)
-            glom_ftt <- JAMStaxtable[wanted_taxids, ]
-            rownames(glom_ftt) <- rownames(glom_cts)
+        #Is it 16S or shotgun?
+        if (analysis == "16S"){
+            #Prune columns up to and including wanted glomby taxlevel
+            glom_ftt <- glom_ftt[ , taxonomic_levels[1:which(taxonomic_levels == glomby)]]
+            glom_ftt <- glom_ftt[!duplicated(glom_ftt[ , glomby]), ]
+            rownames(glom_ftt) <- glom_ftt[ , glomby]
+            #ensure same order
+            glom_ftt <- glom_ftt[rownames(glom_cts), ]
+        } else {
+            #JAMS2 taxonomic object is shotgun
+            if (glomby %in% taxonomic_levels){
+                wanted_taxids <- sapply(rownames(glom_cts), function (x) {extract_NCBI_taxid_from_featname(Taxon = x)} )
+                #Remake ftt from JAMStaxtable
+                data(JAMStaxtable)
+                glom_ftt <- JAMStaxtable[wanted_taxids, ]
+                rownames(glom_ftt) <- rownames(glom_cts)
+            }
         }
     } else {
         #treat as before
