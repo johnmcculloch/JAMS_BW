@@ -751,7 +751,7 @@ flog.info("Thank you for using JAMS16 for one sample")
 }
 ##Otherwise build an expvec
 expvec <- list()
-expvec$LKT <- make_SummarizedExperiment_from_tables(pheno = pheno, counttable = opt$cts, featuretable = opt$tt, analysisname = "LKT")
+expvec$LKT <- make_SummarizedExperiment_from_tables(pheno = pheno, counttable = opt$cts, featuretable = opt$tt, analysisname = "16S")
 
 metadata(expvec$LKT)$asv2lkt <- asv2lkt
 
