@@ -43,6 +43,7 @@ plot_relabund_heatmap(
   showl2fc = TRUE,
   showGram = FALSE,
   show_GenomeCompleteness = TRUE,
+  use_checkM2_style_GenomeCompleteness = TRUE,
   addtit = NULL,
   assay_for_matrix = "BaseCounts",
   normalization = "relabund",
