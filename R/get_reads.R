@@ -13,7 +13,7 @@ get_reads <- function(opt = NULL){
     dir.create(opt$readsdir, showWarnings = FALSE, recursive = TRUE)
 
     #Make readsdir in tempfile if applicable
-    if(opt$workdir != opt$sampledir){
+    if (opt$workdir != opt$sampledir){
         readsworkdir <- file.path(opt$workdir, "reads")
         flog.info("Creating temporary directory to hold reads.")
         dir.create(readsworkdir, showWarnings = FALSE, recursive = TRUE)
@@ -27,25 +27,42 @@ get_reads <- function(opt = NULL){
         #Download reads from accession
         opt$readorigin <- "sraaccession"
         flog.info(paste("Downloading from NCBI SRA reads pertaining to run", opt$sraaccession))
-        #If in Biowulf, module load sra-toolkit
-        slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
-        #if (nchar(slurmjobid) > 3){
-        #    flog.info("You are probably on Biowulf. Will use NIH HPC version of SRA toolkit to avoid caching issues.")
-        #    commandtorun <- paste(file.path(opt$bindir, "getreadsSRAonBW.sh"), opt$sraaccession, sep =  " ")
-        #} else {
-            #commandtorun <- paste("fastq-dump --skip-technical --readids --read-filter pass --dumpbase --split-e --clip", opt$sraaccession, sep = " ")
+        #if tempdir exists use that for fasterq-dump temporary folder, as fasterq uses up to 7 x the final fastq size in intermediate files.
+        if (!is.null(opt$tempdir)){
+            #Prefetch to tempdir, much, much faster
+            fetchcmd <- paste("prefetch", opt$sraaccession, "-O", file.path(opt$tempdir, opt$sraaccession), "--max-size 1t", sep = " ")
+            system(fetchcmd)
+            #go to prefetch folder and do fasterq-dump
+            setwd(file.path(opt$tempdir, opt$sraaccession))
+            commandtorun <- paste("fasterq-dump --split-files --skip-technical --threads", opt$threads, "--outdir", opt$readsdir, opt$sraaccession, sep = " ")
+            system(commandtorun)
+            #Return to where we were
+            setwd(readsworkdir)
+            #Purge temporary SRA folder
+            unlink(file.path(opt$tempdir, opt$sraaccession), recursive = TRUE)
+        } else {
             commandtorun <- paste("fasterq-dump --split-files --skip-technical --threads", opt$threads, opt$sraaccession, sep = " ")
-        #}
-        system(commandtorun)
+            system(commandtorun)
+        }
 
         #Eliminate unpaired read because split-e was used. This means that unpaired reads from a paired Run will be dumped into a third file.
         if (length(list.files(pattern = "fastq") > 2)){
             file.remove(paste0(opt$sraaccession, "_pass.fastq"))
         }
+        #gzip reads to save intermediate file size and conserve disk space
+        for (RN in c(1, 2)){
+            if (file.exists(paste(opt$prefix, paste(RN, "fastq", sep = "."), sep = "_"))){
+                gzcmd <- paste("pigz -p", opt$threads, paste(opt$prefix, paste(RN, "fastq", sep = "."), sep = "_"), sep = " ")
+                system(gzcmd)
+                file.rename(from = paste(opt$prefix, paste(RN, "fastq.gz", sep = "."), sep = "_"), to = paste(opt$prefix, paste(paste0("R", RN), "fastq.gz", sep = "."), sep = "_"))
+            }
+        }
+
     } else {
         opt$readorigin <- "supplied"
         #Copy supplied reads into readsdir
         if (!(is.null(opt$readstarball))){
+            #Frowned upon, but will still maintain this option for the time being.
             #Copy tarball
             if ((summary(file(opt$readstarball))$class) != "gzfile" ){
                 flog.info("You chose a tarball as input but it does not look like a tar.gz file. Aborting now.")
@@ -58,11 +75,16 @@ get_reads <- function(opt = NULL){
             flog.info("Decompressing tarball with reads.")
             system(commandtorun)
             file.remove(targetfilename)
+            #Now, compress the individual files
+            list.files(pattern = "fastq")
+            for (fn in list.files(pattern = "fastq")){
+                system(paste("pigz -p", opt$threads, fn))
+            }
 
         } else {
             #Copy R1, R2 and U reads
             fastqsinopt <- names(opt)[which(names(opt) %in% c("R1", "R2", "SE"))]
-            if(length(fastqsinopt) < 1){
+            if (length(fastqsinopt) < 1){
                 flog.info("You must supply either reads to assemble or contigs or a GenBank SRA accession number as input. None of these were found. Check arguments passed JAMSalpha. Aborting now.")
                 q()
             }
@@ -86,43 +108,47 @@ get_reads <- function(opt = NULL){
                     suffix <- "fastq"
                 }
 
-                targetfilename <- file.path(readsworkdir, paste(paste(opt$prefix, rtype, sep="_"), suffix, sep="."))
-                flog.info(paste("Copying", rtype, myfastqs[[f]]))
-                system2('cp', args = c(myfastqs[[f]], targetfilename), stdout = TRUE, stderr = TRUE)
-                #In case files are gzipped, ungzip them
-                if (suffix == "fastq.gz"){
-                    flog.info(paste("Decompressing gzipped file", rtype))
-                    commandtorun <- paste("pigz -d", targetfilename, collapse = " ")
+                #Set target filename 
+                #In case files are ungzipped, gzip them to save intermediate file space
+                if (suffix == "fastq"){
+                    targetfilename <- file.path(readsworkdir, paste(paste(opt$prefix, rtype, sep = "_"), "fastq.gz", sep="."))
+                    flog.info(paste("Copying and compressing", rtype, myfastqs[[f]]))
+                    commandtorun <- paste("pigz --processes", opt$threads, "-c", myfastqs[[f]], ">", targetfilename, collapse = " ")
                     system(commandtorun)
                 } else if (suffix == "fastq.bz2"){
-                    flog.info(paste("Decompressing bzipped file", rtype))
-                    commandtorun <- paste("bzip2 -d", targetfilename, collapse = " ")
-                    system(commandtorun)
+                    #What is wrong with you, you maniac?
+                    flog.warn("Currently, JAMS only takes fastq or fastq.gz files as read inputs. Please re-select or convert your input read sequence files. Aborting now.")
+                    q()
+                } else if (suffix == "fastq.gz") {
+                    #copy and rename file. Best to copy rather than read from origin, as disk access can be slow depending on original storage location
+                    system2('cp', args = c(myfastqs[[f]], targetfilename), stdout = TRUE, stderr = TRUE)
                 }
             }
         }
     }
 
     #find out number of files and rename accordingly
-    rawfiles <- sort(list.files())
+    rawfiles <- sort(list.files(pattern = "fastq.gz$"))
     if(length(rawfiles) == 1){
         flog.info("Found a single fastq file. Will assume this is of unpaired reads.")
-        file.rename(rawfiles, paste0(opt$prefix, "_SE.fastq"))
+        file.rename(rawfiles, paste0(opt$prefix, "_SE.fastq.gz"))
         opt$libstructure <- "singleend"
     } else if (length(rawfiles) == 2){
         flog.info("Found two fastq files. Will assume these are paired reads.")
-        file.rename(rawfiles, paste0(opt$prefix, c("_R1.fastq", "_R2.fastq")))
+        file.rename(rawfiles, paste0(opt$prefix, c("_R1.fastq.gz", "_R2.fastq.gz")))
         opt$libstructure <- "pairedend"
     } else if (length(rawfiles) == 0){
-        flog.info("Found NO files. Aborting now.")
+        flog.warn("Found NO files. Aborting now.")
         q()
     } else {
         flog.info(paste("Found", length(rawfiles), "files. Currently, JAMS supports only either paired reads OR single-end reads, but not both kinds simultaneously. Aborting now."))
         q()
     }
 
-    rawfastqs <- sort(list.files(pattern="*.fastq$"))
-    opt$rawreads <- rawfastqs
+    opt$rawreads <- sort(list.files(pattern="*.fastq.gz$"))
+    opt$fastqstats <- countfastq_files(fastqfiles = opt$rawreads, threads = opt$threads)
+
+    setwd(opt$workdir)
 
     return(opt)
 }
