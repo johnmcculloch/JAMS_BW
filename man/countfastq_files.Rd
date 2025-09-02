@@ -4,8 +4,7 @@
 \alias{countfastq_files}
 \title{countfastq_files(fastqfiles = NULL, threads = NULL)
 Wrapper for applying the countfastq() function to a vector of filenames using multiple threads.
-Returns a dataframe with read counts and base counts for each input fastq file.
-Caveat: Input fastq file must have exactly four lines per sequence. If your fastq files do not fit this criterion, you are totally bonkers.}
+Returns a dataframe with read counts and base counts for each input fastq file.}
 \usage{
 countfastq_files(fastqfiles = NULL, threads = NULL)
 }
@@ -13,5 +12,4 @@ countfastq_files(fastqfiles = NULL, threads = NULL)
 countfastq_files(fastqfiles = NULL, threads = NULL)
 Wrapper for applying the countfastq() function to a vector of filenames using multiple threads.
 Returns a dataframe with read counts and base counts for each input fastq file.
-Caveat: Input fastq file must have exactly four lines per sequence. If your fastq files do not fit this criterion, you are totally bonkers.
 }
