@@ -40,7 +40,7 @@ filter_host <- function(opt = NULL){
         } else {
             #Index is supplied
             #If on a tmppath, copy host genome to tempreadsir for speed
-            if(opt$workdir != opt$sampledir){
+            if (opt$workdir != opt$sampledir){
                 flog.info("Copying host genome indices to temporary directory.")
                 file.copy(opt$relindexfiles, readsworkdir)
                 index <- file.path(readsworkdir, opt$hostspecies)
@@ -63,7 +63,7 @@ filter_host <- function(opt = NULL){
         bowtiecommonargs <- c("-q", "--very-fast-local", "--ignore-quals", "--mm", "--threads", bowtiethreads, "-x", index)
         bowtiereadargs <- list("-U", c("-1", "-2"), c("-1", "-2", "-U"))
         bowtiereadinput <- as.vector(rbind(bowtiereadargs[[length(myfastqs)]], myfastqs))
-        bowtiereadoutput <- c("--un", (paste(opt$prefix, "NAHS_SE.fastq", sep="_")), "--un-conc", (paste(opt$prefix, "NAHS_PE.fastq", sep="_")))[1:(2*length(opt$rawreads))]
+        bowtiereadoutput <- c("--un", (paste(opt$prefix, "NAHS_SE.fastq", sep="_")), "--un-conc", (paste(opt$prefix, "NAHS_PE.fastq", sep="_")))[1:(2 * length(opt$rawreads))]
         bowtiesam <- c("-S", "RvsHS.sam")
         bowtieargs <- c(bowtiecommonargs, bowtiereadinput, bowtiereadoutput, bowtiesam)
         opt$bowtie_host_output <- system2('bowtie2', args = bowtieargs, stdout = TRUE, stderr = TRUE)
@@ -73,6 +73,11 @@ filter_host <- function(opt = NULL){
         file.remove(list.files(pattern="*.bt2$"))
         file.remove("RvsHS.sam")
 
+        #Collect information on trimmed reads and purge raw reads to conserve space
+        file.remove(opt$trimreads)
+        flog.info("Computing trimmed reads stats")
+        opt$fastqstats <- rbind(opt$fastqstats, countfastq_files(fastqfiles = opt$trimreads, threads = opt$threads))
+
         #Disconsider SE leftover if it is too small
         senahs <- list.files(pattern="*NAHS_SE.fastq")
         if(length(senahs) > 0){
@@ -81,7 +86,29 @@ filter_host <- function(opt = NULL){
                 file.remove(senahs)
             }
         }
-        opt$nahsreads <- sort(list.files(pattern="*_NAHS_[SP]E"))
+        nahsreads_uncompressed <- sort(list.files(pattern="*_NAHS_[SP]E"))
+        flog.info("Compressing non-aligned to host species (NAHS) reads")
+
+        if (length(nahsreads_uncompressed) == 1){
+            #Reads are single
+            targetfilename <- paste0(opt$prefix, "_NAHS_SE", nahsrdnum, ".fastq.gz")
+            commandtorun <- paste("pigz --processes", opt$threads, "-c", nahsreads_uncompressed, ">", targetfilename, collapse = " ")
+            system(commandtorun)
+            file.remove(nahsreads_uncompressed)
+            opt$nahsreads <- targetfilename
+        } else {
+            #Reads are paired
+            for (nahsrdnum in 1:length(nahsreads_uncompressed)){
+                targetfilename <- paste0(opt$prefix, "_NAHS_R", nahsrdnum, ".fastq.gz")
+                commandtorun <- paste("pigz --processes", opt$threads, "-c", nahsreads_uncompressed[nahsrdnum], ">", targetfilename, collapse = " ")
+                system(commandtorun)
+                file.remove(nahsreads_uncompressed[nahsrdnum])
+                opt$nahsreads[nahsrdnum] <- targetfilename
+            }
+        }
+
+        flog.info("Computing host-depleted (NAHS) reads stats")
+        opt$fastqstats <- rbind(opt$fastqstats, countfastq_files(fastqfiles = opt$nahsreads, threads = opt$threads))
 
         if(opt$workdir != opt$sampledir){
             #Bank NAHS reads to project directory
