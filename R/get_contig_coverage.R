@@ -56,7 +56,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
         file.copy(opt$bedfile, opt$covdir)
 
         #Set general options
-        bowtiethreads <- (opt$threads - 2) #Two CPUs must be free on Biowulf
+        bowtiethreads <- opt$threads
 
         #build index
         flog.info("Building index.")
@@ -85,7 +85,7 @@ get_contig_coverage <- function(opt = NULL, markduplicates = FALSE, align_as_unp
         flog.info("Aligning reads back to contigs.")
         opt$bowtie_cov_output <- system2('bowtie2', args = bowtieargs, stdout = TRUE, stderr = TRUE)
         flog.info(paste("Alignment of reads to contigs is complete with", opt$bowtie_cov_output[length(opt$bowtie_cov_output)]))
-        NAssfastqs <- list.files(pattern = "*fastq")
+        NAssfastqs <- list.files(pattern = "NAss_")
 
         #Classifying from unassembled reads is now deprecated
         #if (opt$classifyunassembled == TRUE){

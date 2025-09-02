@@ -135,6 +135,11 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetec
         }
     }
 
+    #Collect information on trimmed reads and purge raw reads to conserve space
+    file.remove(opt$rawreads)
+    flog.info("Computing trimmed reads stats")
+    opt$fastqstats <- rbind(opt$fastqstats, countfastq_files(fastqfiles = opt$trimreads, threads = opt$threads))
+
     if(opt$workdir != opt$sampledir){
         #Bank trimmed reads to project directory
         file.copy(opt$trimreads, opt$readsdir)

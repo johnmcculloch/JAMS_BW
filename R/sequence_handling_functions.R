@@ -13,23 +13,10 @@ countfastq <- function(fastqfile){
     return(fastqstats)
 }
 
-#Deprecated countfastq
-#countfastq <- function(fastqfile){
-
-#    countargs <- c(fastqfile, "|", "paste", "-", "-", "-", "-", "|", "cut", "-f", "2", "|", "wc", "-lc")
-#    fastqstats <- system2('cat', args = countargs, stdout = TRUE, stderr = FALSE)
-#    fastqstats <- unlist(strsplit(fastqstats, split = " "))
-#    fastqstats <- fastqstats[which(fastqstats != "")]
-#    fastqstats <- as.numeric(fastqstats)
-
-#    return(fastqstats)
-#}
-
 
 #' countfastq_files(fastqfiles = NULL, threads = NULL)
 #' Wrapper for applying the countfastq() function to a vector of filenames using multiple threads.
 #' Returns a dataframe with read counts and base counts for each input fastq file.
-#' Caveat: Input fastq file must have exactly four lines per sequence. If your fastq files do not fit this criterion, you are totally bonkers.
 #' @export
 
 countfastq_files <- function(fastqfiles = NULL, threads = NULL){
