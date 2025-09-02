@@ -7,11 +7,9 @@ assemble_contigs <- function(opt = NULL){
 
     #Obtain reads to use for assembly
     opt <- get_reads(opt = opt)
-    #save.image(file = opt$projimage)
 
-    #Filter reads if necessary
+    #Filter and trim reads
     opt <- trim_reads(opt = opt)
-    #save.image(file = opt$projimage)
 
     #Eliminate host reads if applicable
     opt <- filter_host(opt = opt)
@@ -121,6 +119,12 @@ assemble_contigs <- function(opt = NULL){
     assemblercmd <- switch(opt$assembler, "megahit" = "megahit", "spades" = "spades.py")
     opt$assemblerversion <- system2(assemblercmd, args = "--version", stdout = TRUE, stderr = TRUE)
 
+    if (!is.null(opt$tempdir)) {
+        tmpdirargs <- paste("--tmp-dir", opt$tempdir)
+    } else {
+        tmpdirargs <- NULL
+    }
+
     #Build command from options present
     if (opt$assembler == "megahit"){
         #Build arguments for MEGAHIT
@@ -147,7 +151,7 @@ assemble_contigs <- function(opt = NULL){
             kmax <- min((estreadlength - 1), 255)
         }
 
-        commonargs <- c("--k-min", kmin, "--k-max", kmax, "--k-step", kstep, "--min-count", mincount, "-m", membytes90, "--num-cpu-threads", opt$threads, "-o", paste(opt$prefix, "assembly", sep="_"), "--min-contig-len", "500", "--verbose")
+        commonargs <- c("--k-min", kmin, "--k-max", kmax, "--k-step", kstep, "--min-count", mincount, "-m", membytes90, "--num-cpu-threads", opt$threads, tmpdirargs, "-o", paste(opt$prefix, "assembly", sep="_"), "--min-contig-len", "500", "--verbose")
         readargs <- list("-r", c("-1", "-2"), c("-1", "-2", "-r"))
         readinput <- as.vector(rbind(readargs[[length(inputreads)]], inputreads))
         assemblerargs <- c(commonargs, readinput)
@@ -157,7 +161,7 @@ assemble_contigs <- function(opt = NULL){
     } else if (opt$assembler == "spades"){
         #Build arguments for SPAdes
 
-        commonargs <- c("-t", opt$threads, "-m", (as.integer(opt$totmembytes / 1000000000)), "-o", paste(opt$prefix, "assembly", sep="_"))
+        commonargs <- c("-t", opt$threads, tmpdirargs, "-m", (as.integer(opt$totmembytes / 1000000000)), "-o", paste(opt$prefix, "assembly", sep = "_"))
         if (opt$seqtype == "illuminamp"){
             readargs <- list("-s", c("--hqmp1-1", "--hqmp1-2"), c("--hqmp1-1", "--hqmp1-2", "--hqmp1-s"))
         } else {
