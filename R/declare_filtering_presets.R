@@ -4,7 +4,7 @@
 #' @export
 declare_filtering_presets <- function(analysis = NULL, is16S = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, minabscorrcoeff = NULL){
 
-    taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin")
+    taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
 
     if ((!analysis %in% taxonomic_spaces) && (!(is.null(GenomeCompletenessCutoff)))){
         warning("Genome completeness only makes sense for taxa. Please choose a taxonomic (non functional) analysis.")
