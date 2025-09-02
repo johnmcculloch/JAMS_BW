@@ -14,7 +14,7 @@ check_resources <- function(opt = opt, applications_to_check = c("base", "reads"
     missingdep <- FALSE
     for (dep in dependencies_to_check) {
         cmd <- dep
-        if (cmd == "sratoolkit") cmd = "fastq-dump"
+        if (cmd == "sratoolkit") cmd = "fasterq-dump"
         if (cmd == "spades") cmd = "spades.py"
         if (system(str_c("which ", cmd), ignore.stdout = TRUE)==1) { # not found
             flog.info(str_c("You are missing ", dep))
@@ -165,7 +165,7 @@ check_resources <- function(opt = opt, applications_to_check = c("base", "reads"
     }
 
     #If testing dependencies and leave is true then it is time to abort.
-    if(opt$testdependencies == TRUE){
+    if (opt$testdependencies == TRUE){
         opt$abort <- TRUE
     }
 
