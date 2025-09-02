@@ -72,6 +72,14 @@ if (nchar(slurmjobid) < 3){
 
         return(totmembytes)
     }
+
+    #Set temporary folder if exists
+    opt$tempdir <- file.path("/lscratch", slurmjobid)
+    if (!file.exists(opt$tempdir)){
+        opt$tempdir <- NULL
+    } else {
+        flog.info(paste("Temporary folder detected and set to", opt$tempdir))
+    }
 }
 
 ############################
