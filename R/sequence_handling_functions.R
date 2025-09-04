@@ -14,12 +14,12 @@ countfastq <- function(fastqfile){
 }
 
 
-#' countfastq_files(fastqfiles = NULL, threads = NULL)
-#' Wrapper for applying the countfastq() function to a vector of filenames using multiple threads.
+#' countfastq_files(fastqfiles = NULL, threads = NULL, type_tag = NULL)
+#' JAMSalpha function. 
 #' Returns a dataframe with read counts and base counts for each input fastq file.
 #' @export
 
-countfastq_files <- function(fastqfiles = NULL, threads = NULL){
+countfastq_files <- function(fastqfiles = NULL, threads = NULL, type_tag = NULL){
     #fastqstatslist <- lapply(1:length(fastqfiles), function (x) { countfastq(fastqfiles[x]) })
     fastqstatslist <- mclapply(1:length(fastqfiles), function (x) { countfastq(fastqfiles[x]) }, mc.cores = threads)
     readcounts <- sapply(1:length(fastqstatslist), function (x) { fastqstatslist[[x]][1] })
@@ -33,6 +33,9 @@ countfastq_files <- function(fastqfiles = NULL, threads = NULL){
     fastqstatsdf$Count <- as.numeric(fastqstatsdf$Count)
     fastqstatsdf$Bases <- as.numeric(fastqstatsdf$Bases)
     fastqstatsdf$Readlength <- as.numeric(fastqstatsdf$Readlength)
+    if (!is.null(type_tag)){
+        fastqstatsdf$Read_Type <- type_tag[1]
+    }
 
     return(fastqstatsdf)
 }

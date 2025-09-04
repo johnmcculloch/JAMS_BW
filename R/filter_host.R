@@ -73,16 +73,14 @@ filter_host <- function(opt = NULL){
         file.remove(list.files(pattern="*.bt2$"))
         file.remove("RvsHS.sam")
 
-        #Collect information on trimmed reads and purge raw reads to conserve space
+        #Purge trimmed reads to conserve space if sample is not isolate or host is none
         file.remove(opt$trimreads)
-        flog.info("Computing trimmed reads stats")
-        opt$fastqstats <- rbind(opt$fastqstats, countfastq_files(fastqfiles = opt$trimreads, threads = opt$threads))
 
         #Disconsider SE leftover if it is too small
         senahs <- list.files(pattern="*NAHS_SE.fastq")
-        if(length(senahs) > 0){
+        if (length(senahs) > 0){
             senahsfs <- file.size(senahs)
-            if(senahsfs < 1000000){
+            if (senahsfs < 1000000){
                 file.remove(senahs)
             }
         }
@@ -108,7 +106,7 @@ filter_host <- function(opt = NULL){
         }
 
         flog.info("Computing host-depleted (NAHS) reads stats")
-        opt$fastqstats <- rbind(opt$fastqstats, countfastq_files(fastqfiles = opt$nahsreads, threads = opt$threads))
+        opt$fastqstats <- rbind(opt$fastqstats, countfastq_files(fastqfiles = opt$nahsreads, threads = opt$threads, type_tag = "NAHS"))
 
         if(opt$workdir != opt$sampledir){
             #Bank NAHS reads to project directory

@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetect_phred_offest = FALSE){
+trim_reads <- function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetect_phred_offest = FALSE){
 
     #Check if reads are in tmpdir
     if (opt$workdir != opt$sampledir){
@@ -13,26 +13,26 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetec
     }
     setwd(readsworkdir)
 
-    if(!(all(file.exists(file.path(readsworkdir, opt$rawreads))))){
+    if (!(all(file.exists(file.path(readsworkdir, opt$rawreads))))){
         flog.info("Could not find raw reads to trim. Aborting now")
         q()
     }
 
     opt$phredoffset <- 33
 
-    if(opt$seqtype %in% c("illuminape", "illuminamp")){
+    if (opt$seqtype %in% c("illuminape", "illuminamp")){
 
         #Write copy of Illumina adapters to system
         data(seqadapters)
         write.fasta(sequences = seqadapters, names = names(seqadapters), nbchar = 80, file.out = file.path(readsworkdir, "adapter.fasta"))
-        adapters<-file.path(readsworkdir, "adapter.fasta")
+        adapters <- file.path(readsworkdir, "adapter.fasta")
 
         flog.info("Sequences are Illumina reads. Clipping adapters and quality trimming fastq reads.")
         #Trimmomatic options
         sliding=4
         crop=0
         minlen=36
-        trimmcommand<-"trimmomatic"
+        trimmcommand <- "trimmomatic"
 
         if (autodetect_phred_offest == TRUE){
             scores <- system2('head', args = c("-1000", opt$rawreads[1]), stdout = TRUE)
@@ -49,7 +49,7 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetec
             flog.info(paste("Looks like the fastqs have a Phred offset of", opt$phredoffset))
         }
 
-        if(opt$libstructure == "pairedend"){
+        if (opt$libstructure == "pairedend"){
             libstruct <- "PE"
             input.read1 <- opt$rawreads[1]
             input.read2 <- opt$rawreads[2]
@@ -84,7 +84,7 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetec
             #add output of what was trimmed to opt
             opt$trimreads <- c(output.trim1, output.trim2)
 
-        } else if(opt$libstructure == "singleend"){
+        } else if (opt$libstructure == "singleend"){
             libstruct <- "SE"
             input.read1 <- opt$rawreads[1]
             output.trimSE <- paste(opt$prefix, libstruct, "trim.fastq.gz", sep="_")
@@ -99,7 +99,7 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetec
         file.remove("adapter.fasta")
 
     } else if (opt$seqtype == "iontorrent") {
-        if(opt$libstructure == "singleend"){
+        if (opt$libstructure == "singleend"){
             flog.info("Sequences are single-end Ion Torrent reads. Using IonHammer (SPAdes) for fastq read correction.")
             libstruct <- "SE"
             input.read1 <- opt$rawreads[1]
@@ -137,10 +137,10 @@ trim_reads<-function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodetec
 
     #Collect information on trimmed reads and purge raw reads to conserve space
     file.remove(opt$rawreads)
-    flog.info("Computing trimmed reads stats")
-    opt$fastqstats <- rbind(opt$fastqstats, countfastq_files(fastqfiles = opt$trimreads, threads = opt$threads))
+    flog.info("Computing trimmed reads")
+    opt$fastqstats <- rbind(opt$fastqstats, countfastq_files(fastqfiles = opt$trimreads, threads = opt$threads, type_tag = "Trimmed"))
 
-    if(opt$workdir != opt$sampledir){
+    if (opt$workdir != opt$sampledir){
         #Bank trimmed reads to project directory
         file.copy(opt$trimreads, opt$readsdir)
     }

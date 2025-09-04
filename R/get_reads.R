@@ -146,7 +146,7 @@ get_reads <- function(opt = NULL){
     }
 
     opt$rawreads <- sort(list.files(pattern="*.fastq.gz$"))
-    opt$fastqstats <- countfastq_files(fastqfiles = opt$rawreads, threads = opt$threads)
+    opt$fastqstats <- countfastq_files(fastqfiles = opt$rawreads, threads = opt$threads, type_tag = "Raw")
 
     setwd(opt$workdir)
 
