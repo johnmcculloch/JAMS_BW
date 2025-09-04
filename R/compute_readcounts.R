@@ -5,47 +5,10 @@
 
 compute_readcounts <- function(opt = opt){
 
-    #If not re-computing fastqstats, get them from actually counting reads
-    if (is.null(opt$fastqstats)){
-        #Check if reads are in tmpdir
-        if(opt$workdir != opt$sampledir){
-            readsworkdir <- file.path(opt$workdir, "reads")
-        } else {
-            readsworkdir <- opt$readsdir
-        }
-        setwd(readsworkdir)
-
-        #Copy NAss reads to readsdir for computation, if they exist
-        NAssreadsfiles <- list.files(opt$covdir, pattern = "_NAss_")
-        NAssreadsfilespaths <- file.path(opt$covdir, NAssreadsfiles)
-        if (length(NAssreadsfilespaths) > 0){
-            file.copy(NAssreadsfilespaths, readsworkdir)
-        }
-
-        #Get read stats if applicable
-        flog.info("Obtaining read statistics.")
-        #countcmd <- file.path(opt$bindir, "countfastqJAMS.sh")
-        #countargs <- c("-d", readsworkdir, "-t", opt$threads)
-        #system2(countcmd, countargs, stderr = FALSE, stdout = FALSE)
-        #opt$fastqstats <- read.table("reads.stats", header = FALSE, sep = "\t", stringsAsFactors = FALSE, skipNul = FALSE, fill = TRUE, colClasses = c("character","numeric","numeric"))
-        #colnames(opt$fastqstats) <- c("Reads", "Count", "Bases")
-        fastqfiles <- list.files(path = readsworkdir, pattern = "fastq")
-        appropriatenumcores <- max(1, min(length(fastqfiles), (opt$threads - 2)))
-        opt$fastqstats <- countfastq_files(fastqfiles = list.files(pattern = "fastq"), threads = appropriatenumcores)
-    } else {
-        NAssreadsfiles <- opt$fastqstats[grep("_NAss_", opt$fastqstats$Reads ), "Reads"]
-    }
-
-    #Flush out any lines which are NA
-    opt$fastqstats <- opt$fastqstats[!is.na(opt$fastqstats[, 2]), ]
-    opt$fastqstats <- opt$fastqstats[!is.na(opt$fastqstats[, 3]), ]
-
     ##Aggregate counts
     #Start by aggregating counts which will always be present
-    rawcount <- sum(subset(opt$fastqstats, Reads %in% opt$rawreads)[]$Count)
     rawbases <- sum(subset(opt$fastqstats, Reads %in% opt$rawreads)[]$Bases)
-    NAsscount <- sum(subset(opt$fastqstats, Reads %in% NAssreadsfiles)[]$Count)
-    NAssbases <- sum(subset(opt$fastqstats, Reads %in% NAssreadsfiles)[]$Bases)
+    NAssbases <- sum(subset(opt$fastqstats, Reads %in% opt$NAssfastqs)[]$Bases)
 
     #If reads were subsampled, then take that into consideration
     #If you are reading this code: I know this is a verbose way of accounting, but between ambiguity and prolixity, the latter is the lesser of two evils and I am judging clarity to be most important, so please bear with me and be forgiving.
@@ -70,7 +33,6 @@ compute_readcounts <- function(opt = opt){
             #NAHS reads were the ones subsampled
             trimcount <- sum(subset(opt$fastqstats, Reads %in% opt$trimreads)[]$Count)
             trimbases <- sum(subset(opt$fastqstats, Reads %in% opt$trimreads)[]$Bases)
-            NAHScount <- sum(opt$totbasesbeforesubsampling$Count)
             NAHSbases <- sum(opt$totbasesbeforesubsampling$Bases)
             NAHSbasestats <- round(100 * (c((NAHSbases / trimbases), 1 - (NAHSbases / trimbases))), 1)
             subsampledcount <- sum(subset(opt$fastqstats, Reads %in% opt$nahsreads)[]$Count)
@@ -100,9 +62,6 @@ compute_readcounts <- function(opt = opt){
         } else {
             trimcount <- sum(subset(opt$fastqstats, Reads %in% opt$trimreads)[]$Count)
             trimbases <- sum(subset(opt$fastqstats, Reads %in% opt$trimreads)[]$Bases)
-            NAHScount <- sum(subset(opt$fastqstats, Reads %in% opt$nahsreads)[]$Count)
-            NAHSbases <- sum(subset(opt$fastqstats, Reads %in% opt$nahsreads)[]$Bases)
-            NAHScount <- sum(subset(opt$fastqstats, Reads %in% opt$nahsreads)[]$Count)
             NAHSbases <- sum(subset(opt$fastqstats, Reads %in% opt$nahsreads)[]$Bases)
             NAHSbasestats <- round(100 * (c((NAHSbases / trimbases), 1 - (NAHSbases / trimbases))), 1)
 
