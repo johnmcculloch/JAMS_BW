@@ -33,7 +33,6 @@ defopt$taxamethod <- "dada2"
 defopt$readcountthres <- 500
 defopt$exporttables <- FALSE
 defopt$plot_read_qualities <- FALSE
-defopt$plotreadqual <- TRUE
 #defopt$primerforw <- NULL
 #defopt$primerrev <- NULL
 #defopt$threads <- (as.numeric(detectHardwareResources()["threads"]))
@@ -146,7 +145,7 @@ option_list <- list(
                 help ="Path to an R script to run after all other options have been executed. Example: -s /path/to/make_these_specific_plots.R will execute the commands in this script at the end of JAMSbeta."),
 
     make_option(c("-Q", "--plot_read_qualities"),
-                action = "store_true", default = defopt$plotreadqual,
+                action = "store_true", default = defopt$plot_read_qualities,
                 type = "logical",
                 help = "Plot read qualities to PDF file. Default is to not plot."),
 
