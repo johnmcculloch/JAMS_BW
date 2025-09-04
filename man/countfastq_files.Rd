@@ -2,14 +2,14 @@
 % Please edit documentation in R/sequence_handling_functions.R
 \name{countfastq_files}
 \alias{countfastq_files}
-\title{countfastq_files(fastqfiles = NULL, threads = NULL)
-Wrapper for applying the countfastq() function to a vector of filenames using multiple threads.
+\title{countfastq_files(fastqfiles = NULL, threads = NULL, type_tag = NULL)
+JAMSalpha function. 
 Returns a dataframe with read counts and base counts for each input fastq file.}
 \usage{
-countfastq_files(fastqfiles = NULL, threads = NULL)
+countfastq_files(fastqfiles = NULL, threads = NULL, type_tag = NULL)
 }
 \description{
-countfastq_files(fastqfiles = NULL, threads = NULL)
-Wrapper for applying the countfastq() function to a vector of filenames using multiple threads.
+countfastq_files(fastqfiles = NULL, threads = NULL, type_tag = NULL)
+JAMSalpha function. 
 Returns a dataframe with read counts and base counts for each input fastq file.
 }
