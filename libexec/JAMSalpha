@@ -183,6 +183,10 @@ option_list <- list(
                 type="numeric",
                 help = str_c("cap the number of bases used for assembly to this value. If the number of bases for assembly is larger than this value, input reads will be subset to contain this amount. Default: no subsetting.")),
 
+    make_option(c("-T", "--tempdir"), default=NULL, action="store",
+                type="character",
+                help = str_c("path for use as a temporary folder for intermediate files on some JAMSalpha processes. If not set, all processes will run within the sample project folder.")),
+
     #Note: taking unassembled reads into account has been deprecated since JAMS ver 2.0.0.
     #    make_option(c("-q", "--classifyunassembled"), default=defopt$classifyunassembled,
     #                action="store_true",
@@ -267,14 +271,20 @@ for (pathtofix in c("R1", "R2", "SE", "contigs", "readstarball", "outdir", "dbdi
     }
 }
 
-#Test Biowulf specific situation
-    #Set temporary folder if exists
-    opt$tempdir <- file.path("/lscratch", as.character(Sys.getenv("SLURM_JOB_ID")))
-    if (!file.exists(opt$tempdir)){
-        opt$tempdir <- NULL
+#Set temporary folder if exists
+if (!is.null(opt$tempdir)){
+    if (file.exists(opt$tempdir)){
+        flog.info(paste("Temporary folder detected and set to", opt$tempdir))
     } else {
+        flog.info(paste("Temporary folder", opt$tempdir, "does not exist and will not be used."))
+    }
+} else {
+    #Test slurm/Biowulf specific situation
+    if (file.exists(file.path("/lscratch", as.character(Sys.getenv("SLURM_JOB_ID"))))){
+        opt$tempdir <- file.path("/lscratch", as.character(Sys.getenv("SLURM_JOB_ID")))
         flog.info(paste("Temporary folder detected and set to", opt$tempdir))
     }
+}
 
 
 # give help if needed input option not provided
