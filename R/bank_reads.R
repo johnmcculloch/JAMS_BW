@@ -3,7 +3,7 @@
 #' JAMSalpha function
 #' @export
 
-bank_reads <- function(opt = opt, maketarball = FALSE){
+bank_reads <- function(opt = opt){
 
    #Check if reads are in tmpdir
     if (opt$workdir != opt$sampledir){
@@ -14,34 +14,25 @@ bank_reads <- function(opt = opt, maketarball = FALSE){
     setwd(readsworkdir)
 
     if (opt$host != "none"){
+
         flog.info("Banking Non-Aligned to Host Species (microbiota) reads to outdir.")
         fastqstobank <- sort(opt$nahsreads)
-        if (maketarball){
-            outfilename <- paste(paste(opt$prefix, "Microbiota", "reads", sep="_"), "tar", "gz", sep=".")
-            outfilepath <- file.path(opt$outdir, outfilename)
-            readbankcmds <- paste("tar", "cf", "-", paste0(fastqstobank, collapse=" "), "|", "pigz", "-9", "-p", opt$threads, ">", outfilepath, collapse=" ")
-        } else {
-            fnsuffixes <- paste((paste0("R", 1:length(fastqstobank))), "fastq", "gz", sep = ".")
-            outfilenames <- paste(opt$prefix, "Microbiota", "reads", fnsuffixes, sep="_")
-            readbankcmds <- sapply(1:length(fastqstobank), function (x) { paste("pigz --best --stdout --processes", opt$threads, fastqstobank[x], ">", file.path(opt$outdir, outfilenames[x]), collapse = " ") })
-        }
+        fnsuffixes <- paste((paste0("R", 1:length(fastqstobank))), "fastq", "gz", sep = ".")
+        outfilenames <- paste(opt$prefix, "Microbiota", "reads", fnsuffixes, sep = "_")
 
     } else {
 
         flog.info("Banking QC trimmed reads to outdir.")
         fastqstobank <- sort(opt$trimreads)
-        if (maketarball){
-            outfilename <- paste(paste(opt$prefix, "QCtrimmed", "reads", sep="_"), "tar", "gz", sep = ".")
-            readbankcmds <- paste("tar", "cf", "-", paste0(fastqstobank, collapse=" "), "|", "pigz", "-9", "-p", opt$threads, ">", outfilepath, collapse=" ")
-        } else {
-            fnsuffixes <- paste((paste0("R", 1:length(fastqstobank))), "fastq", "gz", sep = ".")
-            outfilenames <- paste(opt$prefix, "QCtrimmed", "reads", fnsuffixes, sep="_")
-            readbankcmds <- sapply(1:length(fastqstobank), function (x) { paste("pigz --best --stdout --processes", opt$threads, fastqstobank[x], ">", file.path(opt$outdir, outfilenames[x]), collapse = " ") })
-        }
+        fnsuffixes <- paste((paste0("R", 1:length(fastqstobank))), "fastq", "gz", sep = ".")
+        outfilenames <- paste(opt$prefix, "QCtrimmed", "reads", fnsuffixes, sep="_")
+
     }
 
-    #Execute banking commands
-    sapply(readbankcmds, function (x) { system(x) } )
+    #Execute banking commands. Files are gz compressed, so just copy
+    for (fln in 1:length(fastqstobank)){
+        file.copy(from = file.path(opt$readsdir, fastqstobank[fln]), to = file.path(opt$outdir, outfilenames[fln]))
+    }
 
     #Back to sample folder
     setwd(opt$sampledir)
