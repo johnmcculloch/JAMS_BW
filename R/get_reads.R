@@ -30,16 +30,18 @@ get_reads <- function(opt = NULL){
         #if tempdir exists use that for fasterq-dump temporary folder, as fasterq uses up to 7 x the final fastq size in intermediate files.
         if (!is.null(opt$tempdir)){
             #Prefetch to tempdir, much, much faster
-            fetchcmd <- paste("prefetch", opt$sraaccession, "-O", file.path(opt$tempdir, opt$sraaccession), "--max-size 1t", sep = " ")
+            #set temporary folder to contain both the SRA accession AND the prefix. This is safer in case the same temporary folder is used for multiple runs concomitantly. Even if two runs in parallel for the same SRA accession are run, there would be no clash, as long as prefixes are different. Who would launch two exact same JAMSalpha commands in parallel? Right?
+            SRAtempdir <- file.path(opt$tempdir, opt$sraaccession)
+            fetchcmd <- paste("prefetch", opt$sraaccession, "-O", SRAtempdir, "--max-size 1t", sep = " ")
             system(fetchcmd)
             #go to prefetch folder and do fasterq-dump
-            setwd(file.path(opt$tempdir, opt$sraaccession))
+            setwd(SRAtempdir)
             commandtorun <- paste("fasterq-dump --split-files --skip-technical --threads", opt$threads, "--outdir", opt$readsdir, opt$sraaccession, sep = " ")
             system(commandtorun)
             #Return to where we were
             setwd(readsworkdir)
             #Purge temporary SRA folder
-            unlink(file.path(opt$tempdir, opt$sraaccession), recursive = TRUE)
+            unlink(SRAtempdir, recursive = TRUE)
         } else {
             commandtorun <- paste("fasterq-dump --split-files --skip-technical --threads", opt$threads, opt$sraaccession, sep = " ")
             system(commandtorun)
@@ -50,6 +52,7 @@ get_reads <- function(opt = NULL){
             file.remove(paste0(opt$sraaccession, "_pass.fastq"))
         }
         #gzip reads to save intermediate file size and conserve disk space
+        flog.info("Compressing SRA reads for maximizing speed and minimizing storage space.")
         for (RN in c(1, 2)){
             if (file.exists(paste(opt$prefix, paste(RN, "fastq", sep = "."), sep = "_"))){
                 gzcmd <- paste("pigz -p", opt$threads, paste(opt$prefix, paste(RN, "fastq", sep = "."), sep = "_"), sep = " ")

@@ -167,6 +167,29 @@ check_resources <- function(opt = opt, applications_to_check = c("base", "reads"
     #If testing dependencies and leave is true then it is time to abort.
     if (opt$testdependencies == TRUE){
         opt$abort <- TRUE
+    } else {
+        #Detect, create and set temporary folder
+        #Test slurm/Biowulf specific situation
+        if (is.null(opt$tmpdir) & (file.exists(file.path("/lscratch", as.character(Sys.getenv("SLURM_JOB_ID")))))){
+            opt$tempdir <- file.path("/lscratch", as.character(Sys.getenv("SLURM_JOB_ID")))
+        }
+
+        if (!is.null(opt$tempdir)){
+            tmpdirok <- FALSE
+            if (file.exists(opt$tempdir)){
+                tmpdirok <- dir.create(file.path(opt$tempdir, opt$prefix), showWarnings = TRUE, recursive = TRUE)
+                if (tmpdirok){
+                    opt$tempdir <- file.path(opt$tempdir, opt$prefix)
+                    flog.info(paste("Temporary folder set to", opt$tempdir))
+                } else {
+                    flog.warn(paste("Unable to set temporary folder to", file.path(opt$tempdir, opt$prefix)))
+                    opt$tempdir <- NULL
+                }
+            } else {
+                flog.info(paste("Temporary folder", opt$tempdir, "does not exist and will not be used."))
+                opt$tempdir <- NULL
+            }
+        }
     }
 
     return(opt)
