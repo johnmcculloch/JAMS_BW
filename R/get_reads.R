@@ -112,9 +112,9 @@ get_reads <- function(opt = NULL){
                 }
 
                 #Set target filename 
+                targetfilename <- file.path(readsworkdir, paste(paste(opt$prefix, rtype, sep = "_"), "fastq.gz", sep="."))
                 #In case files are ungzipped, gzip them to save intermediate file space
                 if (suffix == "fastq"){
-                    targetfilename <- file.path(readsworkdir, paste(paste(opt$prefix, rtype, sep = "_"), "fastq.gz", sep="."))
                     flog.info(paste("Copying and compressing", rtype, myfastqs[[f]]))
                     commandtorun <- paste("pigz --processes", opt$threads, "-c", myfastqs[[f]], ">", targetfilename, collapse = " ")
                     system(commandtorun)
@@ -132,7 +132,7 @@ get_reads <- function(opt = NULL){
 
     #find out number of files and rename accordingly
     rawfiles <- sort(list.files(pattern = "fastq.gz$"))
-    if(length(rawfiles) == 1){
+    if (length(rawfiles) == 1){
         flog.info("Found a single fastq file. Will assume this is of unpaired reads.")
         file.rename(rawfiles, paste0(opt$prefix, "_SE.fastq.gz"))
         opt$libstructure <- "singleend"
@@ -148,7 +148,7 @@ get_reads <- function(opt = NULL){
         q()
     }
 
-    opt$rawreads <- sort(list.files(pattern="*.fastq.gz$"))
+    opt$rawreads <- sort(list.files(pattern = "*.fastq.gz$"))
     opt$fastqstats <- countfastq_files(fastqfiles = opt$rawreads, threads = opt$threads, type_tag = "Raw")
 
     setwd(opt$workdir)
