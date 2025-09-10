@@ -30,7 +30,7 @@ defopt$classignore <- "N_A"
 defopt$maxnumclasses <- 15
 defopt$trunclen <- ("240,200")
 defopt$taxamethod <- "dada2"
-defopt$readcountthres <- 500
+defopt$min_read_count_threshold <- 500
 defopt$exporttables <- FALSE
 defopt$plot_read_qualities <- FALSE
 #defopt$primerforw <- NULL
@@ -99,10 +99,15 @@ option_list <- list(
                 type="character",
                 help = str_c("Choose analysis type (dada2, IDtaxa, dada2pr2, IDtaxapr2). First the program used to assign taxonomy is given (IDtaxa or dada2), then the database used for taxonomic assignment is given (SILVA or PR2), default: ", defopt$taxamethod, ")")),
 
-    make_option(c("-u", "--read_count_threshold"),
-                action="store", default = defopt$readcountthres,
+    make_option(c("-u", "--min_read_count_threshold"),
+                action="store", default = defopt$min_read_count_threshold,
                 type="numeric",
-                help ="path to the taxonomy database."),
+                help = str_c("minimum number of reads for a sample to not be discarded. default: ", defopt$taxamethod, ")")),
+
+    make_option(c("-n", "--max_read_count_threshold"),
+                action="store", default = defopt$max_read_count_threshold,
+                type="numeric",
+                help = str_c("minimum number of reads for a sample to not be discarded. If set, reads will be capped to this number of reads. If not set, input fastqs will not be subsampled before DADA2.)")),
 
     make_option(c("-e", "--export_tables"),
                 action="store_true", default = defopt$exporttables,
@@ -345,9 +350,16 @@ rawfastqsdf <- data.frame(Filenames = rawfastqnames, Filepaths = rawfastqpaths, 
 rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { analyze_fastq_filename(fn=rawfastqsdf$Filenames[x])$Read } )
 rawfastqsdf$Lane <- sapply(1:nrow(rawfastqsdf), function(x) { analyze_fastq_filename(fn=rawfastqsdf$Filenames[x])$Lane } )
 rawfastqsdf$OriPrefix <- sapply(1:nrow(rawfastqsdf), function(x) { analyze_fastq_filename(fn=rawfastqsdf$Filenames[x])$OriPrefix } )
+if ("OriPrefix" %in% colnames(opt$phenotable)){
+    #Match OriPrefix to Sample
+    #ADD THIS LATER
+} else {
+    #Consider Sample is fastq prefix name
+    rawfastqsdf$Prefix <- rawfastqsdf$OriPrefix
+}
 
 #Subset them to wanted samples from metadata
-Samples_have <- intersect(unique(rawfastqsdf$OriPrefix), unique(Samples_want))
+Samples_have <- intersect(unique(rawfastqsdf$Prefix), unique(Samples_want))
 #Report if anything is MISSING
 if (length(Samples_have) < length(Samples_want)){
     flog.warn(paste("Fastq files for", (length(Samples_want) - length(Samples_have)), "of the samples on the metadata were not found in", opt$reads_files_path))
@@ -356,22 +368,17 @@ if (length(Samples_have) < length(Samples_want)){
 }
 
 #Subset fastqs to only the ones wanted from the metadata
-rawfastqsdf <- subset(rawfastqsdf, OriPrefix %in% Samples_have)
+rawfastqsdf <- subset(rawfastqsdf, Prefix %in% Samples_have)
 
 #Check forward and reverse for each sample
-Samples_have_R1R2 <- intersect(subset(rawfastqsdf, Read == "R1")[]$OriPrefix, subset(rawfastqsdf, Read == "R2")[]$OriPrefix)
+Samples_have_R1R2 <- intersect(subset(rawfastqsdf, Read == "R1")[]$Prefix, subset(rawfastqsdf, Read == "R2")[]$Prefix)
 
 if (length(Samples_have_R1R2) < length(Samples_have)){
     flog.warn(paste("Sample(s)", paste0(Samples_have[!(Samples_have %in% Samples_have_R1R2)], collapse = ", "), "is MISSING a file for one of the reads."))
     flog.warn("Check your metadata and fastq file path!")
 }
-rawfastqsdf <- subset(rawfastqsdf, OriPrefix %in% Samples_have_R1R2)
+rawfastqsdf <- subset(rawfastqsdf, Prefix %in% Samples_have_R1R2)
 
-#Are there two samples?
-if (nrow(rawfastqsdf) < 3){
-    flog.warn(paste("There are only", nrow(rawfastqsdf), "samples that were found in the fastq file path. Check your metadata and fastq file path! Aborting now."))
-}
-IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Check each sample has two files
 if (length(Samples_have_R1R2) != (nrow(rawfastqsdf) / 2)){
@@ -380,54 +387,67 @@ if (length(Samples_have_R1R2) != (nrow(rawfastqsdf) / 2)){
 }
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
+#Are there two samples?
+if (nrow(rawfastqsdf) < 3){
+    flog.warn(paste("There are only", nrow(rawfastqsdf), "samples that were found in the fastq file path. Check your metadata and fastq file path! Aborting now."))
+    IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
+    q()
+}
+
+#Check minimum number of reads before starting
+rawfastqstats <- countfastq_files(fastqfiles = rawfastqsdf$Filepaths, threads = opt$threads, type_tag = "Raw")
+colnames(rawfastqstats)[which(colnames(rawfastqstats) == "Reads")] <- "Filepaths"
+rawfastqstats <- left_join(rawfastqstats, rawfastqsdf[ , c("Filepaths", "Read", "Prefix")], by = "Filepaths")
+
+rawfastqstats$Status <- "OK"
+if (!is.null(opt$min_read_count_threshold)){
+    if (any(rawfastqstats$Count < opt$min_read_count_threshold)){
+        rawfastqstats[which(rawfastqstats$Count < opt$min_read_count_threshold), "Status"] <- "Low"
+    }
+}
+#Cap to a set number of reads, if required.
+if (!is.null(opt$max_read_count_threshold)){
+    flog.info(paste("Input reads will be assessed and capped to", opt$max_read_count_threshold, "if found to contain more reads than this."))
+    if (any(rawfastqstats$Count > opt$max_read_count_threshold)){
+        rawfastqstats[which(rawfastqstats$Count > opt$max_read_count_threshold), "Status"] <- "High"
+    }
+}
+#Subsample reads if applicable.
+if ("High" %in% rawfastqstats$Status){
+    #Create folder to hold subsamples reads.
+    subsampled_readsdir <- file.path(opt$outdir, "subsampled_reads")
+    dir.create(subsampled_readsdir, recursive = TRUE)
+
+    rawfastqstats$Subset_out_fn <- NA
+    rawfastqstats$Dada2_input_read_fn <- rawfastqstats$Filepaths
+    for (rn in which(rawfastqstats$Status == "High")){
+        rawfastqstats[rn, "Subset_out_fn"] <- file.path(subsampled_readsdir, paste(paste(rawfastqstats[rn, "Prefix"], paste0("subs", opt$max_read_count_threshold), rawfastqstats[rn, "Read"], sep = "_"), "fastq", sep = "."))
+        rawfastqstats[rn, "Dada2_input_read_fn"] <- file.path(subsampled_readsdir, paste(paste(rawfastqstats[rn, "Prefix"], paste0("subs", opt$max_read_count_threshold), rawfastqstats[rn, "Read"], sep = "_"), "fastq", "gz", sep = "."))
+    }
+
+    subsample_and_compress <- function(inputfastq = NULL, numreads = NULL, outputfastq = NULL){
+        subsampleargs <- c("sample", "-s100", inputfastq, numreads, ">", outputfastq)
+        system2('seqtk', args = subsampleargs)
+        #Compress to gz because seqtk uncompresses them.
+        system2('gzip', args = outputfastq)
+    }
+
+    #mclapply(which(rawfastqstats$Status == "High"), function (x) { subsample_and_compress(inputfastq = rawfastqstats[x, "Filepaths"], numreads = opt$max_read_count_threshold, outputfastq = rawfastqstats[x, "Subset_out_fn"]) }, mc.cores = opt$threads)
+    #Do it serially because I am squeamish about mclapply on system2
+    for (rn in which(rawfastqstats$Status == "High")){
+        subsample_and_compress(inputfastq = rawfastqstats[rn, "Filepaths"], numreads = opt$max_read_count_threshold, outputfastq = rawfastqstats[rn, "Subset_out_fn"])
+    }
+    #Rectify file paths on rawfastqsdf to reflect subsetted samples.
+    rawfastqsdf <- left_join(rawfastqsdf, rawfastqstats[ , c("Filepaths", "Dada2_input_read_fn")], by = "Filepaths")
+} else {
+    rawfastqsdf$Dada2_input_read_fn <- rawfastqsdf$Filepaths
+}
+
 phredcutoff <- 18
 
 if (is.null(opt$trunclen_cutoffs_R1_R2)){
 
-    require("Rqc")
-    flog.info("Analyzing read qualities")
-    #Deal with the "all connections are in use" open by doing them in batches
-    quality_list <- list()
-    filelist <- split(1:length(rawfastqsdf$Filepaths), ceiling(seq_along(1:length(rawfastqsdf$Filepaths)) / 50))
-    for (fls in 1:length(filelist)){
-        quality_list_tmp <- suppressWarnings(Rqc::rqcQA(rawfastqsdf$Filepaths[filelist[[fls]]], workers = max((opt$threads - 2), 1)))
-        quality_list <- c(quality_list, quality_list_tmp)
-    }
-
-    flog.info("Determining the best truncation length for reads")
-    find_phred_cutoff <- function(qa = NULL, SampName = NULL){
-        CyclePhreddf <- rqcCycleAverageQualityCalc(qa[[SampName]])
-        CyclePhreddf$cycle <- as.numeric(CyclePhreddf$cycle)
-        loess_out <- loess(quality ~ cycle, data = CyclePhreddf)
-        CyclePhreddf$Fitted <- fitted(loess_out)
-        cyclecutoffs <- sapply(10:30, function (x){ CyclePhreddf$cycle[max(which(CyclePhreddf$Fitted >= x))] })
-        names(cyclecutoffs) <- paste0("Q", 10:30)
-
-        return(cyclecutoffs)
-
-    }
-
-    CyclePhred_list <- lapply(names(quality_list), function(x){ find_phred_cutoff(qa = quality_list, SampName = x)} )
-
-    names(CyclePhred_list) <- names(quality_list)
-    CyclePhreddf_per_Sample <- as.data.frame(bind_rows(CyclePhred_list, .id = "id"))
-    colnames(CyclePhreddf_per_Sample)[which(colnames(CyclePhreddf_per_Sample) == "id")] <- "Filenames"
-    for (colm in 1:ncol(CyclePhreddf_per_Sample)){
-        if (any(is.na(CyclePhreddf_per_Sample[ , colm]))){
-            CyclePhreddf_per_Sample[is.na(CyclePhreddf_per_Sample[ , colm]), colm] <- 1
-        }
-    }
-
-    rawfastqsdf <- left_join(rawfastqsdf, CyclePhreddf_per_Sample, by = "Filenames")
-    rownames(rawfastqsdf) <- rawfastqsdf$Filenames
-
-    quantile75cutoff_R1 <- sapply(paste0("Q", 10:30), function(x) { as.numeric(quantile(subset(rawfastqsdf, Read == "R1")[ , x], probs = seq(0, 1, 0.1))["90%"]) })
-    quantile75cutoff_R2 <- sapply(paste0("Q", 10:30), function(x) { as.numeric(quantile(subset(rawfastqsdf, Read == "R2")[ , x], probs = seq(0, 1, 0.1))["90%"]) })
-
-    trunclen_cutoffs_R1_R2 <- unname(c(quantile75cutoff_R1[paste0("Q", phredcutoff)], quantile75cutoff_R2[paste0("Q", phredcutoff)]))
-
-    flog.info(paste("For R1 reads, on read cycle", trunclen_cutoffs_R1_R2[1], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
-    flog.info(paste("For R2 reads, on read cycle", trunclen_cutoffs_R1_R2[2], "the Phred quality is above", phredcutoff, "in the 90th percentile of reads"))
+    #To be developed.
 
 } else {
     trunclen_cutoffs_R1_R2 <- as.numeric(unlist(strsplit(opt$trunclen_cutoffs_R1_R2, split = ",")))
@@ -447,52 +467,52 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 #https://benjjneb.github.io/dada2/tutorial_1_8.html
 
 flog.info("Starting dada2 pipeline according to https://benjjneb.github.io/dada2/tutorial_1_8.html")
-sample.names <- subset(rawfastqsdf, Read == "R1")[]$OriPrefix
+sample.names <- subset(rawfastqsdf, Read == "R1")[]$Prefix
 
 if (opt$plot_read_qualities){
     flog.info("Plotting raw read qualities using dada2")
     pdf(paste(paste(project, "Dada2_Read_Quality_Plots", sep = "_"), "pdf", sep = "."), paper = "a4r")
     for(smp in sample.names){
-        print(plotQualityProfile(subset(rawfastqsdf, OriPrefix == smp)[order(subset(rawfastqsdf, OriPrefix == smp)$Read) , c("Filepaths")]))
+        print(plotQualityProfile(subset(rawfastqsdf, Prefix == smp)[order(subset(rawfastqsdf, Prefix == smp)$Read) , c("Dada2_input_read_fn")]))
     }
     dev.off()
 }
 
-rawfastqsdf$FilteredFilePaths <- sapply(1:nrow(rawfastqsdf), function(x){ file.path(opt$outdir, "filteredreads", paste0(paste(paste(rawfastqsdf[x , c("OriPrefix", "Read")], collapse = "_"), "filt", sep = "_"), ".fastq.gz")) })
+rawfastqsdf$FilteredFilePaths <- sapply(1:nrow(rawfastqsdf), function(x){ file.path(opt$outdir, "filteredreads", paste0(paste(paste(rawfastqsdf[x , c("Prefix", "Read")], collapse = "_"), "filt", sep = "_"), ".fastq.gz")) })
 
 #Be double sure to have the same order always
 rawfastqsdfR1 <- subset(rawfastqsdf, Read == "R1")
-rownames(rawfastqsdfR1) <- rawfastqsdfR1$OriPrefix
+rownames(rawfastqsdfR1) <- rawfastqsdfR1$Prefix
 rawfastqsdfR2 <- subset(rawfastqsdf, Read == "R2")
-rownames(rawfastqsdfR2) <- rawfastqsdfR2$OriPrefix
+rownames(rawfastqsdfR2) <- rawfastqsdfR2$Prefix
 rawfastqsdfR2 <- rawfastqsdfR2[rownames(rawfastqsdfR1) , ]
 
 flog.info("Filtering and trimming reads")
-out <- filterAndTrim(fwd = rawfastqsdfR1$Filepaths, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$Filepaths, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1))
+out <- filterAndTrim(fwd = rawfastqsdfR1$Dada2_input_read_fn, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$Dada2_input_read_fn, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1))
 
 #Adjust out dataframe
 out <- as.data.frame(out)
 out$Filenames <- rownames(out)
-out <- left_join(out, rawfastqsdf[ , c("Filenames", "OriPrefix")], by = "Filenames")
+out <- left_join(out, rawfastqsdf[ , c("Filenames", "Prefix")], by = "Filenames")
 colnames(out)[1:2] <- c("Number_Reads_Input", "Number_Reads_Output")
 out$Filenames <- NULL
-rawfastqsdf <- left_join(rawfastqsdf, out, by = "OriPrefix")
+rawfastqsdf <- left_join(rawfastqsdf, out, by = "Prefix")
 
 #Get a list of reads who do not survive read number threshold
 
-samplestodiscard <- subset(out, Number_Reads_Output < opt$read_count_threshold)[]$OriPrefix
+samplestodiscard <- subset(out, Number_Reads_Output < opt$min_read_count_threshold)[]$Prefix
 rawfastqsdf$Sample_Status <- "Sample_Kept_Read_Count_Sufficient"
 if (length(samplestodiscard) > 0){
-    rawfastqsdf$Sample_Status[which(rawfastqsdf$OriPrefix %in% samplestodiscard)] <- "Sample_Eliminated_Low_Read_Count"
+    rawfastqsdf$Sample_Status[which(rawfastqsdf$Prefix %in% samplestodiscard)] <- "Sample_Eliminated_Low_Read_Count"
     flog.warn("Samples", paste0(samplestodiscard, collapse = ", "), "were discarded for having less than", opt$read_count_threshold, "reads after filtering.")
     #Reset reads data frame as not containing reads to discard
-    rawfastqsdfR1 <- subset(rawfastqsdfR1, !(OriPrefix %in% samplestodiscard))
-    rawfastqsdfR2 <- subset(rawfastqsdfR2, !(OriPrefix %in% samplestodiscard))
+    rawfastqsdfR1 <- subset(rawfastqsdfR1, !(Prefix %in% samplestodiscard))
+    rawfastqsdfR2 <- subset(rawfastqsdfR2, !(Prefix %in% samplestodiscard))
 }
 
-Samples_passing_threshold <- intersect(rawfastqsdfR1$OriPrefix, rawfastqsdfR2$OriPrefix)
+Samples_passing_threshold <- intersect(rawfastqsdfR1$Prefix, rawfastqsdfR2$Prefix)
 
-Sample2Depth <- out[ , c("OriPrefix", "Number_Reads_Output")]
+Sample2Depth <- out[ , c("Prefix", "Number_Reads_Output")]
 colnames(Sample2Depth)[1] <- "Sample"
 
 rm(out)
@@ -500,7 +520,7 @@ rm(out)
 filtFs <- rawfastqsdfR1$FilteredFilePaths
 filtRs <- rawfastqsdfR2$FilteredFilePaths
 
-sample.names <- rawfastqsdfR1$OriPrefix
+sample.names <- rawfastqsdfR1$Prefix
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 
@@ -550,8 +570,8 @@ if (length(sample.names) == 1){
     track <- as.data.frame(cbind(sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim)))
 }
 colnames(track) <- c("DenoisedF", "DenoisedR", "Merged", "NonChim")
-track$OriPrefix <- sample.names
-rawfastqsdf <- left_join(rawfastqsdf, track, by = "OriPrefix")
+track$Prefix <- sample.names
+rawfastqsdf <- left_join(rawfastqsdf, track, by = "Prefix")
 flog.info("Exporting read stats")
 write.xlsx(rawfastqsdf, file = paste0(opt$projectname, "_Reads_Statistics.xlsx"), colNames = TRUE, rowNames = FALSE, colWidths = "auto", borders = "all")
 
