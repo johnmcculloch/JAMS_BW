@@ -114,36 +114,6 @@ option_list <- list(
                 type="logical",
                 help ="Export relative abundance tables and feature data tables in tsv format."),
 
-#    make_option(c("-d", "--make_ordination_reports"),
-#                action="store", default = NULL,
-#                type="character",
-#                help ="Generate ordination plots with this algorithm. Choose between PCA, tSNE or tUMAP, or more than one separated by a comma. Example: -d PCA,tUMAP"),
-
-#    make_option(c("-f", "--make_exploratory_reports"),
-#                action="store_true", default = FALSE,
-#                type="logical",
-#                help ="Generate Relative Abundace heatmaps and spreadsheets based on variance analysis."),
-
-#    make_option(c("-k", "--make_comparative_reports"),
-#                action="store_true", default = FALSE,
-#                type="logical",
-#                help ="Generate Relative Abundace heatmaps and spreadsheets for hypothesis testing using metadata categories."),
-
-#    make_option(c("-r", "--make_correlation_reports"),
-#                 action="store_true", default = FALSE,
-#                type="logical",
-#                help ="Generate Pairwise Feature Correlation heatmaps."),
-
-#    make_option(c("-z", "--make_alpha_reports"),
-#                action = "store_true", default = FALSE,
-#                type = "logical",
-#                help = "Generate alpha diversity plots."),
-#
-#    make_option(c("-m", "--plot_in_parallel"),
-#                action = "store_true", default = FALSE,
-#                type = "logical",
-#                help = "Use multiple CPUs when generating plots. This option is experimental, and is not guaranteed to not crash."),
-
     make_option(c("-s", "--run_script"),
                 action="store", default = NULL,
                 type="character",
@@ -379,7 +349,6 @@ if (length(Samples_have_R1R2) < length(Samples_have)){
 }
 rawfastqsdf <- subset(rawfastqsdf, Prefix %in% Samples_have_R1R2)
 
-
 #Check each sample has two files
 if (length(Samples_have_R1R2) != (nrow(rawfastqsdf) / 2)){
     flog.warn("Some samples have more than two fastq files. Check your metadata and fastq file path! Aborting now.")
@@ -414,6 +383,27 @@ if (!is.null(opt$max_read_count_threshold)){
 }
 #Subsample reads if applicable.
 if ("High" %in% rawfastqstats$Status){
+
+    #Check you have seqtk on the system.
+    missingdep <- FALSE
+    dependencies_to_check <- "seqtk"
+    for (dep in dependencies_to_check) {
+        cmd <- dep
+        if (cmd == "sratoolkit"){
+            cmd <- "fasterq-dump"
+        } 
+        if (system(str_c("which ", cmd), ignore.stdout = TRUE) == 1) { # not found
+            flog.warn(str_c("You are missing ", dep))
+            missingdep <- TRUE
+        }
+    }
+
+    if (missingdep == TRUE) {
+        flog.info("Please install missing dependencies before using JAMS16. Aborting.")
+        opt$abort <- TRUE
+        q()
+    }
+
     #Create folder to hold subsamples reads.
     subsampled_readsdir <- file.path(opt$outdir, "subsampled_reads")
     dir.create(subsampled_readsdir, recursive = TRUE)
@@ -493,9 +483,9 @@ out <- filterAndTrim(fwd = rawfastqsdfR1$Dada2_input_read_fn, filt = rawfastqsdf
 #Adjust out dataframe
 out <- as.data.frame(out)
 out$Filenames <- rownames(out)
-out <- left_join(out, rawfastqsdf[ , c("Filenames", "Prefix")], by = "Filenames")
+out <- left_join(out, rawfastqsdf[ , c("Dada2_input_read_fn", "Prefix")], by = "Dada2_input_read_fn")
 colnames(out)[1:2] <- c("Number_Reads_Input", "Number_Reads_Output")
-out$Filenames <- NULL
+out$Dada2_input_read_fn <- NULL
 rawfastqsdf <- left_join(rawfastqsdf, out, by = "Prefix")
 
 #Get a list of reads who do not survive read number threshold
@@ -709,22 +699,19 @@ if(opt$taxamethod %in% c("dada2", "dada2pr2","IDtaxa")){
     opt$tt[which(is.na(opt$tt[ , taxlvl]) == TRUE) , taxlvl] <- "Unclassified"
     }
 }
-#Add genus-species to species column, like kraken does it so infer_LKT will work as is.
-#tt[which(is.na(tt[ , "Species"]) == FALSE) , "Species"] <- paste(tt[which(is.na(tt[ , "Species"]) == FALSE), "Genus"], tt[which(is.na(tt[ , "Species"]) == FALSE) , "Species"], sep = "_")
-#tt$Species <- gsub("^g__", "s__", tt$Species)
 
 opt$tt[which(is.na(opt$tt[ , "Species"]) == TRUE) , "Species"] <- "Unclassified"
 ##Inferring LKT based on taxonomic database
-if(opt$taxamethod %in% c("dada2","IDtaxa")){
+if (opt$taxamethod %in% c("dada2","IDtaxa")){
     opt$tt <- infer_LKT(opt$tt)
-    }else if (opt$taxamethod %in% c("dada2pr2","IDtaxapr2")){
+    } else if (opt$taxamethod %in% c("dada2pr2","IDtaxapr2")){
     opt$tt <- infer_LKT_pr2(opt$tt)
     }
 
-if(opt$taxamethod %in% c("IDtaxapr2")){
-    for(lvl in 1:length(taxlvls)){
-    taxlvl <- taxlvls[lvl]
-    opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl] <- paste0(taxtags[lvl], opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl])
+if (opt$taxamethod %in% c("IDtaxapr2")){
+    for (lvl in 1:length(taxlvls)){
+        taxlvl <- taxlvls[lvl]
+        opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl] <- paste0(taxtags[lvl], opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl])
     }
 }
 
