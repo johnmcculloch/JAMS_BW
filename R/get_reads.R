@@ -92,6 +92,7 @@ get_reads <- function(opt = NULL){
                 q()
             }
             flog.info(paste("You supplied", paste(fastqsinopt, collapse = ", "), "reads."))
+            flog.info(paste("Input reads are:", paste0(opt[fastqsinopt], collapse = ", ")))
             myfastqs <- opt[fastqsinopt]
 
             #Check if files actually exist
