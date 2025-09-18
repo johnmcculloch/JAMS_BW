@@ -855,3 +855,29 @@ extract_NCBI_taxid_from_featname <- function(Taxon = NULL){
 
     return(NCBI_taxid)
 }
+
+
+#' check_for_banked_samples(JAMSarchive_path = NULL)
+#'
+#' Given an absolute path to a JAMSarchive style directory (wherein jamsfiles and JAMStarballs are), this function will return a vector containing the names of samples for which there are both a .jams file and a JAMS alpha run tarball. This may be useful to quickly ascertiain which samples have been banked or not, in the scope of project management.
+#' @export
+
+check_for_banked_samples <- function(JAMSarchive_path = NULL){
+    jfl <- list.files(path = file.path(JAMSarchive_path, "jamsfiles"), pattern = ".jams")
+    jtbl <- list.files(path = file.path(JAMSarchive_path, "JAMStarballs"), pattern = ".tar.gz")
+    sh <- unname(sapply(jfl, function (x) { unlist(strsplit(x, split = "\\."))[1] } ))
+    tbh <- gsub("_JAMS.tar.gz", "", jtbl)
+    if (length(sh) != length(tbh)){
+        flog.warn("Mismatch between .jams files and JAMStarballs!")
+        jamfiles_without_tarballs <- sh[!(sh %in% tbh)]
+        tarballs_without_jamsfiles <- tbh[!(tbh %in% sh)]
+        if (length(jamfiles_without_tarballs) > 0){
+            flog.warn(paste("The following .jams files have no tarballs:", paste0(jamfiles_without_tarballs, collapse = ", ")))
+        }
+        if (length(tarballs_without_jamsfiles) > 0){
+            flog.warn(paste("The following tarballs have no .jams files:", paste0(tarballs_without_jamsfiles, collapse = ", ")))
+        }
+    }
+    return(intersect(sh, tbh))
+}
+
