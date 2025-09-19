@@ -54,10 +54,10 @@ get_reads <- function(opt = NULL){
         #gzip reads to save intermediate file size and conserve disk space
         flog.info("Compressing SRA reads for maximizing speed and minimizing storage space.")
         for (RN in c(1, 2)){
-            if (file.exists(paste(opt$prefix, paste(RN, "fastq", sep = "."), sep = "_"))){
-                gzcmd <- paste("pigz -p", opt$threads, paste(opt$prefix, paste(RN, "fastq", sep = "."), sep = "_"), sep = " ")
+            if (file.exists(paste(opt$sraaccession, paste(RN, "fastq", sep = "."), sep = "_"))){
+                gzcmd <- paste("pigz -p", opt$threads, paste(opt$sraaccession, paste(RN, "fastq", sep = "."), sep = "_"), sep = " ")
                 system(gzcmd)
-                file.rename(from = paste(opt$prefix, paste(RN, "fastq.gz", sep = "."), sep = "_"), to = paste(opt$prefix, paste(paste0("R", RN), "fastq.gz", sep = "."), sep = "_"))
+                file.rename(from = paste(opt$sraaccession, paste(RN, "fastq.gz", sep = "."), sep = "_"), to = paste(opt$prefix, paste(paste0("R", RN), "fastq.gz", sep = "."), sep = "_"))
             }
         }
 
