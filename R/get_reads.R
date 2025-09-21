@@ -32,16 +32,9 @@ get_reads <- function(opt = NULL){
             #Prefetch to tempdir, much, much faster
             #set temporary folder to contain both the SRA accession AND the prefix. This is safer in case the same temporary folder is used for multiple runs concomitantly. Even if two runs in parallel for the same SRA accession are run, there would be no clash, as long as prefixes are different. Who would launch two exact same JAMSalpha commands in parallel? Right?
             SRAtempdir <- file.path(opt$tempdir, opt$sraaccession)
-            fetchcmd <- paste("prefetch", opt$sraaccession, "-O", SRAtempdir, "--max-size 1t", sep = " ")
-            system(fetchcmd)
-            #go to prefetch folder and do fasterq-dump
-            setwd(SRAtempdir)
-            commandtorun <- paste("fasterq-dump --split-files --skip-technical --threads", opt$threads, "--outdir", opt$readsdir, opt$sraaccession, sep = " ")
-            system(commandtorun)
-            #Return to where we were
-            setwd(readsworkdir)
-            #Purge temporary SRA folder
-            unlink(SRAtempdir, recursive = TRUE)
+            dir.create(SRAtempdir, recursive = TRUE)
+            download_SRA_reads(SRAaccessions = opt$sraaccession, outfolder = readsworkdir, tempfolder = opt$tempdir, prefetch = TRUE, threads = opt$threads)
+
         } else {
             commandtorun <- paste("fasterq-dump --split-files --skip-technical --threads", opt$threads, opt$sraaccession, sep = " ")
             system(commandtorun)
