@@ -378,7 +378,7 @@ opt$abundances$taxonomic <- list()
 opt$abundances$functional <- list()
 
 #Process MAGs, if applicable
-if ((opt$analysis == "metagenome") & (is.null(opt$contigs))){
+if (opt$analysis == "metagenome"){
     opt <- sort_contigs_into_bins(opt = opt)
     opt <- process_MAGs(opt = opt)
 }
@@ -388,7 +388,7 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 opt <- process_contig_LKTs(opt = opt)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
-if ((opt$analysis == "metagenome") & (is.null(opt$contigs))){
+if (opt$analysis == "metagenome"){
     opt <- consolidate_entities_in_sample(opt = opt)
 }
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
