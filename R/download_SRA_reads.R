@@ -5,13 +5,19 @@
 
 download_SRA_reads <- function(SRAaccessions = NULL, outfolder = NULL, tempfolder = NULL, prefetch = TRUE, threads = 8){
     flog.info("Retrieving fastq files from SRA.")
-    flog.info(paste("There are", length(SRAaccessions), "to download. Will download and process these serially to minimize storage space use."))
+    flog.info(paste("There are", length(SRAaccessions), "SRA accessions to download. Will download and process these serially to minimize storage space use."))
     curr_wd <- getwd()
     #Check or make final destination folder
+    if (is.null(outfolder)){
+        flog.warn("Output folder not set in arguments. Using current folder as output folder.")
+        outfolder <- getwd()
+    }
+
     if (!file.exists(outfolder)){
         flog.info(paste("Creating final output folder to hold processed reads at", outfolder))
         dir.create(outfolder, recursive = TRUE)
     }
+
     #Check temporary folder
     if (!is.null(tempfolder)){
         if (file.exists(tempfolder)){
@@ -21,15 +27,19 @@ download_SRA_reads <- function(SRAaccessions = NULL, outfolder = NULL, tempfolde
             tempfolder <- NULL
         }
     }
+
     #Process each accession serially
     for (SRAacc in SRAaccessions){
         flog.info(paste("Processing", SRAacc))
+
         if (!is.null(tempfolder)){
             workfolder <- tempfolder
         } else {
             workfolder <- outfolder
         }
+
         setwd(workfolder)
+
         if (prefetch == TRUE) {
             fetchcmd <- paste("prefetch", SRAacc, "-O", workfolder, "--max-size 1t", sep = " ")
             system(fetchcmd)
@@ -41,6 +51,7 @@ download_SRA_reads <- function(SRAaccessions = NULL, outfolder = NULL, tempfolde
             commandtorun <- paste("fasterq-dump --split-files --skip-technical --threads", threads, "--outdir", workfolder, SRAacc, sep = " ")
             system(commandtorun)
         }
+
         #Process reads, eliminate leftovers and gz compress.
         setwd(workfolder)
         for (RN in c(1, 2)){
@@ -59,14 +70,19 @@ download_SRA_reads <- function(SRAaccessions = NULL, outfolder = NULL, tempfolde
                 flog.warn(paste("Could not find", curr_SRA_fn))
             }
         }
+
         #Cleanup prefetch or intermediate files
         if (file.exists(paste0(SRAacc, "_pass.fastq"))){
             file.remove(paste0(SRAacc, "_pass.fastq"))
         }
+
         if (file.exists(file.path(workfolder, SRAacc))){
             unlink(file.path(workfolder, SRAacc), recursive = TRUE)
         }
+
     }
+
     #Return to original folder
     setwd(curr_wd)
+
 }
