@@ -2,7 +2,7 @@
 % Please edit documentation in R/download_SRA_reads.R
 \name{download_SRA_reads}
 \alias{download_SRA_reads}
-\title{SRA_reads(SRAaccessions = NULL, outfolder = NULL, tempfolder = NULL, prefetch = TRUE, threads = 8)}
+\title{download_SRA_reads(SRAaccessions = NULL, outfolder = NULL, tempfolder = NULL, prefetch = TRUE, threads = 8)}
 \usage{
 download_SRA_reads(
   SRAaccessions = NULL,

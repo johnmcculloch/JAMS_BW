@@ -1,4 +1,4 @@
-#' SRA_reads(SRAaccessions = NULL, outfolder = NULL, tempfolder = NULL, prefetch = TRUE, threads = 8)
+#' download_SRA_reads(SRAaccessions = NULL, outfolder = NULL, tempfolder = NULL, prefetch = TRUE, threads = 8)
 #'
 #' Wrapper for safely downloading SRA reads within the JAMS framework. You will need to have SRAtoolkit installed on your system.
 #' @export
