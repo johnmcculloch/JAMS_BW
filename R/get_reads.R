@@ -41,16 +41,14 @@ get_reads <- function(opt = NULL){
         }
 
         #Eliminate unpaired read because split-e was used. This means that unpaired reads from a paired Run will be dumped into a third file.
-        if (length(list.files(pattern = "fastq") > 2)){
+        if (file.exists(paste0(opt$sraaccession, "_pass.fastq"))){
             file.remove(paste0(opt$sraaccession, "_pass.fastq"))
         }
+
         #gzip reads to save intermediate file size and conserve disk space
-        flog.info("Compressing SRA reads for maximizing speed and minimizing storage space.")
         for (RN in c(1, 2)){
-            if (file.exists(paste(opt$sraaccession, paste(RN, "fastq", sep = "."), sep = "_"))){
-                gzcmd <- paste("pigz -p", opt$threads, paste(opt$sraaccession, paste(RN, "fastq", sep = "."), sep = "_"), sep = " ")
-                system(gzcmd)
-                file.rename(from = paste(opt$sraaccession, paste(RN, "fastq.gz", sep = "."), sep = "_"), to = paste(opt$prefix, paste(paste0("R", RN), "fastq.gz", sep = "."), sep = "_"))
+            if (file.exists(paste(opt$sraaccession, paste(paste0("R", RN), "fastq", "gz", sep = "."), sep = "_"))){
+                file.rename(from = paste(opt$sraaccession, paste(paste0("R", RN), "fastq.gz", sep = "."), sep = "_"), to = paste(opt$prefix, paste(paste0("R", RN), "fastq.gz", sep = "."), sep = "_"))
             }
         }
 
