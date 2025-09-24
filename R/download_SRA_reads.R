@@ -45,10 +45,10 @@ download_SRA_reads <- function(SRAaccessions = NULL, outfolder = NULL, tempfolde
             system(fetchcmd)
             #go to prefetch folder and do fasterq-dump
             setwd(file.path(workfolder, SRAacc))
-            commandtorun <- paste("fasterq-dump --split-files --skip-technical --threads", threads, "--outdir", workfolder, SRAacc, sep = " ")
+            commandtorun <- paste("fasterq-dump --split-files --skip-technical --seq-defline \'@$ac_$sn $ri\' --qual-defline \'+$ac_$sn $ri\' --threads", threads, "--outdir", workfolder, SRAacc, sep = " ")
             system(commandtorun)
         } else {
-            commandtorun <- paste("fasterq-dump --split-files --skip-technical --threads", threads, "--outdir", workfolder, SRAacc, sep = " ")
+            commandtorun <- paste("fasterq-dump --split-files --skip-technical --seq-defline \'@$ac_$sn $ri\' --qual-defline \'+$ac_$sn $ri\' --threads", threads, "--outdir", workfolder, SRAacc, sep = " ")
             system(commandtorun)
         }
 
@@ -58,6 +58,7 @@ download_SRA_reads <- function(SRAaccessions = NULL, outfolder = NULL, tempfolde
             curr_SRA_fn <- paste(paste(SRAacc, RN, sep = "_"), "fastq", sep = ".")
             #Check if file exists
             if (file.exists(curr_SRA_fn)){
+                #Change the § to the read number for making the headers compatible with legacy 
                 file.rename(from = curr_SRA_fn, to = paste(paste(SRAacc, paste0("R", RN), sep = "_"), "fastq", sep = "."))
                 #Compress
                 system2('pigz', args = paste("-p", threads, paste(paste(SRAacc, paste0("R", RN), sep = "_"), "fastq", sep = ".")))
