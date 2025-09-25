@@ -45,10 +45,10 @@ download_SRA_reads <- function(SRAaccessions = NULL, outfolder = NULL, tempfolde
             system(fetchcmd)
             #go to prefetch folder and do fasterq-dump
             setwd(file.path(workfolder, SRAacc))
-            commandtorun <- paste("fasterq-dump --split-files --skip-technical --seq-defline \'@$ac_$sn $ri\' --qual-defline \'+$ac_$sn $ri\' --threads", threads, "--outdir", workfolder, SRAacc, sep = " ")
+            commandtorun <- paste("fasterq-dump --split-files --skip-technical --seq-defline \'@$ac:$sn $ri:N:0:$sg\' --qual-defline \'+\' --threads", threads, "--outdir", workfolder, SRAacc, sep = " ")
             system(commandtorun)
         } else {
-            commandtorun <- paste("fasterq-dump --split-files --skip-technical --seq-defline \'@$ac_$sn $ri\' --qual-defline \'+$ac_$sn $ri\' --threads", threads, "--outdir", workfolder, SRAacc, sep = " ")
+            commandtorun <- paste("fasterq-dump --split-files --skip-technical --seq-defline \'@$ac:$sn $ri:N:0:$sg\' --qual-defline \'+\' --threads", threads, "--outdir", workfolder, SRAacc, sep = " ")
             system(commandtorun)
         }
 
