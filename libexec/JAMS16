@@ -166,8 +166,7 @@ if (!is.null(opt$V4)) {
 #suppressMessages(suppressPackageStartupMessages(library(futile.logger)))
 
 #Authorship message
-authors <- as.character(as.person(packageDescription("JAMS")$Author))
-authorshipmessage <- c(packageDescription("JAMS")$Title, paste("JAMS version", packageVersion("JAMS")), authors, paste("Contact:", "john.mcculloch@nih.gov"), "National Cancer Institute", "National Institutes of Health", "Bethesda, MD, USA")
+JAMSauthors <- as.character(as.person(packageDescription("JAMS")$Author))
 
 #Fix path relativity
 fixrelpath <- function(JAMSpath = NULL){
@@ -218,18 +217,22 @@ if (!is.null(opt$outdir)) {
 asPA <- FALSE
 opt$projimage <- file.path(opt$outdir, ".RData")
 
+#Test slurm/Biowulf specific situation
+if (is.null(opt$tempdir) & (file.exists(file.path("/lscratch", as.character(Sys.getenv("SLURM_JOB_ID")))))){
+    opt$tempdir <- file.path("/lscratch", as.character(Sys.getenv("SLURM_JOB_ID")))
+}
+
 ###################
 ## Start project ##
 ###################
 suppressMessages(suppressPackageStartupMessages(library(JAMS)))
-#The logfile is not an option as of a few JAMS versions ago. Therefore I commented out this loop
-#if (TRUE){
-#    opt$logfile <- file.path(opt$outdir, paste0(opt$projectname, "_JAMS.log"))
-#    flog.appender(appender.tee(opt$logfile))
-#}
+opt$logfile <- file.path(opt$outdir, paste0(opt$projectname, "_JAMS.log"))
+flog.appender(appender.tee(opt$logfile))
+
 
 flog.info("JAMS - Just A Microbiology System")
-flog.info(authorshipmessage)
+flog.info(paste("Version", opt$verstr))
+flog.info(paste("By:", paste(JAMSauthors, collapse = "; ")))
 
 flog.info("JAMS16 start. Gathering information...")
 project <- as.character(opt$projectname)
@@ -321,8 +324,34 @@ if (!is.null(opt$basespace_projectID)){
 }
 
 Samples_want <- as.character(opt$phenotable[ , ptsampcol])
+
+if (is.null(opt$reads_files_path)){
+    if (!("SRAaccession" %in% colnames(opt$phenotable))){
+        flog.warn("You must either supply a path to where your fastq files are located, or supply a column in your metatata named \"SRAaccession\" containing NCBI accession numbers for SRA amplicon runs. (https://www.ncbi.nlm.nih.gov/sra). You will need to have SRA toolkit installed in your system.")
+        flog.warn("Aborting now.")
+        q()
+    } else {
+        #SRA accessions are in a column
+        flog.info("Retrieving fastq files from SRA. Please be patient.")
+        opt$SRAaccessions <- opt$phenotable$SRAaccession
+        opt$reads_files_path <- file.path(opt$outdir, "SRA_raw_reads")
+        dir.create(opt$reads_files_path, recursive = TRUE)
+        #Download from SRA into this folder
+        download_SRA_reads(SRAaccessions = opt$SRAaccessions, outfolder = opt$reads_files_path, tempfolder = opt$tempdir, prefetch = FALSE, threads = opt$threads)
+        #Rename reads to what is in the sample column
+        setwd(opt$reads_files_path)
+        for (rn in 1:nrow(opt$phenotable)){
+            for (RN in c(1, 2)){
+                if (file.exists(paste(opt$phenotable[rn, "SRAaccession"], paste(paste0("R", RN), "fastq", "gz", sep = "."), sep = "_"))){
+                    file.rename(from = paste(opt$phenotable[rn, "SRAaccession"], paste(paste0("R", RN), "fastq", "gz", sep = "."), sep = "_"), to = paste(opt$phenotable[rn, "Sample"], paste(paste0("R", RN), "fastq.gz", sep = "."), sep = "_"))
+                }
+            }
+        }
+        setwd(opt$outdir)
+    }
+}
+
 #Look for corresponding fastqs with the wanted sample prefixes
-#Get a list of fastq files
 rawfastqpaths <- list.files(path = opt$reads_files_path, pattern = "fastq.gz", full.names = TRUE, recursive = TRUE)
 rawfastqnames <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 1) })
 rawfastqsdf <- data.frame(Filenames = rawfastqnames, Filepaths = rawfastqpaths, stringsAsFactors = FALSE)
@@ -361,9 +390,9 @@ rawfastqsdf <- subset(rawfastqsdf, Prefix %in% Samples_have_R1R2)
 #Check each sample has two files
 if (length(Samples_have_R1R2) != (nrow(rawfastqsdf) / 2)){
     flog.warn("Some samples have more than two fastq files. Check your metadata and fastq file path! Aborting now.")
+    IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
     q()
 }
-IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 #Are there two samples?
 if (nrow(rawfastqsdf) < 3){
@@ -428,6 +457,7 @@ if (!is.null(opt$max_read_count_threshold)){
             #Compress to gz because seqtk uncompresses them.
             system2('gzip', args = outputfastq)
         }
+
         dmp <- mclapply(which(rawfastqstats$Status == "High"), function (x) { subsample_and_compress(inputfastq = rawfastqstats[x, "Filepaths"], numreads = opt$max_read_count_threshold, outputfastq = rawfastqstats[x, "Subset_out_fn"]) }, mc.cores = opt$threads)
         rm(dmp)
 
@@ -436,6 +466,8 @@ if (!is.null(opt$max_read_count_threshold)){
         rownames(rawfastqstats) <- rawfastqstats$Filepaths
         rawfastqsdf[rownames(rawfastqstats)[which(rawfastqstats$Status == "High")], "Dada2_input_read_fn"] <- rawfastqstats[which(rawfastqstats$Status == "High"), "Dada2_input_read_fn"]
         rawfastqsdf[rownames(rawfastqstats)[which(rawfastqstats$Status == "High")], "Dada2_input_read_fpath"] <- rawfastqstats[which(rawfastqstats$Status == "High"), "Dada2_input_read_fpath"]
+        rownames(rawfastqsdf) <- 1:nrow(rawfastqsdf)
+        rownames(rawfastqstats) <- 1:nrow(rawfastqstats)
     }
 }
 
@@ -444,7 +476,7 @@ phredcutoff <- 18
 if (is.null(opt$trunclen_cutoffs_R1_R2)){
 
     #To be developed.
-    trunclen_cutoffs_R1_R2 <- c(250,250)
+    trunclen_cutoffs_R1_R2 <- c(250, 250)
 
 } else {
     trunclen_cutoffs_R1_R2 <- as.numeric(unlist(strsplit(opt$trunclen_cutoffs_R1_R2, split = ",")))
@@ -477,6 +509,13 @@ if (opt$plot_read_qualities){
 
 rawfastqsdf$FilteredFilePaths <- sapply(1:nrow(rawfastqsdf), function(x){ file.path(opt$outdir, "filteredreads", paste0(paste(paste(rawfastqsdf[x , c("Prefix", "Read")], collapse = "_"), "filt", sep = "_"), ".fastq.gz")) })
 
+if (!is.null(opt$forward_primer) && !is.null(opt$reverse_primer)) {
+    rawfastqsdf$PrimerClippedFilePaths <- sapply(1:nrow(rawfastqsdf), function(x){ file.path(opt$outdir, "primerremoved", paste0(paste(paste(rawfastqsdf[x , c("Prefix", "Read")], collapse = "_"), "primerremoved", sep = "_"), ".fastq.gz")) })
+    rawfastqsdf$FilterInput_fn <-  sapply(1:nrow(rawfastqsdf), function(x){ paste0(paste(paste(rawfastqsdf[x , c("Prefix", "Read")], collapse = "_"), "primerremoved", sep = "_"), ".fastq.gz") } )
+} else {
+    rawfastqsdf$FilterInput_fn <- sapply(1:nrow(rawfastqsdf), function(x){ paste0(paste(paste(rawfastqsdf[x , c("Prefix", "Read")], collapse = "_"), "filt", sep = "_"), ".fastq.gz") } )
+}
+
 #Be double sure to have the same order always
 rawfastqsdfR1 <- subset(rawfastqsdf, Read == "R1")
 rownames(rawfastqsdfR1) <- rawfastqsdfR1$Prefix
@@ -486,34 +525,34 @@ rawfastqsdfR2 <- rawfastqsdfR2[rownames(rawfastqsdfR1) , ]
 
 flog.info("Filtering and trimming reads")
 if (!is.null(opt$forward_primer) && !is.null(opt$reverse_primer)) {
-  outR1 <- str_replace(rawfastqsdfR1$FilteredFilePaths, "filteredreads", "primerremoved") %>%
-    str_replace("_filt.fastq","_primerremoved.fastq")
-  flog.info("Removing forward primers...")
-  removePrimers(fn = rawfastqsdfR1$Dada2_input_read_fpath, fout = outR1, primer.fwd = opt$forward_primer, trim.fwd = T, trim.rev = F, verbose = T)
-  outR2 <- str_replace(rawfastqsdfR2$FilteredFilePaths, "filteredreads", "primerremoved") %>%
-    str_replace("_filt.fastq","_primerremoved.fastq")
-  flog.info("Removing reverse primers...")
-  removePrimers(fn = rawfastqsdfR2$Dada2_input_read_fpath, fout = outR2, primer.fwd = opt$reverse_primer, trim.fwd = T, trim.rev = F, verbose = T)
-  out <- filterAndTrim(fwd = outR1, filt = rawfastqsdfR1$FilteredFilePaths, 
-                       rev = outR2, filt.rev = rawfastqsdfR2$FilteredFilePaths, 
-                       truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), 
-                       rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1),  
-                       matchIDs = TRUE)
+
+    if (!is.null(opt$SRAaccessions)){
+        idfield <- 1
+    } else {
+        idfield <- NULL
+    }
+
+    flog.info("Removing forward primers...")
+    removePrimers(fn = rawfastqsdfR1$Dada2_input_read_fpath, fout = rawfastqsdfR1$PrimerClippedFilePaths, primer.fwd = opt$forward_primer, trim.fwd = TRUE, trim.rev = FALSE, verbose = TRUE)
+
+    flog.info("Removing reverse primers...")
+    removePrimers(fn = rawfastqsdfR2$Dada2_input_read_fpath, fout = rawfastqsdfR2$PrimerClippedFilePaths, primer.fwd = opt$reverse_primer, trim.fwd = TRUE, trim.rev = FALSE, verbose = TRUE)
+
+    flog.info("Filtering and trimming...")
+    out <- filterAndTrim(fwd = rawfastqsdfR1$PrimerClippedFilePaths, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$PrimerClippedFilePaths, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1), matchIDs = TRUE, id.field = idfield)
   
 } else {
-  out <- filterAndTrim(fwd = rawfastqsdfR1$Dada2_input_read_fpath,, filt = rawfastqsdfR1$FilteredFilePaths, 
-                       rev = rawfastqsdfR2$Dada2_input_read_fpath, filt.rev = rawfastqsdfR2$FilteredFilePaths, 
-                       truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), 
-                       rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1),  
-                       matchIDs = TRUE)
+
+    out <- filterAndTrim(fwd = rawfastqsdfR1$Dada2_input_read_fpath, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$Dada2_input_read_fpath, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1), matchIDs = TRUE, id.field = idfield)
+
 }
 
 #Adjust out dataframe
 out <- as.data.frame(out)
-out$Dada2_input_read_fn <- rownames(out)
-out <- left_join(out, rawfastqsdf[ , c("Dada2_input_read_fn", "Prefix")], by = "Dada2_input_read_fn")
+out$FilterInput_fn <- rownames(out)
+out <- left_join(out, rawfastqsdf[ , c("FilterInput_fn", "Prefix")], by = "FilterInput_fn")
 colnames(out)[1:2] <- c("Number_Read_Pairs_Input", "Number_Read_Pairs_Output")
-out$Dada2_input_read_fn <- NULL
+out$FilterInput_fn <- NULL
 rawfastqsdf <- left_join(rawfastqsdf, out, by = "Prefix")
 
 #Get a list of reads which do not survive read number threshold
@@ -540,16 +579,17 @@ filtRs <- rawfastqsdfR2$FilteredFilePaths
 sample.names <- rawfastqsdfR1$Prefix
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
-
 flog.info("Learning errors")
 errF <- learnErrors(filtFs, multithread = max((opt$threads - 2), 1))
 errR <- learnErrors(filtRs, multithread = max((opt$threads - 2), 1))
 
-flog.info("Plotting errors")
-pdf(paste(paste(project, "Dada2_Error_Rate_Plots", sep = "_"), "pdf", sep = "."), paper = "a4r")
-plotErrors(errF, nominalQ=TRUE)
-plotErrors(errR, nominalQ=TRUE)
-dev.off()
+if (opt$plot_read_qualities){
+    flog.info("Plotting errors")
+    pdf(paste(paste(project, "Dada2_Error_Rate_Plots", sep = "_"), "pdf", sep = "."), paper = "a4r")
+    plotErrors(errF, nominalQ = TRUE)
+    plotErrors(errR, nominalQ = TRUE)
+    dev.off()
+}
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 flog.info("Dereplicating reads")
@@ -566,6 +606,9 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 flog.info("Assembling amplicon contigs (\"merging pairs\")")
 mergers <- mergePairs(dadaFs, derepFs, dadaRs, derepRs, verbose = TRUE)
+#obtain mean amplicon lengths
+median_amplicon_lengths <- as.data.frame(sapply(names(mergers), function (x) {obtain_dada2_amplicon_sizes(mergers_list = mergers, sample_name = x, fun_to_apply = "median") } ))
+colnames(median_amplicon_lengths)[1] <- "Median_Amplicon_Length_bp"
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 flog.info("Building counts table")
@@ -719,7 +762,7 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 ## Cleaning and Joining to Metadata ##
 ######################################
 
-if(opt$taxamethod %in% c("dada2", "dada2pr2","IDtaxa")){
+if (opt$taxamethod %in% c("dada2", "dada2pr2","IDtaxa")){
     for(lvl in 1:length(taxlvls)){
     taxlvl <- taxlvls[lvl]
     opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl] <- paste0(taxtags[lvl], opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl])
@@ -765,11 +808,14 @@ pheno <- opt$phenotable
 #Add sequencing depth
 pheno <- left_join(pheno, Sample2Depth, by = "Sample")
 rownames(pheno) <- pheno$Sample
+#Add amplicon lengths
+pheno$Median_Amplicon_Length_bp <- median_amplicon_lengths[rownames(pheno), "Median_Amplicon_Length_bp"]
 
 #Pheno for more than one sample.
 if (length(sample.names) > 1){
     pheno <- pheno[colnames(opt$cts), ]
 }
+
 
 variable_list <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenotable = pheno, maxclass = 15, maxsubclass = 4, class_to_ignore = "N_A", verbose = TRUE)
 ctable <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, object_to_return = "ctable")
@@ -783,10 +829,13 @@ flog.info("Thank you for using JAMS16 for one sample")
 }
 ##Otherwise build an expvec
 expvec <- list()
-expvec$LKT <- make_SummarizedExperiment_from_tables(pheno = pheno, counttable = opt$cts, featuretable = opt$tt, analysisname = "16S")
+expvec$Amplicon <- make_SummarizedExperiment_from_tables(pheno = pheno, counttable = opt$cts, featuretable = opt$tt, analysisname = "16S")
 
-metadata(expvec$LKT)$asv2lkt <- asv2lkt
-metadata(expvec$LKT)$ctable <- ctable
+metadata(expvec$Amplicon)$asv2lkt <- asv2lkt
+metadata(expvec$Amplicon)$ctable <- ctable
+
+#Export to system as a courtesy to the user
+saveRDS(expvec$Amplicon, file = paste(paste(project, "Amplicon_SummarizedExperiment_object", sep = "_"), "rds", sep = "."))
 
 #######
 ## Clean up workspace image to reduce RAM footprint
