@@ -36,8 +36,7 @@ get_reads <- function(opt = NULL){
             download_SRA_reads(SRAaccessions = opt$sraaccession, outfolder = readsworkdir, tempfolder = SRAtempdir, prefetch = TRUE, threads = opt$threads)
 
         } else {
-            commandtorun <- paste("fasterq-dump --split-files --skip-technical --threads", opt$threads, opt$sraaccession, sep = " ")
-            system(commandtorun)
+            download_SRA_reads(SRAaccessions = opt$sraaccession, outfolder = readsworkdir, tempfolder = NULL, prefetch = TRUE, threads = opt$threads)
         }
 
         #Eliminate unpaired read because split-e was used. This means that unpaired reads from a paired Run will be dumped into a third file.
