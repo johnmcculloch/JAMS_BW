@@ -538,6 +538,20 @@ if (!is.null(opt$forward_primer) && !is.null(opt$reverse_primer)) {
     flog.info("Removing reverse primers...")
     removePrimers(fn = rawfastqsdfR2$Dada2_input_read_fpath, fout = rawfastqsdfR2$PrimerClippedFilePaths, primer.fwd = opt$reverse_primer, trim.fwd = TRUE, trim.rev = FALSE, verbose = TRUE)
 
+    #Readjust truncation lengths, as these may have been shortened due to primer removal
+    reassess_trunclengths <- function(trunclen_cutoffs_R1_R2 = NULL){
+        fastq_dfs <- c("rawfastqsdfR1", "rawfastqsdfR2")
+        new_trunclen_cutoffs_R1_R2 <- NULL
+        for (tp in 1:length(trunclen_cutoffs_R1_R2)){
+            curr_fqs <- countfastq_files(fastqfiles = get(fastq_dfs[tp])[]$PrimerClippedFilePaths, threads = opt$threads, type_tag = "NoPrim")
+            min_length <- min(curr_fqs$Readlength)
+            new_trunclen_cutoffs_R1_R2[tp] <- min(trunclen_cutoffs_R1_R2[tp], min_length)
+        }
+
+        return(new_trunclen_cutoffs_R1_R2)
+    }
+    trunclen_cutoffs_R1_R2 <- reassess_trunclengths(trunclen_cutoffs_R1_R2 = trunclen_cutoffs_R1_R2)
+
     flog.info("Filtering and trimming...")
     out <- filterAndTrim(fwd = rawfastqsdfR1$PrimerClippedFilePaths, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$PrimerClippedFilePaths, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1), matchIDs = TRUE, id.field = idfield)
   
@@ -626,7 +640,7 @@ getN <- function(x) { sum(getUniques(x)) }
 ##Fixing track so that if there is only one sample things will still run
 if (length(sample.names) == 1){
     track <- as.data.frame(cbind(getN(dadaFs), getN(dadaRs), getN(mergers), rowSums(seqtab.nochim)))
-}else{
+} else {
     track <- as.data.frame(cbind(sapply(dadaFs, getN), sapply(dadaRs, getN), sapply(mergers, getN), rowSums(seqtab.nochim)))
 }
 colnames(track) <- c("DenoisedF", "DenoisedR", "Merged", "NonChim")
@@ -763,7 +777,7 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 ######################################
 
 if (opt$taxamethod %in% c("dada2", "dada2pr2","IDtaxa")){
-    for(lvl in 1:length(taxlvls)){
+    for (lvl in 1:length(taxlvls)){
     taxlvl <- taxlvls[lvl]
     opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl] <- paste0(taxtags[lvl], opt$tt[which(is.na(opt$tt[ , taxlvl]) == FALSE) , taxlvl])
     opt$tt[which(is.na(opt$tt[ , taxlvl]) == TRUE) , taxlvl] <- "Unclassified"
@@ -815,7 +829,6 @@ pheno$Median_Amplicon_Length_bp <- median_amplicon_lengths[rownames(pheno), "Med
 if (length(sample.names) > 1){
     pheno <- pheno[colnames(opt$cts), ]
 }
-
 
 variable_list <- define_kinds_of_variables(phenolabels = opt$phenolabels, phenotable = pheno, maxclass = 15, maxsubclass = 4, class_to_ignore = "N_A", verbose = TRUE)
 ctable <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, object_to_return = "ctable")
