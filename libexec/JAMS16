@@ -564,6 +564,7 @@ if (!is.null(opt$forward_primer) && !is.null(opt$reverse_primer)) {
         return(new_trunclen_cutoffs_R1_R2)
     }
     trunclen_cutoffs_R1_R2 <- reassess_trunclengths(trunclen_cutoffs_R1_R2 = trunclen_cutoffs_R1_R2)
+    flog.info(paste("Due to primer removal, truncation lengths are set to", paste0(trunclen_cutoffs_R1_R2, collapse = ", "), "bp."))
 
     flog.info("Filtering and trimming...")
     out <- filterAndTrim(fwd = rawfastqsdfR1$PrimerClippedFilePaths, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$PrimerClippedFilePaths, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1), matchIDs = TRUE, id.field = idfield)
@@ -869,6 +870,9 @@ objects_to_clean <- c("dadaFs", "dadaRs", "derepFs", "derepRs", "mergers", "qual
 objects_to_clean <- objects_to_clean[objects_to_clean %in% ls()]
 rm(list = objects_to_clean)
 gc()
+
+flog.info(paste0("JAMS16 run of project ", opt$project, " is complete. Thank you for using JAMS."))
+flog.info(print_jams_ASCII())
 
 #Save image
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
