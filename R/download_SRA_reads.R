@@ -43,8 +43,7 @@ download_SRA_reads <- function(SRAaccessions = NULL, outfolder = NULL, tempfolde
         if (prefetch == TRUE) {
             fetchcmd <- paste("prefetch", SRAacc, "-O", workfolder, "--max-size 1t", sep = " ")
             system(fetchcmd)
-            #go to prefetch folder and do fasterq-dump
-            setwd(file.path(workfolder, SRAacc))
+            #Do fasterq-dump
             commandtorun <- paste("fasterq-dump --split-files --skip-technical --seq-defline \'@$ac:$sn $ri:N:0:$sg\' --qual-defline \'+\' --threads", threads, "--outdir", workfolder, SRAacc, sep = " ")
             system(commandtorun)
         } else {
