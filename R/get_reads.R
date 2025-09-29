@@ -44,7 +44,7 @@ get_reads <- function(opt = NULL){
             file.remove(paste0(opt$sraaccession, "_pass.fastq"))
         }
 
-        #gzip reads to save intermediate file size and conserve disk space
+        #Rename reads to reflect sample prefix and not SRA accesion
         for (RN in c(1, 2)){
             if (file.exists(paste(opt$sraaccession, paste(paste0("R", RN), "fastq", "gz", sep = "."), sep = "_"))){
                 file.rename(from = paste(opt$sraaccession, paste(paste0("R", RN), "fastq.gz", sep = "."), sep = "_"), to = paste(opt$prefix, paste(paste0("R", RN), "fastq.gz", sep = "."), sep = "_"))
