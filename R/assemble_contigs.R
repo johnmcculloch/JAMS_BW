@@ -20,7 +20,6 @@ assemble_contigs <- function(opt = NULL){
     } else {
         readsworkdir <- opt$readsdir
     }
-    save.image(file = opt$projimage)
 
     #Set working directory to workdir
     setwd(opt$workdir)
