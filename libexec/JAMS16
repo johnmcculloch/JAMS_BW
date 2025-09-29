@@ -532,11 +532,24 @@ if (!is.null(opt$forward_primer) && !is.null(opt$reverse_primer)) {
         idfield <- NULL
     }
 
-    flog.info("Removing forward primers...")
-    removePrimers(fn = rawfastqsdfR1$Dada2_input_read_fpath, fout = rawfastqsdfR1$PrimerClippedFilePaths, primer.fwd = opt$forward_primer, trim.fwd = TRUE, trim.rev = FALSE, verbose = TRUE)
+    multithread_primer_removal <- TRUE
+    if (multithread_primer_removal){
 
-    flog.info("Removing reverse primers...")
-    removePrimers(fn = rawfastqsdfR2$Dada2_input_read_fpath, fout = rawfastqsdfR2$PrimerClippedFilePaths, primer.fwd = opt$reverse_primer, trim.fwd = TRUE, trim.rev = FALSE, verbose = TRUE)
+        flog.info(paste("Removing forward primers using", max((opt$threads - 2), 1), "CPUs..."))
+        dmp <- mclapply(1:nrow(rawfastqsdfR1), function (x) { removePrimers(fn = rawfastqsdfR1$Dada2_input_read_fpath[x], fout = rawfastqsdfR1$PrimerClippedFilePaths[x], primer.fwd = opt$forward_primer, trim.fwd = TRUE, trim.rev = FALSE, verbose = TRUE) }, mc.cores = max((opt$threads - 2), 1))
+
+        flog.info(paste("Removing reverse primers using", max((opt$threads - 2), 1), "CPUs..."))
+        dmp <- mclapply(1:nrow(rawfastqsdfR2), function (x) { removePrimers(fn = rawfastqsdfR2$Dada2_input_read_fpath[x], fout = rawfastqsdfR2$PrimerClippedFilePaths[x], primer.fwd = opt$reverse_primer, trim.fwd = TRUE, trim.rev = FALSE, verbose = TRUE) }, mc.cores = max((opt$threads - 2), 1))
+
+    } else {
+
+        flog.info("Removing forward primers...")
+        removePrimers(fn = rawfastqsdfR1$Dada2_input_read_fpath, fout = rawfastqsdfR1$PrimerClippedFilePaths, primer.fwd = opt$forward_primer, trim.fwd = TRUE, trim.rev = FALSE, verbose = TRUE)
+
+        flog.info("Removing reverse primers...")
+        removePrimers(fn = rawfastqsdfR2$Dada2_input_read_fpath, fout = rawfastqsdfR2$PrimerClippedFilePaths, primer.fwd = opt$reverse_primer, trim.fwd = TRUE, trim.rev = FALSE, verbose = TRUE)
+
+    }
 
     #Readjust truncation lengths, as these may have been shortened due to primer removal
     reassess_trunclengths <- function(trunclen_cutoffs_R1_R2 = NULL){
