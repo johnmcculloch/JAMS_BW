@@ -881,3 +881,39 @@ check_for_banked_samples <- function(JAMSarchive_path = NULL){
     return(intersect(sh, tbh))
 }
 
+#' retrieve_GCA_accession_URL(assemblytargetname = NULL)
+#'
+#' Given a single valid GCA assembly accession number, this function will return the https URL for downloading the fasta.gz file for that assembly accession.
+#' @export
+
+retrieve_GCA_accession_URL <- function(assemblytargetname){
+
+    #First, check you have esearch
+    missingdep <- FALSE
+    for (dep in c("esearch", "esummary", "xtract")) {
+        if (system(str_c("which ", dep), ignore.stdout = TRUE) ==1 ) { 
+            flog.warn(str_c("You are missing ", dep))
+            missingdep <- TRUE
+        }
+    }
+
+    if (!missingdep){
+        esearchcmd <- paste("esearch -db assembly -query", assemblytargetname, "| esummary | xtract -pattern DocumentSummary -element FtpPath_GenBank >", paste(assemblytargetname, "url", sep = "."))
+        system(esearchcmd)
+        assemblyURL <- readLines(paste(assemblytargetname, "url", sep = "."), n = 1L, warn = FALSE)
+        assemblyURL <- sub("^ftp:", "https:", assemblyURL)
+        assemblyURL <- paste(paste(assemblyURL, basename(assemblyURL), sep = "/"), "genomic.fna.gz", sep = "_")
+
+        #if GCA accession is spoof, return NULL
+        if (assemblyURL == "_genomic.fna.gz"){
+            assemblyURL <- NULL
+        }
+
+        return(assemblyURL)
+
+    } else {
+        #You don't have what it takes to obtain the accession URL
+        return(NULL)
+    }
+}
+
