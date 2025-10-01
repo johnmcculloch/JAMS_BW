@@ -135,7 +135,7 @@ option_list <- list(
                 type="character",
                 help="SRA accession to get reads from"),
 
-    make_option(c("-c", "--contigs"), action="store", default=NULL,
+    make_option(c("-c", "--contigsfasta"), action="store", default=NULL,
                 type="character",
                 help="Use these contigs in multifasta format as input"),
 
@@ -341,6 +341,11 @@ flog.info(paste("Project type is", opt$analysis))
 opt$starttime <- Sys.time()
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
+#Adjust options to avoid conflicts
+if (opt$analysis == "isolate"){
+    opt$bin_contigs_with_metabat <- FALSE
+}
+
 #Obtain contigs
 setwd(opt$workdir)
 opt <- get_contigs(opt = opt)
@@ -355,10 +360,11 @@ opt <- get_contig_coverage(opt = opt, markduplicates = FALSE)
 
 #Denoise contigs if metagenome
 if (opt$analysis == "metagenome"){
-    opt <- denoise_contigs(opt = opt, small_large_length_threshold = 2000)
+    if ("readsdir" %in% names(opt)){
+        opt <- denoise_contigs(opt = opt, small_large_length_threshold = 2000)
+    }
 }
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
-
 
 #Launch interproscan if on a cluster
 #This is a Biowulf-only application. 
@@ -371,7 +377,6 @@ if (nchar(slurmjobid) < 3){
 }
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
-
 #Initialize index indexorum for storing abundances 
 opt$abundances <- list()
 opt$abundances$taxonomic <- list()
@@ -379,8 +384,10 @@ opt$abundances$functional <- list()
 
 #Process MAGs, if applicable
 if (opt$analysis == "metagenome"){
-    opt <- sort_contigs_into_bins(opt = opt)
-    opt <- process_MAGs(opt = opt)
+    if ("readsdir" %in% names(opt)){
+        opt <- sort_contigs_into_bins(opt = opt)
+        opt <- process_MAGs(opt = opt)
+    }
 }
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
@@ -389,7 +396,9 @@ opt <- process_contig_LKTs(opt = opt)
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
 if (opt$analysis == "metagenome"){
-    opt <- consolidate_entities_in_sample(opt = opt)
+    if ("readsdir" %in% names(opt)){
+        opt <- consolidate_entities_in_sample(opt = opt)
+    }
 }
 IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 
@@ -413,8 +422,6 @@ if ("readsdir" %in% names(opt)){
     #Save reads to outdir if applicable
     bank_reads(opt = opt)
 }
-
-#opt <- consolidate_tables(opt = opt)
 
 #End the analysis and gather information on the run
 opt$endtime <- Sys.time()
