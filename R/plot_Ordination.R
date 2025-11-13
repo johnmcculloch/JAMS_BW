@@ -135,6 +135,12 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         #log2tran <- FALSE
         pcatitbase <- paste(pcatitbase, "Counts matrix used for ordination represents the number of genes", sep = "\n")
 
+    } else if (assay_for_matrix == "GeneLengths"){
+        flog.warn("Counts matrix used for heatmap will represent the *aggregate length of genes in basepairs* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
+        asPPM <- FALSE
+        global_FTK <- rownames(obj)
+        #log2tran <- FALSE
+        pcatitbase <- paste(pcatitbase, "Counts matrix used for ordination represents aggregate length of genes ", sep = "\n")
     } else {
         if (normalization == "compositions"){
             require("compositions")
@@ -222,7 +228,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
                 pcatit <- paste(c(pcatit, "Normalized to number of bases for analysis in sample"), collapse = "\n")
             }
 
-        } else if (assay_for_matrix == "GeneCounts"){
+        } else if (assay_for_matrix %in% c("GeneCounts", "GeneLengths")){
             currobj <- obj[global_FTK, samplesToKeep_sp]
         }
 
