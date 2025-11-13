@@ -316,10 +316,10 @@ if (!(exists("list.data"))) {
     #IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 }
 
-if (length(opt$dupes) > 0){
-    list.data[grep(paste0(opt$dupes, "_"), names(list.data))] <- NULL
-    list.data <- list.data[sapply(list.data, function(x){ !(is.null(x)) } )]
-}
+#if (length(opt$dupes) > 0){
+#    list.data[grep(paste0(opt$dupes, "_"), names(list.data))] <- NULL
+#    list.data <- list.data[sapply(list.data, function(x){ !(is.null(x)) } )]
+#}
 
 Samples_have <- name_samples(list.data = list.data)
 Samples_missing <- Samples_want[!(Samples_want %in% Samples_have)]
@@ -400,9 +400,9 @@ if (!exists("expvec")){
     #Exclude samples in pheno table which have not been loaded in list.data
     flog.info(paste("Will build experiments for samples:", paste0(Samples_have, collapse = ", ")))
 
-    #######################################
-    ## Create Phyloseq and MGseq objects ##
-    #######################################
+    #########################################
+    ## Create SummarizedExperiment objects ##
+    #########################################
     #Get sample list from current pheno
     Samples <- as.character(rownames(pheno))
 
