@@ -112,7 +112,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
 
     for (taxonomic_space in valid_taxonomic_spaces){
 
-        #Start by making LKT experiment
+        #Start by making Taxonomictaxonomic space SummarizedExperiment objects
         flog.info(paste("Making", taxonomic_space, "SummarizedExperiment"))
         LKTdoses <- lapply(Samples, function (x) { retrieve_abundance_table(Sample = x, taxonomic_space = taxonomic_space, colsToIgnore = c("Genome_Size", "PPM", "Genome_Size", "Total_Contigs", "Contig_N50", "Max_Contig_Length", "Quality", "GC_Content", "Total_Coding_Sequences", "Coding_Density", "Num_assemblies_in_taxid", "Num_isolate", "Proportion_of_MAG_in_taxid")) } )
         names(LKTdoses) <- Samples
@@ -126,6 +126,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         }
 
         LKTdosesall <- dplyr::bind_rows(LKTdoses, .id = "Sample")
+
+        #If taxonomic space is ConsolidatedGenomeBin, evaluate, contextualize and rename redundant taxonomies using functional annotation.
+        #if (taxonomic_space == "ConsolidatedGenomeBin"){
+        #    LKTdosesall <- contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data)
+        #}
 
         #Make counts table
         LKTallcounts <- LKTdosesall[, c("Sample", taxonomic_space, "NumBases")]
@@ -230,6 +235,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         #This data frame will hold the unstratified overall counts for all features and all samples.
         analysisdoses <- NULL
         analysisgencts <- NULL
+        analysislencts <- NULL
 
         if (!stratify_functions_by_taxon){
             #If not stratifying functions by taxa, get functional information Contig_LKT abundances
@@ -272,6 +278,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 colnames(curr_featdf)[which(colnames(curr_featdf) == valid_taxonomic_space)] <- "Taxon"
                 #Fix "none" to analysis_none
                 curr_featdf$Accession[which(curr_featdf$Accession == "none")] <- paste(analysis, "none", sep = "_")
+                #Ensure numeric
+                curr_featdf$LengthDNA <- as.numeric(curr_featdf$LengthDNA)
 
                 #Separate rows if GO, Interpro or MataCyc
                 if (analysis %in% c("GO", "Interpro", "MetaCyc")){
@@ -328,15 +336,21 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 curr_featdf$Sample <- SN
                 curr_featdf$Taxon <- NULL
                 curr_analysisgencts <- as.data.frame(curr_featdf %>% group_by(Accession) %>% summarise(NumGenes = length(Accession), .groups = "keep"))
+                curr_analysislencts <- as.data.frame(curr_featdf %>% group_by(Accession) %>% summarise(LenGenes = sum(LengthDNA), .groups = "keep"))
                 curr_analysisgencts$Sample <- SN
+                curr_analysislencts$Sample <- SN
                 rownames(curr_analysisgencts) <- paste(SN, curr_analysisgencts$Accession, sep = "§")
+                rownames(curr_analysislencts) <- paste(SN, curr_analysislencts$Accession, sep = "§")
                 curr_analysisgencts <- curr_analysisgencts[rownames(curr_FD), c("Sample", "Accession", "NumGenes")]
+                curr_analysislencts <- curr_analysislencts[rownames(curr_FD), c("Sample", "Accession", "LenGenes")]
                 analysisgencts <- rbind(analysisgencts, curr_analysisgencts)
+                analysislencts <- rbind(analysislencts, curr_analysislencts)
 
                 #Clean up
                 curr_FD <- NULL
                 curr_featdf <- NULL
                 curr_analysisgencts <- NULL
+                curr_analysislencts <- NULL
 
                 gc()
             } #End conditional for there being data for that analysis for that sample
@@ -366,11 +380,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         }
         cts <- as.matrix(cts)
 
-        #Make GeneCounts counts table
+        ################################
+        ## Make GeneCounts counts table
         gennumcts <- NULL
 
-
-       #Fix for not getting duplicate accessions. Delete the Description column to get clean pivot from long to wide.
+        #Fix for not getting duplicate accessions. Delete the Description column to get clean pivot from long to wide.
         gennumcts <- analysisgencts[ , c("Sample", "Accession", "NumGenes")] %>% pivot_wider(names_from = Sample, values_from = NumGenes, values_fill = 0)
         gennumcts <- as.data.frame(gennumcts)
         gennumcts[is.na(gennumcts)] <- 0
@@ -388,6 +402,30 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         }
         gennumcts <- as.matrix(gennumcts)
 
+        #################################
+        ## Make GeneLengths counts table
+        genlencts <- NULL
+
+        #Fix for not getting duplicate accessions. Delete the Description column to get clean pivot from long to wide.
+        genlencts <- analysislencts[ , c("Sample", "Accession", "LenGenes")] %>% pivot_wider(names_from = Sample, values_from = LenGenes, values_fill = 0)
+        genlencts <- as.data.frame(genlencts)
+        genlencts[is.na(genlencts)] <- 0
+        rownames(genlencts) <- genlencts$Accession
+        genlencts$Accession <- NULL
+
+        #Deal with samples with NO results for this analysis
+        emptySamples <- rownames(phenoanal)[!(rownames(phenoanal) %in% colnames(genlencts))]
+        if (length(emptySamples) > 0){
+            complementarycts <- matrix(ncol = length(emptySamples), nrow = nrow(genlencts), data = 0)
+            complementarycts <- as.data.frame(complementarycts, stringsAsFactors = FALSE)
+            colnames(complementarycts) <- emptySamples
+            rownames(complementarycts) <- rownames(genlencts)
+            genlencts <- cbind(genlencts, complementarycts)
+        }
+        genlencts <- as.matrix(genlencts)
+
+
+        ######################
         ## Make feature table
         # Account for the fact that descriptions for the same accession may diverge, due to using jams files annotated by different versions. The function below will choose the most prevalent weighted by sequencing depth.
         find_best_description <- function(featdf = NULL){
@@ -440,13 +478,15 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         TotalBasesSequencedinAnalysis <- t(as.matrix(TotalBasesSequencedinAnalysis))
         rownames(TotalBasesSequencedinAnalysis) <- "NumBases"
 
-        #Order gennumcts and genlengthcts
+        #Order gennumcts and genlencts
         gennumcts <- gennumcts[featureorder, sampleorder]
+        genlencts <- genlencts[featureorder, sampleorder]
 
         assays <- list()
         assays$BaseCounts <- cts
         assays$GeneCounts <- gennumcts
- 
+        assays$GeneLengths <- genlencts
+
         ##Create SummarizedExperiment
         SEobj <- SummarizedExperiment(assays = assays, rowData = as.matrix(ftt), colData = as.matrix(phenoanal))
         metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
