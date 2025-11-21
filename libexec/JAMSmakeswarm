@@ -190,7 +190,7 @@ defopt$outputfolder <- getwd()
 defopt$readsfolder <- NULL
 defopt$hostspecies <- "human"
 defopt$analysis <- "metagenome"
-defopt$skipinterpro <- FALSE
+defopt$useipro <- FALSE
 defopt$jamsdb <- NULL
 defopt$swarmfile <- fixrelpath(JAMSpath = "JAMS.swarm")
 
@@ -367,7 +367,7 @@ if (!(is.null(opt$substitutionspreadsheet))){
 }
 
 commonoptions <- paste("-d", opt$jamsdb, "-A", opt$analysis, "-o", opt$outputfolder, "-H", opt$hostspecies, collapse = " ")
-if (opt$skipinterpro == TRUE) {
+if (opt$useipro == TRUE) {
     commonoptions <- paste(commonoptions, "-n", collapse = " ")
 }
 
@@ -456,6 +456,7 @@ if (any(c((!is.null(opt$sralist)), (!is.null(opt$gcalist))))) {
         }
     }
 }
+
 
 #Write swarm file to system
 if (!is.null(opt$split_swarmfile)){
