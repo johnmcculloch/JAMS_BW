@@ -112,42 +112,72 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
 
     for (taxonomic_space in valid_taxonomic_spaces){
 
-        #Start by making Taxonomictaxonomic space SummarizedExperiment objects
+        #Start by making taxonomic space SummarizedExperiment objects
         flog.info(paste("Making", taxonomic_space, "SummarizedExperiment"))
         LKTdoses <- lapply(Samples, function (x) { retrieve_abundance_table(Sample = x, taxonomic_space = taxonomic_space, colsToIgnore = c("Genome_Size", "PPM", "Genome_Size", "Total_Contigs", "Contig_N50", "Max_Contig_Length", "Quality", "GC_Content", "Total_Coding_Sequences", "Coding_Density", "Num_assemblies_in_taxid", "Num_isolate", "Proportion_of_MAG_in_taxid")) } )
         names(LKTdoses) <- Samples
 
-        #To avoid duplicated names of MB2 bins across samples, paste Sample name to these bins. This will ensure there are no two different entities with the same SGB name.
         #Sorry about the for loop, but it is safer like so.
         for (SN in names(LKTdoses)){
-            LKTdoses[[SN]][grep("^MB2__", LKTdoses[[SN]][ , taxonomic_space]), taxonomic_space] <- sapply(grep("^MB2__", LKTdoses[[SN]][ , taxonomic_space]), function (x) { gsub("^MB2__", paste0("MB2__", SN , "__"), LKTdoses[[SN]][x , taxonomic_space]) })
-            #Make sure there are no leftover duplicates.
-            LKTdoses[[SN]][ , taxonomic_space] <- make.unique(LKTdoses[[SN]][ , taxonomic_space])
+            #Add PPM estimate
+            LKTdoses[[SN]]$PPM <- round(((LKTdoses[[SN]]$NumBases / sum(LKTdoses[[SN]]$NumBases)) * 1E6), 0)
+            rownames(LKTdoses[[SN]]) <- 1:nrow(LKTdoses[[SN]])
         }
 
         LKTdosesall <- dplyr::bind_rows(LKTdoses, .id = "Sample")
 
         #If taxonomic space is ConsolidatedGenomeBin, evaluate, contextualize and rename redundant taxonomies using functional annotation.
-        #if (taxonomic_space == "ConsolidatedGenomeBin"){
-        #    LKTdosesall <- contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data)
-        #}
+        if (taxonomic_space == "ConsolidatedGenomeBin"){
+            LKTdosesall <- contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE)
+
+            #Bequeath to opt for using later when building functional experiments
+            #Keep this here for the time being. make_SummarizedExperiments does not return opt, so at a later date I might add this to the SEobj itself, depending on the object size.
+            opt$CGB2LKTdict <- LKTdosesall[ , c("Sample", "ConsolidatedGenomeBin", "LKT"), drop = FALSE] %>% dplyr::mutate(across(where(is.character), as.factor))
+
+            #Fix list.data objects with contextualized taxonomy
+ 
+            flog.info("Writing contextualized taxonomy to functional data counts")
+            for (S2C in as.character(unique(opt$CGB2LKTdict$Sample))){
+                curr_CGB2LKT_df <- opt$CGB2LKTdict[which(opt$CGB2LKTdict$Sample == S2C), , drop = FALSE]
+                curr_CGB2LKT_df <- curr_CGB2LKT_df %>% dplyr::mutate(across(where(is.factor), as.character))
+                #Fix featuredata first
+                list.data[[paste(S2C, "featuredata", sep = "_")]]$LKT <- NA
+                list.data[[paste(S2C, "featuredata", sep = "_")]]$LKT <- curr_CGB2LKT_df$LKT[match(list.data[[paste(S2C, "featuredata", sep = "_")]]$ConsolidatedGenomeBin, curr_CGB2LKT_df$ConsolidatedGenomeBin)]
+
+                #Now, fix functional abundance
+                #Subset curr_CGB2LKT_df to only CGBs present in the functional abundance dataframe. Some may be missing because JAMSalpha only registers functional stratification above a certain small (albeit non-zero) relative abundance, in order to not inflate data frame size with noise.
+                curr_CGB2LKT_df <- curr_CGB2LKT_df[curr_CGB2LKT_df$ConsolidatedGenomeBin %in% colnames(list.data[[paste(S2C, "abundances", sep = "_")]][["functional"]][["ConsolidatedGenomeBin"]]), , drop = FALSE]
+                colpos <- match(curr_CGB2LKT_df$ConsolidatedGenomeBin, colnames(list.data[[paste(S2C, "abundances", sep = "_")]][["functional"]][["ConsolidatedGenomeBin"]]))
+                colnames(list.data[[paste(S2C, "abundances", sep = "_")]][["functional"]][["ConsolidatedGenomeBin"]])[colpos] <- curr_CGB2LKT_df$LKT
+                curr_CGB2LKT_df <- NULL
+                colpos <- NULL
+            }
+
+        } else {
+            LKTdosesall$LKT <- LKTdosesall[ , taxonomic_space]
+        }
 
         #Make counts table
-        LKTallcounts <- LKTdosesall[, c("Sample", taxonomic_space, "NumBases")]
-        #Be sure that data is not empty or redundant
-        LKTallcounts[is.na(LKTallcounts)] <- 0
-
-        cts <- spread(LKTallcounts, Sample, NumBases, fill = 0, drop = FALSE)
-        rownames(cts) <- cts[ , taxonomic_space]
-        cts[ , taxonomic_space] <- NULL
+        cts <- LKTdosesall[ , c("Sample", "LKT", "NumBases")] %>% group_by(Sample, LKT) %>% tidyr::pivot_wider(names_from = Sample, values_from = NumBases, values_fill = 0)
+        cts <- as.data.frame(cts)
+        rownames(cts) <- cts$LKT
+        cts$LKT <- NULL
         cts <- cts[order(rowSums(cts), decreasing = TRUE), ]
         featureorder <- rownames(cts)
 
         #Make tax table
-        taxlvlspresent <- colnames(LKTdosesall)[colnames(LKTdosesall) %in% c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT", taxonomic_space, "NCBI_taxonomic_rank", "RefScore")]
+        if (taxononomic_space == "ConsolidatedGenomeBin"){
+            taxlvlspresent <- colnames(LKTdosesall)[colnames(LKTdosesall) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
+            tt <- LKTdosesall[ , taxlvlspresent]
+            tt <- tt[!(duplicated(tt)), ]
+            #Extract taxid from LKT. Some of the contextualized infraspecies may have moved up to species.
+            tt$Taxid <- sapply(tt$LKT, function(x) { extract_NCBI_taxid_from_featname(Taxon = x) } )
+        } else {
+            taxlvlspresent <- colnames(LKTdosesall)[colnames(LKTdosesall) %in% c("Taxid", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT", "NCBI_taxonomic_rank")]
+            tt <- LKTdosesall[ , taxlvlspresent]
+            tt <- tt[!(duplicated(tt)), ] 
+        }
 
-        tt <- LKTdosesall[ , taxlvlspresent]
-        tt <- tt[!(duplicated(tt)), ]
         #Fill in dark matter Taxids with "0"
         tt$Taxid[which(is.na(tt$Taxid))] <- "0"
         #Add Gram information
@@ -159,7 +189,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         tt <- left_join(as.data.frame(tt), Taxid2gram, by = "Taxid")
         tt[which(is.na(tt[ , "Gram"])), "Gram"] <- "na"
         tt <- tt[ , c("Gram", taxlvlspresent)]
-        rownames(tt) <- tt[ , taxonomic_space]
+        rownames(tt) <- tt[ , "LKT"]
         #tt <- as.matrix(tt)
 
         sampleorder <- rownames(pheno2)
@@ -172,21 +202,23 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         rownames(TotalBasesSequenced) <- "NumBases"
 
         #Get genome completeness matrix
-        LKTallGenComp <- LKTdosesall[, c("Sample", taxonomic_space, "Completeness")]
+        LKTallGenComp <- LKTdosesall[, c("Sample", "LKT", "Completeness")]
         #Be sure that data is not empty or redundant
         LKTallGenComp[is.na(LKTallGenComp)] <- 0
-        LKTallGenCompcts <- spread(LKTallGenComp, Sample, Completeness, fill = 0, drop = FALSE)
-        rownames(LKTallGenCompcts) <- LKTallGenCompcts[ , taxonomic_space]
-        LKTallGenCompcts[ , taxonomic_space] <- NULL
+        LKTallGenCompcts <- LKTallGenComp %>% group_by(Sample, LKT) %>% tidyr::pivot_wider(names_from = Sample, values_from = Completeness, values_fill = 0)
+        LKTallGenCompcts <- as.data.frame(LKTallGenCompcts)
+        rownames(LKTallGenCompcts) <- LKTallGenCompcts$LKT
+        LKTallGenCompcts$LKT <- NULL
         LKTallGenCompcts <- LKTallGenCompcts[featureorder, sampleorder]
 
         #Get genome contamination matrix
-        LKTallGenCont <- LKTdosesall[, c("Sample", taxonomic_space, "Contamination")]
+        LKTallGenCont <- LKTdosesall[, c("Sample", "LKT", "Contamination")]
         #Be sure that data is not empty or redundant
         LKTallGenCont[is.na(LKTallGenCont)] <- 0
-        LKTallGenContcts <- spread(LKTallGenCont, Sample, Contamination, fill = 0, drop = FALSE)
-        rownames(LKTallGenContcts) <- LKTallGenContcts[ , taxonomic_space]
-        LKTallGenContcts[ , taxonomic_space] <- NULL
+        LKTallGenContcts <- LKTallGenCont %>% group_by(Sample, LKT) %>% tidyr::pivot_wider(names_from = Sample, values_from = Contamination, values_fill = 0)
+        LKTallGenContcts <- as.data.frame(LKTallGenContcts)
+        rownames(LKTallGenContcts) <- LKTallGenContcts$LKT
+        LKTallGenContcts$LKT <- NULL 
         LKTallGenContcts <- LKTallGenContcts[featureorder, sampleorder]
 
         assays <- list(as.matrix(cts), as.matrix(LKTallGenCompcts), as.matrix(LKTallGenContcts))
@@ -242,7 +274,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             valid_taxonomic_space <- "Contig_LKT"
         } else {
             #Declare empty lists to hold data
-            master_sparse_featcounts_index <- NULL
+            master_sparse_featcounts_index_longform <- NULL
             master_sparse_taxon_to_space_basecounts_df <- NULL
             master_sparse_taxon_to_space_genecounts_df <- NULL
 
@@ -250,32 +282,33 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             valid_taxonomic_space <- c("ConsolidatedGenomeBin", "Contig_LKT")[c("ConsolidatedGenomeBin", "Contig_LKT") %in% valid_taxonomic_spaces][1]
         }
 
+        if (valid_taxonomic_space != "ConsolidatedGenomeBin"){
+            appropriate_featurdata_tax_colm <- valid_taxonomic_space
+        } else {
+            appropriate_featurdata_tax_colm <- "LKT"
+        }
+
         for (SN in Samples){
             curr_FD <- list.data[[paste(SN, "abundances", sep = "_")]]$functional[[valid_taxonomic_space]]
             #Subset to current analysis
             curr_FD <- curr_FD[which(curr_FD$Analysis == analysis), , drop = FALSE]
+            #If not stratifying, eliminate taxon columns at this point
+            if (!stratify_functions_by_taxon){
+                curr_FD <- curr_FD[ , c("Accession", "Description", "NumBases")]
+            }
+
             #Check that there is any data for that particular sample - there may not be.
             if (nrow(curr_FD) > 0){
                 #There shouldn't be any NAs but if there are make them 0
                 curr_FD[is.na(curr_FD)] <- 0
                 Taxoncols <- colnames(curr_FD)[5:ncol(curr_FD)]
-                if (valid_taxonomic_space == "ConsolidatedGenomeBin"){
-                    #To avoid duplicated names of MB2 bins across samples, paste Sample name to these bins. This will ensure there are no two different entities with the same SGB name.
-                    Taxoncols[grep("^MB2__", Taxoncols)] <- sapply(Taxoncols[grep("^MB2__", Taxoncols)], function (x) { gsub("^MB2__", paste0("MB2__", SN , "__"), x) })
-                    colnames(curr_FD)[5:ncol(curr_FD)] <- Taxoncols
-                }
                 curr_FD$Sample <- SN
-                curr_FD$SampAcc <- paste(curr_FD$Sample, curr_FD$Accession, sep = "§")
-                rownames(curr_FD) <- curr_FD$SampAcc
 
                 #Deal with gene number tallies
-                curr_featdf <- list.data[[paste(SN, "featuredata", sep = "_")]][ , c("Feature", "LengthDNA", analysis, valid_taxonomic_space)]
-                #Fix taxon names if ConsolidatedGenomeBin
-                if (valid_taxonomic_space == "ConsolidatedGenomeBin"){
-                    curr_featdf$ConsolidatedGenomeBin <- sapply(curr_featdf$ConsolidatedGenomeBin, function (x) { gsub("^MB2__", paste0("MB2__", SN , "__"), x) })
-                }
+                curr_featdf <- list.data[[paste(SN, "featuredata", sep = "_")]][ , c("Feature", "LengthDNA", analysis, appropriate_featurdata_tax_colm)]
                 colnames(curr_featdf)[which(colnames(curr_featdf) == analysis)] <- "Accession"
-                colnames(curr_featdf)[which(colnames(curr_featdf) == valid_taxonomic_space)] <- "Taxon"
+                colnames(curr_featdf)[which(colnames(curr_featdf) == appropriate_featurdata_tax_colm)] <- "Taxon"
+
                 #Fix "none" to analysis_none
                 curr_featdf$Accession[which(curr_featdf$Accession == "none")] <- paste(analysis, "none", sep = "_")
                 #Ensure numeric
@@ -289,50 +322,82 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 if (stratify_functions_by_taxon){
                     curr_SM <- Matrix::Matrix(data = as.matrix(curr_FD[ , Taxoncols]), sparse = TRUE)
                     colnames(curr_SM) <- Taxoncols
-                    #In order to conserve RAM and the size of the taxonomic stratification sparse matrix, do not include any taxon whose MAXIMUM number of bases for a SINGLE feature is less than 1 PPM of the sequencing depth IN THAT SAMPLE, as this is likely a spurious taxonomic hit.
-                    curr_Bases_equal_to_1PPM <- round((metadata(expvec[[valid_taxonomic_space]])$TotalBasesSequenced["NumBases", SN] / 1E6), 0)
+                    #In order to conserve RAM and the size of the taxonomic stratification sparse matrix, do not include any taxon whose total sum of bases across the entire metagenomic proteome is smaller than 10000 bp (10 kbp). 10 kbp / ~3 Mbp is a completeness of 0.3%, with a sequencing depth of 1X if the entire sample consisted of a single species (which it doesn't). So this filtration is very conseravative and will shrink memory usage considerably.
+                    curr_taxaToMerge <- names(which(Matrix::colSums(curr_SM) < 10000))
+                    if (length(curr_taxaToMerge) > 0){
+                        #Sum all low abundance values into a single column.
+                        ULA_sums <- Matrix::rowSums(curr_SM[ , curr_taxaToMerge])
+                        compl_SM <- Matrix::Matrix(data = as.matrix(ULA_sums), sparse = TRUE)
+                        colnames(compl_SM) <- "Ultra_low_abundance_LKTs"
+                        #Eliminate ULAs from matrix
+                        curr_SM <- curr_SM[ , !(colnames(curr_SM) %in% curr_taxaToMerge), drop = FALSE]
+                        #Add aggregated column
+                        curr_SM <- cbind(curr_SM, compl_SM)
+                    }
+                    #Make row pairs temporarily named as sample-feature pairs to avoid double entries when merging sparse matrix with the next sample. For instance Urease§Sample1 should be a different row to Urease§Sample17, etc. Sparse matrix merging will preserve only column names for LKTs which are shared across samples.
+                    rownames(curr_SM) <- paste(SN, rownames(curr_SM), sep = "§")
 
-                    curr_taxaToKeep <- colnames(curr_SM)[Matrix::colSums(curr_SM[rownames(curr_SM)[!(rownames(curr_SM) %in% paste(SN, paste(analysis, "none", sep = "_"), sep = "§"))], , drop = FALSE]) >=  curr_Bases_equal_to_1PPM]
+                    #Create a temporary long-form index
+                    curr_sparse_featcounts_index <- curr_FD[ , c("Sample", "Accession")]
+                    rownames(curr_sparse_featcounts_index) <- paste(SN, curr_sparse_featcounts_index$Accession, sep = "§")
+                    #Ensure row order is identical
+                    curr_sparse_featcounts_index <- curr_sparse_featcounts_index[rownames(curr_SM), ]
+                    #Add matrix row number to temporary index, counting from the last row of the previous matrix
+                    if (!is.null(master_sparse_taxon_to_space_basecounts_df)){
+                        #A previous sample was accrued so, increment the row number from the current size of the master matrix
+                        curr_sparse_featcounts_index$RowNumber <- nrow(master_sparse_taxon_to_space_basecounts_df) + (1:nrow(curr_SM))
+                    } else {
+                        #This is the first sample
+                        curr_sparse_featcounts_index$RowNumber <- 1:nrow(curr_SM)
+                    }
+                    #Commit index to long form dataframe
+                    master_sparse_featcounts_index_longform <- rbind(master_sparse_featcounts_index_longform, curr_sparse_featcounts_index)
+                    #Commit rownames as index number
+                    rownames(master_sparse_featcounts_index_longform) <- master_sparse_featcounts_index_longform$RowNumber
 
-                    #Proceed only if there is anything worthwile to merge
-                    if (length(curr_taxaToKeep) > 0) {
-                        #Ok, we're going to bank stuff so commit to index
-                        master_sparse_featcounts_index <- rbind(master_sparse_featcounts_index, curr_FD[ , c("Sample", "Accession", "Description", "NumBases")])
+                    #Merge curr_SM to the master matrix
+                    master_sparse_taxon_to_space_basecounts_df <- merge_sparse_matrix(matlist = list(master_sparse_taxon_to_space_basecounts_df, curr_SM))
+                    #Reset row names to numerical to conserve RAM
+                    rownames(master_sparse_taxon_to_space_basecounts_df) <- 1:nrow(master_sparse_taxon_to_space_basecounts_df)
 
-                        curr_SM <- curr_SM[ , curr_taxaToKeep, drop = FALSE]
-                        master_sparse_taxon_to_space_basecounts_df <- merge_sparse_matrix(matlist = list(master_sparse_taxon_to_space_basecounts_df, curr_SM))
-                        #Ensure correct row order
-                        master_sparse_taxon_to_space_basecounts_df <- master_sparse_taxon_to_space_basecounts_df[rownames(master_sparse_featcounts_index), , drop = FALSE]
+                    #Deal with gene number stratifications
+                    #Pivot to wide form
+                    curr_split_numgenes <- as.data.frame(curr_featdf %>% group_by(across(all_of(c("Taxon", "Accession")))) %>% summarise(NumGenes = length(Accession), .groups = "keep") %>% pivot_wider(names_from = Taxon, values_from = NumGenes, values_fill = 0))
+                    rownames(curr_split_numgenes) <- paste(SN, curr_split_numgenes$Accession, sep = "§")
+                    curr_split_numgenes$Accession <- NULL
 
-                        #Deal with gene number stratifications
-                        #Pivot to wide form
-                        curr_split_numgenes <- as.data.frame(curr_featdf %>% group_by(across(all_of(c("Taxon", "Accession")))) %>% summarise(NumGenes = length(Accession), .groups = "keep") %>% pivot_wider(names_from = Taxon, values_from = NumGenes, values_fill = 0))
-                        rownames(curr_split_numgenes) <- paste(SN, curr_split_numgenes$Accession, sep = "§")
-                        curr_split_numgenes$Accession <- NULL
+                    #Curtail to the same features as for basecounts and make sparse
+                    curr_split_numgenes <- Matrix::Matrix(data = as.matrix(curr_split_numgenes[rownames(curr_sparse_featcounts_index), ]), sparse = TRUE)
 
-                        #Curtail to the same taxa as for basecounts
-                        #All taxa from curr_SM should be in curr_split_numgenes, but will account for any missing ones. Features are non-negotiable as to maintain the same row index.
-                        curr_split_numgenes <- Matrix::Matrix(data = as.matrix(curr_split_numgenes[rownames(curr_SM), colnames(curr_SM)[colnames(curr_SM) %in% colnames(curr_split_numgenes)], drop = FALSE]), sparse = TRUE)
+                    #Aggregate low abundance taxa, if applicable.
+                    if (length(curr_taxaToMerge) > 0){
+                        #Sum all low abundance values into a single column.
+                        ULA_gene_sums <- Matrix::rowSums(curr_split_numgenes[ , curr_taxaToMerge])
+                        compl_split_numgenes <- Matrix::Matrix(data = as.matrix(ULA_gene_sums), sparse = TRUE)
+                        colnames(compl_split_numgenes) <- "Ultra_low_abundance_LKTs"
+                        #Eliminate ULAs from matrix
+                        curr_split_numgenes <- curr_split_numgenes[ , !(colnames(curr_split_numgenes) %in% curr_taxaToMerge), drop = FALSE]
+                        #Add aggregated column
+                        curr_split_numgenes <- cbind(curr_split_numgenes, compl_split_numgenes)
+                    }
+                    #Ensure exact row and column order
+                    curr_split_numgenes <- curr_split_numgenes[rownames(curr_sparse_featcounts_index), colnames(curr_SM)]
 
-                        #Merge sparse version in to master gene count matrix
-                        master_sparse_taxon_to_space_genecounts_df <- merge_sparse_matrix(matlist = list(master_sparse_taxon_to_space_genecounts_df, curr_split_numgenes))
-
-                        #Ensure correct row order
-                        master_sparse_taxon_to_space_genecounts_df <- master_sparse_taxon_to_space_genecounts_df[rownames(master_sparse_featcounts_index), ]
-
-                    }# end conditional that there are any taxa > 1 PPM
+                    #Merge sparse version in to master gene count matrix
+                    master_sparse_taxon_to_space_genecounts_df <- merge_sparse_matrix(matlist = list(master_sparse_taxon_to_space_genecounts_df, curr_split_numgenes))
 
                     #Clean up
                     curr_SM <- NULL
                     curr_split_numgenes <- NULL
-                    curr_Bases_equal_to_1PPM <- NULL
-                    curr_taxaToKeep <- NULL
+                    curr_taxaToMerge <- NULL
+                    curr_sparse_featcounts_index <- NULL
                     gc()
                 }
 
                 #Eliminate Taxoncols to save RAM
+                curr_FD$Sample <- SN
+                rownames(curr_FD) <- paste(SN, rownames(curr_FD), sep = "§")
                 analysisdoses <- rbind(analysisdoses, curr_FD[ , c("Sample", "Accession", "Description", "NumBases")])
-
                 curr_featdf$Sample <- SN
                 curr_featdf$Taxon <- NULL
                 curr_analysisgencts <- as.data.frame(curr_featdf %>% group_by(Accession) %>% summarise(NumGenes = length(Accession), .groups = "keep"))
@@ -351,7 +416,6 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 curr_featdf <- NULL
                 curr_analysisgencts <- NULL
                 curr_analysislencts <- NULL
-
                 gc()
             } #End conditional for there being data for that analysis for that sample
         } #End loop for obtaining data for each sample
@@ -486,6 +550,15 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         assays$BaseCounts <- cts
         assays$GeneCounts <- gennumcts
         assays$GeneLengths <- genlencts
+        #Add stratification index as assay if applicable
+        if (stratify_functions_by_taxon){
+            master_sparse_featcounts_index <- master_sparse_featcounts_index_longform %>% group_by(Sample, Accession) %>% tidyr::pivot_wider(names_from = Sample, values_from = RowNumber, values_fill = NA)
+            master_sparse_featcounts_index <- as.data.frame(master_sparse_featcounts_index)
+            rownames(master_sparse_featcounts_index) <- master_sparse_featcounts_index$Accession
+            master_sparse_featcounts_index$Accession <- NULL
+            master_sparse_featcounts_index <- master_sparse_featcounts_index[rownames(cts), colnames(cts)]
+            assays$SparseIndex <- as.matrix(master_sparse_featcounts_index)
+        }
 
         ##Create SummarizedExperiment
         SEobj <- SummarizedExperiment(assays = assays, rowData = as.matrix(ftt), colData = as.matrix(phenoanal))
@@ -503,20 +576,15 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         #Split functions by taxon, if applicable
         if (stratify_functions_by_taxon){
  
-            master_sparse_featcounts_index$RowNumber <- 1:nrow(master_sparse_featcounts_index)
-            metadata(SEobj)$allfeaturesbytaxa_index <- master_sparse_featcounts_index
-
             #Add features-by-taxon matrix and index into SummarizedExperiment object
-            #Prune empty LKTs, there shoud be none, but be safe
-            NonEmptyLKTs <- names(which(Matrix::colSums(master_sparse_taxon_to_space_basecounts_df) != 0))
-            metadata(SEobj)$allfeaturesbytaxa_matrix <- master_sparse_taxon_to_space_basecounts_df[rownames(master_sparse_featcounts_index), NonEmptyLKTs]
-
-            metadata(SEobj)$allfeaturesbytaxa_GeneCounts_matrix <- master_sparse_taxon_to_space_genecounts_df[rownames(master_sparse_featcounts_index), NonEmptyLKTs]
+            metadata(SEobj)$allfeaturesbytaxa_matrix <- master_sparse_taxon_to_space_basecounts_df
+            metadata(SEobj)$allfeaturesbytaxa_GeneCounts_matrix <- master_sparse_taxon_to_space_genecounts_df
 
             #Clean up
             master_sparse_featcounts_index <- NULL
             master_sparse_taxon_to_space_basecounts_df <- NULL
             master_sparse_taxon_to_space_genecounts_df <- NULL
+            master_sparse_featcounts_index_longform <- NULL
             gc()
 
         } #End of splitting features by taxonomy
