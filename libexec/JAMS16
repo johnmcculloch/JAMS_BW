@@ -571,7 +571,7 @@ if (!is.null(opt$forward_primer) && !is.null(opt$reverse_primer)) {
   
 } else {
 
-    out <- filterAndTrim(fwd = rawfastqsdfR1$Dada2_input_read_fpath, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$Dada2_input_read_fpath, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1), matchIDs = TRUE, id.field = idfield)
+    out <- filterAndTrim(fwd = rawfastqsdfR1$Dada2_input_read_fpath, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$Dada2_input_read_fpath, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1), matchIDs = TRUE)
 
 }
 
