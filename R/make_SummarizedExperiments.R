@@ -166,7 +166,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         featureorder <- rownames(cts)
 
         #Make tax table
-        if (taxononomic_space == "ConsolidatedGenomeBin"){
+        if (taxonomic_space == "ConsolidatedGenomeBin"){
             taxlvlspresent <- colnames(LKTdosesall)[colnames(LKTdosesall) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT")]
             tt <- LKTdosesall[ , taxlvlspresent]
             tt <- tt[!(duplicated(tt)), ]
