@@ -74,10 +74,10 @@ option_list <- list(
                 type="numeric",
                 help ="If using reads, what is the minimum percentage assembly into contigs for a sample to be included in an experiment. (Default=0)"),
 
-    make_option(c("-e", "--export_tables"),
-                action="store_true", default = FALSE,
-                type="logical",
-                help ="Export relative abundance tables and feature data tables in tsv format."),
+#    make_option(c("-e", "--export_tables"),
+#                action="store_true", default = FALSE,
+#                type="logical",
+#                help ="Export relative abundance tables and feature data tables in tsv format."),
 
     make_option(c("-n", "--restrict_to_analyses"),
                 action="store", default = NULL,
@@ -453,19 +453,21 @@ IO_jams_workspace_image(opt = opt, operation = "save", verbose = FALSE)
 ####################
 ## Export objects ##
 ####################
-if (opt$export_tables == TRUE){
-    flog.info("Exporting count and feature tables.")
-    tablespath <- file.path(opt$outdir, "Tables")
-    if (!(dir.exists(tablespath))){
-        flog.info("Creating directory to hold tables.")
-        dir.create(tablespath, showWarnings = FALSE, recursive = FALSE)
-    }
+#Deprecated. We don't want to encourage anyone using spreadsheet software to do statistics instead of using the JAMS beta functions.
+
+#if (opt$export_tables == TRUE){
+#    flog.info("Exporting count and feature tables.")
+#    tablespath <- file.path(opt$outdir, "Tables")
+#    if (!(dir.exists(tablespath))){
+#        flog.info("Creating directory to hold tables.")
+#        dir.create(tablespath, showWarnings = FALSE, recursive = FALSE)
+#    }
 
     #Export as spreadsheet
-    export_expvec_to_XL(expvec = expvec, asPPM = TRUE, filename = paste(paste(project, "Relabund", "PPM", sep = "_"), "xlsx", sep = "."))
+#    export_expvec_to_XL(expvec = expvec, asPPM = TRUE, filename = paste(paste(project, "Relabund", "PPM", sep = "_"), "xlsx", sep = "."))
     #Export as spreadsheet
-    export_expvec_to_XL(expvec = expvec, asPPM = FALSE, filename = paste(paste(project, "Base_counts", sep = "_"), "xlsx", sep = "."))
-}
+#    export_expvec_to_XL(expvec = expvec, asPPM = FALSE, filename = paste(paste(project, "Base_counts", sep = "_"), "xlsx", sep = "."))
+#}
 
 #Save expvec as RDS object
 flog.info("Saving list of SummarizedExperiment objects as .rds file")
