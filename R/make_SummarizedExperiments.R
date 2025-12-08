@@ -326,7 +326,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                     curr_taxaToMerge <- names(which(Matrix::colSums(curr_SM) < 10000))
                     if (length(curr_taxaToMerge) > 0){
                         #Sum all low abundance values into a single column.
-                        ULA_sums <- Matrix::rowSums(curr_SM[ , curr_taxaToMerge])
+                        ULA_sums <- Matrix::rowSums(curr_SM[ , curr_taxaToMerge, drop = FALSE])
                         compl_SM <- Matrix::Matrix(data = as.matrix(ULA_sums), sparse = TRUE)
                         colnames(compl_SM) <- "Ultra_low_abundance_LKTs"
                         #Eliminate ULAs from matrix
@@ -372,7 +372,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                     #Aggregate low abundance taxa, if applicable.
                     if (length(curr_taxaToMerge) > 0){
                         #Sum all low abundance values into a single column.
-                        ULA_gene_sums <- Matrix::rowSums(curr_split_numgenes[ , curr_taxaToMerge])
+                        ULA_gene_sums <- Matrix::rowSums(curr_split_numgenes[ , curr_taxaToMerge, drop = FALSE])
                         compl_split_numgenes <- Matrix::Matrix(data = as.matrix(ULA_gene_sums), sparse = TRUE)
                         colnames(compl_split_numgenes) <- "Ultra_low_abundance_LKTs"
                         #Eliminate ULAs from matrix
@@ -406,8 +406,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 curr_analysislencts$Sample <- SN
                 rownames(curr_analysisgencts) <- paste(SN, curr_analysisgencts$Accession, sep = "§")
                 rownames(curr_analysislencts) <- paste(SN, curr_analysislencts$Accession, sep = "§")
-                curr_analysisgencts <- curr_analysisgencts[rownames(curr_FD), c("Sample", "Accession", "NumGenes")]
-                curr_analysislencts <- curr_analysislencts[rownames(curr_FD), c("Sample", "Accession", "LenGenes")]
+                curr_analysisgencts <- curr_analysisgencts[rownames(curr_FD), c("Sample", "Accession", "NumGenes"), drop = FALSE]
+                curr_analysislencts <- curr_analysislencts[rownames(curr_FD), c("Sample", "Accession", "LenGenes"), drop = FALSE]
                 analysisgencts <- rbind(analysisgencts, curr_analysisgencts)
                 analysislencts <- rbind(analysislencts, curr_analysislencts)
 
