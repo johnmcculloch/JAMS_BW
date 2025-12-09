@@ -21,7 +21,7 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     rownames(LKTdosesall) <- LKTdosesall$MAG_Accession
 
     #Define useful functions
-    cluster_strains <- function(genes_df = NULL, normalize_length = FALSE, distmethod = "bray", cutoff = dissimilarity_cutoff){
+    cluster_strains <- function(genes_df = NULL, normalize_length = FALSE, distmethod = "bray", cutoff = NULL){
         #Aggregate lengths of features
         if (normalize_length){
             length_sum_df <- genes_df %>% group_by(Accession, MAG_Accession) %>% summarise(Total_LengthDNA = sum(ProportionLengthDNA, na.rm = TRUE), .groups = "drop")
@@ -103,6 +103,7 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     WorkingTaxids_to_decon <- names(which(table(BinsDF$WorkingTaxid) > 1))
     if (length(WorkingTaxids_to_decon) > 1){
         flog.info(paste("There are", length(WorkingTaxids_to_decon), "species-level taxonomical entities to deconvolute"))
+        flog.info(paste("Entities will be clustered within bins presenting a distance >", dissimilarity_cutoff))
 
         #Loop round and resolve.
         for (WT in WorkingTaxids_to_decon){
@@ -121,7 +122,7 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
                 curr_func_df <- NULL
             }
 
-            curr_strain_df <- cluster_strains(genes_df = curr_genes_df, normalize_length = normalize_length)
+            curr_strain_df <- cluster_strains(genes_df = curr_genes_df, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
             curr_strain_df$ContextualizedSpecies <- sapply(1:nrow(curr_strain_df), function (x) { rename_MAG_Accession(MAG_Accession = curr_strain_df[x, "MAG_Accession"], Cluster_Number = curr_strain_df[x, "Cluster_Number"], BinsDF = BinsDF) } )
             strain_df <- rbind(strain_df, curr_strain_df)
             curr_strain_df <- NULL
