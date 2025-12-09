@@ -13,23 +13,29 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, assay_for_matrix = "Bas
         sparsematrix_index_name <- "allfeaturesbytaxa_index"
     }
 
-    allfeaturesbytaxa_matrix <- metadata(FuncExpObj)[[sparsematrix_name]]
-    allfeaturesbytaxa_index <- metadata(FuncExpObj)[[sparsematrix_index_name]]
-    curr_pt <- colData(FuncExpObj)
+    #Determine first if FuncExpObj is a JAMS version > 2.1 object
+    if ("SparseIndex" %in% names(assays(FuncExpObj))){
+        JAMS2_object <- TRUE
+        index_matrix <- as.data.frame(assays(FuncExpObj)[["SparseIndex"]])
+        #Subset to only wanted features and samples
+        index_matrix <- index_matrix[wantedfeatures, wantedsamples, drop = FALSE]
+        rowsinterestdf <- as.data.frame(index_matrix) %>% rownames_to_column("Accession") %>% pivot_longer(cols = -Accession, names_to = "Sample", values_to = "RowNumber")
+        rowsinterestdf <- as.data.frame(rowsinterestdf)
 
-    #Get appropriate rows
-    rowsinterestdf <- subset(allfeaturesbytaxa_index, Sample %in% wantedsamples)
-    rowsinterestdf <- subset(rowsinterestdf, Accession %in% wantedfeatures)
-
-    allfeaturesbytaxa_interest <- as.matrix(allfeaturesbytaxa_matrix[rowsinterestdf$RowNumber, ])
-
-    if (length(rowsinterestdf$RowNumber) == 1){
-        allfeaturesbytaxa_interest <- t(allfeaturesbytaxa_interest)
+    } else {
+        JAMS2_object <- FALSE
+        allfeaturesbytaxa_index <- metadata(FuncExpObj)[[sparsematrix_index_name]]
+        #Get appropriate rows
+        rowsinterestdf <- subset(allfeaturesbytaxa_index, Sample %in% wantedsamples)
+        rowsinterestdf <- subset(rowsinterestdf, Accession %in% wantedfeatures)
     }
 
+    #Ensure correct class
+    rowsinterestdf$RowNumber <- as.integer(rowsinterestdf$RowNumber)
+    allfeaturesbytaxa_interest <- as.matrix(metadata(FuncExpObj)[[sparsematrix_name]][rowsinterestdf$RowNumber, , drop = FALSE])
+    #Prune empty taxa, i.e. taxa which have 0 counts for all of the features of interest
     allfeaturesbytaxa_interest <- as.data.frame(allfeaturesbytaxa_interest[, which(colSums(allfeaturesbytaxa_interest) != 0)])
-    allfeaturesbytaxa_interest$RowNumber <- as.numeric(rownames(allfeaturesbytaxa_interest))
-
+    allfeaturesbytaxa_interest$RowNumber <- as.integer(rownames(allfeaturesbytaxa_interest))
     allfeaturesbytaxa_interest <- left_join(allfeaturesbytaxa_interest, rowsinterestdf, by = "RowNumber")
     allfeaturesbytaxa_interest$RowNumber <- NULL
     allfeaturesbytaxa_interest <- allfeaturesbytaxa_interest[ , c("Sample", "Accession", (sort(colnames(allfeaturesbytaxa_interest)[which(!colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession"))])))]
@@ -48,14 +54,14 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, assay_for_matrix = "Bas
         LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", "NumBases"))]
 
         #Transform to PPM
-        for(colm in LKTcolumns){
+        for (colm in LKTcolumns){
             taxsplit[ , colm] <- round(((taxsplit[ , colm] / taxsplit$NumBases) * 1000000), 0)
         }
 
         #Denoise
         LKTsMaxima <-sapply(LKTcolumns, function(x) {max(taxsplit[ , x])})
         LKTsToKeep <- names(which(LKTsMaxima > PPMthreshold))
-        sample2metadata <- as.data.frame(curr_pt)
+        sample2metadata <- as.data.frame(colData(FuncExpObj))
         nonSamplecolms <- colnames(sample2metadata)[colnames(sample2metadata) != "Sample"]
         taxsplit <- left_join(taxsplit, sample2metadata, by = "Sample")
         taxsplit <- taxsplit[ , c("Sample", "Accession", "NumBases", nonSamplecolms, LKTsToKeep)]
