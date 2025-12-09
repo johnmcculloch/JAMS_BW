@@ -128,7 +128,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
 
         #If taxonomic space is ConsolidatedGenomeBin, evaluate, contextualize and rename redundant taxonomies using functional annotation.
         if (taxonomic_space == "ConsolidatedGenomeBin"){
-            LKTdosesall <- contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE)
+            LKTdosesall <- contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15)
 
             #Bequeath to opt for using later when building functional experiments
             #Keep this here for the time being. make_SummarizedExperiments does not return opt, so at a later date I might add this to the SEobj itself, depending on the object size.

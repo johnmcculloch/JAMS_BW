@@ -1,9 +1,9 @@
-#' contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE)
+#' contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15)
 #'
 #' This is an internal function used exclusively within the make_SummarizedExperiments function to cluster taxonomic entities belonging to the same species taxid into functional clades. Do not attempt to use this out of this context.
 #' @export
 
-contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE){
+contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15){
 
     data(JAMStaxtable)
 
@@ -21,7 +21,7 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     rownames(LKTdosesall) <- LKTdosesall$MAG_Accession
 
     #Define useful functions
-    cluster_strains <- function(genes_df = NULL, normalize_length = FALSE, distmethod = "bray", cutoff = 0.1){
+    cluster_strains <- function(genes_df = NULL, normalize_length = FALSE, distmethod = "bray", cutoff = dissimilarity_cutoff){
         #Aggregate lengths of features
         if (normalize_length){
             length_sum_df <- genes_df %>% group_by(Accession, MAG_Accession) %>% summarise(Total_LengthDNA = sum(ProportionLengthDNA, na.rm = TRUE), .groups = "drop")
