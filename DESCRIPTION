@@ -1,6 +1,6 @@
 Package: JAMS
 Title: Just A Microbiology System
-Version: 2.1.0
+Version: 2.1.1
 Authors@R: c(person("John", "McCulloch", email = "john.mcculloch@nih.gov", role = c("aut", "cre")),
     person("Jonathan", "Badger", email = "jonathan.badger@nih.gov", role = "aut"),
     person("Nikki", "Cannon", email = "nikkicannon7@gmail.com", role = "aut"),

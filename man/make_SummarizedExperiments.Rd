@@ -16,7 +16,8 @@ make_SummarizedExperiments(
   list.data = NULL,
   phenolabels = NULL,
   cdict = cdict,
-  threads = 8
+  threads = 8,
+  functional_contextualization_dissimilarity_cutoff = 0.15
 )
 }
 \description{
