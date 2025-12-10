@@ -160,7 +160,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         #Make counts table
         #n.b. In the case of ConsolidatedGenomeBin, there may be still two different MAGs (from MetaBAT2 bins) bearing the same LKT name even after functional clusterization. I have found that these are the exceedingly rare, occurring at a rate of about 0.005% of all Sample LKT pairs. Why this is so, it is not known, but MetaBAT is binning near-identical entities within the same sample into two different bins. It is thus necessary to sum the NumBases and genome completenesses of these. This will have minimal effect on an analysis and genome completeness overshoot can still be ascertained via GenomeCompleteness matrices in SEobj.
 
-        LKTcountsall <- LKTdosesall[ , c("Sample", "LKT", "NumBases", "Completeness", "Contamination")] %>% group_by(Sample, LKT) %>% summarize(NumBases = sum(NumBases), Completeness = sum(Completeness), Contamination = sum(Contamination), .groups = "drop") 
+        if (taxonomic_space == "ConsolidatedGenomeBin"){
+            LKTcountsall <- LKTdosesall[ , c("Sample", "LKT", "NumBases", "Completeness", "Contamination")] %>% group_by(Sample, LKT) %>% summarize(NumBases = sum(NumBases), Completeness = sum(Completeness), Contamination = sum(Contamination), .groups = "drop") 
+        } else {
+            LKTcountsall <- LKTdosesall[ , c("Sample", "LKT", "NumBases", "Completeness", "Contamination")]
+        }
 
         cts <- LKTcountsall %>% group_by(Sample, LKT) %>% tidyr::pivot_wider(names_from = Sample, values_from = NumBases, values_fill = 0)
         cts <- as.data.frame(cts)
