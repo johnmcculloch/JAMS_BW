@@ -1,9 +1,9 @@
-#' make_SummarizedExperiments(pheno = NULL, onlysamples = NULL,  onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8)
+#' make_SummarizedExperiments(pheno = NULL, onlysamples = NULL, onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8, functional_contextualization_dissimilarity_cutoff = 0.15)
 #'
 #' Makes a SummarizedExperiment object for every analysis that is possible to make given loaded jams files in list.data.
 #' @export
 
-make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8){
+make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8, functional_contextualization_dissimilarity_cutoff = 0.15){
 
     require(SummarizedExperiment)
     require(Matrix)
@@ -128,7 +128,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
 
         #If taxonomic space is ConsolidatedGenomeBin, evaluate, contextualize and rename redundant taxonomies using functional annotation.
         if (taxonomic_space == "ConsolidatedGenomeBin"){
-            LKTdosesall <- contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15)
+            LKTdosesall <- contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = functional_contextualization_dissimilarity_cutoff)
 
             #Bequeath to opt for using later when building functional experiments
             #Keep this here for the time being. make_SummarizedExperiments does not return opt, so at a later date I might add this to the SEobj itself, depending on the object size.
