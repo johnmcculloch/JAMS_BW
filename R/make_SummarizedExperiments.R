@@ -334,7 +334,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                     if (length(Samples) > 20 && sampnum %% 20 == 0) {
                         elapsed <- as.numeric(difftime(Sys.time(), batch_start_time, units = "secs"))
                         avg_per_sample <- elapsed / sampnum
-                        eta_secs <- avg_per_sample * (length(Samples) - i)
+                        eta_secs <- avg_per_sample * (length(Samples) - sampnum)
                         flog.info(sprintf("Completed %d/%d samples | elapsed time: %s | ETA: %s", sampnum, length(Samples), pretty_time(elapsed), pretty_time(eta_secs)))
                     }
 
