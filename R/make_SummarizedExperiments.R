@@ -135,7 +135,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             opt$CGB2LKTdict <- LKTdosesall[ , c("Sample", "ConsolidatedGenomeBin", "LKT"), drop = FALSE] %>% dplyr::mutate(across(where(is.character), as.factor))
 
             #Fix list.data objects with contextualized taxonomy
- 
+
             flog.info("Writing contextualized taxonomy to functional data counts")
             for (S2C in as.character(unique(opt$CGB2LKTdict$Sample))){
                 curr_CGB2LKT_df <- opt$CGB2LKTdict[which(opt$CGB2LKTdict$Sample == S2C), , drop = FALSE]
@@ -158,7 +158,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         }
 
         #Make counts table
-        cts <- LKTdosesall[ , c("Sample", "LKT", "NumBases")] %>% group_by(Sample, LKT) %>% tidyr::pivot_wider(names_from = Sample, values_from = NumBases, values_fill = 0)
+        #n.b. In the case of ConsolidatedGenomeBin, there may be still two different MAGs (from MetaBAT2 bins) bearing the same LKT name even after functional clusterization. I have found that these are the exceedingly rare, occurring at a rate of about 0.005% of all Sample LKT pairs. Why this is so, it is not known, but MetaBAT is binning near-identical entities within the same sample into two different bins. It is thus necessary to sum the NumBases and genome completenesses of these. This will have minimal effect on an analysis and genome completeness overshoot can still be ascertained via GenomeCompleteness matrices in SEobj.
+
+        LKTcountsall <- LKTdosesall[ , c("Sample", "LKT", "NumBases", "Completeness", "Contamination")] %>% group_by(Sample, LKT) %>% summarize(NumBases = sum(NumBases), Completeness = sum(Completeness), Contamination = sum(Contamination), .groups = "drop") 
+
+        cts <- LKTcountsall %>% group_by(Sample, LKT) %>% tidyr::pivot_wider(names_from = Sample, values_from = NumBases, values_fill = 0)
         cts <- as.data.frame(cts)
         rownames(cts) <- cts$LKT
         cts$LKT <- NULL
@@ -190,7 +194,6 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         tt[which(is.na(tt[ , "Gram"])), "Gram"] <- "na"
         tt <- tt[ , c("Gram", taxlvlspresent)]
         rownames(tt) <- tt[ , "LKT"]
-        #tt <- as.matrix(tt)
 
         sampleorder <- rownames(pheno2)
         tt <- tt[featureorder, ]
@@ -202,17 +205,17 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         rownames(TotalBasesSequenced) <- "NumBases"
 
         #Get genome completeness matrix
-        LKTallGenComp <- LKTdosesall[, c("Sample", "LKT", "Completeness")]
+        LKTallGenComp <- LKTcountsall[, c("Sample", "LKT", "Completeness")]
         #Be sure that data is not empty or redundant
         LKTallGenComp[is.na(LKTallGenComp)] <- 0
-        LKTallGenCompcts <- LKTallGenComp %>% group_by(Sample, LKT) %>% tidyr::pivot_wider(names_from = Sample, values_from = Completeness, values_fill = 0)
+        LKTallGenCompcts <- LKTallGenComp %>% tidyr::pivot_wider(names_from = Sample, values_from = Completeness, values_fill = 0)
         LKTallGenCompcts <- as.data.frame(LKTallGenCompcts)
         rownames(LKTallGenCompcts) <- LKTallGenCompcts$LKT
         LKTallGenCompcts$LKT <- NULL
         LKTallGenCompcts <- LKTallGenCompcts[featureorder, sampleorder]
 
         #Get genome contamination matrix
-        LKTallGenCont <- LKTdosesall[, c("Sample", "LKT", "Contamination")]
+        LKTallGenCont <- LKTcountsall[, c("Sample", "LKT", "Contamination")]
         #Be sure that data is not empty or redundant
         LKTallGenCont[is.na(LKTallGenCont)] <- 0
         LKTallGenContcts <- LKTallGenCont %>% group_by(Sample, LKT) %>% tidyr::pivot_wider(names_from = Sample, values_from = Contamination, values_fill = 0)
@@ -288,7 +291,9 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             appropriate_featurdata_tax_colm <- "LKT"
         }
 
-        for (SN in Samples){
+        batch_start_time <- Sys.time()
+        for (sampnum in 1:length(Samples)){
+            SN <- Samples[sampnum]
             curr_FD <- list.data[[paste(SN, "abundances", sep = "_")]]$functional[[valid_taxonomic_space]]
             #Subset to current analysis
             curr_FD <- curr_FD[which(curr_FD$Analysis == analysis), , drop = FALSE]
@@ -320,6 +325,15 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 }
 
                 if (stratify_functions_by_taxon){
+
+                    #Give message every 20 Samples
+                    if (length(Samples) > 20 && sampnum %% 20 == 0) {
+                        elapsed <- as.numeric(difftime(Sys.time(), batch_start_time, units = "secs"))
+                        avg_per_sample <- elapsed / sampnum
+                        eta_secs <- avg_per_sample * (length(Samples) - i)
+                        flog.info(sprintf("Completed %d/%d samples | elapsed time: %s | ETA: %s", sampnum, length(Samples), pretty_time(elapsed), pretty_time(eta_secs)))
+                    }
+
                     curr_SM <- Matrix::Matrix(data = as.matrix(curr_FD[ , Taxoncols]), sparse = TRUE)
                     colnames(curr_SM) <- Taxoncols
                     #In order to conserve RAM and the size of the taxonomic stratification sparse matrix, do not include any taxon whose total sum of bases across the entire metagenomic proteome is smaller than 10000 bp (10 kbp). 10 kbp / ~3 Mbp is a completeness of 0.3%, with a sequencing depth of 1X if the entire sample consisted of a single species (which it doesn't). So this filtration is very conseravative and will shrink memory usage considerably.
@@ -420,7 +434,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             } #End conditional for there being data for that analysis for that sample
         } #End loop for obtaining data for each sample
 
-        #Fix for not getting duplicate accessions. Delete the Description column to get clean pivot from long to wide.
+        #Obtain unstratifies counts matrix
         cts <- analysisdoses[ , c("Sample", "Accession", "NumBases")] %>% pivot_wider(names_from = Sample, values_from = NumBases, values_fill = 0)
         cts <- as.data.frame(cts)
         cts[is.na(cts)] <- 0

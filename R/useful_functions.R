@@ -917,3 +917,17 @@ retrieve_GCA_accession_URL <- function(assemblytargetname){
     }
 }
 
+#' pretty_time(seconds)
+#'
+#' Automatically reformats numbers of seconds to a more human-readable format.
+#' @export
+
+pretty_time <- function(seconds) {
+    if (seconds < 60) {
+        sprintf("%.1f s", seconds)
+    } else if (seconds < 3600) {
+        sprintf("%.1f min", seconds / 60)
+    } else {
+        sprintf("%.1f h", seconds / 3600)
+    }
+}
