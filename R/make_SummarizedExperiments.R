@@ -166,7 +166,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             LKTcountsall <- LKTdosesall[ , c("Sample", "LKT", "NumBases", "Completeness", "Contamination")]
         }
 
-        cts <- LKTcountsall %>% group_by(Sample, LKT) %>% tidyr::pivot_wider(names_from = Sample, values_from = NumBases, values_fill = 0)
+        cts <- LKTcountsall[ , c("Sample", "LKT", "NumBases")] %>% group_by(Sample, LKT) %>% tidyr::pivot_wider(names_from = Sample, values_from = NumBases, values_fill = 0)
         cts <- as.data.frame(cts)
         rownames(cts) <- cts$LKT
         cts$LKT <- NULL
