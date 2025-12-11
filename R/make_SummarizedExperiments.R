@@ -329,15 +329,6 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 }
 
                 if (stratify_functions_by_taxon){
-
-                    #Give message every 20 Samples
-                    if (length(Samples) > 20 && sampnum %% 20 == 0) {
-                        elapsed <- as.numeric(difftime(Sys.time(), batch_start_time, units = "secs"))
-                        avg_per_sample <- elapsed / sampnum
-                        eta_secs <- avg_per_sample * (length(Samples) - sampnum)
-                        flog.info(sprintf("Completed %d/%d samples | elapsed time: %s | ETA: %s", sampnum, length(Samples), pretty_time(elapsed), pretty_time(eta_secs)))
-                    }
-
                     curr_SM <- Matrix::Matrix(data = as.matrix(curr_FD[ , Taxoncols]), sparse = TRUE)
                     colnames(curr_SM) <- Taxoncols
                     #In order to conserve RAM and the size of the taxonomic stratification sparse matrix, do not include any taxon whose total sum of bases across the entire metagenomic proteome is smaller than 10000 bp (10 kbp). 10 kbp / ~3 Mbp is a completeness of 0.3%, with a sequencing depth of 1X if the entire sample consisted of a single species (which it doesn't). So this filtration is very conseravative and will shrink memory usage considerably.
@@ -436,6 +427,19 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 curr_analysislencts <- NULL
                 gc()
             } #End conditional for there being data for that analysis for that sample
+
+            #Give message on progress
+            if (sampnum == length(Samples)) {
+                elapsed <- as.numeric(difftime(Sys.time(), batch_start_time, units = "secs"))
+                avg_per_sample <- elapsed / sampnum
+                flog.info(sprintf("Completed %d/%d samples | elapsed time: %s", sampnum, length(Samples), pretty_time(elapsed)))
+            } else if (length(Samples) > 20 && sampnum %% 20 == 0) {
+                elapsed <- as.numeric(difftime(Sys.time(), batch_start_time, units = "secs"))
+                avg_per_sample <- elapsed / sampnum
+                eta_secs <- avg_per_sample * (length(Samples) - sampnum)
+                flog.info(sprintf("Completed %d/%d samples | elapsed time: %s | ETA: %s", sampnum, length(Samples), pretty_time(elapsed), pretty_time(eta_secs)))
+            }
+
         } #End loop for obtaining data for each sample
 
         #Obtain unstratifies counts matrix
@@ -574,6 +578,17 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             master_sparse_featcounts_index <- as.data.frame(master_sparse_featcounts_index)
             rownames(master_sparse_featcounts_index) <- master_sparse_featcounts_index$Accession
             master_sparse_featcounts_index$Accession <- NULL
+            #Add empty samples if necessary
+            emptySamples <- rownames(phenoanal)[!(rownames(phenoanal) %in% colnames(master_sparse_featcounts_index))]
+
+            if (length(emptySamples) > 0){
+                complementarycts <- matrix(ncol = length(emptySamples), nrow = nrow(master_sparse_featcounts_index), data = 0)
+                complementarycts <- as.data.frame(complementarycts, stringsAsFactors = FALSE)
+                colnames(complementarycts) <- emptySamples
+                rownames(complementarycts) <- rownames(master_sparse_featcounts_index)
+                master_sparse_featcounts_index <- cbind(master_sparse_featcounts_index, complementarycts)
+            }
+
             master_sparse_featcounts_index <- master_sparse_featcounts_index[rownames(cts), colnames(cts)]
             assays$SparseIndex <- as.matrix(master_sparse_featcounts_index)
         }
