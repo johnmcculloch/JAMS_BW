@@ -323,8 +323,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 #Ensure numeric
                 curr_featdf$LengthDNA <- as.numeric(curr_featdf$LengthDNA)
 
-                #Separate rows if GO, Interpro or MataCyc
-                if (analysis %in% c("GO", "Interpro", "MetaCyc")){
+                #Separate rows if not Product or ECNumber, as there may be more than a single accession for a single gene separated by a "|".
+                if (!(analysis %in% c("Product", "ECNumber"))){
                     curr_featdf <- curr_featdf %>% tidyr::separate_rows(all_of("Accession"), sep = fixed("\\|"))
                 }
 
@@ -442,7 +442,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
 
         } #End loop for obtaining data for each sample
 
-        #Obtain unstratifies counts matrix
+        #Obtain unstratified counts matrix
         cts <- analysisdoses[ , c("Sample", "Accession", "NumBases")] %>% pivot_wider(names_from = Sample, values_from = NumBases, values_fill = 0)
         cts <- as.data.frame(cts)
         cts[is.na(cts)] <- 0
