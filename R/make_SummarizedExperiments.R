@@ -203,6 +203,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         tt <- tt[featureorder, ]
         cts <- cts[, sampleorder]
 
+        #Save CGB taxonomic table for including in metadata of taxon-stratified functional SEobj.
+        if (taxonomic_space == "ConsolidatedGenomeBin"){
+            CGB_tt <- tt
+        }
+
         #Register the total number of NAHS bases sequenced for each sample
         TotBasesSamples <- colSums(cts)
         TotalBasesSequenced <- t(as.matrix(TotBasesSamples))
@@ -612,6 +617,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             #Add features-by-taxon matrix and index into SummarizedExperiment object
             metadata(SEobj)$allfeaturesbytaxa_matrix <- master_sparse_taxon_to_space_basecounts_df
             metadata(SEobj)$allfeaturesbytaxa_GeneCounts_matrix <- master_sparse_taxon_to_space_genecounts_df
+            #Add taxonomic level information for downstream aggregation of taxonomy stratification
+            metadata(SEobj)$tt <- CGB_tt
 
             #Clean up
             master_sparse_featcounts_index <- NULL
