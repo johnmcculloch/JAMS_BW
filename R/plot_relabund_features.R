@@ -313,9 +313,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             }
 
             #See if current SummarizedExperiment object allows for stratification by taxa.
-            if (all(c("allfeaturesbytaxa_index", "allfeaturesbytaxa_matrix") %in% names(metadata(currobj)))){
-                taxsplit <- retrieve_features_by_taxa(FuncExpObj = currobj, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, PPMthreshold = 0)
-
+            if (all(c("allfeaturesbytaxa_matrix") %in% names(metadata(currobj)))){
+                taxsplit <- retrieve_features_by_taxa(FuncExpObj = currobj, glomby = stratify_by_taxlevel, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, PPMthreshold = 0)
                 #colnames(taxsplit)[which(colnames(taxsplit) == compareby)] <- "Compareby"
                 taxsplit$Compareby <- taxsplit[ , which(colnames(taxsplit) == compareby)]
 
@@ -342,17 +341,17 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 taxsplit <- aggtaxsplit
             }
 
-            data(JAMStaxtable)
-            data(Gram)
-            tt <- JAMStaxtable[ , which(colnames(JAMStaxtable) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "LKT"))]
-            tt <- tt[!(duplicated(tt$LKT)), ]
-            LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", "Compareby", colnames(curr_pt)))]
-            tt <- subset(tt, LKT %in% LKTcolumns)
-            tt <- tt[ , c(stratify_by_taxlevel, "Phylum")]
-            Gram$Kingdom <- NULL
-            tt <- left_join(tt, Gram, by = "Phylum")
-            phycols <- setNames(as.character(tt$PhylumColour), as.character(tt$Phylum))[unique(tt$Phylum)]
-            phycols <- c(phycols, Remainder = "#000000")
+            #Note: due to large number of Phyla in JAMS2 taxonomic table, colouring in by Phylum is now deprecated.
+            #data(JAMStaxtable)
+            #data(Gram)
+            #tt <- JAMStaxtable[ , which(colnames(JAMStaxtable) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT"))]
+            #tt <- tt[!(duplicated(tt$LKT)), ]
+            #LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", "Compareby", colnames(curr_pt)))]
+            #tt <- tt[which(tt[ , stratify_by_taxlevel] %in% LKTcolumns), c(stratify_by_taxlevel, "Phylum")]
+            #Gram$Kingdom <- NULL
+            #tt <- left_join(tt, Gram, by = "Phylum")
+            #phycols <- setNames(as.character(tt$PhylumColour), as.character(tt$Phylum))[unique(tt$Phylum)]
+            #phycols <- c(phycols, Remainder = "#000000")
         }
 
         flog.info("Plotting results...")
@@ -408,7 +407,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             } else {
                 #Code for a boxplot
-                if(length(discretenames) < nrow(curr_pt)){
+                if (length(discretenames) < nrow(curr_pt)){
                     jitfact <- -( 0.3 / nrow(colData(currobj))) * (length(discretenames)) + 0.25
                 } else {
                     jitfact <- 0
@@ -620,7 +619,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     #Eliminate empties
                     LKTsToKeep <- names(which(colSums(currtaxsplitgrp[ , LKTcolumns]) > 0))
                     currtaxsplitgrp <- currtaxsplitgrp[ , c("Sample", LKTsToKeep)]
-                    dat <- currtaxsplitgrp %>% gather(LKT, PPM, 2:ncol(currtaxsplitgrp))
+                    dat <- currtaxsplitgrp %>% gather(Taxon, PPM, 2:ncol(currtaxsplitgrp))
 
                     #Start building a plot
                     dat <- left_join(dat, as.data.frame(curr_pt), by = "Sample")
@@ -642,15 +641,16 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                         dat$Colour <- dat[ , which(colnames(dat) == colourby)]
                     }
 
+                    #DEPRECATED SINCE JAMS2
                     #Colour in by phylum
-                    tt <- JAMStaxtable[ , which(colnames(JAMStaxtable) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "LKT"))]
-                    tt <- tt[!(duplicated(tt$LKT)), ]
-                    Taxon2phylum <- tt[which(tt[ , "LKT"] %in% dat$LKT), ]
-                    colnames(Taxon2phylum)[which(colnames(Taxon2phylum) == stratify_by_taxlevel)] <- "Taxon"
-                    if (stratify_by_taxlevel == "LKT"){
-                        Taxon2phylum$LKT <- Taxon2phylum$Taxon
-                    }
-                    dat <- left_join(dat, Taxon2phylum, by = "LKT")
+                    #tt <- JAMStaxtable[ , which(colnames(JAMStaxtable) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "LKT"))]
+                    #tt <- tt[!(duplicated(tt$LKT)), ]
+                    #Taxon2phylum <- tt[which(tt[ , "LKT"] %in% dat$LKT), ]
+                    #colnames(Taxon2phylum)[which(colnames(Taxon2phylum) == stratify_by_taxlevel)] <- "Taxon"
+                    #if (stratify_by_taxlevel == "LKT"){
+                    #    Taxon2phylum$LKT <- Taxon2phylum$Taxon
+                    #}
+                    #dat <- left_join(dat, Taxon2phylum, by = "LKT")
 
                     #Order and aggregate if more than 30
                     tally <- aggregate(PPM ~ Taxon, data = dat, FUN = "sum")
@@ -675,11 +675,11 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                         remaindertally$Taxon <- "Other_Taxa"
                         datremainder$Taxon <- NULL
                         datremainder$PPM <- NULL
-                        datremainder$Phylum <- NULL
-                        datremainder$Gram <- NULL
+                        #datremainder$Phylum <- NULL
+                        #datremainder$Gram <- NULL
                         datremainder <- datremainder[!(duplicated(datremainder)), ]
                         aggremainder <- left_join(remaindertally, datremainder, by = "Sample")
-                        aggremainder$Phylum <- "Remainder"
+                        #aggremainder$Phylum <- "Remainder"
                         orddat <- rbind(orddat, aggremainder[ , colnames(orddat)])
                     }
 
@@ -723,16 +723,16 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     }
 
                     if (overlay_boxplot){
-                        if (annotate_phylum == TRUE){
-                            p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
-                        } else {
+                        #if (annotate_phylum == TRUE){
+                        #    p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
+                        #} else {
                             p <- p + geom_boxplot(outlier.shape = NA)
-                        }
+                        #}
                     }
 
-                    if (annotate_phylum == TRUE){
-                        p <- p + scale_fill_manual(values = phycols[(names(phycols) %in% dat$Phylum)])
-                    }
+#                    if (annotate_phylum == TRUE){
+#                        p <- p + scale_fill_manual(values = phycols[(names(phycols) %in% dat$Phylum)])
+#                    }
 
                     if (!is.null(colourby)){
                         p <- p + aes(colour = Colour)
@@ -782,7 +782,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     }
 
                     p <- p + theme_minimal()
-                    p <- p + theme(panel.background = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(colour = "black", fill = NA, size=1))
+                    p <- p + theme(panel.background = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(colour = "black", fill = NA, linewidth = 1))
                     plotitstrat <- paste0(c(maintit, featname), collapse = "\n")
 
                     p <- p + ggtitle(plotitstrat)
