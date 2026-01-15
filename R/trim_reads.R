@@ -32,7 +32,11 @@ trim_reads <- function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodet
         sliding=4
         crop=0
         minlen=36
+
         trimmcommand <- "trimmomatic"
+        #Deal with JAVA memory (safer in newer versions of trimmomatic)
+        mem_gb <- floor(opt$totmembytes * 0.9 / 1024^3)
+        java_opts <- paste0("-Xmx", mem_gb, "G")
 
         if (autodetect_phred_offest == TRUE){
             scores <- system2('head', args = c("-1000", opt$rawreads[1]), stdout = TRUE)
@@ -58,8 +62,8 @@ trim_reads <- function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodet
             output.trim_unpaired1 <- paste(opt$prefix, libstruct, "R1_trim_unpaired.fastq.gz", sep="_")
             output.trim_unpaired2 <- paste(opt$prefix, libstruct, "R2_trim_unpaired.fastq.gz", sep="_")
             #filter reads
-            commandtorun <- paste(trimmcommand, libstruct, "-threads", opt$threads, input.read1, input.read2, output.trim1, output.trim_unpaired1, output.trim2, output.trim_unpaired2, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("-phred", as.character(opt$phredoffset)), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
-            system(commandtorun)
+            argstorun <- paste(libstruct, "-threads", opt$threads, input.read1, input.read2, output.trim1, output.trim_unpaired1, output.trim2, output.trim_unpaired2, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("-phred", as.character(opt$phredoffset)), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
+            system2(command = trimmcommand, args = argstorun, env = c(JAVA_OPTS = java_opts))
 
             #Since JAMS > 2.0, use of unpaired trimmed reads is deprecated.
             #merge unpaired
@@ -90,8 +94,8 @@ trim_reads <- function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodet
             output.trimSE <- paste(opt$prefix, libstruct, "trim.fastq.gz", sep="_")
 
             #filter reads
-            commandtorun <- paste(trimmcommand, libstruct, "-threads", opt$threads, input.read1, output.trimSE, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("-phred", as.character(opt$phredoffset)), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
-            system(commandtorun)
+            argstorun <- paste(libstruct, "-threads", opt$threads, input.read1, output.trimSE, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("-phred", as.character(opt$phredoffset)), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
+            system2(command = trimmcommand, args = argstorun, env = c(JAVA_OPTS = java_opts))
 
             #add info of what was acieved to opt
             opt$trimreads <- output.trimSE
