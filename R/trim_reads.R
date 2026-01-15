@@ -62,8 +62,9 @@ trim_reads <- function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodet
             output.trim_unpaired1 <- paste(opt$prefix, libstruct, "R1_trim_unpaired.fastq.gz", sep="_")
             output.trim_unpaired2 <- paste(opt$prefix, libstruct, "R2_trim_unpaired.fastq.gz", sep="_")
             #filter reads
-            argstorun <- paste(libstruct, "-threads", opt$threads, input.read1, input.read2, output.trim1, output.trim_unpaired1, output.trim2, output.trim_unpaired2, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("-phred", as.character(opt$phredoffset)), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
-            system2(command = trimmcommand, args = argstorun, env = c(JAVA_OPTS = java_opts))
+            argstorun <- paste(libstruct, "-threads", opt$threads, input.read1, input.read2, output.trim1, output.trim_unpaired1, output.trim2, output.trim_unpaired2, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("-phred", as.character(opt$phredoffset)), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep = " ")
+            commandtorun <- paste(paste0("JAVA_OPTS=", java_opts), trimmcommand, argstorun)
+            system(commandtorun)
 
             #Since JAMS > 2.0, use of unpaired trimmed reads is deprecated.
             #merge unpaired
@@ -95,7 +96,8 @@ trim_reads <- function(opt = NULL, discardleftoverSE = FALSE, qual = 18, autodet
 
             #filter reads
             argstorun <- paste(libstruct, "-threads", opt$threads, input.read1, output.trimSE, paste0("ILLUMINACLIP:", adapters, ":2:30:10 LEADING:15 TRAILING:15 SLIDINGWINDOW:", sliding, ":", qual), paste0("-phred", as.character(opt$phredoffset)), paste0("HEADCROP:",crop), paste0("MINLEN:", minlen), sep=" ")
-            system2(command = trimmcommand, args = argstorun, env = c(JAVA_OPTS = java_opts))
+            commandtorun <- paste(paste0("JAVA_OPTS=", java_opts), trimmcommand, argstorun)
+            system(commandtorun)
 
             #add info of what was acieved to opt
             opt$trimreads <- output.trimSE
