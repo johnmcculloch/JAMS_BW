@@ -20,5 +20,4 @@ Description: Package for analysis of microbial (meta)genomic samples
 Depends: R (>= 4.3.0), R.utils, parallel, optparse, futile.logger, benchmarkme, RCurl, Rtsne, ape, uwot, circlize, Polychrome, openxlsx, grid, gridExtra, tidyverse, ggplot2, ggrepel, wordcloud, gplots, vegan, matrixStats, Biostrings, seqinr, dada2, DECIPHER, SummarizedExperiment, ComplexHeatmap, HybridMTest, ggpubr, combinat, data.table, genefilter, gtools, gtable, fastSave, Matrix
 License: GPL
 Encoding: UTF-8
-Remotes: AckerDWM/gg3Dq
 RoxygenNote: 7.3.3
