@@ -2,9 +2,13 @@
 % Please edit documentation in R/plot_wordcloud_sample.R
 \name{plot_wordcloud_sample}
 \alias{plot_wordcloud_sample}
-\title{plot_wordcloud_sample(opt=opt, elements=NULL)}
+\title{plot_wordcloud_sample(featuredose_df = NULL, analysis = NULL, removeunclassifieds = TRUE)}
 \usage{
-plot_wordcloud_sample(opt = NULL, analysis = NULL, removeunclassifieds = TRUE)
+plot_wordcloud_sample(
+  featuredose_df = NULL,
+  analysis = NULL,
+  removeunclassifieds = TRUE
+)
 }
 \description{
 JAMSalpha function

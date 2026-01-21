@@ -931,3 +931,198 @@ pretty_time <- function(seconds) {
         sprintf("%.1f h", seconds / 3600)
     }
 }
+
+
+#' plot_table_a4_autofit_paged(dataframe = NULL, title = NULL, orientation = NULL, rows_per_page = 35, start_fontsize = 10, min_fontsize = 5, margins_portrait_mm = c(top=6, right=6, bottom=6, left=6), margins_landscape_mm = c(top=6, right=8, bottom=6, left=8), gap_mm = 2, cell_padding_mm = c(v = 0.6, h = 1.2), header_padding_mm = c(v = 0.8, h = 1.2), lineheight = 0.95, wrap = FALSE, wrap_chars = NULL, wrap_min = 12, wrap_max = 60)
+#' EXPERIMENTAL novel plotting function for printing data frames into a pdf.
+#' Usage:
+#' pdf("my_landscape.pdf", height = 210/25.4, width = 297/25.4)  # A4 landscape
+#' plot_table_a4_autofit_paged(dataframe = opt$featuredata[1:80, ], title="Featuretable", rows_per_page = 35, wrap = TRUE, wrap_chars = 20, start_fontsize = 15, min_fontsize = 2,  orientation = "landscape")
+#' dev.off()
+#'
+#' @export
+
+plot_table_a4_autofit_paged <- function(dataframe = NULL,
+                                        title = NULL,
+                                        orientation = c("portrait", "landscape"),
+                                        rows_per_page = 35,
+
+                                        # font sizing
+                                        start_fontsize = 10,
+                                        min_fontsize = 5,
+
+                                        # margins in mm
+                                        margins_portrait_mm = c(top=6, right=6, bottom=6, left=6),
+                                        margins_landscape_mm = c(top=6, right=8, bottom=6, left=8),
+                                        gap_mm = 2,
+
+                                        # padding inside cells (mm)
+                                        cell_padding_mm = c(v = 0.6, h = 1.2),
+                                        header_padding_mm = c(v = 0.8, h = 1.2),
+                                        lineheight = 0.95,
+
+                                        # wrapping
+                                        wrap = FALSE,
+                                        wrap_chars = NULL,
+                                        wrap_min = 12,
+                                        wrap_max = 60) {
+
+  if (!is.data.frame(dataframe)) stop("`dataframe` must be a data.frame")
+  orientation <- match.arg(orientation)
+
+  # pick margins based on orientation
+  margins_mm <- if (orientation == "portrait") margins_portrait_mm else margins_landscape_mm
+  if (length(margins_mm) == 1) {
+    margins_mm <- c(top=margins_mm, right=margins_mm, bottom=margins_mm, left=margins_mm)
+  } else if (is.null(names(margins_mm))) {
+    stop("margins_*_mm must be named (top/right/bottom/left) or a single number")
+  }
+
+  # optional wrapping (applied once to full df so it stays consistent across pages)
+  df <- dataframe
+  if (wrap) {
+    if (is.null(wrap_chars)) {
+      nc <- max(1, ncol(df))
+      base <- round(90 / nc)
+      bump <- round((start_fontsize - 8) * 2)
+      wrap_chars <- max(wrap_min, min(wrap_max, base + bump))
+    }
+    wrap_one <- function(x) {
+      x <- as.character(x)
+      vapply(x, function(s) paste(strwrap(s, width = wrap_chars), collapse = "\n"), character(1))
+    }
+    df[] <- lapply(df, wrap_one)
+  }
+
+  # device size in mm (device must be open)
+  dev_in <- dev.size("in")
+  page_w_mm <- dev_in[1] * 25.4
+  page_h_mm <- dev_in[2] * 25.4
+
+  avail_w_mm <- page_w_mm - (margins_mm["left"] + margins_mm["right"])
+  avail_h_mm <- page_h_mm - (margins_mm["top"] + margins_mm["bottom"])
+  if (avail_w_mm <= 0 || avail_h_mm <= 0) stop("Margins too large for device size")
+
+  # build title grob once; show it on every page by default
+  title_g <- NULL
+  title_h_mm <- 0
+  if (!is.null(title) && nzchar(title)) {
+    title_g <- textGrob(title, gp = gpar(fontsize = max(10, start_fontsize + 2)))
+    title_h_mm <- convertHeight(grobHeight(title_g), "mm", valueOnly = TRUE)
+  }
+
+  make_theme <- function(fs) {
+    ttheme_default(
+      base_size = fs,
+      core = list(
+        padding = unit(c(cell_padding_mm["v"], cell_padding_mm["h"]), "mm"),
+        fg_params = list(lineheight = lineheight)
+      ),
+      colhead = list(
+        padding = unit(c(header_padding_mm["v"], header_padding_mm["h"]), "mm"),
+        fg_params = list(lineheight = lineheight)
+      )
+    )
+  }
+
+  measure_tbl_mm <- function(tbl) {
+    w <- convertWidth(sum(tbl$widths), "mm", valueOnly = TRUE)
+    h <- convertHeight(sum(tbl$heights), "mm", valueOnly = TRUE)
+    c(width = as.numeric(w), height = as.numeric(h))
+  }
+
+  # split into pages (35 rows per page if needed)
+  n <- nrow(df)
+  if (n == 0) {
+    warning("Empty data frame: nothing to plot.")
+    return(invisible(NULL))
+  }
+
+  starts <- seq(1, n, by = rows_per_page)
+  ends <- pmin(starts + rows_per_page - 1, n)
+
+  # For each page, fit fontsize (can vary per page, but we’ll keep it consistent:
+  # choose the *smallest* fontsize required across all pages so pages match visually.)
+  fitted_fontsizes <- integer(length(starts))
+
+  # First pass: compute needed fontsize per chunk
+  for (i in seq_along(starts)) {
+    chunk <- df[starts[i]:ends[i], , drop = FALSE]
+    fs <- start_fontsize
+    repeat {
+      tbl <- tableGrob(chunk, rows = NULL, theme = make_theme(fs))
+      dims <- measure_tbl_mm(tbl)
+
+      avail_table_h_mm <- avail_h_mm - title_h_mm - ifelse(is.null(title_g), 0, gap_mm)
+      if (avail_table_h_mm <= 0) avail_table_h_mm <- avail_h_mm - title_h_mm
+
+      fits <- (dims["width"] <= avail_w_mm) && (dims["height"] <= avail_table_h_mm)
+
+      if (fits || fs <= min_fontsize) break
+      fs <- fs - 1
+    }
+    fitted_fontsizes[i] <- fs
+  }
+
+  # Use a single fontsize across pages for consistency (smallest that worked)
+  final_fs <- min(fitted_fontsizes)
+
+  # Second pass: draw pages
+  for (i in seq_along(starts)) {
+    chunk <- df[starts[i]:ends[i], , drop = FALSE]
+    tbl <- tableGrob(chunk, rows = NULL, theme = make_theme(final_fs))
+
+    grid.newpage()
+
+    # margins in npc
+    left_npc   <- margins_mm["left"]   / page_w_mm
+    right_npc  <- margins_mm["right"]  / page_w_mm
+    top_npc    <- margins_mm["top"]    / page_h_mm
+    bottom_npc <- margins_mm["bottom"] / page_h_mm
+
+    avail_w_npc <- 1 - left_npc - right_npc
+
+    # title
+    title_h_npc <- 0
+    gap_npc <- 0
+    if (!is.null(title_g)) {
+      title_h_npc <- convertHeight(grobHeight(title_g), "npc", valueOnly = TRUE)
+      gap_npc <- gap_mm / page_h_mm
+
+      pushViewport(viewport(
+        x = left_npc + avail_w_npc / 2,
+        y = 1 - top_npc - title_h_npc / 2,
+        width = avail_w_npc,
+        height = title_h_npc,
+        just = c("center", "center")
+      ))
+      grid.draw(title_g)
+      popViewport()
+    }
+
+    # table area below title
+    table_top <- 1 - top_npc - title_h_npc - gap_npc
+    table_bottom <- bottom_npc
+    table_h <- table_top - table_bottom
+    table_center_y <- table_bottom + table_h / 2
+
+    pushViewport(viewport(
+      x = left_npc + avail_w_npc / 2,
+      y = table_center_y,
+      width = avail_w_npc,
+      height = table_h,
+      just = c("center", "center"),
+      clip = "on"
+    ))
+    grid.draw(tbl)
+    popViewport()
+  }
+
+  invisible(list(
+    pages = length(starts),
+    rows_per_page = rows_per_page,
+    final_fontsize = final_fs,
+    wrap_chars = if (wrap) wrap_chars else NA
+  ))
+}
+

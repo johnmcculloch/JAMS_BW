@@ -245,6 +245,12 @@ harvest_functions <- function(opt = opt, noninterproanalyses = c("FeatType", "EC
 
     opt$abundances$functional <- featuredoses
 
+    if (opt$analysis == "isolate"){
+        #Reorder opt$featuredata columns for clarity.
+        nontaxcols <- setdiff(colnames(opt$featuredata), c("Taxid", "Contig_LKT", "ConsolidatedGenomeBin"))
+        opt$featuredata <- opt$featuredata[ , c(nontaxcols, c("Taxid", "Contig_LKT", "ConsolidatedGenomeBin"))]
+    }
+
     return(opt)
 }
 

@@ -1,15 +1,15 @@
-#' plot_wordcloud_sample(opt=opt, elements=NULL)
+#' plot_wordcloud_sample(featuredose_df = NULL, analysis = NULL, removeunclassifieds = TRUE)
 #'
 #' JAMSalpha function
 #' @export
 
 #Plot wordcloud of functional data
-plot_wordcloud_sample <- function(opt = NULL, analysis = NULL, removeunclassifieds = TRUE){
+plot_wordcloud_sample <- function(featuredose_df = NULL, analysis = NULL, removeunclassifieds = TRUE){
 
-    if (!(analysis %in% opt$featuredose$Analysis)){
+    if (!(analysis %in% featuredose_df$Analysis)){
         flog.info(paste("There is no analysis named", analysis, "available in the featuredose object for this sample."))
     } else {
-        analrelabund <- subset(opt$featuredose, Analysis == analysis)
+        analrelabund <- subset(featuredose_df, Analysis == analysis)
         analrelabund <- analrelabund[, c("Accession", "Description", "NumBases")]
         totbases <- sum(analrelabund$NumBases)
         analrelabund$PPM <- round((analrelabund$NumBases / totbases) * 1000000, 0)

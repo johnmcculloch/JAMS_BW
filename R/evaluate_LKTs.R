@@ -146,17 +146,81 @@ evaluate_LKTs <- function(opt = opt, contigsdata_name = "contigsdata", output_li
 
             #Stick into list
             taxonomic_completeness_and_counts[[taxlvl]] <- taxonomic_completeness
-
         } #end loop for taxlvl
+
+        #Bank to opt
+        opt[[output_list_name]] <- taxonomic_completeness_and_counts
 
     } else if (opt$analysis == "isolate") {
 
         flog.info("Evaluating completeness of isolate.")
         #Debug later.
-    }
+        curr_contigsdata <- opt[[contigsdata_name]]
+        taxonomic_completeness_and_counts <- list()
+        domains_checkm_will_work_on <- c("d__2157_Archaea", "d__Archaea", "d__2_Bacteria", "d__Bacteria")
+        bacterial_contigsdata <- subset(curr_contigsdata, Domain %in% domains_checkm_will_work_on)
+        nonbacterial_contigsdata <- subset(curr_contigsdata, !(Domain %in% domains_checkm_will_work_on))
 
-    #Bank to opt
-    opt[[output_list_name]] <- taxonomic_completeness_and_counts
+        #Warn if there are any non-bacterial contigs
+        if (nrow(nonbacterial_contigsdata > 0)){
+            flog.warn(paste0("WARNING: ", nrow(nonbacterial_contigsdata), "/", nrow(curr_contigsdata), " contigs were found to be non-bacterial or non archaeal. Check your bacterial/archaeal isolate for contamination."))
+        }
+
+        curr_bin_output_folder <- file.path(opt$sampledir, "temp_bins")
+        #ensure there is no standing bin output folder
+        unlink(curr_bin_output_folder, recursive = TRUE)
+        dir.create(curr_bin_output_folder, showWarnings = TRUE, recursive = TRUE)
+        curr_fn <- paste(opt$prefix, "fasta", sep = ".")
+        curr_contigs_names <- bacterial_contigsdata[ , "Contig"]
+        #test if length > 5000, else, don't bother to write to system, because CheckM will fail.
+        if (sum(opt$contigsdata[curr_contigs_names, "Length"]) >= 5000){
+            write_contigs_to_system(opt = opt, contig_names = curr_contigs_names, filename = file.path(curr_bin_output_folder, curr_fn))
+        }
+
+        #Create a folder for checkM output and run checkm2
+        curr_checkM_output_folder <- file.path(curr_bin_output_folder, "CheckM_out")
+        #ensure there is no standing checkM output folder
+        unlink(curr_checkM_output_folder, recursive = TRUE)
+        dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
+        binfp <- file.path(curr_bin_output_folder, "*.fasta")
+        appropriatenumcores <- max(2, (opt$threads - 2))
+        checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+        flog.info(paste("Evaluating quality of bacterial or archaeal contigs with CheckM2"))
+        system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE)
+
+        checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
+        colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "Sequence"
+        checkm_out$Additional_Notes <- NULL
+        rownames(checkm_out) <- checkm_out[ , "Sequence"]
+
+        #Classify isolate taxonomically as a single entity
+        #concatenate multifasta file to reclassify by k-mer spectrum
+        setwd(curr_bin_output_folder)
+        system(paste(c("grep -v '^>'", file.path(curr_bin_output_folder, curr_fn), ">", file.path(curr_bin_output_folder, "tmp")), collapse = " "))
+        cat(paste0(">", opt$prefix), sep = "\n", file = file.path(curr_bin_output_folder, "header"))
+        system(paste("cat", file.path(curr_bin_output_folder, "header"), file.path(curr_bin_output_folder, "tmp") ,">>", file.path(curr_bin_output_folder, "Isolate_fullgenome.fasta")))
+
+        Isolate_kraken_df <- kraken_classify_taxonomy(opt = opt, fastafile = file.path(curr_bin_output_folder, "Isolate_fullgenome.fasta"), confidence = 0)
+        opt$abundances$taxonomic$ConsolidatedGenomeBin <- left_join(checkm_out, Isolate_kraken_df, by = "Sequence")
+
+        #Add relative abundance data for downstream quality assessment
+        opt$abundances$taxonomic$ConsolidatedGenomeBin$NumBases <- sum(bacterial_contigsdata$NumBases)
+        opt$abundances$taxonomic$ConsolidatedGenomeBin$PPM <- round((opt$abundances$taxonomic$ConsolidatedGenomeBin$NumBases / sum(opt$contigsdata$NumBases)) * 1E6, 0)
+
+        #Add Reference score
+        opt$abundances$taxonomic$ConsolidatedGenomeBin$RefScore <- (as.numeric(opt$abundances$taxonomic$ConsolidatedGenomeBin$Num_isolate) * 5) + as.numeric(opt$abundances$taxonomic$ConsolidatedGenomeBin$Num_MAGs)
+
+        #Add CGB information to opt$featuredata. This being an isolate there should be a single value for LKT
+        opt$featuredata$ConsolidatedGenomeBin <- Isolate_kraken_df$LKT
+        #Rename tag from LKT to CGB to reflect single-best LKT for entire genome.
+        opt$featuredata$ConsolidatedGenomeBin <- gsub("^LKT__", "CGB__", opt$featuredata$ConsolidatedGenomeBin)
+
+        #Add quality rating
+        opt$abundances$taxonomic$ConsolidatedGenomeBin <- rate_bin_quality(completeness_df = opt$abundances$taxonomic$ConsolidatedGenomeBin)
+
+        #Clean up
+        unlink(curr_bin_output_folder, recursive = TRUE)
+    }
 
     return(opt)
 }

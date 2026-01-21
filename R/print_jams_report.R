@@ -26,7 +26,7 @@ print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplo
     }
 
     pdffn <- file.path(outputdir, paste(paste(opt$prefix, "JAMSalpha", "report", sep="_"), "pdf", sep = "."))
-    pdf(pdffn, paper = "a4r")
+    pdf(pdffn, height = 210/25.4, width = 297/25.4)  # A4 landscape
 
     #Header with run info
     plot.new()
@@ -48,7 +48,7 @@ print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplo
         taxonomic_spaces <- c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin")[c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin") %in% names(opt$abundances$taxonomic)]
 
         #Print an equivalent report for each available taxonomic space
-        if (report_style %in% c("metagenome", "metatranscriptome")){
+        if (report_style == "metagenome"){
             for (curr_taxonomic_space in taxonomic_spaces){
                 curr_qual_df <- opt$taxonomic_Quality_split_list[[curr_taxonomic_space]]
                 #Account for unused contigs in space
@@ -75,17 +75,35 @@ print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplo
 
                 print(QCplot)
 
+                #Plot terminal taxonomic information
                 for (ordby in c("Percentage", "Completeness")){
                     print(pareto_abundance(LKTdose = opt$abundances$taxonomic[[curr_taxonomic_space]], max_num_taxa_to_show = 40, readstats = opt$readstats, read_denominator = "Assembled", orderby = ordby, samplename = opt$prefix, taxlevel = curr_taxonomic_space, showcompletenesstext = TRUE, showcompletenessline = TRUE, showcontaminationline = FALSE, showparetocurve = TRUE, showrelabundtext = TRUE))
                 }
 
+                #Plot aggregated higher taxonomic levels
+                higher_taxlvls_present <- rev(c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus"))[rev(c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus")) %in% colnames(opt$abundances$taxonomic$Contig_LKT)]
+                for (taxlvls in higher_taxlvls_present){
+                    print(pareto_abundance(LKTdose = opt$abundances$taxonomic$Contig_LKT, max_num_taxa_to_show = 35, readstats = opt$readstats, read_denominator = "Assembled", orderby = "Percentage", samplename = opt$prefix, taxlevel = taxlvls, showcompletenesstext = FALSE, showcompletenessline = FALSE, showcontaminationline = FALSE, showparetocurve = TRUE, showrelabundtext = TRUE))
+                }
+
             }
 
-            #Plot aggregated higher taxonomic levels
-            higher_taxlvls_present <- rev(c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus"))[rev(c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus")) %in% colnames(opt$abundances$taxonomic$Contig_LKT)]
-            for (taxlvls in higher_taxlvls_present){
-                print(pareto_abundance(LKTdose = opt$abundances$taxonomic$Contig_LKT, max_num_taxa_to_show = 35, readstats = opt$readstats, read_denominator = "Assembled", orderby = "Percentage", samplename = opt$prefix, taxlevel = taxlvls, showcompletenesstext = FALSE, showcompletenessline = FALSE, showcontaminationline = FALSE, showparetocurve = TRUE, showrelabundtext = TRUE))
-            }
+        } else if (report_style == "isolate"){
+            assembly_report_df <- as.data.frame(t(opt$abundances$taxonomic$ConsolidatedGenomeBin))
+            colnames(assembly_report_df)[1] <- "Value"
+            assembly_report_df$Parameter <- rownames(assembly_report_df)
+            assembly_report_df <- assembly_report_df[ , c("Parameter", "Value")]
+
+            plot_table_a4_autofit_paged(dataframe = assembly_report_df, title = "Isolate Assembly Report", rows_per_page = 40, wrap = TRUE, wrap_chars = 50, start_fontsize = 12, min_fontsize = 2,  orientation = "landscape")
+
+            #Export counts to spreadsheet software
+            counts_list <- list(assembly_report_df, opt$featuredata, opt$contigsdata, opt$abundances$functional$ConsolidatedGenomeBin)
+            names(counts_list) <- c("Assembly_summary", "Gene_annotation", "Contigs_data", "Functional_abundance")
+            write.xlsx(counts_list, file = file.path(opt$outdir, paste(opt$prefix, "feature_tables.xlsx", sep = "_")), colNames = TRUE, rowNames = FALSE, colWidths = "auto", borders = "all")
+
+        } else {
+            #Report is of a transcriptome and not of genome.
+            #To be developed.
         }
     }
 
@@ -106,7 +124,8 @@ print_jams_report <- function(opt = opt, outputdir = NULL, elements = c("readplo
         #Shorten hit because it is too verbose from resfinder and vfdb
         #batp$DB_Hit <- gsub(":.*", "", batp$DB_Hit)
         ti <- switch(ba, "resfinder" = "Known antibiotic resistance genes", "vfdb" = "Virulence factors present in VFDB \n www.ncbi.nlm.nih.gov/pubmed/15608208", "plasmidfinder" = "Plasmid Replicon-associated genes present in PlasmidFinder \n https://www.ncbi.nlm.nih.gov/pubmed/24777092")
-        print_table(tb = batp, tabletitle = ti, fontsize = 4, numrows = 25)
+        #print_table(tb = batp, tabletitle = ti, fontsize = 4, numrows = 25)
+        plot_table_a4_autofit_paged(dataframe = batp, title = ti, rows_per_page = 25, wrap = TRUE, wrap_chars = 50, start_fontsize = 10, min_fontsize = 2,  orientation = "landscape")
     }
 
     #if ("func" %in% elements){
