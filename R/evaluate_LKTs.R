@@ -40,43 +40,58 @@ evaluate_LKTs <- function(opt = opt, contigsdata_name = "contigsdata", output_li
                 #Eliminate "s__Unclassified" at Species taxlvl, because at the Species level, completeness of "s__Unclassified" makes no sense because it may belong to several different genera, etc.
                 wantedtaxa <- wantedtaxa[wantedtaxa != "s__Unclassified"]
                 flog.info(paste("There are", length(wantedtaxa), "bacterial or archaeal taxa at the", taxlvl, "taxonomic level."))
-                #Write contigs to temporary bins for completeness evaluation
-                curr_bin_output_folder <- file.path(opt$sampledir, "temp_bins")
-                #ensure there is no standing bin output folder
-                unlink(curr_bin_output_folder, recursive = TRUE)
-                dir.create(curr_bin_output_folder, showWarnings = TRUE, recursive = TRUE)
-                for (wantedtaxon in wantedtaxa){
-                    curr_fn <- paste(wantedtaxon, "fasta", sep = ".")
-                    curr_contigs_names <- bacterial_contigsdata[which(bacterial_contigsdata[ , taxlvl] == wantedtaxon), "Contig"]
-                    #test if length > 5000, else, don't bother to write to system, because CheckM will fail.
-                    if (sum(opt$contigsdata[curr_contigs_names, "Length"]) >= 5000){
-                        write_contigs_to_system(opt = opt, contig_names = curr_contigs_names, filename = file.path(curr_bin_output_folder, curr_fn))
+
+                #Check whether there is at least a single taxon whose sum length > 5000 bp. Else, do not use CheckM because there will be no output.
+                SumLength_tally <- bacterial_contigsdata %>% filter(.data[[taxlvl]] %in% wantedtaxa) %>% group_by(.data[[taxlvl]]) %>% summarise(SumLength = sum(Length), .groups = "drop")
+                if (length(which(SumLength_tally$SumLength >= 5000)) > 0){
+                    #Write contigs to temporary bins for completeness evaluation
+                    curr_bin_output_folder <- file.path(opt$sampledir, "temp_bins")
+                    #ensure there is no standing bin output folder
+                    unlink(curr_bin_output_folder, recursive = TRUE)
+                    dir.create(curr_bin_output_folder, showWarnings = TRUE, recursive = TRUE)
+                    for (wantedtaxon in wantedtaxa){
+                        curr_fn <- paste(wantedtaxon, "fasta", sep = ".")
+                        curr_contigs_names <- bacterial_contigsdata[which(bacterial_contigsdata[ , taxlvl] == wantedtaxon), "Contig"]
+                        #test if length > 5000, else, don't bother to write to system, because CheckM will fail.
+                        if (sum(opt$contigsdata[curr_contigs_names, "Length"]) >= 5000){
+                            write_contigs_to_system(opt = opt, contig_names = curr_contigs_names, filename = file.path(curr_bin_output_folder, curr_fn))
+                        }
+                    }
+                    #Create a folder for checkM output and run checkm2
+                    curr_checkM_output_folder <- file.path(curr_bin_output_folder, "CheckM_out")
+                    #ensure there is no standing checkM output folder
+                    unlink(curr_checkM_output_folder, recursive = TRUE)
+                    dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
+                    binfp <- file.path(curr_bin_output_folder, "*.fasta")
+                    appropriatenumcores <- max(2, (opt$threads - 2))
+                    checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+                    flog.info(paste("Evaluating quality of bacterial and archaeal taxa at the", taxlvl, "level with CheckM2"))
+                    system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE)
+
+                    #Check an output exists before trying to read. Some garbage input may be too low even for a single assessement on a quality_report
+                    if (file.exists(file.path(curr_checkM_output_folder, "quality_report.tsv"))){
+                        checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
+                        colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- taxlvl
+                        checkm_out$Additional_Notes <- NULL
+                        rownames(checkm_out) <- checkm_out[ , taxlvl]
+                    } else {
+                        checkm_out <- NULL
                     }
                 }
-                #Create a folder for checkM output and run checkm2
-                curr_checkM_output_folder <- file.path(curr_bin_output_folder, "CheckM_out")
-                #ensure there is no standing checkM output folder
-                unlink(curr_checkM_output_folder, recursive = TRUE)
-                dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
-                binfp <- file.path(curr_bin_output_folder, "*.fasta")
-                appropriatenumcores <- max(2, (opt$threads - 2))
-                checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
-                flog.info(paste("Evaluating quality of bacterial and archaeal taxa at the", taxlvl, "level with CheckM2"))
-                system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE)
-
-                checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
-                colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- taxlvl
-                checkm_out$Additional_Notes <- NULL
-                rownames(checkm_out) <- checkm_out[ , taxlvl]
 
                 #Some checkm outputs may have failed from the contigs being too small or not having ORFs. If there are any, fall back on estimated genome completeness.
-                if (nrow(checkm_out) < length(wantedtaxa)){
+                if ((is.null(checkm_out) || (nrow(checkm_out) < length(wantedtaxa)))){
                     #Find out missing wantedtaxa
                     missingtaxa <- wantedtaxa[!(wantedtaxa %in% checkm_out[ , taxlvl])]
                     suppl_info <- as.data.frame(bacterial_contigsdata[which(bacterial_contigsdata[ , taxlvl] %in%  missingtaxa), ] %>% group_by_at(taxlvl) %>% summarise(Genome_Size = sum(Length), Total_Contigs = length(Length), Max_Contig_Length = max(Length)))
                     rownames(suppl_info) <- suppl_info[ , taxlvl]
-                    suppl_df <- as.data.frame(matrix(data = NA, nrow = length(missingtaxa), ncol = ncol(checkm_out)))
-                    colnames(suppl_df) <- colnames(checkm_out)
+                    if (!is.null(checkm_out)){
+                        suppl_df <- as.data.frame(matrix(data = NA, nrow = length(missingtaxa), ncol = ncol(checkm_out)))
+                        colnames(suppl_df) <- colnames(checkm_out)
+                    } else {
+                        suppl_df <- as.data.frame(matrix(data = NA, nrow = length(wantedtaxa), ncol = 13))
+                        colnames(suppl_df) <- c(taxlvl, "Completeness", "Contamination", "Completeness_Model_Used", "Translation_Table_Used", "Coding_Density", "Contig_N50", "Average_Gene_Length", "Genome_Size", "GC_Content", "Total_Coding_Sequences", "Total_Contigs", "Max_Contig_Length")
+                    }
                     suppl_df[ , taxlvl] <- missingtaxa
                     rownames(suppl_df) <- suppl_df[ , taxlvl]
                     for (colm in c("Genome_Size", "Total_Contigs", "Max_Contig_Length")){
