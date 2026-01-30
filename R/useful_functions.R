@@ -933,6 +933,29 @@ pretty_time <- function(seconds) {
 }
 
 
+#' tally_metadata(md = NULL, column_to_group_by = NULL, columns_to_tally = NULL)
+#'
+#' Tallies the number of classes present in a metadata df and returns a data frame with counts.
+#' @export
+
+tally_metadata <- function(md = NULL, column_to_group_by = NULL, columns_to_tally = NULL){
+
+    tally_column <- function(md = NULL, column_to_group_by = NULL, col2tally = NULL){ 
+        tmp_tally_df <- md %>% dplyr::count(across(all_of(column_to_group_by)),across(all_of(col2tally))) %>% tidyr::pivot_wider(names_from = all_of(col2tally),values_from = n, values_fill = 0) %>% dplyr::rename_with( ~ paste0("Num_Samples_in_", col2tally, ".", .x), -all_of(column_to_group_by)) %>% as.data.frame()
+
+        return(tmp_tally_df)
+    }
+ 
+    tallied_column_list <- lapply(columns_to_tally, function (x) { tally_column(md = md, column_to_group_by = column_to_group_by, col2tally = x) })
+   
+    #Stitch all together into a single data frame
+    md_tally_df <- purrr::reduce(tallied_column_list, dplyr::left_join, by = column_to_group_by)
+
+    return(md_tally_df)
+}
+
+
+
 #' plot_table_a4_autofit_paged(dataframe = NULL, title = NULL, orientation = NULL, rows_per_page = 35, start_fontsize = 10, min_fontsize = 5, margins_portrait_mm = c(top=6, right=6, bottom=6, left=6), margins_landscape_mm = c(top=6, right=8, bottom=6, left=8), gap_mm = 2, cell_padding_mm = c(v = 0.6, h = 1.2), header_padding_mm = c(v = 0.8, h = 1.2), lineheight = 0.95, wrap = FALSE, wrap_chars = NULL, wrap_min = 12, wrap_max = 60)
 #' EXPERIMENTAL novel plotting function for printing data frames into a pdf.
 #' Usage:
