@@ -17,11 +17,13 @@ ExpObjVetting <- function(ExpObj = NULL, samplesToKeep = NULL, featuresToKeep = 
 
         #Exclude samples and features if specified
         if (!(is.null(samplesToKeep))){
+            samplesToKeep <- unique(samplesToKeep)
             samplesToKeep <- samplesToKeep[samplesToKeep %in% colnames(obj)]
             obj <- obj[, samplesToKeep]
         }
 
         if (!(is.null(featuresToKeep))){
+            featuresToKeep <- unique(featuresToKeep)
             featuresToKeep <- featuresToKeep[featuresToKeep %in% rownames(obj)]
             obj <- obj[featuresToKeep, ]
         }
