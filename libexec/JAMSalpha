@@ -265,7 +265,8 @@ fixrelpath <- function(JAMSpath = NULL){
 
     return(fixedpath)
 }
-for (pathtofix in c("R1", "R2", "SE", "contigs", "readstarball", "outdir", "dbdir")){
+
+for (pathtofix in c("R1", "R2", "SE", "contigs", "readstarball", "outdir", "dbdir", "contigsfasta")){
     if (!is.null(opt[[pathtofix]])){
         opt[[pathtofix]] <- fixrelpath(opt[[pathtofix]])
     }
