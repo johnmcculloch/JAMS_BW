@@ -7,15 +7,15 @@ get_contigs <- function(opt = NULL){
     setwd(opt$workdir)
 
     #Set working kraken db path for increased speed.
-    if (opt$workdir != opt$sampledir){
-        dir.create("krakendb", showWarnings = FALSE, recursive = FALSE)
-        flog.info("Copying krakendb to temporary file for speedier taxonomic classification.")
+    #if (opt$workdir != opt$sampledir){
+    #    dir.create("krakendb", showWarnings = FALSE, recursive = FALSE)
+    #    flog.info("Copying krakendb to temporary file for speedier taxonomic classification.")
         #copy the whole database to tempfile for speed, if applicable.
-        system2('cp', args=c("-R", file.path(opt$krakendb,"*"), "krakendb/"))
-        opt$workingkrakendb <- file.path(opt$workdir, "krakendb")
-    } else {
+    #    system2('cp', args=c("-R", file.path(opt$krakendb,"*"), "krakendb/"))
+    #    opt$workingkrakendb <- file.path(opt$workdir, "krakendb")
+    #} else {
         opt$workingkrakendb <- opt$krakendb
-    }
+    #}
 
     #find out if contigs are ready or need to be assembled from reads
     if (!(is.null(opt$contigsfasta))){
