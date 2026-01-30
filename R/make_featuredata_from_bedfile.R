@@ -23,9 +23,20 @@ make_featuredata_from_bedfile <- function(opt = NULL, bedfile = NULL){
 
     featuredata <- left_join(featuredata, annots, by = "Feature")
 
-    featuredata$GeneName <- sapply(1:length(featuredata$GeneNameNR), function (x) { unlist(strsplit(featuredata$GeneNameNR[x], split = "_"))[1] } )
+    #There may be no gene names, if that is the case, the GeneNameNR will be missing.
+    if ("GeneName" %in% colnames(featuredata)){
+        featuredata$GeneName <- sapply(1:length(featuredata$GeneNameNR), function (x) { unlist(strsplit(featuredata$GeneNameNR[x], split = "_"))[1] } )
+    } else {
+        featuredata$GeneName <- ""
+        featuredata$GeneNameNR <- ""
+    }
 
-    featuredata$ECNumber[which(featuredata$ECNumber != "none")] <- paste("EC", featuredata$ECNumber[which(featuredata$ECNumber != "none")], sep = "_")
+    #There may be no enzymes, if that is the case, then ECNumber will be missing.
+    if ("ECNumber" %in% colnames(featuredata)){
+        featuredata$ECNumber[which(featuredata$ECNumber != "none")] <- paste("EC", featuredata$ECNumber[which(featuredata$ECNumber != "none")], sep = "_")
+    } else {
+        featuredata$ECNumber <- "none"
+    }
 
     featuredata$LengthDNA <- (as.numeric(featuredata$End) - as.numeric(featuredata$Start))
 
