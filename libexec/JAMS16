@@ -513,7 +513,8 @@ if (!is.null(opt$forward_primer) && !is.null(opt$reverse_primer)) {
     rawfastqsdf$PrimerClippedFilePaths <- sapply(1:nrow(rawfastqsdf), function(x){ file.path(opt$outdir, "primerremoved", paste0(paste(paste(rawfastqsdf[x , c("Prefix", "Read")], collapse = "_"), "primerremoved", sep = "_"), ".fastq.gz")) })
     rawfastqsdf$FilterInput_fn <-  sapply(1:nrow(rawfastqsdf), function(x){ paste0(paste(paste(rawfastqsdf[x , c("Prefix", "Read")], collapse = "_"), "primerremoved", sep = "_"), ".fastq.gz") } )
 } else {
-    rawfastqsdf$FilterInput_fn <- sapply(1:nrow(rawfastqsdf), function(x){ paste0(paste(paste(rawfastqsdf[x , c("Prefix", "Read")], collapse = "_"), "filt", sep = "_"), ".fastq.gz") } )
+    #rawfastqsdf$FilterInput_fn <- sapply(1:nrow(rawfastqsdf), function(x){ paste0(paste(paste(rawfastqsdf[x , c("Prefix", "Read")], collapse = "_"), "filt", sep = "_"), ".fastq.gz") } )
+    rawfastqsdf$FilterInput_fn <- rawfastqsdf$Dada2_input_read_fn
 }
 
 #Be double sure to have the same order always
@@ -568,7 +569,7 @@ if (!is.null(opt$forward_primer) && !is.null(opt$reverse_primer)) {
 
     flog.info("Filtering and trimming...")
     out <- filterAndTrim(fwd = rawfastqsdfR1$PrimerClippedFilePaths, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$PrimerClippedFilePaths, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1), matchIDs = TRUE, id.field = idfield)
-  
+
 } else {
 
     out <- filterAndTrim(fwd = rawfastqsdfR1$Dada2_input_read_fpath, filt = rawfastqsdfR1$FilteredFilePaths, rev = rawfastqsdfR2$Dada2_input_read_fpath, filt.rev = rawfastqsdfR2$FilteredFilePaths, truncLen = trunclen_cutoffs_R1_R2, compress = TRUE, truncQ = 2, maxN = 0, maxEE = c(2,2), rm.phix = TRUE, n = 1e+05, OMP = FALSE, verbose = TRUE, multithread = max((opt$threads - 2), 1), matchIDs = TRUE)
