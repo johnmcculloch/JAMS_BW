@@ -137,21 +137,12 @@ if (nchar(currslurmjobid) > 3){
          return(totmembytes)
      }
 
-    #if (installalpha == TRUE){
-    #    stop("You are not on a node on Biowulf. This version of JAMSalpha will only work on HPC Biowulf. Refer to documentation. Aborting now. If you want to install only JAMSbeta, use the --onlybeta option.")
-    #}
-
     if (nchar(rlibs) < 5){
         rlibs <- .libPaths()[1]
     }
 }
 
 cat(paste("JAMS R libraries will be installed to", rlibs, "\n"))
-#if (onbiowulf == TRUE){
-#    system("export TMP=/data/$USER")
-#} else {
-#    system("export TMP=~/")
-#}
 
 #Install devtools and stringr if not present
 repos <- "https://cloud.r-project.org"
@@ -178,7 +169,7 @@ alldeps <- c("R.utils", "Rcpp", "RcppEigen", "parallel", "optparse", "tcltk", "f
 bioconductordeps <- c("dada2", "DECIPHER","SummarizedExperiment", "HybridMTest", "Biostrings", "genefilter", "ComplexHeatmap")
 non_bioconductordeps <- alldeps[!(alldeps %in% bioconductordeps)]
 
-BiocManager::install(pkgs = alldeps, update = TRUE, ask = FALSE, site_repository = repos, force = force_install)
+BiocManager::install(pkgs = alldeps, update = TRUE, ask = FALSE, site_repository = repos, force = force_install, lib = rlibs)
 #devtools::install_github("jokergoo/ComplexHeatmap")
 devtools::install_github('barkasn/fastSave')
 #Install the rest of JAMS
