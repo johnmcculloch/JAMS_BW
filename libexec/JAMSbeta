@@ -231,10 +231,17 @@ flog.info("JAMSbeta start. Gathering information...")
 project <- as.character(opt$projectname)
 flog.info(paste("Using", project, "for name of project"))
 
+#Give system information
 opt$threads <- as.numeric(detectHardwareResources()["threads"])
 opt$totmembytes <- as.numeric(detectHardwareResources()["memory"])
 flog.info(paste("You have ~", round((opt$totmembytes)/1000000000, 1), "Gigabytes of RAM memory"))
 flog.info(paste("You have", opt$threads, "CPUs to run on"))
+
+slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
+if (nchar(slurmjobid) > 3){
+    flog.info(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
+}
+
 
 ##################
 ## Get metadata ##
