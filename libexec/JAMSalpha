@@ -17,7 +17,6 @@ slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
 
 #Decide which kind of system you are on.
 if (nchar(slurmjobid) < 3){
-   print("You are not on a Slurm Workload Cluster")
    #Define appropriate functions for non-slurm system
    detectBatchCPUs <- function() {
         ncores <- detectCores()
@@ -34,7 +33,7 @@ if (nchar(slurmjobid) < 3){
     }
 
 } else {
-    print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
+    cat(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid, "\n"))
     #Define appropriate functions for slurm system
     detectBatchCPUs <- function() {
         slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
