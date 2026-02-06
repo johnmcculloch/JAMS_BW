@@ -232,7 +232,9 @@ project <- as.character(opt$projectname)
 flog.info(paste("Using", project, "for name of project"))
 
 opt$threads <- as.numeric(detectHardwareResources()["threads"])
-flog.info(paste("You have", opt$threads, "CPUs available."))
+opt$totmembytes <- as.numeric(detectHardwareResources()["memory"])
+flog.info(paste("You have ~", round((opt$totmembytes)/1000000000, 1), "Gigabytes of RAM memory"))
+flog.info(paste("You have", opt$threads, "CPUs to run on"))
 
 ##################
 ## Get metadata ##
