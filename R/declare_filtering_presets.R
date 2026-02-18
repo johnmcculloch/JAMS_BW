@@ -1,8 +1,9 @@
-#' declare_filtering_presets(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL)
+#' declare_filtering_presets(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, maxl2fc = NULL, minl2fc = NULL)
 #'
 #' Performs vetting of a SummarizedExperiment object for use in several functions
 #' @export
-declare_filtering_presets <- function(analysis = NULL, is16S = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL, minabscorrcoeff = NULL){
+
+declare_filtering_presets <- function(analysis = NULL, is16S = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, maxl2fc = NULL, minl2fc = NULL, minabscorrcoeff = NULL){
 
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
 
@@ -18,7 +19,6 @@ declare_filtering_presets <- function(analysis = NULL, is16S = FALSE, applyfilte
             if (analysis %in% taxonomic_spaces){
                 presetlist$featcutoff <- c(2000, 15)
                 presetlist$GenomeCompletenessCutoff <- c(30, 10)
-                presetlist$PctFromCtgscutoff <- c(70, 50)
                 presetlist$minl2fc <- 2
             } else {
                 presetlist$featcutoff <- c(50, 15)
@@ -29,7 +29,6 @@ declare_filtering_presets <- function(analysis = NULL, is16S = FALSE, applyfilte
             if (analysis %in% taxonomic_spaces){
                 presetlist$featcutoff <- c(250, 15)
                 presetlist$GenomeCompletenessCutoff <- c(10, 5)
-                presetlist$PctFromCtgscutoff <- c(70, 50)
                 presetlist$minl2fc <- 1
             } else {
                 presetlist$featcutoff <- c(5, 5)
@@ -40,7 +39,6 @@ declare_filtering_presets <- function(analysis = NULL, is16S = FALSE, applyfilte
             if (analysis %in% taxonomic_spaces){
                 presetlist$featcutoff <- c(50, 5)
                 presetlist$GenomeCompletenessCutoff <- c(5, 5)
-                presetlist$PctFromCtgscutoff <- c(70, 50)
                 presetlist$minl2fc <- 1
             } else {
                 presetlist$featcutoff <- c(0, 0)
@@ -51,7 +49,7 @@ declare_filtering_presets <- function(analysis = NULL, is16S = FALSE, applyfilte
     }
 
     #Replace with any values explicitly set by the user
-    argstoset <- c("featcutoff", "GenomeCompletenessCutoff", "PctFromCtgscutoff", "maxl2fc", "minl2fc", "minabscorrcoeff")[!unlist(lapply(list(featcutoff, GenomeCompletenessCutoff, PctFromCtgscutoff, maxl2fc, minl2fc, minabscorrcoeff), is.null))]
+    argstoset <- c("featcutoff", "GenomeCompletenessCutoff", "maxl2fc", "minl2fc", "minabscorrcoeff")[!unlist(lapply(list(featcutoff, GenomeCompletenessCutoff, maxl2fc, minl2fc, minabscorrcoeff), is.null))]
 
     if (length(argstoset) > 0){
         for (ats in argstoset){
@@ -69,12 +67,6 @@ declare_filtering_presets <- function(analysis = NULL, is16S = FALSE, applyfilte
     } else {
         presetlist$filtermsg <- NULL
         presetlist$featcutoff <- c(0, 0)
-    }
-
-    if (!(is.null(presetlist$PctFromCtgscutoff))){
-        #presetlist$thresholdPctFromCtgs <- presetlist$PctFromCtgscutoff[1]
-        #presetlist$sampcutoffpctPctFromCtgs <- min(presetlist$PctFromCtgscutoff[2], 100)
-        #presetlist$filtermsg <- paste(presetlist$filtermsg, (paste("Taxonomy information must come from >", presetlist$thresholdPctFromCtgs, "% contigs in at least ", presetlist$sampcutoffpctPctFromCtgs, "% of samples", sep = "")), sep = "\n")
     }
 
     if (!(is.null(presetlist$GenomeCompletenessCutoff))){

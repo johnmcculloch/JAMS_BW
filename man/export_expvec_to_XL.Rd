@@ -6,13 +6,15 @@
 \usage{
 export_expvec_to_XL(
   expvec = NULL,
-  usefulexp = NULL,
+  expvec_analysis_spaces = NULL,
+  SEobj = NULL,
   filename = NULL,
+  samplesToKeep = NULL,
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
   applyfilters = NULL,
-  asPPM = TRUE,
-  PPM_normalize_to_bases_sequenced = FALSE,
+  normalization = c("relabund", "clr"),
+  PPM_normalize_to_bases_sequenced = TRUE,
   includemetadata = TRUE,
   returncounts = FALSE,
   ...
@@ -21,9 +23,11 @@ export_expvec_to_XL(
 \arguments{
 \item{expvec}{list of JAMS-style SummarizedExperiment objects.}
 
-\item{usefulexp}{String specifying the name(s) of the JAMS-style SummarizedExperiment object(s) to be exported into Excel. If NULL, will include all analysis contained in the expvec SummarizedExperiment list. Default is NULL.}
+\item{expvec_analysis_spaces}{String specifying the name(s) of the JAMS-style SummarizedExperiment object(s) to be exported into Excel. If NULL, will include all analysis contained in the expvec SummarizedExperiment list. Default is NULL.}
 
-\item{filename}{String specifying the Excel file name. If NULL (the default), the filename will be automatically assigned.}
+\item{SEobj}{single JAMS-style SummarizedExperiment object. If passed, parameter expvec will be ignored.}
+
+\item{filename}{String specifying the Excel file name. If NULL (the default), the filename will be automatically generated. Be mindful that in this case, the filename might be long and very descriptive.}
 
 \item{featcutoff}{Requires a numeric vector of length 2 for specifying how to filter out features by relative abundance. The first value of the vector specifies the minimum relative abundance in Parts per Million (PPM) and the second value is the percentage of samples which must have at least that relative abundance. Thus, passing c(250, 10) to featcutoff would filter out any feature which does not have at least 250 PPM (= 0.025 percent) of relative abundance in at least 10 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the featcutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.}
 

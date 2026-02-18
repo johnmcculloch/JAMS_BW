@@ -12,7 +12,7 @@ dev.off()}
 plot_table_a4_autofit_paged(
   dataframe = NULL,
   title = NULL,
-  orientation = c("portrait", "landscape"),
+  orientation = "landscape",
   rows_per_page = 35,
   start_fontsize = 10,
   min_fontsize = 5,

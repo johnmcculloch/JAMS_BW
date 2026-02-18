@@ -965,44 +965,24 @@ tally_metadata <- function(md = NULL, column_to_group_by = NULL, columns_to_tall
 #'
 #' @export
 
-plot_table_a4_autofit_paged <- function(dataframe = NULL,
-                                        title = NULL,
-                                        orientation = c("portrait", "landscape"),
-                                        rows_per_page = 35,
+plot_table_a4_autofit_paged <- function(dataframe = NULL, title = NULL, orientation = "landscape", rows_per_page = 35, start_fontsize = 10, min_fontsize = 5, margins_portrait_mm = c(top=6, right=6, bottom=6, left=6), margins_landscape_mm = c(top=6, right=8, bottom=6, left=8), gap_mm = 2, cell_padding_mm = c(v = 0.6, h = 1.2), header_padding_mm = c(v = 0.8, h = 1.2), lineheight = 0.95, wrap = FALSE, wrap_chars = NULL, wrap_min = 12, wrap_max = 60) {
 
-                                        # font sizing
-                                        start_fontsize = 10,
-                                        min_fontsize = 5,
+    if (!is.data.frame(dataframe)) {
+        stop("`dataframe` must be a data.frame")
+    }
+    orientation <- match.arg(orientation)
 
-                                        # margins in mm
-                                        margins_portrait_mm = c(top=6, right=6, bottom=6, left=6),
-                                        margins_landscape_mm = c(top=6, right=8, bottom=6, left=8),
-                                        gap_mm = 2,
+    # define margins based on orientation
+    margins_mm <- if (orientation == "portrait") margins_portrait_mm else margins_landscape_mm
 
-                                        # padding inside cells (mm)
-                                        cell_padding_mm = c(v = 0.6, h = 1.2),
-                                        header_padding_mm = c(v = 0.8, h = 1.2),
-                                        lineheight = 0.95,
+    if (length(margins_mm) == 1) {
+        margins_mm <- c(top=margins_mm, right=margins_mm, bottom=margins_mm, left=margins_mm)
+    } else if (is.null(names(margins_mm))) {
+        stop("margins_*_mm must be named (top/right/bottom/left) or a single number")
+    }
 
-                                        # wrapping
-                                        wrap = FALSE,
-                                        wrap_chars = NULL,
-                                        wrap_min = 12,
-                                        wrap_max = 60) {
-
-  if (!is.data.frame(dataframe)) stop("`dataframe` must be a data.frame")
-  orientation <- match.arg(orientation)
-
-  # pick margins based on orientation
-  margins_mm <- if (orientation == "portrait") margins_portrait_mm else margins_landscape_mm
-  if (length(margins_mm) == 1) {
-    margins_mm <- c(top=margins_mm, right=margins_mm, bottom=margins_mm, left=margins_mm)
-  } else if (is.null(names(margins_mm))) {
-    stop("margins_*_mm must be named (top/right/bottom/left) or a single number")
-  }
-
-  # optional wrapping (applied once to full df so it stays consistent across pages)
-  df <- dataframe
+    # optional wrapping (applied once to full df so it stays consistent across pages)
+    df <- dataframe
   if (wrap) {
     if (is.null(wrap_chars)) {
       nc <- max(1, ncol(df))

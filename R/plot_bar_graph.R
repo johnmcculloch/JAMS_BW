@@ -9,8 +9,6 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
 
     valid_vars <- c(groupby, subsetby)[which(!is.na(c(groupby, subsetby)))]
 
-    #Hardwire PctFromCtgscutoff, as this should never be used without filtering because of huge amounts of false positives when evaluating taxonomic information from unassembled reads. The use of classifying unassembled reads is deprecated in JAMS and the default is to NOT classify unassembled reads, so this is usually not an issue.
-    PctFromCtgscutoff <- c(70, 50)
     transp <- TRUE
 
     #Vet experiment object
@@ -31,7 +29,7 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
         analysisname <- analysis
     }
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
 
     if (!(is.null(subsetby))){
         subset_points <- sort(unique(colData(obj)[, which(colnames(colData(obj)) == subsetby)]))
@@ -62,11 +60,7 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
         }
         bartit <- paste(c(bartit, presetlist$filtermsg), collapse = "\n")
 
-        if (absolute) {
-          currobj <- obj
-        } else {
-            currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = sp_samplesToKeep, featuresToKeep = featuresToKeep, asPPM = TRUE, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
-        }
+        currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = sp_samplesToKeep, featuresToKeep = featuresToKeep, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff)
 
         currpt <- as.data.frame(colData(currobj))
 
@@ -77,7 +71,12 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
         }
 
         #Get counts matrix
-        countmat <- as.matrix(assays(currobj)$BaseCounts)
+        if (absolute){
+            countmat <- as.matrix(assays(currobj)$BaseCounts)
+        } else {
+            countmat <- as.matrix(assays(currobj)$PPM)
+        }
+
         #Protect against rows with empty data
         rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
         countmat <- countmat[rowsToKeep, ]

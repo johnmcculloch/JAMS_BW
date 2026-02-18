@@ -97,8 +97,6 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         colourby <- colorby
     }
 
-    #Hardwire PctFromCtgscutoff, as this should never be used without filtering because of huge amounts of false positives when evaluating taxonomic information from unassembled reads. The use of classifying unassembled reads is deprecated in JAMS and the default is to NOT classify unassembled reads, so this is usually not an issue.
-    PctFromCtgscutoff <- c(70, 50)
     transp <- TRUE
 
     #Check for silly stuff
@@ -126,7 +124,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
     flog.info(pcatitbase)
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, is16S = ("asv2lkt" %in% names(metadata(obj))))
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, is16S = ("asv2lkt" %in% names(metadata(obj))))
 
     if (assay_for_matrix == "GeneCounts"){
         flog.warn("Counts matrix used for heatmap will represent the *number of genes* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
@@ -153,9 +151,9 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         } else {
 
             #Obtain "global" list of features if applyfilters is not null, or any of the filtering arguments is not c(0,0) as to maintain same features within subsets, if any.
-            if (any(c(all(presetlist$featcutoff != c(0,0)), all(presetlist$GenomeCompletenessCutoff != c(0,0)), all(presetlist$PctFromCtgscutoff != c(0,0)),
+            if (any(c(all(presetlist$featcutoff != c(0,0)), all(presetlist$GenomeCompletenessCutoff != c(0,0)),
             !is.null(applyfilters)))){
-                currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = NULL, featuresToKeep = NULL, normalization = normalization, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff, discard_SDoverMean_below = discard_SDoverMean_below)
+                currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = NULL, featuresToKeep = NULL, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, discard_SDoverMean_below = discard_SDoverMean_below)
                 global_FTK <- rownames(currobj)
             } else {
                 global_FTK <- rownames(obj)
@@ -220,7 +218,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (assay_for_matrix == "BaseCounts"){
 
-            currobj <- filter_experiment(ExpObj = obj, featcutoff = c(0,0), samplesToKeep = samplesToKeep_sp, featuresToKeep = global_FTK, normalization = normalization, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = c(0,0), PctFromCtgscutoff = c(0,0), discard_SDoverMean_below = NULL, flush_out_empty_samples = FALSE)
+            currobj <- filter_experiment(SEobj = obj, featcutoff = c(0,0), samplesToKeep = samplesToKeep_sp, featuresToKeep = global_FTK, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = c(0,0), discard_SDoverMean_below = NULL, flush_out_empty_samples = FALSE)
 
             if (PPM_normalize_to_bases_sequenced == TRUE){
                 pcatit <- paste(c(pcatit, "Normalized to total number of bases sequenced in sample"), collapse = "\n")
@@ -235,11 +233,16 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         currpt <- as.data.frame(colData(currobj))
 
         #Get counts matrix
-        countmat <- as.matrix(assays(currobj)[[assay_for_matrix]])
-
-        #Protect against rows with empty data
-        #rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
-        #countmat <- countmat[rowsToKeep, ]
+        if (assay_for_matrix != "BaseCounts"){
+            countmat <- as.matrix(assays(currobj)[[assay_for_matrix]])
+        } else {
+            if (normalization == "relabund"){
+                countmat <- as.matrix(assays(currobj)[["PPM"]])
+            } else if (normalization == "clr"){
+                countmat <- as.matrix(assays(currobj)[["CLR"]])
+                log2tran <- FALSE
+            }
+        }
 
         if (ignoreunclassified == TRUE){
             dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")

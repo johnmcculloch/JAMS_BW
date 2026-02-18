@@ -2,21 +2,23 @@
 % Please edit documentation in R/filter_experiment.R
 \name{filter_experiment}
 \alias{filter_experiment}
-\title{filter_experiment(ExpObj = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), discard_SDoverMean_below = NULL, samplesToKeep = NULL, featuresToKeep = NULL, normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, flush_out_empty_samples = FALSE, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL)}
+\title{filter_experiment(SEobj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), GenomeCompletenessCutoff = NULL, GenomeContaminationCutoff = NULL, applyfilters = NULL, discard_SDoverMean_below = NULL, normalization = NULL, PPM_normalize_to_bases_sequenced = TRUE, flush_out_empty_samples = FALSE, clr_pseudocount = 1, give_info = TRUE)}
 \usage{
 filter_experiment(
-  ExpObj = NULL,
-  featmaxatleastPPM = 0,
-  featcutoff = c(0, 0),
-  discard_SDoverMean_below = NULL,
+  SEobj = NULL,
   samplesToKeep = NULL,
   featuresToKeep = NULL,
-  normalization = "relabund",
-  asPPM = TRUE,
-  PPM_normalize_to_bases_sequenced = FALSE,
-  flush_out_empty_samples = FALSE,
+  featmaxatleastPPM = 0,
+  featcutoff = c(0, 0),
   GenomeCompletenessCutoff = NULL,
-  PctFromCtgscutoff = NULL
+  GenomeContaminationCutoff = NULL,
+  applyfilters = NULL,
+  discard_SDoverMean_below = NULL,
+  normalization = NULL,
+  PPM_normalize_to_bases_sequenced = TRUE,
+  flush_out_empty_samples = FALSE,
+  clr_pseudocount = 1,
+  give_info = TRUE
 )
 }
 \description{

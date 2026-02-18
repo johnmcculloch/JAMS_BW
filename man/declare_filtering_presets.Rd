@@ -2,7 +2,7 @@
 % Please edit documentation in R/declare_filtering_presets.R
 \name{declare_filtering_presets}
 \alias{declare_filtering_presets}
-\title{declare_filtering_presets(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PctFromCtgscutoff = NULL, maxl2fc = NULL, minl2fc = NULL)}
+\title{declare_filtering_presets(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, maxl2fc = NULL, minl2fc = NULL)}
 \usage{
 declare_filtering_presets(
   analysis = NULL,
@@ -10,7 +10,6 @@ declare_filtering_presets(
   applyfilters = NULL,
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
-  PctFromCtgscutoff = NULL,
   maxl2fc = NULL,
   minl2fc = NULL,
   minabscorrcoeff = NULL

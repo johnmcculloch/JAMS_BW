@@ -2,9 +2,11 @@
 
 #' @param expvec list of JAMS-style SummarizedExperiment objects.
 
-#' @param usefulexp String specifying the name(s) of the JAMS-style SummarizedExperiment object(s) to be exported into Excel. If NULL, will include all analysis contained in the expvec SummarizedExperiment list. Default is NULL.
+#' @param expvec_analysis_spaces String specifying the name(s) of the JAMS-style SummarizedExperiment object(s) to be exported into Excel. If NULL, will include all analysis contained in the expvec SummarizedExperiment list. Default is NULL.
 
-#' @param filename String specifying the Excel file name. If NULL (the default), the filename will be automatically assigned.
+#' @param SEobj single JAMS-style SummarizedExperiment object. If passed, parameter expvec will be ignored.
+
+#' @param filename String specifying the Excel file name. If NULL (the default), the filename will be automatically generated. Be mindful that in this case, the filename might be long and very descriptive.
 
 #' @param featcutoff Requires a numeric vector of length 2 for specifying how to filter out features by relative abundance. The first value of the vector specifies the minimum relative abundance in Parts per Million (PPM) and the second value is the percentage of samples which must have at least that relative abundance. Thus, passing c(250, 10) to featcutoff would filter out any feature which does not have at least 250 PPM (= 0.025 percent) of relative abundance in at least 10 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the featcutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.
 
@@ -20,27 +22,28 @@
 
 #' @export
 
-export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, applyfilters = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, includemetadata = TRUE, returncounts = FALSE,...){
+export_expvec_to_XL <- function(expvec = NULL, expvec_analysis_spaces = NULL, SEobj = NULL, filename = NULL, samplesToKeep = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, applyfilters = NULL, normalization = c("relabund", "clr"), PPM_normalize_to_bases_sequenced = TRUE, includemetadata = TRUE, returncounts = FALSE, ...){
 
-   #Hardwire PctFromCtgscutoff, as this should never be used without filtering because of huge amounts of false positives when evaluating taxonomic information from unassembled reads. The use of classifying unassembled reads is deprecated in JAMS and the default is to NOT classify unassembled reads, so this is usually not an issue.
-   PctFromCtgscutoff <- c(70, 50)
+    if (all(c(is.null(expvec), is.null(SEobj)))) {
+        stop("You must choose as input for exporting either a list of SummarizedExperiment objects through the expvec argument, or a single SEobj via the SEobj argument.")
+    }
 
-  #Adding a default filename.
-  if ((is.null(filename)& !(is.null(usefulexp)))){
-      filename <- paste0("JAMSexported", usefulexp, ".xlsx")
-      flog.info("Customize file name with filename option.")
-  } else if ((is.null(filename)& is.null(usefulexp))){
-    filename <- "JAMSexportedexpvec.xlsx"
-    flog.info("Customize file name with filename option, you utter fool")
-  } else{
-    filename <- filename
-  }
-
-    if (!(is.null(usefulexp))){
-        usefulexp <- names(expvec)[(names(expvec) %in% usefulexp)]
-        expvec2 <- expvec[usefulexp]
+    if (!is.null(SEobj)){
+        expvec2 <- list()
+        expvec2[[1]] <- SEobj
+        names(expvec2)[1] <- metadata(SEobj)$analysis
     } else {
-        expvec2 <- expvec
+        if (!(is.null(expvec_analysis_spaces))){
+            usefulexp <- names(expvec)[(names(expvec) %in% expvec_analysis_spaces)]
+            expvec2 <- expvec[usefulexp]
+        } else {
+            expvec2 <- expvec
+        }
+    }
+
+    #Set very descriptive filename if not passed to argument
+    if (is.null(filename)){
+        filename <- generate_filename(title = paste0(c("Counts_from_SummarizedExperiments", names(expvec2), normalization), collapse = "_"), add_date = TRUE, suffix = "xlsx")
     }
 
     pt <- as.data.frame(colData(expvec2[[1]]))
@@ -55,65 +58,52 @@ export_expvec_to_XL <- function(expvec = NULL, usefulexp = NULL, filename = NULL
         cvn <- cvn + 1
     }
 
-    if (any(c((asPPM == TRUE), !is.null(applyfilters), !is.null(featcutoff), !is.null(GenomeCompletenessCutoff)))){
-        flog.info("Counts will be exported as PPM")
-        countunits <- "PPM"
-    } else {
-        flog.info("Counts will be exported as raw number of bases")
-        countunits <- "NumBases"
+    if (is.null(featcutoff)){
+        featcutoff <- c(0,0)
     }
 
-    #Get counts
-    for (x in 1:length(expvec2)){
-        analysis <- metadata(expvec2[[x]])$analysis
+    if (is.null(GenomeCompletenessCutoff)){
+        GenomeCompletenessCutoff <- c(0,0)
+    }
+
+    expvec3 <- lapply(names(expvec2), function (x) { filter_experiment(SEobj = expvec2[[x]], samplesToKeep = samplesToKeep, featuresToKeep = NULL, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, applyfilters = applyfilters, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, flush_out_empty_samples = FALSE, clr_pseudocount = 1, give_info = FALSE) } )
+    names(expvec3) <- names(expvec2)
+
+    #Obtain list of possible assay names
+    valid_countstables <- c("BaseCounts", "PPM", "CLR", "GenomeCompleteness", "GenomeContamination", "GeneCounts", "GeneLengths")
+    valid_countstables <- valid_countstables[valid_countstables %in% unique(unname(unlist(sapply(names(expvec3), function (x) { names(assays(expvec3[[x]])) }))))]
+
+    #Get tables
+    for (analnumb in 1:length(expvec3)){
+        analysis <- metadata(expvec3[[analnumb]])$analysis
         flog.info(paste("Exporting", analysis))
 
-        presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff)
-
-        exp_filt <- filter_experiment(ExpObj = expvec2[[x]], featcutoff = presetlist$featcutoff, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff)
-
-        cts <- assays(exp_filt)$BaseCounts
-        ctsname <- paste(names(expvec2)[x], countunits, sep="_")
-        countvec[[cvn]] <- as.data.frame(cts)
-        names(countvec)[cvn] <- ctsname
-        cvn <- cvn + 1
-
-        if ("GenomeCompleteness" %in% names(assays((expvec2)[[x]]))){
-            cts <- assays(exp_filt)$GenomeCompleteness
-            ctsname <- paste(names(expvec2)[x], "GnmCompl", sep="_")
+        #Export counts tables present in SEobj
+        present_countstables <- valid_countstables[valid_countstables %in% names(assays(expvec3[[analnumb]]))]
+        for (ct in present_countstables){
+            cts <- assays(expvec3[[analnumb]])[[ct]]
+            ctsname <- paste(analysis, ct, sep="_")
             countvec[[cvn]] <- as.data.frame(cts)
             names(countvec)[cvn] <- ctsname
             cvn <- cvn + 1
         }
 
-        if ("PctFromCtgs" %in% names(assays((expvec2)[[x]]))){
-            cts <- assays(exp_filt)$PctFromCtgs
-            ctsname <- paste(names(expvec2)[x], "PctFromCtgs", sep="_")
-            countvec[[cvn]] <- as.data.frame(cts)
-            names(countvec)[cvn] <- ctsname
-            cvn <- cvn + 1
-        }
-
-        if ("GeneCounts" %in% names(assays((expvec2)[[x]]))){
-            cts <- assays(exp_filt)$GeneCounts
-            ctsname <- paste(names(expvec2)[x], "GeneCounts", sep="_")
-            countvec[[cvn]] <- as.data.frame(cts)
-            names(countvec)[cvn] <- ctsname
-            cvn <- cvn + 1
-        }
-
-        feattbl <- as.data.frame(rowData(expvec2[[x]]))
-        ftsname <- paste(names(expvec2)[x], "featuretable", sep="_")
+        #Export feature tables present in SEobj
+        feattbl <- as.data.frame(rowData(expvec3[[analnumb]]))
+        ftsname <- paste(analysis, "featuretable", sep="_")
         countvec[[cvn]] <- feattbl
         names(countvec)[cvn] <- ftsname
         cvn <- cvn + 1
     }
 
     countvec <- countvec[sapply(countvec, function(x){ !(is.null(x)) })]
+    #abbreviate Consolidated Genome Bin to CGB because of Excel's constraints
+    names(countvec) <- gsub("ConsolidatedGenomeBin", "CGB", names(countvec))
+
     #Cap tab names to 31 characters because of excel
-    if(any(nchar(names(countvec)) > 30)){
-        flog.info("Capping tab names to 31characters because of Microsoft Excel.")
-        newnames <- sapply(names(countvec), function(x){ stringr::str_trunc(x, 28) })
+    if (any(nchar(names(countvec)) > 30)){
+        flog.info("Capping tab names to 31 characters because of Microsoft Excel.")
+        newnames <- sapply(names(countvec), function(x){ stringr::str_trunc(x, 29) })
         newnames <- make.unique(newnames)
         names(countvec) <- newnames
     }

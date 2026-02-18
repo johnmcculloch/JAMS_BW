@@ -132,19 +132,12 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         analysisname <- analysis
     }
 
-    #Hardwire PctFromCtgscutoff, as this should never be used without filtering because of huge amounts of false positives when evaluating taxonomic information from unassembled reads. The use of classifying unassembled reads is deprecated in JAMS and the default is to NOT classify unassembled reads, so this is usually not an issue.
-    if ("PctFromCtgs" %in% names(assays(obj))){
-        PctFromCtgscutoff <- c(70, 50)
-    } else {
-        PctFromCtgscutoff <- NULL
-    }
-
     #Set applyfilters to null if featuresToKeep is set
     if (!is.null(featuresToKeep)){
         applyfilters <- NULL
     }
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PctFromCtgscutoff = PctFromCtgscutoff, maxl2fc = maxl2fc, minl2fc = minl2fc)
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, maxl2fc = maxl2fc, minl2fc = minl2fc)
 
     if (assay_for_matrix == "GeneCounts"){
         flog.warn("Counts matrix used for heatmap will represent the *number of genes* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
@@ -152,24 +145,14 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         global_FTK <- rownames(obj)
         hmtypemsg <- "Gene count Heatmap"
     } else {
-        if (normalization == "compositions"){
-            require("compositions")
-            asPPM <- FALSE
-            #Make scaling default for compositions, as the heatmap colour scale for clr has not yet been resolved in this plotting function. Will turn this off later.
-            scaled <- TRUE
-            hmtypemsg <- "Compositional (CLR-transformed) Heatmap"
-            global_FTK <- rownames(obj)
-        } else {
-            hmtypemsg <- "Relative Abundance Heatmap"
+        hmtypemsg <- "Relative Abundance Heatmap"
 
-            #Obtain "global" list of features if applyfilters is not null, or any of the filtering arguments is not c(0,0) as to maintain same features within subsets, if any.
-            if (any(c(all(presetlist$featcutoff != c(0,0)), all(presetlist$GenomeCompletenessCutoff != c(0,0)), all(presetlist$PctFromCtgscutoff != c(0,0)),
-            !is.null(applyfilters)))){
-                currobj <- filter_experiment(ExpObj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = NULL, featuresToKeep = NULL, normalization = normalization, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, PctFromCtgscutoff = presetlist$PctFromCtgscutoff, discard_SDoverMean_below = discard_SDoverMean_below)
-                global_FTK <- rownames(currobj)
-            } else {
-                global_FTK <- rownames(obj)
-            }
+        #Obtain "global" list of features if applyfilters is not null, or any of the filtering arguments is not c(0,0) as to maintain same features within subsets, if any.
+        if (any(c(all(presetlist$featcutoff != c(0,0)), all(presetlist$GenomeCompletenessCutoff != c(0,0)), !is.null(applyfilters)))){
+            currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = NULL, featuresToKeep = NULL, normalization = "relabund", PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, discard_SDoverMean_below = discard_SDoverMean_below)
+            global_FTK <- rownames(currobj)
+        } else {
+            global_FTK <- rownames(obj)
         }
     }
 
@@ -271,7 +254,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
             if (assay_for_matrix == "BaseCounts"){
 
-                currobj <- filter_experiment(ExpObj = obj, featcutoff = c(0,0), samplesToKeep = samplesToKeep_sp, featuresToKeep = global_FTK, normalization = normalization, asPPM = asPPM, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = c(0,0), PctFromCtgscutoff = c(0,0), discard_SDoverMean_below = NULL, flush_out_empty_samples = FALSE)
+                currobj <- filter_experiment(SEobj = obj, featcutoff = c(0,0), samplesToKeep = samplesToKeep_sp, featuresToKeep = global_FTK, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = c(0,0), discard_SDoverMean_below = NULL, flush_out_empty_samples = FALSE)
 
             } else if (assay_for_matrix == "GeneCounts"){
                 currobj <- obj[global_FTK, samplesToKeep_sp]
@@ -294,7 +277,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
             }
 
             #Get counts matrix
-            countmat <- as.matrix(assays(currobj)[[assay_for_matrix]])
+            if (normalization == "relabund"){
+                countmat <- as.matrix(assays(currobj)[["PPM"]])
+            }
 
             if (ignoreunclassified == TRUE){
                dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified", "hypothetical protein", "putative protein")
