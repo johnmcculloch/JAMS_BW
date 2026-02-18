@@ -43,7 +43,7 @@ export_expvec_to_XL <- function(expvec = NULL, expvec_analysis_spaces = NULL, SE
 
     #Set very descriptive filename if not passed to argument
     if (is.null(filename)){
-        filename <- generate_filename(title = paste0(c("Counts_from_SummarizedExperiments", names(expvec2), normalization), collapse = "_"), add_date = TRUE, suffix = "xlsx")
+        filename <- generate_filename(title = paste0(c("Counts_from_SummarizedExperiments", names(expvec2), "basecounts", normalization), collapse = "_"), add_date = TRUE, suffix = "xlsx")
     }
 
     pt <- as.data.frame(colData(expvec2[[1]]))
