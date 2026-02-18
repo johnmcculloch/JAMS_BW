@@ -60,7 +60,7 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
         }
         bartit <- paste(c(bartit, presetlist$filtermsg), collapse = "\n")
 
-        currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = sp_samplesToKeep, featuresToKeep = featuresToKeep, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff)
+        currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = sp_samplesToKeep, featuresToKeep = featuresToKeep, normalization = "relabund", PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff)
 
         currpt <- as.data.frame(colData(currobj))
 

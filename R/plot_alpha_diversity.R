@@ -5,7 +5,7 @@
 
 #' @param measures String giving the alpha diversity measurements used to quantify the alpha diversity within each category. Default includes Observed, Chao1, Shannon, Simpson, InvSimpson, and GeneCount.
 
-#' @param stratify_by_kingdoms Requires a logical value. If TRUE, will concatenate all of the taxonomical features to the kingdom level and create individual plots for each of the kingdoms for each measure specified. If FALSE, will forgo the kingdom concatenation. Default is TRUE.
+#' @param stratify_by_domains Requires a logical value. If TRUE, will concatenate all of the taxonomical features to the Domain level and create individual plots for each of the Domains for each measure specified. If FALSE, will forgo the Domain concatenation. Default is TRUE.
 
 #' @param glomby String giving the taxonomic level at which to agglomerate counts. This argument should only be used with taxonomic SummarizedExperiment objects. When NULL (the default), there is no agglomeration
 
@@ -59,7 +59,7 @@
 
 #' @export
 
-plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_kingdoms = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, compareby_order = NULL,colourby = NULL, shapeby = NULL, fillby = NULL, pairby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...){
+plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_domains = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, subsetby = NULL, compareby = NULL, compareby_order = NULL,colourby = NULL, shapeby = NULL, fillby = NULL, pairby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...){
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
@@ -70,7 +70,11 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
     if (!is.null(glomby)){
         analysisname <- glomby
     } else {
-        analysisname <- analysis
+        if (analysis %in% c("Contig_LKT", "ConsolidatedGenomeBin")){
+            analysisname <- "LKT"
+        } else {
+            analysisname <- analysis
+        }
     }
 
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
@@ -119,7 +123,7 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
                 stattype <- "auto"
             }
 
-            currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff)
+            currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, normalization = "relabund", PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff)
 
         } else {
 
@@ -153,12 +157,12 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             genecountmat <- NULL
         }
 
-        if (all(c((analysis == "LKT"), (stratify_by_kingdoms == TRUE)))) {
+        if (all(c((analysis %in% c("LKT", "Contig_LKT", "ConsolidatedGenomeBin")), (stratify_by_domains == TRUE)))) {
             tt <- as.data.frame(rowData(currobj))
             tt <- tt[rownames(countmat), ]
-            #Need at least 10 features within each Kingdom to measure alpha diversity
-            table(tt$Kingdom)[which(table(tt$Kingdom) >= 10)]
-            validanalyses <- names(table(tt$Kingdom)[which(table(tt$Kingdom) >= 10)])
+            #Need at least 10 features within each Domain to measure alpha diversity
+            #table(tt$Domain)[which(table(tt$Domain) >= 10)]
+            validanalyses <- names(table(tt$Domain)[which(table(tt$Domain) >= 10)])
         } else {
             validanalyses <- analysisname
         }
@@ -168,7 +172,7 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             #Compose an appropriate title for the plot
             if (length(unique(subset_points)) > 1){
                 maintit <- paste(hmtypemsg, curranalysis, paste("within", subset_points[sp]), sep = " | ")
-                tablename <- paste("AlphaDiv", curranalysis, paste("within", subset_points[sp]), sep = "_")
+                tablename <- paste("AlphaDiv", curranalysis, paste("within", subset_points[sp], sep = "_"), sep = "_")
             } else {
                 maintit <- paste(hmtypemsg, curranalysis, sep = " | ")
                 tablename <- paste("AlphaDiv", curranalysis, subsetname, sep = "_")
@@ -178,8 +182,8 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             }
 
             #Define which features are going to be kept within the subset
-            if (all(c((analysis == "LKT"), (stratify_by_kingdoms == TRUE)))){
-                validfeats <- subset(tt, Kingdom == curranalysis)[ , analysisname]
+            if (all(c((analysis %in% c("LKT", "Contig_LKT", "ConsolidatedGenomeBin")), (stratify_by_domains == TRUE)))){
+                validfeats <- subset(tt, Domain == curranalysis)[ , analysisname]
                 currcountmat <- countmat[validfeats, ]
             } else {
                 currcountmat <- countmat
