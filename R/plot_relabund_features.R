@@ -112,7 +112,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             }
 
             #Get counts matrix
-            countmat <- as.matrix(assays(currobj)$BaseCounts)
+            countmat <- as.matrix(assays(currobj)$PPM)
 
             #Protect against rows with empty data
             #rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
@@ -695,11 +695,11 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     p <- ggplot(dat, aes(x = Taxon, y = PPM))
 
                     if (!overlay_boxplot){
-                        if (annotate_phylum == TRUE){
-                            p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
-                        } else {
+                        #if (annotate_phylum == TRUE){
+                            #p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
+                        #} else {
                             p <- p + geom_boxplot(outlier.shape = NA)
-                        }
+                        #}
                     }
 
                     #Rescale to exclude outliers
