@@ -55,13 +55,12 @@ adjust_phenotable <- function(opt = NULL, list.data = NULL, addtaxlevelstoisolat
             isolatesamples <- taxdata$Sample[which(projdata$JAMS_Run_type == "isolate")]
             for (i in 1:length(isolatesamples)){
                 taxstats <- NULL
-                taxstats <- list.data[[paste(isolatesamples[i], "LKTdose", sep = "_")]]
+                taxstats <- list.data[[paste(isolatesamples[i], "abundances", sep = "_")]]$taxonomic$ConsolidatedGenomeBin
                 taxstats <- taxstats[, c(addtaxlevelstoisolates, "NumBases")]
                 taxstats[] <- lapply(taxstats, as.character)
                 taxstats$NumBases <- as.numeric(taxstats$NumBases)
                 taxdata[which(taxdata$Sample == isolatesamples[i]), newtaxlvlnames] <- as.character(as.matrix(unname(taxstats[which(taxstats$NumBases == max(taxstats$NumBases)), addtaxlevelstoisolates])))
             }
-
             opt$phenotable <- left_join(opt$phenotable, taxdata, by = "Sample")
             phenolabels_taxon <- data.frame(Var_label = newtaxlvlnames, Var_type = rep("discrete", length(newtaxlvlnames)), stringsAsFactors = FALSE)
             opt$phenolabels <- rbind(opt$phenolabels, phenolabels_taxon)

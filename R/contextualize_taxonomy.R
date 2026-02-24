@@ -101,7 +101,7 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     strain_df <- NULL
     #Only cluster or deconvolute working taxids which have > 1 MAG in it. Otherwise, it defeats the purpose.
     WorkingTaxids_to_decon <- names(which(table(BinsDF$WorkingTaxid) > 1))
-    if (length(WorkingTaxids_to_decon) > 1){
+    if (length(WorkingTaxids_to_decon) > 0){
         flog.info(paste("There are", length(WorkingTaxids_to_decon), "species-level taxonomical entities to deconvolute"))
         flog.info(paste("Entities will be clustered within bins presenting a distance >", dissimilarity_cutoff))
 

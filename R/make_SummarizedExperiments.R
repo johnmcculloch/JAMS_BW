@@ -128,6 +128,13 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
 
         #If taxonomic space is ConsolidatedGenomeBin, evaluate, contextualize and rename redundant taxonomies using functional annotation.
         if (taxonomic_space == "ConsolidatedGenomeBin"){
+            #If isolates, the "ConsolidatedGenomeBin" column may be missing.
+            if (("isolate" %in% opt$phenotable$JAMS_Run_type) && (!("ConsolidatedGenomeBin" %in% colnames(LKTdosesall)))){
+                LKTdosesall$ConsolidatedGenomeBin <- LKTdosesall$LKT
+                #Switch LKT tag to CGB. For isolates, the CGB IS the LKT.
+                LKTdosesall$ConsolidatedGenomeBin <- gsub("^LKT__", "CGB__", LKTdosesall$ConsolidatedGenomeBin)
+            }
+save.image()
             LKTdosesall <- contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = functional_contextualization_dissimilarity_cutoff)
 
             #Bequeath to opt for using later when building functional experiments
