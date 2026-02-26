@@ -1096,7 +1096,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         drawseparateGChm <- FALSE
                     }
 
-                    #Print what the column annotations are
+                    #Print what the actual column annotations are
                     #for(an in colnames(hmdf)) {
                     #    decorate_annotation(an, {
                     #        grid.text(an, unit(0, "npc") - unit(2, "mm"), 0.5, default.units = "npc", just = "right", gp = gpar(fontsize = 10, col = "black"))
