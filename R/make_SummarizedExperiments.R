@@ -371,15 +371,21 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                         #This is the first sample
                         curr_sparse_featcounts_index$RowNumber <- 1:nrow(curr_SM)
                     }
+                    #Map numeric row number onto rownames
+                    rownames(curr_SM) <- as.character(curr_sparse_featcounts_index[rownames(curr_SM), "RowNumber"])
+
                     #Commit index to long form dataframe
                     master_sparse_featcounts_index_longform <- rbind(master_sparse_featcounts_index_longform, curr_sparse_featcounts_index)
                     #Commit rownames as index number
-                    rownames(master_sparse_featcounts_index_longform) <- master_sparse_featcounts_index_longform$RowNumber
+                    rownames(master_sparse_featcounts_index_longform) <- as.character(master_sparse_featcounts_index_longform$RowNumber)
 
                     #Merge curr_SM to the master matrix
-                    master_sparse_taxon_to_space_basecounts_df <- merge_sparse_matrix(matlist = list(master_sparse_taxon_to_space_basecounts_df, curr_SM))
-                    #Reset row names to numerical to conserve RAM
-                    rownames(master_sparse_taxon_to_space_basecounts_df) <- 1:nrow(master_sparse_taxon_to_space_basecounts_df)
+                    #only merge if it is not the first one.
+                    if (!is.null(master_sparse_taxon_to_space_basecounts_df)){
+                        master_sparse_taxon_to_space_basecounts_df <- merge_sparse_matrix(matlist = list(master_sparse_taxon_to_space_basecounts_df, curr_SM))
+                    } else {
+                        master_sparse_taxon_to_space_basecounts_df <- curr_SM
+                    }
 
                     #Deal with gene number stratifications
                     #Pivot to wide form
@@ -404,8 +410,16 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                     #Ensure exact row and column order
                     curr_split_numgenes <- curr_split_numgenes[rownames(curr_sparse_featcounts_index), colnames(curr_SM)]
 
+                    #Map numeric row number onto rownames
+                    rownames(curr_split_numgenes) <- as.character(curr_sparse_featcounts_index[rownames(curr_split_numgenes), "RowNumber"])
+
                     #Merge sparse version in to master gene count matrix
-                    master_sparse_taxon_to_space_genecounts_df <- merge_sparse_matrix(matlist = list(master_sparse_taxon_to_space_genecounts_df, curr_split_numgenes))
+                    #only merge if it is not the first one.
+                    if (!is.null(master_sparse_taxon_to_space_genecounts_df)){
+                        master_sparse_taxon_to_space_genecounts_df <- merge_sparse_matrix(matlist = list(master_sparse_taxon_to_space_genecounts_df, curr_split_numgenes))
+                    } else {
+                        master_sparse_taxon_to_space_genecounts_df <- curr_split_numgenes
+                    }
 
                     #Clean up
                     curr_SM <- NULL
