@@ -7,7 +7,7 @@
 plot_alpha_diversity(
   ExpObj = NULL,
   measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"),
-  stratify_by_kingdoms = TRUE,
+  stratify_by_domains = TRUE,
   glomby = NULL,
   samplesToKeep = NULL,
   featuresToKeep = NULL,
@@ -41,7 +41,7 @@ plot_alpha_diversity(
 
 \item{measures}{String giving the alpha diversity measurements used to quantify the alpha diversity within each category. Default includes Observed, Chao1, Shannon, Simpson, InvSimpson, and GeneCount.}
 
-\item{stratify_by_kingdoms}{Requires a logical value. If TRUE, will concatenate all of the taxonomical features to the kingdom level and create individual plots for each of the kingdoms for each measure specified. If FALSE, will forgo the kingdom concatenation. Default is TRUE.}
+\item{stratify_by_domains}{Requires a logical value. If TRUE, will concatenate all of the taxonomical features to the Domain level and create individual plots for each of the Domains for each measure specified. If FALSE, will forgo the Domain concatenation. Default is TRUE.}
 
 \item{glomby}{String giving the taxonomic level at which to agglomerate counts. This argument should only be used with taxonomic SummarizedExperiment objects. When NULL (the default), there is no agglomeration}
 
