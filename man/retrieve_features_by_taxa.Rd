@@ -12,7 +12,8 @@ retrieve_features_by_taxa(
   wantedsamples = NULL,
   asPPM = TRUE,
   PPM_normalize_to_bases_sequenced = FALSE,
-  PPMthreshold = 0
+  PPMthreshold = 0,
+  append_metatada = TRUE
 )
 }
 \description{
