@@ -134,7 +134,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 #Switch LKT tag to CGB. For isolates, the CGB IS the LKT.
                 LKTdosesall$ConsolidatedGenomeBin <- gsub("^LKT__", "CGB__", LKTdosesall$ConsolidatedGenomeBin)
             }
-save.image()
+
             LKTdosesall <- contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = functional_contextualization_dissimilarity_cutoff)
 
             #Bequeath to opt for using later when building functional experiments
