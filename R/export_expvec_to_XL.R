@@ -58,12 +58,14 @@ export_expvec_to_XL <- function(expvec = NULL, expvec_analysis_spaces = NULL, SE
         cvn <- cvn + 1
     }
 
-    if (is.null(featcutoff)){
-        featcutoff <- c(0,0)
-    }
+    if (is.null(applyfilters)){
+        if (is.null(featcutoff)){
+            featcutoff <- c(0,0)
+        }
 
-    if (is.null(GenomeCompletenessCutoff)){
-        GenomeCompletenessCutoff <- c(0,0)
+        if (is.null(GenomeCompletenessCutoff)){
+            GenomeCompletenessCutoff <- c(0,0)
+        }
     }
 
     expvec3 <- lapply(names(expvec2), function (x) { filter_experiment(SEobj = expvec2[[x]], samplesToKeep = samplesToKeep, featuresToKeep = NULL, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, applyfilters = applyfilters, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, flush_out_empty_samples = FALSE, clr_pseudocount = 1, give_info = FALSE) } )
