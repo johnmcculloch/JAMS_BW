@@ -79,10 +79,10 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
 
     #Flush out empty Samples
     if (flush_out_empty_samples){
-        emptysamples <- names(which(colSums(rawcts) == 0) == TRUE)
+        emptysamples <- names(which(colSums(assays(SEobj)$BaseCounts) == 0) == TRUE)
         if (length(emptysamples) > 0){
             flog.info(paste("Samples", paste0(emptysamples, collapse = ", "), "are empty and will be discarded."))
-            validsamples <- names(which(colSums(rawcts) > 0) == TRUE)
+            validsamples <- names(which(colSums(assays(SEobj)$BaseCounts) > 0) == TRUE)
             SEobj <- SEobj[ , validsamples]
         }
     }
