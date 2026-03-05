@@ -13,7 +13,7 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
         }
         #Check validity of method
         if (!any(normalization %in% c("relabund", "clr"))){
-          flog.warm('Normalization must be set to relative abundance with "relabund", or to CLR transform with "clr"')
+          flog.warn('Normalization must be set to relative abundance with "relabund", or to CLR transform with "clr"')
           stop("Invalid parameter for normalization. Set to NULL for raw counts.")
         } else {
             normalization <- normalization[normalization %in% c("relabund", "clr")]
