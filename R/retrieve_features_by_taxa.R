@@ -3,7 +3,7 @@
 #' Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
 #' @export
 
-retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0, append_metatada = TRUE){
+retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE){
 
     if (assay_for_matrix == "GeneCounts"){
         sparsematrix_name <- "allfeaturesbytaxa_GeneCounts_matrix"
@@ -56,6 +56,20 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
     allfeaturesbytaxa_interest <- left_join(allfeaturesbytaxa_interest, rowsinterestdf, by = "RowNumber")
     allfeaturesbytaxa_interest$RowNumber <- NULL
     allfeaturesbytaxa_interest <- allfeaturesbytaxa_interest[ , c("Sample", "Accession", (sort(colnames(allfeaturesbytaxa_interest)[which(!colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession"))])))]
+    rownames(allfeaturesbytaxa_interest) <- paste(allfeaturesbytaxa_interest$Sample, allfeaturesbytaxa_interest$Accession, sep = "§")
+
+    if (include_samples_with_zero){
+        SampleAccession_tally <- expand.grid(list(Sample = wantedsamples, Accession = unique(allfeaturesbytaxa_interest$Accession)), KEEP.OUT.ATTRS = TRUE, stringsAsFactors = FALSE)
+        SampleAccession_tally$SampleAccession <- paste(SampleAccession_tally$Sample, SampleAccession_tally$Accession, sep = "§")
+        rownames(SampleAccession_tally) <- SampleAccession_tally$SampleAccession
+        missingSApairs <- SampleAccession_tally$SampleAccession[!SampleAccession_tally$SampleAccession %in% rownames(allfeaturesbytaxa_interest)]
+
+        suppl_df <- SampleAccession_tally[missingSApairs, c("Sample", "Accession")]
+        Taxoncols <- colnames(allfeaturesbytaxa_interest)[!(colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession"))]
+        suppl_df[ , Taxoncols] <- 0
+        suppl_df <- suppl_df[ , colnames(allfeaturesbytaxa_interest)]
+        allfeaturesbytaxa_interest <- rbind(allfeaturesbytaxa_interest, suppl_df)
+    }
 
     #Agglomerate if applicable
     if ((!is.null(glomby) && (glomby != "LKT"))){
@@ -93,6 +107,7 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
         Glomby_wide <- Glomby_sum %>% pivot_wider(names_from = Glomby, values_from = NumBases, values_fill = 0)
         Glomby_wide <- as.data.frame(Glomby_wide)
         Glomby_wide <- left_join(SAsafeLookup, Glomby_wide, by = "SampleAccession")
+        rownames(Glomby_wide) <- Glomby_wide$SampleAccession
         Glomby_wide$SampleAccession <- NULL
         allfeaturesbytaxa_interest <- Glomby_wide
     }
