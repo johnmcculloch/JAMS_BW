@@ -863,6 +863,7 @@ extract_NCBI_taxid_from_featname <- function(Taxon = NULL){
 #' @export
 
 check_for_banked_samples <- function(JAMSarchive_path = NULL){
+
     jfl <- list.files(path = file.path(JAMSarchive_path, "jamsfiles"), pattern = ".jams")
     jtbl <- list.files(path = file.path(JAMSarchive_path, "JAMStarballs"), pattern = ".tar.gz")
     sh <- unname(sapply(jfl, function (x) { unlist(strsplit(x, split = "\\."))[1] } ))
@@ -878,7 +879,9 @@ check_for_banked_samples <- function(JAMSarchive_path = NULL){
             flog.warn(paste("The following tarballs have no .jams files:", paste0(tarballs_without_jamsfiles, collapse = ", ")))
         }
     }
+
     return(intersect(sh, tbh))
+
 }
 
 #' retrieve_GCA_accession_URL(assemblytargetname = NULL)
@@ -1129,3 +1132,39 @@ plot_table_a4_autofit_paged <- function(dataframe = NULL, title = NULL, orientat
   ))
 }
 
+#' dichotomize_variable_in_md(md = NULL, column_to_dichotomize = NULL, threshold = NULL, func_for_threshold = "median")
+#'
+#' Translates a continuous variable in metadata into a dichotomous discrete variable, either by set threshold, or by being above or below a particular value computeby by func_for_threshold, e.g. median.
+#' @export
+
+dichotomize_variable_in_md <- function(md = NULL, column_to_dichotomize = NULL, threshold = NULL, func_for_threshold = "median"){
+
+    if (!is.numeric(md[ , column_to_dichotomize])){
+        #coerce to numeric
+        md[ , column_to_dichotomize] <- as.numeric(md[ , column_to_dichotomize])
+    }
+
+    #If no threshold set, then obtain one by applying the function
+    if (is.null(threshold)){
+        threshold <- match.fun(func_for_threshold)(md[ , column_to_dichotomize], na.rm = TRUE)
+    }
+
+    above_or_below <- function (x = NULL, threshold = NULL) {
+        if (!is.na(x)){
+            if (x >= threshold){
+                dichotval <- "High"
+            } else {
+                dichotval <- "Low"
+            }
+        } else {
+            #Input is NA
+            dichotval <- NA
+        }
+
+        return(dichotval)
+    }
+
+    dichot_vector <- sapply(md[ , column_to_dichotomize], above_or_below, threshold = threshold)
+
+    return(dichot_vector)
+}
