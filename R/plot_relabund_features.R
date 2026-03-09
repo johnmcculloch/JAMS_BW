@@ -114,10 +114,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             #Get counts matrix
             countmat <- as.matrix(assays(currobj)$PPM)
 
-            #Protect against rows with empty data
-            #rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "")
-            #countmat <- countmat[rowsToKeep, ]
-
             if (ignoreunclassified == TRUE){
                 dunno <- c(paste(analysis, "none", sep = "_"), "LKT__d__Unclassified", "LKT__Unclassified")
                 rowsToKeep <- which(!(rownames(countmat) %in% dunno))
@@ -138,12 +134,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 genomecompletenessdf <- as.matrix(assays(currobj)$GenomeCompleteness)
             } else {
                 genomecompletenessdf <- NULL
-            }
-
-            if ("PctFromCtgs" %in% names(assays(currobj))){
-                PctFromCtgsdf <- as.matrix(assays(currobj)$PctFromCtgs)
-            } else {
-                PctFromCtgsdf <- NULL
             }
 
             #Aggregate if appropriate
@@ -260,12 +250,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             #Redefine countmat to include only features matching filtering criteria
             countmat <- countmat[rownames(matstats), , drop = FALSE]
 
-            #Ensure it has two dimensions
-            if (class(countmat)[1] != "matrix"){
-                countmat <- t(as.matrfix(countmat))
-                rownames(countmat) <- rownames(matstats)
-            }
-
             if ("GenomeCompleteness" %in% names(assays(currobj))){
                 #genomecompletenessdf <- as.matrix(assays(currobj)$GenomeCompleteness)
                 genomecompletenessdf <- genomecompletenessdf[rownames(matstats), drop = FALSE]
@@ -275,17 +259,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 }
             } else {
                 genomecompletenessdf <- NULL
-            }
-
-            if ("PctFromCtgs" %in% names(assays(currobj))){
-                #PctFromCtgsdf <- as.matrix(assays(currobj)$PctFromCtgs)
-                PctFromCtgsdf <- PctFromCtgsdf[rownames(matstats), , drop = FALSE]
-                if (class(PctFromCtgsdf)[1] != "matrix"){
-                    PctFromCtgsdf <- t(as.matrix(PctFromCtgsdf))
-                    rownames(PctFromCtgsdf) <- rownames(matstats)
-                }
-            } else {
-                PctFromCtgsdf <- NULL
             }
 
         } else {
@@ -314,8 +287,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             #See if current SummarizedExperiment object allows for stratification by taxa.
             if (all(c("allfeaturesbytaxa_matrix") %in% names(metadata(currobj)))){
-                taxsplit <- retrieve_features_by_taxa(FuncExpObj = currobj, glomby = stratify_by_taxlevel, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, PPMthreshold = 0)
-                #colnames(taxsplit)[which(colnames(taxsplit) == compareby)] <- "Compareby"
+                taxsplit <- retrieve_features_by_taxa(FuncExpObj = currobj, glomby = stratify_by_taxlevel, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, assay_for_matrix = "BaseCounts", wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, append_metatada = TRUE, PPMthreshold = 0)
+
                 taxsplit$Compareby <- taxsplit[ , which(colnames(taxsplit) == compareby)]
 
             } else {
@@ -600,7 +573,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 LKTsupp_mat$Sample <- missingSamples
                 curr_pt_supp <- as.data.frame(curr_pt)
 
-                #colnames(curr_pt_supp)[which(colnames(curr_pt_supp) == compareby)] <- "Compareby"
                 curr_pt_supp$Compareby <- curr_pt_supp[ , which(colnames(curr_pt_supp) == compareby)]
 
                 LKTsupp_mat <- left_join(LKTsupp_mat, curr_pt_supp, by = "Sample")
