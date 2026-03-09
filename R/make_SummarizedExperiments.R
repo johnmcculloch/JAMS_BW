@@ -117,6 +117,15 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         LKTdoses <- lapply(Samples, function (x) { retrieve_abundance_table(Sample = x, taxonomic_space = taxonomic_space, colsToIgnore = c("Genome_Size", "PPM", "Genome_Size", "Total_Contigs", "Contig_N50", "Max_Contig_Length", "Quality", "GC_Content", "Total_Coding_Sequences", "Coding_Density", "Num_assemblies_in_taxid", "Num_isolate", "Proportion_of_MAG_in_taxid")) } )
         names(LKTdoses) <- Samples
 
+        #Check whether any is NULL
+        null_doses <- sapply(LKTdoses, is.null)
+        if (any(null_doses)){
+            null_tax_samples <- names(which(null_doses))
+            flog.warn(paste("WARNING: Could not find counts data for taxonomic space", taxonomic_space, "for samples:", paste0(null_tax_samples, collapse = ", ")))
+            flog.warn(paste("Eliminating", length(null_tax_samples),"sample(s) from", taxonomic_space, "analysis"))
+            LKTdoses <- LKTdoses[names(LKTdoses)[!names(LKTdoses) %in% null_tax_samples]]
+        }
+
         #Sorry about the for loop, but it is safer like so.
         for (SN in names(LKTdoses)){
             #Add PPM estimate
