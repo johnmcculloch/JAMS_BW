@@ -708,9 +708,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     ht1fs <- 10
 
                     #Plot the heatmap
-                    fontsizexy <- hm_fontsize_computer(mat_rownames = rownames(mathm), mat_colnames = colnames(mathm), upper_n = 400, upper_fs = 0.1, lower_n = 10, lower_fs = 9, cex = 0.25)
+                    fontsizexy <- hm_fontsize_computer(mat_rownames = rownames(mathm), mat_colnames = colnames(mathm), upper_n = 400, upper_fs = 0.1, lower_n = 10, lower_fs = 9, cex = 0.45)
 
-                    fontsizex <- fontsizexy[1]
+                    fontsizex <- (fontsizexy[1]) * 0.7
                     fontsizey <- fontsizexy[2]
 
                     #Fix row names, add a carriage return (\n) if over 40 characters and not LKT
