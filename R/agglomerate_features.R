@@ -29,12 +29,14 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
     taxonomic_levels <- c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
     terminal_taxonomic_levels <- c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin")
 
+    assays <- list()
     #Aggregate counts by summing
     cts <- as.data.frame(assays(ExpObj)$BaseCounts)
     cts$Feats <- rownames(cts)
     feats2glomby_feats <- data.frame(Feats = rownames(ftt), Glomby_feats = as.character(ftt[ , glomby]), stringsAsFactors = FALSE)
     cts <- left_join(cts, feats2glomby_feats, by = "Feats")
     cts$Feats <- NULL
+
     glom_cts <- aggregate(. ~ Glomby_feats, data = cts, FUN = sum)
     rownames(glom_cts) <- glom_cts$Glomby_feats
     glom_cts$Glomby_feats <- NULL
@@ -42,20 +44,22 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
     sampleorder <- rownames(pheno_original)
     #Check everything is in the same order
     glom_cts <- glom_cts[, sampleorder]
+    assays[["BaseCounts"]] <- glom_cts
 
-    if ("GenomeCompleteness" %in% as.character(names(assays(ExpObj)))){
-        #Aggregate counts by summing
-        gcdf <- as.data.frame(assays(ExpObj)$GenomeCompleteness)
-        gcdf$Feats <- rownames(gcdf)
-        feats2glomby_feats <- data.frame(Feats = rownames(ftt), Glomby_feats = as.character(ftt[ , glomby]), stringsAsFactors = FALSE)
-        gcdf <- left_join(gcdf, feats2glomby_feats, by = "Feats")
-        gcdf$Feats <- NULL
-        gcdf <- aggregate(. ~ Glomby_feats, data = gcdf, FUN = sum)
-        rownames(gcdf) <- gcdf$Glomby_feats
-        gcdf$Glomby_feats <- NULL
-        gcdf <- gcdf[featureorder, sampleorder]
-    } else {
-        gcdf <- NULL
+    for (ComplContAssay in c("GenomeCompleteness", "GenomeContamination")){
+        if (ComplContAssay %in% as.character(names(assays(ExpObj)))){
+            #Aggregate counts by summing
+            gcdf <- as.data.frame(assays(ExpObj)[[ComplContAssay]])
+            gcdf$Feats <- rownames(gcdf)
+            feats2glomby_feats <- data.frame(Feats = rownames(ftt), Glomby_feats = as.character(ftt[ , glomby]), stringsAsFactors = FALSE)
+            gcdf <- left_join(gcdf, feats2glomby_feats, by = "Feats")
+            gcdf$Feats <- NULL
+            gcdf <- aggregate(. ~ Glomby_feats, data = gcdf, FUN = sum)
+            rownames(gcdf) <- gcdf$Glomby_feats
+            gcdf$Glomby_feats <- NULL
+            gcdf <- gcdf[featureorder, sampleorder]
+            assays[[ComplContAssay]] <- gcdf
+        }
     }
 
     #Iron out the feature table
@@ -91,9 +95,7 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
     }
 
     #Rebuild the SummarizedExperiment object
-    assays <- list(glom_cts, gcdf)
     assays <- assays[sapply(1:length(assays), function (x) { !is.null(assays[[x]]) })]
-    names(assays) <- c("BaseCounts", "GenomeCompleteness")[1:length(assays)]
 
     glomExpObj <- SummarizedExperiment(assays = assays, rowData = glom_ftt, colData = pheno_original)
     metadata(glomExpObj) <- metadata(ExpObj)
