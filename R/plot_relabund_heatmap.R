@@ -708,7 +708,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     ht1fs <- 10
 
                     #Plot the heatmap
-                    fontsizexy <- hm_fontsize_computer(mat_rownames = rownames(mathm), mat_colnames = colnames(mathm), upper_n = 400, upper_fs = 0.1, lower_n = 10, lower_fs = 9, cex = 0.42)
+                    fontsizexy <- hm_fontsize_computer(mat_rownames = rownames(mathm), mat_colnames = colnames(mathm), upper_n = 400, upper_fs = 0.1, lower_n = 10, lower_fs = 9, cex = 0.25)
 
                     fontsizex <- fontsizexy[1]
                     fontsizey <- fontsizexy[2]
@@ -760,6 +760,23 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         }
                         names(cores)[g] <- colcategories[g]
                     }
+
+                    # Helper functions for legend text size adjustment
+                    ann_names <- colnames(hmdf)
+
+                    calc_fs <- function(nm) {
+                        nm_len <- nchar(nm)
+                        fs <- round(10 - (nm_len - 12) * 0.2)
+                        fs <- pmax(6, pmin(12, fs))
+                        return(fs)
+                    }
+
+                    annotation_legend_param <- setNames(
+                        lapply(ann_names, function(nm) {
+                            fs <- calc_fs(nm)
+                            list(title_gp  = gpar(fontsize = fs),
+                            labels_gp = gpar(fontsize = fs))
+                         }), ann_names)
 
                     #Make colour scale for relabund heatmap
                     if (hmasPA == FALSE) {
@@ -839,9 +856,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     #if (all(c((!is.null(textby)), (fontsizex > 0.2)))){
                     if (!is.null(textby)){
                         hmdf_txt <- as.character(colData(currobj)[ , which(colnames(colData(currobj)) == textby[1])])
-                        ha_column <- HeatmapAnnotation(which = "column", df = hmdf, col = cores, textby = anno_text(hmdf_txt, gp = gpar(fontsize = fontsizex, col = "black")), annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"))
+                        ha_column <- HeatmapAnnotation(which = "column", df = hmdf, col = cores, textby = anno_text(hmdf_txt, gp = gpar(fontsize = fontsizex, col = "black")), annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"), annotation_legend_param = annotation_legend_param)
                     } else {
-                        ha_column <- HeatmapAnnotation(which = "column", df = hmdf, col = cores, annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"))
+                        ha_column <- HeatmapAnnotation(which = "column", df = hmdf, col = cores, annotation_name_side = "left", annotation_name_gp = gpar(fontsize = 7, col = "black"), annotation_legend_param = annotation_legend_param)
                     }
 
                     #Build plot title
