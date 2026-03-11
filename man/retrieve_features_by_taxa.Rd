@@ -13,7 +13,8 @@ retrieve_features_by_taxa(
   asPPM = TRUE,
   PPM_normalize_to_bases_sequenced = FALSE,
   PPMthreshold = 0,
-  append_metatada = TRUE
+  append_metatada = TRUE,
+  include_samples_with_zero = TRUE
 )
 }
 \description{
