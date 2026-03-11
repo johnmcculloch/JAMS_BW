@@ -46,10 +46,10 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
     glom_cts <- glom_cts[, sampleorder]
     assays[["BaseCounts"]] <- glom_cts
 
-    for (ComplContAssay in c("GenomeCompleteness", "GenomeContamination")){
-        if (ComplContAssay %in% as.character(names(assays(ExpObj)))){
+    for (CurrAssay in c("GenomeCompleteness", "GenomeContamination", "GeneCounts", "GeneLengths")){
+        if (CurrAssay %in% as.character(names(assays(ExpObj)))){
             #Aggregate counts by summing
-            gcdf <- as.data.frame(assays(ExpObj)[[ComplContAssay]])
+            gcdf <- as.data.frame(assays(ExpObj)[[CurrAssay]])
             gcdf$Feats <- rownames(gcdf)
             feats2glomby_feats <- data.frame(Feats = rownames(ftt), Glomby_feats = as.character(ftt[ , glomby]), stringsAsFactors = FALSE)
             gcdf <- left_join(gcdf, feats2glomby_feats, by = "Feats")
@@ -58,7 +58,7 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
             rownames(gcdf) <- gcdf$Glomby_feats
             gcdf$Glomby_feats <- NULL
             gcdf <- gcdf[featureorder, sampleorder]
-            assays[[ComplContAssay]] <- gcdf
+            assays[[CurrAssay]] <- gcdf
         }
     }
 
