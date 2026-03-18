@@ -476,7 +476,7 @@ fixrelpath <- function(JAMSpath = NULL){
 #' @export
 
 name_samples <- function(list.data = NULL){
-    loadedsamples <- gsub("_projinfo", "", (names(list.data)[grep("_projinfo", names(list.data))]))
+    loadedsamples <- gsub("_abundances", "", (names(list.data)[grep("_abundances", names(list.data))]))
 
     return(loadedsamples)
 }

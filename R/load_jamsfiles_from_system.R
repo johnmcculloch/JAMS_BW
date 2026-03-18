@@ -1,10 +1,10 @@
-#' load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE, use_exactly_n_threads = NULL)
+#' load_jamsfiles_from_system(path = ".", recursive = TRUE, onlysamples = NULL, onlyobjects = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE, use_exactly_n_threads = NULL)
 #' JAMSbeta function
 #'
 #' Loads all JAMS files from system
 #' @export
 
-load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE, use_exactly_n_threads = NULL){
+load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, onlyobjects = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE, use_exactly_n_threads = NULL){
 
     require(parallel)
     flog.info("Searching for jams files.")
@@ -31,7 +31,10 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     #Restrict loading to only certain samples if required.
     if (!is.null(onlysamples)){
         flog.info(paste("There are", length(onlysamples), "samples to load."))
-        flog.info(paste("Will only load .jams files for samples", paste0(onlysamples, collapse = ", ")))
+        #Avoid being overly verbose, only report sample names if < 50 samples.
+        if (length(onlysamples) <= 50){
+            flog.info(paste("Will only load .jams files for samples", paste0(onlysamples, collapse = ", ")))
+        }
         jamsfilesdfwant <- subset(jamsfilesdf, Prefix %in% onlysamples)
         samplesIhavejams <- jamsfilesdfwant$Prefix
         if (sum(onlysamples %in% samplesIhavejams) < length (onlysamples)){
@@ -75,6 +78,11 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     fl <- fl[grep("_TNF_contigs\\.", fl, invert = TRUE)]
     fl <- fl[grep("_TNF_features\\.", fl, invert = TRUE)]
     fl <- fl[grep("_taxa_16S_cons\\.", fl, invert = TRUE)]
+
+    if (!is.null(onlyobjects)){
+        flog.warn(paste("Only loading JAMS objects matching", paste0(onlyobjects, collapse = ", ")))
+        fl <- unlist(lapply(paste0("_", onlyobjects, "\\.rds"), function (x) { fl[grep(x, fl)] }))
+    }
 
     on <- gsub("*.rds$", "", fl)
     if (length(which(duplicated(on) == TRUE)) > 0){

@@ -276,19 +276,13 @@ Samples_want <- as.character(opt$phenotable[ , ptsampcol])
 if (!(exists("list.data"))) {
     #make a list.data object from jamsfiles
     flog.info(paste("Searching for .jams files in", opt$jamsfiles_path, sep = " "))
-    flog.info("Loading all wanted .jams files into a single object.")
+    flog.info("Loading .jams files into RAM.")
     if (length(Samples_want) > 200){
         flog.info("Crikey! There are over 200 samples to load. Go grab a coffee, this will take some time.")
     }
-    list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = Samples_want, threads = opt$threads)
+    list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = Samples_want, threads = opt$threads, onlyobjects = c("projinfo", "abundances", "featuredata", "readstats"))
     gc()
-    #IO_jams_workspace_image(opt = opt, operation = "save", verbose = TRUE)
 }
-
-#if (length(opt$dupes) > 0){
-#    list.data[grep(paste0(opt$dupes, "_"), names(list.data))] <- NULL
-#    list.data <- list.data[sapply(list.data, function(x){ !(is.null(x)) } )]
-#}
 
 Samples_have <- name_samples(list.data = list.data)
 Samples_missing <- Samples_want[!(Samples_want %in% Samples_have)]
@@ -367,7 +361,12 @@ cdict <- make_colour_dictionary(variable_list = variable_list, pheno = pheno, co
 #If there are no metagenomeSeq experiments, then build some.
 if (!exists("expvec")){
     #Exclude samples in pheno table which have not been loaded in list.data
-    flog.info(paste("Will build experiments for samples:", paste0(Samples_have, collapse = ", ")))
+    if (length(Samples_have) <= 50){
+        flog.info(paste("Will build experiments for samples:", paste0(Samples_have, collapse = ", ")))
+    } else {
+        #Don't be too verbose
+        flog.info(paste("Will build experiments for", length(Samples_have), "samples."))
+    }
 
     #########################################
     ## Create SummarizedExperiment objects ##
