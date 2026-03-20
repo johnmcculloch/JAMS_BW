@@ -170,10 +170,10 @@ bioconductordeps <- c("dada2", "DECIPHER","SummarizedExperiment", "HybridMTest",
 non_bioconductordeps <- alldeps[!(alldeps %in% bioconductordeps)]
 
 BiocManager::install(pkgs = alldeps, update = TRUE, ask = FALSE, site_repository = repos, force = force_install, lib = rlibs)
-#devtools::install_github("jokergoo/ComplexHeatmap")
-devtools::install_github('barkasn/fastSave')
+#devtools::install_github('barkasn/fastSave')
+pak::pak("barkasn/fastSave")
 #Install the rest of JAMS
-devtools::install(jamsdir, upgrade = FALSE, repos = repos)
+devtools::install(jamsdir, upgrade = FALSE)
 
 #Make symlinks for JAMS executables
 jamsbinpath <- file.path(jamsdir, "libexec")
