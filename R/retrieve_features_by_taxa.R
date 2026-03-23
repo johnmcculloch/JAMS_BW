@@ -63,12 +63,14 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
         SampleAccession_tally$SampleAccession <- paste(SampleAccession_tally$Sample, SampleAccession_tally$Accession, sep = "§")
         rownames(SampleAccession_tally) <- SampleAccession_tally$SampleAccession
         missingSApairs <- SampleAccession_tally$SampleAccession[!SampleAccession_tally$SampleAccession %in% rownames(allfeaturesbytaxa_interest)]
-
-        suppl_df <- SampleAccession_tally[missingSApairs, c("Sample", "Accession")]
-        Taxoncols <- colnames(allfeaturesbytaxa_interest)[!(colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession"))]
-        suppl_df[ , Taxoncols] <- 0
-        suppl_df <- suppl_df[ , colnames(allfeaturesbytaxa_interest)]
-        allfeaturesbytaxa_interest <- rbind(allfeaturesbytaxa_interest, suppl_df)
+        #Only append if we're actually missing anything
+        if (length(missingSApairs) > 0){
+            suppl_df <- SampleAccession_tally[missingSApairs, c("Sample", "Accession")]
+            Taxoncols <- colnames(allfeaturesbytaxa_interest)[!(colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession"))]
+            suppl_df[ , Taxoncols] <- 0
+            suppl_df <- suppl_df[ , colnames(allfeaturesbytaxa_interest)]
+            allfeaturesbytaxa_interest <- rbind(allfeaturesbytaxa_interest, suppl_df)
+        }
     }
 
     #Agglomerate if applicable
