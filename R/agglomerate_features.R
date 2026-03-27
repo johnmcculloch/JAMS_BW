@@ -10,6 +10,13 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
         stop("This function can only take a SummarizedExperiment object as input.")
     }
 
+    terminal_taxonomic_levels <- c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin", "LKT")
+    #Test for silly requests
+    if (glomby %in% terminal_taxonomic_levels){
+        flog.warn(paste("No need to agglomerate by", glomby, "as it is a terminal level. Returning original SEobj."))
+
+        return(ExpObj)
+    }
 
     #Find out what kind of an object it is
     analysis <- metadata(ExpObj)$analysis
@@ -26,20 +33,33 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
     }
 
     pheno_original <- colData(ExpObj)
-    taxonomic_levels <- c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
-    terminal_taxonomic_levels <- c("Contig_LKT", "MB2bin", "ConsolidatedGenomeBin")
+    taxonomic_levels <- c("Gram", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
+    taxonomic_levels_tags <- c("", "d__", "k__", "p__", "c__", "o__", "f__", "g__", "s__", "is1__", "LKT__")
+    #Deal with pure unclassifieds in Kingdom to Species
+    if (glomby %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")){
+        #Reallocate LKT to tag__Unclassified to avoid glomming different LKTs at that level into the same glom
+        appropriate_tag <- taxonomic_levels_tags[which(taxonomic_levels == glomby)]
+        ftt[which(ftt[ , glomby] == paste0(appropriate_tag, "Unclassified")), glomby] <- ftt[which(ftt[ , glomby] == paste0(appropriate_tag, "Unclassified")), "LKT"]
+    }
 
     assays <- list()
     #Aggregate counts by summing
     cts <- as.data.frame(assays(ExpObj)$BaseCounts)
     cts$Feats <- rownames(cts)
     feats2glomby_feats <- data.frame(Feats = rownames(ftt), Glomby_feats = as.character(ftt[ , glomby]), stringsAsFactors = FALSE)
+    #Account for completely dark matter (i.e. LKT__Unclassified) not having a taxonomic path.
+    if ("LKT__Unclassified" %in% feats2glomby_feats$Feats){
+        #Attribute LKT__Unclassified to that glomby
+        feats2glomby_feats[which(feats2glomby_feats$Feats == "LKT__Unclassified"), "Glomby_feats"] <- "LKT__Unclassified"
+    }
     cts <- left_join(cts, feats2glomby_feats, by = "Feats")
     cts$Feats <- NULL
 
     glom_cts <- aggregate(. ~ Glomby_feats, data = cts, FUN = sum)
     rownames(glom_cts) <- glom_cts$Glomby_feats
     glom_cts$Glomby_feats <- NULL
+    #Reorder from more to less prevalent
+    glom_cts <- glom_cts[order(rowSums(glom_cts), decreasing = TRUE), ]
     featureorder <- rownames(glom_cts)
     sampleorder <- rownames(pheno_original)
     #Check everything is in the same order
@@ -51,7 +71,6 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
             #Aggregate counts by summing
             gcdf <- as.data.frame(assays(ExpObj)[[CurrAssay]])
             gcdf$Feats <- rownames(gcdf)
-            feats2glomby_feats <- data.frame(Feats = rownames(ftt), Glomby_feats = as.character(ftt[ , glomby]), stringsAsFactors = FALSE)
             gcdf <- left_join(gcdf, feats2glomby_feats, by = "Feats")
             gcdf$Feats <- NULL
             gcdf <- aggregate(. ~ Glomby_feats, data = gcdf, FUN = sum)
@@ -67,22 +86,29 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
     if (JAMS2TaxonomicObj){
         #Get a novel feature table
         glom_ftt <- ftt
-        #Is it 16S or shotgun?
-        if (analysis == "16S"){
-            #Prune columns up to and including wanted glomby taxlevel
-            glom_ftt <- glom_ftt[ , taxonomic_levels[1:which(taxonomic_levels == glomby)]]
-            glom_ftt <- glom_ftt[!duplicated(glom_ftt[ , glomby]), ]
-            rownames(glom_ftt) <- glom_ftt[ , glomby]
-            #ensure same order
-            glom_ftt <- glom_ftt[rownames(glom_cts), ]
-        } else {
-            #JAMS2 taxonomic object is shotgun
-            if (glomby %in% taxonomic_levels){
-                wanted_taxids <- sapply(rownames(glom_cts), function (x) {extract_NCBI_taxid_from_featname(Taxon = x)} )
-                #Remake ftt from JAMStaxtable
-                data(JAMStaxtable)
-                glom_ftt <- JAMStaxtable[wanted_taxids, ]
-                rownames(glom_ftt) <- rownames(glom_cts)
+        if (glomby %in% taxonomic_levels){
+            taxonomic_levels_have <- taxonomic_levels[taxonomic_levels %in% colnames(glom_ftt)]
+            taxonomic_levels_to_keep <- taxonomic_levels_have[1:which(taxonomic_levels_have == glomby)]
+            glom_ftt <- glom_ftt[ , taxonomic_levels_to_keep]
+
+            #Again, account for completely dark matter (i.e. LKT__Unclassified) not having a taxonomic path.
+            if ("LKT__Unclassified" %in% rownames(glom_ftt)){
+                #Attribute LKT__Unclassified to that glomby
+                glom_ftt[which(rownames(glom_ftt) == "LKT__Unclassified"), taxonomic_levels_to_keep] <- "LKT__Unclassified"
+            }
+            glom_ftt <- glom_ftt[ , taxonomic_levels_to_keep]
+            #Try de-duplicating the entire taxonomy table data frame. Depending on how the taxonomy was built, there may be more than one alternate taxonomic path leading to a node. All was done to avoid this with JAMSbuildk2db, but you never know.
+            glom_ftt <- glom_ftt[!duplicated(glom_ftt), ]
+            #Check whether featureorder is the same length as glom_ftt rows and if they are 100% contained within
+            if ((nrow(glom_ftt) == length(featureorder)) & (all(featureorder %in% glom_ftt[ , glomby]))){
+                rownames(glom_ftt) <- glom_ftt[ , glomby]
+                glom_ftt <- glom_ftt[featureorder, ]
+            } else {
+                #There may be some alternate taxonomic paths leading to the same terminal (glomby) leaf. de-duplicate the glomby and keep the first in each case.
+                flog.warn(paste("Alternate taxonomic paths leading to the same node at", glomby, "detected. Keeping the first path in each instance."))
+                glom_ftt <- glom_ftt[!duplicated(glom_ftt[ , glomby]), ]
+                rownames(glom_ftt) <- glom_ftt[ , glomby]
+                glom_ftt <- glom_ftt[featureorder, ]
             }
         }
     } else {

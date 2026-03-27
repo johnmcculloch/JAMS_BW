@@ -47,11 +47,11 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
     #Ensure correct class
     rowsinterestdf$RowNumber <- as.character(rowsinterestdf$RowNumber)
     #Eliminate unavailable information.
-    rowsinterestdf <- rowsinterestdf[!is.na(rowsinterestdf$RowNumber), ]
+    rowsinterestdf <- rowsinterestdf[!is.na(rowsinterestdf$RowNumber), , drop = FALSE]
     #Safer to go by named rows than numeric, as it will throw an error if the name does not exist.
     allfeaturesbytaxa_interest <- as.matrix(metadata(FuncExpObj)[[sparsematrix_name]][as.character(rowsinterestdf$RowNumber), , drop = FALSE])
     #Prune empty taxa, i.e. taxa which have 0 counts for all of the features of interest
-    allfeaturesbytaxa_interest <- as.data.frame(allfeaturesbytaxa_interest[, which(colSums(allfeaturesbytaxa_interest) != 0)])
+    allfeaturesbytaxa_interest <- as.data.frame(allfeaturesbytaxa_interest[, which(colSums(allfeaturesbytaxa_interest) != 0), drop = FALSE])
     allfeaturesbytaxa_interest$RowNumber <- as.character(rownames(allfeaturesbytaxa_interest))
     allfeaturesbytaxa_interest <- left_join(allfeaturesbytaxa_interest, rowsinterestdf, by = "RowNumber")
     allfeaturesbytaxa_interest$RowNumber <- NULL
@@ -85,6 +85,17 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
         stt <- stt[which(stt$LKT %in% LKTs_to_glom), c(glomby, "LKT")]
         #Fill in unclassifieds
         stt[which(is.na(stt[ , glomby])), glomby] <- "Unclassified"
+
+        #Fix level unclassifieds (as opposed to complete Unclassifieds)
+        taxonomic_levels <- c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
+        taxonomic_levels_tags <- c("d__", "k__", "p__", "c__", "o__", "f__", "g__", "s__", "is1__", "LKT__")
+        #Deal with unclassifieds in Kingdom to Species
+        if (glomby %in% c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")){
+            #Reallocate LKT to tag__Unclassified to avoid glomming different LKTs at that level into the same glom
+            appropriate_tag <- taxonomic_levels_tags[which(taxonomic_levels == glomby)]
+            stt[which(stt[ , glomby] == paste0(appropriate_tag, "Unclassified")), glomby] <- stt[which(stt[ , glomby] == paste0(appropriate_tag, "Unclassified")), "LKT"]
+        }
+
         #extract matrix to glom
         LKTs_to_glom_mat <- allfeaturesbytaxa_interest[ , c("Sample", "Accession", LKTs_to_glom)]
         #Filter LKTs present in stt
