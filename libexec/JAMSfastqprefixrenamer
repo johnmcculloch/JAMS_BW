@@ -218,8 +218,8 @@ opt$projimage <- file.path(opt$destination, ".RData")
 save.image(opt$projimage)
 
 #Find fastq files at the origin
-rawfastqpaths <- list.files(path = opt$readsfolder, pattern = "fastq", full.names = TRUE, recursive = TRUE)
-rawfastqnames <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 1) })
+rawfastqpaths <- list.files(path = opt$readsfolder, pattern = "fastq$|fastq.gz$", full.names = TRUE, recursive = TRUE)
+rawfastqnames <- basename(rawfastqpaths)
 
 #Make a dataframe with all the info
 rawfastqsdf <- data.frame(Filenames = rawfastqnames, Filepaths = rawfastqpaths, stringsAsFactors =
@@ -236,7 +236,7 @@ save.image(opt$projimage)
 #Load substitution map
 #Adjust prefix if there is a substitution map
 if (!(is.null(opt$substitutionmap))){
-    submap <- read.table(opt$substitutionmap, header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+    submap <- fread(opt$substitutionmap, header = FALSE, data.table = FALSE)
     colnames(submap) <- c("OriPrefix", "Prefix")
 } else if(!(is.null(opt$substitutionspreadsheet))){
     submap <- read.xlsx(opt$substitutionspreadsheet)
