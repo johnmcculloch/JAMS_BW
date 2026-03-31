@@ -74,10 +74,9 @@ option_list <- list(
                 type="numeric",
                 help ="If using reads, what is the minimum percentage assembly into contigs for a sample to be included in an experiment. (Default=0)"),
 
-#    make_option(c("-e", "--export_tables"),
-#                action="store_true", default = FALSE,
-#                type="logical",
-#                help ="Export relative abundance tables and feature data tables in tsv format."),
+    make_option(c("-T", "--tempdir"), default=NULL, action="store",
+                type="character",
+                help = str_c("path for use as a temporary folder for intermediate files on some JAMSalpha processes. If not set, all processes will run within the sample project folder.")),
 
     make_option(c("-n", "--restrict_to_analyses"),
                 action="store", default = NULL,
@@ -124,7 +123,7 @@ opt$plot_in_parallel <- FALSE
 
 #Authorship message
 authors <- as.character(as.person(packageDescription("JAMS")$Author))
-authorshipmessage <- c(packageDescription("JAMS")$Title, paste("JAMS version", packageVersion("JAMS")), authors, paste("Contact:", "john.mcculloch@nih.gov"), "National Cancer Institute", "National Institutes of Health", "Bethesda, MD, USA")
+authorshipmessage <- c(packageDescription("JAMS")$Title, paste("JAMS version", packageVersion("JAMS")), paste("By:", paste(JAMSauthors, collapse = "; ")), paste("Contact:", "john.mcculloch@nih.gov"), "National Cancer Institute", "National Institutes of Health", "Bethesda, MD, USA")
 
 #Fix path relativity
 fixrelpath <- function(JAMSpath = NULL){
@@ -202,6 +201,7 @@ if (nchar(slurmjobid) > 3){
     flog.info(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
 }
 
+opt <- check_resources(opt = opt, applications_to_check = "base")
 
 ##################
 ## Get metadata ##
@@ -280,7 +280,7 @@ if (!(exists("list.data"))) {
     if (length(Samples_want) > 200){
         flog.info("Crikey! There are over 200 samples to load. Go grab a coffee, this will take some time.")
     }
-    list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = Samples_want, threads = opt$threads, onlyobjects = c("projinfo", "abundances", "featuredata", "readstats"))
+    list.data <- load_jamsfiles_from_system(path = opt$jamsfiles_path, onlysamples = Samples_want, threads = opt$threads, onlyobjects = c("projinfo", "abundances", "featuredata", "readstats"), tempdir = opt$tempdir)
     gc()
 }
 

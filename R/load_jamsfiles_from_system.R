@@ -4,7 +4,7 @@
 #' Loads all JAMS files from system
 #' @export
 
-load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, onlyobjects = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE, use_exactly_n_threads = NULL){
+load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples = NULL, onlyobjects = NULL, threads = 8, multithread_decomp = TRUE, multithread_load = TRUE, use_exactly_n_threads = NULL, tempdir = NULL){
 
     require(parallel)
     flog.info("Searching for jams files.")
@@ -20,11 +20,16 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     jamsfilesdf$FullPath <- sapply(1:length(jamsfilesdf$FullPath), function(x) { fixrelpath(jamsfilesdf$FullPath[x]) })
     jamsfilesdf$Prefix <- gsub(".jams$", "", jamsfilesdf$Filename)
 
-    currpath <- getwd()
+    if (is.null(tempdir)){
+        currpath <- getwd()
+    } else {
+        currpath <- tempdir
+    }
+
     #Create temp files directory if needed.
     jamstempfilespath <- file.path(currpath, "jamstempfiles")
     if (!(dir.exists(jamstempfilespath))){
-        flog.info("Creating directory to hold raw data.")
+        flog.info(paste("Creating directory to hold raw data at", jamstempfilespath))
         dir.create(jamstempfilespath, showWarnings = FALSE, recursive = FALSE)
     }
 
@@ -75,7 +80,7 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
     ## No longer load ucobias, TNF_contigs, TNF_features, taxa_16S_cons as these are not used.
     ##
     fl <- fl[grep("_ucobias\\.", fl, invert = TRUE)]
-    fl <- fl[grep("_TNF_contigs\\.", fl, invert = TRUE)]
+    #fl <- fl[grep("_TNF_contigs\\.", fl, invert = TRUE)]
     fl <- fl[grep("_TNF_features\\.", fl, invert = TRUE)]
     fl <- fl[grep("_taxa_16S_cons\\.", fl, invert = TRUE)]
 
@@ -90,36 +95,14 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         q()
     }
     flwp <- file.path(jamstempfilespath, fl)
+    names(flwp) <- on
 
     flog.info("Please be patient. Depending on how much data you have this might take a while.")
 
     flog.info(paste("There are", length(fl), "objects to load."))
 
-    loadobj <- function(objfn = NULL, never_used_columns = c("AntiFam", "CDD", "Coils", "FunFam", "Gene3D", "PANTHER", "Phobius", "ProSitePatterns", "SFLD", "SignalP_EUK", "SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SMART", "TIGRFAM", "MetaCyc")){
-        #decide whether it is a TSV or RDS file and load appropriately.
-        if ((length(grep("\\.rds$", objfn)) > 0)){
-            tryCatch((jamsdf <- readRDS(objfn)), error = function() { flog.warn(paste("Unable to read file", objfn)) } )
-            #file is rds
-        } else {
-            #assume tsv
-            jamsdf <- fread(data.table = FALSE, file = objfn, sep = "\t", header = TRUE, quote = "", fill = FALSE, integer64 = "numeric", logical01 = FALSE, stringsAsFactors = FALSE, nThread = 1)
-        }
-
-        #Prune unwanted columns
-        if (any(never_used_columns %in% colnames(jamsdf))){
-            wantedcols <- colnames(jamsdf)[!(colnames(jamsdf) %in% never_used_columns)]
-            jamsdf <- jamsdf[ , wantedcols]
-        }
-
-        if ("Analysis" %in% colnames(jamsdf)){
-            jamsdf <- jamsdf[!(jamsdf$Analysis %in% never_used_columns), ]
-        }
-
-        return(jamsdf)
-    }
-
-    if (threads < 16){
-        flog.warn("It is ill-advised to load JAMS objects with multiple threads with less than 16 CPUs. Defaulting to single threaded loading. Please be patient while all objects are loaded into memory.")
+    if (threads < 8){
+        flog.warn("It is ill-advised to load JAMS objects with multiple threads with less than 8 CPUs. Defaulting to single threaded loading. Please be patient while all objects are loaded into memory.")
         multithread_load <- FALSE
     }
 
@@ -132,13 +115,26 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         }
 
         flog.info(paste("Using", appropriatenumcores, "CPUs to load objects."))
-        list.data <- mclapply(flwp, function (x) { loadobj(objfn = x) }, mc.cores = appropriatenumcores, mc.preschedule = FALSE, mc.cleanup = TRUE)
+        #Revert to this commented line in case the makeCluster approach below doesn't work out.
+        #list.data <- mclapply(flwp, function (x) { loadobj(objfn = x, never_used_columns = c("AntiFam", "CDD", "Coils", "FunFam", "Gene3D", "PANTHER", "Phobius", "ProSitePatterns", "SFLD", "SignalP_EUK", "SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SMART", "TIGRFAM", "MetaCyc")) }, mc.cores = appropriatenumcores, mc.preschedule = FALSE, mc.cleanup = TRUE)
+ 
+        # Make cluster
+        cl <- parallel::makeCluster(appropriatenumcores)
+        # Explicitly export the necessary function and objects to each worker.
+        parallel::clusterExport(cl, varlist = c("loadobj", "flwp", "fread", "readRDS", "flog.warn"))
+        list.data <- parallel::parLapply(cl, flwp, function(x) {
+            data.table::setDTthreads(1)
+            loadobj(objfn = x, never_used_columns = c("AntiFam", "CDD", "Coils", "FunFam", "Gene3D", "PANTHER", "Phobius", "ProSitePatterns", "SFLD", "SignalP_EUK", "SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SMART", "TIGRFAM", "MetaCyc"))
+        })
+        # Stop the cluster
+        parallel::stopCluster(cl)
 
     } else {
         list.data <- lapply(flwp, function (x) { loadobj(objfn = x) })
     }
 
-    names(list.data) <- on
+    #names(list.data) <- on #no longer needed because on was attributed as names of vector flwp.
+
     #Flush out any object that was not loaded properly
     empties <- sapply(1:length(on), function(x){ is.null(list.data[[on[x]]])})
     if (sum(empties) > 0){

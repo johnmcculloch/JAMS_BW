@@ -13,7 +13,8 @@ load_jamsfiles_from_system(
   threads = 8,
   multithread_decomp = TRUE,
   multithread_load = TRUE,
-  use_exactly_n_threads = NULL
+  use_exactly_n_threads = NULL,
+  tempdir = NULL
 )
 }
 \description{
