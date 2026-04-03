@@ -76,12 +76,12 @@ option_list <- list(
 
     make_option(c("-T", "--tempdir"), default=NULL, action="store",
                 type="character",
-                help = str_c("path for use as a temporary folder for intermediate files on some JAMSalpha processes. If not set, all processes will run within the sample project folder.")),
+                help = "path for use as a temporary folder for intermediate files on some JAMSalpha processes. If not set, all processes will run within the sample project folder."),
 
     make_option(c("-n", "--restrict_to_analyses"),
                 action="store", default = NULL,
                 type="character",
-                help ="Only generate SummarizedExperiment objects and reports for the following analyses separated by comma. Example: -n LKT,ECNumber,GO,resfinder will only generate reports for these analyses, if available. If omitted, all available analyses will be used." ),
+                help = "Only generate SummarizedExperiment objects and reports for the following analyses separated by comma. Example: -n LKT,ECNumber,GO,resfinder will only generate reports for these analyses, if available. If omitted, all available analyses will be used." ),
 
     make_option(c("-u", "--stratify_functions_by_taxon"),
                 action = "store_true", default = FALSE,
