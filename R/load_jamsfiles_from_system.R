@@ -28,10 +28,10 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
 
     #Create temp files directory if needed.
     jamstempfilespath <- file.path(currpath, "jamstempfiles")
-    if (!(dir.exists(jamstempfilespath))){
+    #if (!(dir.exists(jamstempfilespath))){
         flog.info(paste("Creating directory to hold raw data at", jamstempfilespath))
         dir.create(jamstempfilespath, showWarnings = FALSE, recursive = FALSE)
-    }
+    #}
 
     #Restrict loading to only certain samples if required.
     if (!is.null(onlysamples)){
@@ -121,13 +121,13 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
         # Make cluster
         cl <- parallel::makeCluster(appropriatenumcores)
         # Explicitly export the necessary function and objects to each worker.
-        parallel::clusterExport(cl, varlist = c("loadobj", "flwp", "fread", "readRDS", "flog.warn"))
+        parallel::clusterExport(cl, varlist = c("loadobj", "fread", "readRDS", "flog.warn", "setDTthreads"))
         list.data <- parallel::parLapply(cl, flwp, function(x) {
             data.table::setDTthreads(1)
-            loadobj(objfn = x, never_used_columns = c("AntiFam", "CDD", "Coils", "FunFam", "Gene3D", "PANTHER", "Phobius", "ProSitePatterns", "SFLD", "SignalP_EUK", "SignalP_GRAM_NEGATIVE", "SignalP_GRAM_POSITIVE", "SMART", "TIGRFAM", "MetaCyc"))
+            loadobj(objfn = x)
         })
         # Stop the cluster
-        parallel::stopCluster(cl)
+        suppressWarnings(parallel::stopCluster(cl))
 
     } else {
         list.data <- lapply(flwp, function (x) { loadobj(objfn = x) })

@@ -203,6 +203,8 @@ if (nchar(slurmjobid) > 3){
     flog.info(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
 }
 
+opt$testdependencies <- FALSE
+opt$prefix <- opt$projectname
 opt <- check_resources(opt = opt, applications_to_check = "base")
 
 ##################
