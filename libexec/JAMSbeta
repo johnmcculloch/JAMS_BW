@@ -13,11 +13,13 @@ if ((.Platform$OS.type) != "unix"){
 slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
 
 #Decide which kind of system you are on.
-if(nchar(slurmjobid) < 3){
+if (nchar(slurmjobid) < 3){
     cat("You are not on a Slurm Workload Cluster\n")
 } else {
     cat(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid, "\n"))
 }
+
+JAMSauthors <- as.character(as.person(packageDescription("JAMS")$Author))
 
 #################
 ## Get options ##
