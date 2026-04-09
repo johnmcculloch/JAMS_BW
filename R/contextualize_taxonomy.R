@@ -1,9 +1,15 @@
-#' contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15)
+#' contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15, threads = 1)
 #'
 #' This is an internal function used exclusively within the make_SummarizedExperiments function to cluster taxonomic entities belonging to the same species taxid into functional clades. Do not attempt to use this out of this context.
 #' @export
 
-contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15){
+contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15, threads = 1){
+
+    if (threads > 1){
+        #Assure necessary packages are loaded
+        library(foreach)
+        library(doParallel)
+    }
 
     data(JAMStaxtable)
 
@@ -102,30 +108,60 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     #Only cluster or deconvolute working taxids which have > 1 MAG in it. Otherwise, it defeats the purpose.
     WorkingTaxids_to_decon <- names(which(table(BinsDF$WorkingTaxid) > 1))
     if (length(WorkingTaxids_to_decon) > 0){
-        flog.info(paste("There are", length(WorkingTaxids_to_decon), "species-level taxonomical entities to deconvolute"))
-        flog.info(paste("Entities will be clustered within bins presenting a distance >", dissimilarity_cutoff))
 
-        #Loop round and resolve.
-        for (WT in WorkingTaxids_to_decon){
-            SampleEntities_df <- subset(BinsDF, WorkingTaxid == WT)[ , c("Sample", "ConsolidatedGenomeBin", "MAG_Accession")]
-            #Build a data frame from which to obtain aggregate product (or functional feature) length sums.
+        # Determine whether deconvolution will proceed in single threaded or multi thread manner
+        if (threads > 1) {
 
-            curr_genes_df <- NULL
-            for (rn in 1:nrow(SampleEntities_df)){
-                curr_func_df <- subset(list.data[[paste(SampleEntities_df$Sample[rn], "featuredata", sep = "_")]], ConsolidatedGenomeBin == SampleEntities_df$ConsolidatedGenomeBin[rn])[ , c("Feature", "LengthDNA", "Product", "ConsolidatedGenomeBin")]
-                curr_func_df$LengthDNA <- as.numeric(curr_func_df$LengthDNA)
-                colnames(curr_func_df)[which(colnames(curr_func_df) == "Product")] <- "Accession"
-                curr_func_df$ProportionLengthDNA <- curr_func_df$LengthDNA / sum(curr_func_df$LengthDNA)
-                curr_func_df$Sample <- SampleEntities_df$Sample[rn]
-                curr_func_df$MAG_Accession <- SampleEntities_df$MAG_Accession[rn]
-                curr_genes_df <- rbind(curr_genes_df, curr_func_df)
-                curr_func_df <- NULL
+            flog.info(paste("Deconvoluting", length(WorkingTaxids_to_decon), "taxa using", threads, "parallel threads..."))
+
+            #Setup cluster
+            cl <- parallel::makeCluster(threads)
+            doParallel::registerDoParallel(cl)
+
+            strain_df <- foreach::foreach(WT = WorkingTaxids_to_decon, .combine = 'rbind', .packages = c('dplyr', 'tidyr', 'vegan')) %dopar% {
+                SampleEntities_df <- subset(BinsDF, WorkingTaxid == WT)[, c("Sample", "ConsolidatedGenomeBin", "MAG_Accession")]
+                curr_genes_df_list <- lapply(1:nrow(SampleEntities_df), function(rn) {
+                    curr_func_df <- subset(list.data[[paste(SampleEntities_df$Sample[rn], "featuredata", sep = "_")]], ConsolidatedGenomeBin == SampleEntities_df$ConsolidatedGenomeBin[rn])[, c("Feature", "LengthDNA", "Product", "ConsolidatedGenomeBin")]
+                    curr_func_df$LengthDNA <- as.numeric(curr_func_df$LengthDNA)
+                    colnames(curr_func_df)[which(colnames(curr_func_df) == "Product")] <- "Accession"
+                    curr_func_df$ProportionLengthDNA <- curr_func_df$LengthDNA / sum(curr_func_df$LengthDNA)
+                    curr_func_df$Sample <- SampleEntities_df$Sample[rn]
+                    curr_func_df$MAG_Accession <- SampleEntities_df$MAG_Accession[rn]
+                    return(curr_func_df)
+                })
+                curr_genes_df <- do.call(rbind, curr_genes_df_list)
+                curr_strain_df <- cluster_strains(genes_df = curr_genes_df, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
+                curr_strain_df$ContextualizedSpecies <- sapply(1:nrow(curr_strain_df), function(x) { 
+                    rename_MAG_Accession(MAG_Accession = curr_strain_df[x, "MAG_Accession"], Cluster_Number = curr_strain_df[x, "Cluster_Number"], BinsDF = BinsDF) 
+                })
+                return(curr_strain_df)
             }
+            
+            # Stop cluster
+            parallel::stopCluster(cl)
 
-            curr_strain_df <- cluster_strains(genes_df = curr_genes_df, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
-            curr_strain_df$ContextualizedSpecies <- sapply(1:nrow(curr_strain_df), function (x) { rename_MAG_Accession(MAG_Accession = curr_strain_df[x, "MAG_Accession"], Cluster_Number = curr_strain_df[x, "Cluster_Number"], BinsDF = BinsDF) } )
-            strain_df <- rbind(strain_df, curr_strain_df)
-            curr_strain_df <- NULL
+        } else {
+            #Single threaded approach
+            flog.info(paste("Deconvoluting", length(WorkingTaxids_to_decon), "taxa using a single thread..."))
+
+            strain_df <- foreach::foreach(WT = WorkingTaxids_to_decon, .combine = 'rbind') %do% {
+                SampleEntities_df <- subset(BinsDF, WorkingTaxid == WT)[, c("Sample", "ConsolidatedGenomeBin", "MAG_Accession")]
+                curr_genes_df_list <- lapply(1:nrow(SampleEntities_df), function(rn) {
+                    curr_func_df <- subset(list.data[[paste(SampleEntities_df$Sample[rn], "featuredata", sep = "_")]], ConsolidatedGenomeBin == SampleEntities_df$ConsolidatedGenomeBin[rn])[, c("Feature", "LengthDNA", "Product", "ConsolidatedGenomeBin")]
+                    curr_func_df$LengthDNA <- as.numeric(curr_func_df$LengthDNA)
+                    colnames(curr_func_df)[which(colnames(curr_func_df) == "Product")] <- "Accession"
+                    curr_func_df$ProportionLengthDNA <- curr_func_df$LengthDNA / sum(curr_func_df$LengthDNA)
+                    curr_func_df$Sample <- SampleEntities_df$Sample[rn]
+                    curr_func_df$MAG_Accession <- SampleEntities_df$MAG_Accession[rn]
+                    return(curr_func_df)
+                })
+                curr_genes_df <- do.call(rbind, curr_genes_df_list)
+                curr_strain_df <- cluster_strains(genes_df = curr_genes_df, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
+                curr_strain_df$ContextualizedSpecies <- sapply(1:nrow(curr_strain_df), function(x) { 
+                    rename_MAG_Accession(MAG_Accession = curr_strain_df[x, "MAG_Accession"], Cluster_Number = curr_strain_df[x, "Cluster_Number"], BinsDF = BinsDF) 
+                })
+                return(curr_strain_df)
+            }
         }
     }
 

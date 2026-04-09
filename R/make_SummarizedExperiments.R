@@ -13,6 +13,12 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
     data(InterproDict)
     data(blast_lookup)
 
+    if (threads > 1){
+        #Assure necessary packages are loaded
+        library(foreach)
+        library(doParallel)
+    }
+
     #Get data for features
     if (!is.null(onlysamples)){
         pheno2 <- pheno[rownames(pheno) %in% onlysamples, ]
@@ -144,7 +150,7 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 LKTdosesall$ConsolidatedGenomeBin <- gsub("^LKT__", "CGB__", LKTdosesall$ConsolidatedGenomeBin)
             }
 
-            LKTdosesall <- contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = functional_contextualization_dissimilarity_cutoff)
+            LKTdosesall <- contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = functional_contextualization_dissimilarity_cutoff, threads = threads)
 
             #Bequeath to opt for using later when building functional experiments
             #Keep this here for the time being. make_SummarizedExperiments does not return opt, so at a later date I might add this to the SEobj itself, depending on the object size.
@@ -315,6 +321,15 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         } else {
             appropriate_featurdata_tax_colm <- "LKT"
         }
+
+        # Ensure threads > 1 to avoid issues with makeCluster
+#        if (threads > 1) {
+#            cl <- parallel::makeCluster(threads)
+#            doParallel::registerDoParallel(cl)
+#            flog.info(paste("Registered parallel backend with", threads, "cores."))
+#        } else {
+#            flog.info("Running in single-threaded mode.")
+#        }
 
         batch_start_time <- Sys.time()
         for (sampnum in 1:length(Samples)){
