@@ -412,7 +412,7 @@ if (!exists("expvec")){
         flog.info("Functional (non-taxonomic) SummarizedExperiment objects will be stratified by taxonomy.")
     }
 
-    expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data, onlyanalyses = onlyanalyses, stratify_functions_by_taxon = opt$stratify_functions_by_taxon, cdict = cdict, threads = opt$threads)
+    expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data, onlyanalyses = onlyanalyses, stratify_functions_by_taxon = opt$stratify_functions_by_taxon, cdict = cdict, threads = opt$threads, totmembytes = opt$totmembytes)
 
 }
 

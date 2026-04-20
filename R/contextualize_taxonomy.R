@@ -1,9 +1,9 @@
-#' contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15, threads = 1)
+#' contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15, threads = 1, totmembytes = NULL)
 #'
 #' This is an internal function used exclusively within the make_SummarizedExperiments function to cluster taxonomic entities belonging to the same species taxid into functional clades. Do not attempt to use this out of this context.
 #' @export
 
-contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15, threads = 1){
+contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15, threads = 1, totmembytes = NULL){
 
     if (threads > 1){
         #Assure necessary packages are loaded
@@ -109,13 +109,27 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     WorkingTaxids_to_decon <- names(which(table(BinsDF$WorkingTaxid) > 1))
     if (length(WorkingTaxids_to_decon) > 0){
 
+        # Calculate safe threads based on RAM
+        safe_memory_threads <- calculate_safe_threads(
+            requested_threads = threads, 
+            totmembytes = totmembytes, 
+            list.data = list.data, 
+            BinsDF = BinsDF
+        )
+
+        # Don't use more threads than the number of tasks we actually have
+        num_tasks <- length(WorkingTaxids_to_decon)
+        optimal_threads <- min(safe_memory_threads, num_tasks)
+        if (optimal_threads < threads) {
+            flog.info(sprintf("Throttling threads from %d to %d to prevent memory exhaustion or overhead.", threads, optimal_threads))
+        }
+
         # Determine whether deconvolution will proceed in single threaded or multi thread manner
         if (threads > 1) {
 
-            flog.info(paste("Deconvoluting", length(WorkingTaxids_to_decon), "taxa using", threads, "parallel threads..."))
-
+            flog.info(paste("Deconvoluting", num_tasks, "taxa using", optimal_threads, "parallel threads..."))
             #Setup cluster
-            cl <- parallel::makeCluster(threads)
+            cl <- parallel::makeCluster(optimal_threads)
             doParallel::registerDoParallel(cl)
 
             strain_df <- foreach::foreach(WT = WorkingTaxids_to_decon, .combine = 'rbind', .packages = c('dplyr', 'tidyr', 'vegan')) %dopar% {

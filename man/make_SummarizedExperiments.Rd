@@ -17,6 +17,7 @@ make_SummarizedExperiments(
   phenolabels = NULL,
   cdict = cdict,
   threads = 8,
+  totmembytes = NULL,
   functional_contextualization_dissimilarity_cutoff = 0.15
 )
 }

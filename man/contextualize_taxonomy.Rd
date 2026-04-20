@@ -2,14 +2,15 @@
 % Please edit documentation in R/contextualize_taxonomy.R
 \name{contextualize_taxonomy}
 \alias{contextualize_taxonomy}
-\title{contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15, threads = 1)}
+\title{contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15, threads = 1, totmembytes = NULL)}
 \usage{
 contextualize_taxonomy(
   LKTdosesall = LKTdosesall,
   list.data = list.data,
   normalize_length = FALSE,
   dissimilarity_cutoff = 0.15,
-  threads = 1
+  threads = 1,
+  totmembytes = NULL
 )
 }
 \description{

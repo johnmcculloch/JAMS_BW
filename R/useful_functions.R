@@ -1168,3 +1168,42 @@ dichotomize_variable_in_md <- function(md = NULL, column_to_dichotomize = NULL, 
 
     return(dichot_vector)
 }
+
+
+#' Calculate safe number of threads to avoid Out-Of-Memory errors when using contextualize_taxonomy
+#'
+#' @param requested_threads The maximum number of CPUs requested by the user.
+#' @param totmembytes The total available system memory in bytes.
+#' @param list.data The list.data object that will be exported to workers.
+#' @param BinsDF The BinsDF object that will be exported to workers.
+#' @return An integer representing the safe number of threads to use.
+#' @export
+
+calculate_safe_threads <- function(requested_threads= NULL, totmembytes = NULL, list.data = NULL, BinsDF = NULL) {
+    
+    #If totmembytes is missing or invalid, fallback to requested threads
+    if (is.null(totmembytes) || is.na(totmembytes) || totmembytes <= 0) {
+        return(requested_threads)
+    }
+
+    size_list_data <- as.numeric(utils::object.size(list.data))
+    size_BinsDF <- as.numeric(utils::object.size(BinsDF))
+
+    #overhead for each worker
+    r_overhead_bytes <- 400 * 1024^2 
+
+    #Calculate memory per worker, with 25% margin
+    mem_per_worker <- (size_list_data + size_BinsDF + r_overhead_bytes) * 1.25
+    available_mem_for_workers <- totmembytes - mem_per_worker
+
+    if (available_mem_for_workers <= 0) {
+        safe_threads <- 1
+    } else {
+        safe_threads <- floor(available_mem_for_workers / mem_per_worker)
+    }
+
+    final_threads <- min(requested_threads, safe_threads)
+    final_threads <- max(1, final_threads)
+
+    return(final_threads)
+}
