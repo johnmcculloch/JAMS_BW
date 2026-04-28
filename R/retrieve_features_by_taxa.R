@@ -75,7 +75,7 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
 
     #Restrict to LKTs before glomming, if required from LKTsToKeep
     if (!is.null(LKTsToKeep)){
-        Taxoncols <- colnames(allfeaturesbytaxa_interest)[!(colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession", "Ultra_low_abundance_LKTs"))]
+        Taxoncols <- colnames(allfeaturesbytaxa_interest)[!(colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession"))]
         Taxoncols <- Taxoncols[Taxoncols %in% LKTsToKeep]
         #Check there is at least one left
         if (length(Taxoncols) < 1){
@@ -83,7 +83,7 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
             stop("Aborting")
         }
         #Subset taxa to what was requested.
-        allfeaturesbytaxa_interest <- allfeaturesbytaxa_interest[ , c("Sample", "Accession", Taxoncols, "Ultra_low_abundance_LKTs")]
+        allfeaturesbytaxa_interest <- allfeaturesbytaxa_interest[ , c("Sample", "Accession", Taxoncols)]
     }
 
     #Agglomerate if applicable
