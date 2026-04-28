@@ -3,7 +3,7 @@
 #' Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
 #' @export
 
-retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE){
+retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, LKTsToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE){
 
     if (assay_for_matrix == "GeneCounts"){
         sparsematrix_name <- "allfeaturesbytaxa_GeneCounts_matrix"
@@ -71,6 +71,19 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
             suppl_df <- suppl_df[ , colnames(allfeaturesbytaxa_interest)]
             allfeaturesbytaxa_interest <- rbind(allfeaturesbytaxa_interest, suppl_df)
         }
+    }
+
+    #Restrict to LKTs before glomming, if required from LKTsToKeep
+    if (!is.null(LKTsToKeep)){
+        Taxoncols <- colnames(allfeaturesbytaxa_interest)[!(colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession", "Ultra_low_abundance_LKTs"))]
+        Taxoncols <- Taxoncols[Taxoncols %in% LKTsToKeep]
+        #Check there is at least one left
+        if (length(Taxoncols) < 1){
+            flog.warn("No LKTs passed to LKTsToKeep were found within the taxonomic stratification matrix. Check your inputs.")
+            stop("Aborting")
+        }
+        #Subset taxa to what was requested.
+        allfeaturesbytaxa_interest <- allfeaturesbytaxa_interest[ , c("Sample", "Accession", Taxoncols, "Ultra_low_abundance_LKTs")]
     }
 
     #Agglomerate if applicable

@@ -10,6 +10,7 @@ retrieve_features_by_taxa(
   assay_for_matrix = "BaseCounts",
   wantedfeatures = NULL,
   wantedsamples = NULL,
+  LKTsToKeep = NULL,
   asPPM = TRUE,
   PPM_normalize_to_bases_sequenced = FALSE,
   PPMthreshold = 0,

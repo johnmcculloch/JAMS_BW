@@ -2,7 +2,7 @@
 % Please edit documentation in R/useful_functions.R
 \name{calculate_safe_threads}
 \alias{calculate_safe_threads}
-\title{Calculate safe number of threads to avoid Out-Of-Memory errors}
+\title{Calculate safe number of threads to avoid Out-Of-Memory errors when using contextualize_taxonomy}
 \usage{
 calculate_safe_threads(
   requested_threads = NULL,
@@ -24,5 +24,5 @@ calculate_safe_threads(
 An integer representing the safe number of threads to use.
 }
 \description{
-Calculate safe number of threads to avoid Out-Of-Memory errors
+Calculate safe number of threads to avoid Out-Of-Memory errors when using contextualize_taxonomy
 }
