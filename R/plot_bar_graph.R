@@ -153,7 +153,7 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
                 p <- p + annotate("text", label = level, x = startx + (endx - startx) / 2, y = 2 * cat_pos, cex = cat_text_size)
             }
         }
-        return(p)
+
         gvec[[plotnum]] <- p
         plotnum <- plotnum + 1
     }
