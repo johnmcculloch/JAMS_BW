@@ -2,7 +2,7 @@
 % Please edit documentation in R/filter_experiment.R
 \name{filter_experiment}
 \alias{filter_experiment}
-\title{filter_experiment(SEobj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), GenomeCompletenessCutoff = NULL, GenomeContaminationCutoff = NULL, applyfilters = NULL, discard_SDoverMean_below = NULL, normalization = NULL, PPM_normalize_to_bases_sequenced = TRUE, flush_out_empty_samples = FALSE, clr_pseudocount = 1, give_info = TRUE)}
+\title{filter_experiment(SEobj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), GenomeCompletenessCutoff = NULL, GenomeContaminationCutoff = NULL, applyfilters = NULL, discard_SDoverMean_below = NULL, normalization = NULL, PPM_normalize_to_bases_sequenced = TRUE, only_allow_CSBs = FALSE, flush_out_empty_samples = FALSE, clr_pseudocount = 1, give_info = TRUE)}
 \usage{
 filter_experiment(
   SEobj = NULL,
@@ -16,6 +16,7 @@ filter_experiment(
   discard_SDoverMean_below = NULL,
   normalization = NULL,
   PPM_normalize_to_bases_sequenced = TRUE,
+  only_allow_CSBs = FALSE,
   flush_out_empty_samples = FALSE,
   clr_pseudocount = 1,
   give_info = TRUE

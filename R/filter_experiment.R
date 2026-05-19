@@ -1,16 +1,17 @@
-#' filter_experiment(SEobj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), GenomeCompletenessCutoff = NULL, GenomeContaminationCutoff = NULL, applyfilters = NULL, discard_SDoverMean_below = NULL, normalization = NULL, PPM_normalize_to_bases_sequenced = TRUE, flush_out_empty_samples = FALSE, clr_pseudocount = 1, give_info = TRUE)
+#' filter_experiment(SEobj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), GenomeCompletenessCutoff = NULL, GenomeContaminationCutoff = NULL, applyfilters = NULL, discard_SDoverMean_below = NULL, normalization = NULL, PPM_normalize_to_bases_sequenced = TRUE, only_allow_CSBs = FALSE, flush_out_empty_samples = FALSE, clr_pseudocount = 1, give_info = TRUE)
 #'
 #' Filters a SummarizedExperiment object by several criteria.
 #' @export
 
-filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), GenomeCompletenessCutoff = NULL, GenomeContaminationCutoff = NULL, applyfilters = NULL, discard_SDoverMean_below = NULL, normalization = NULL, PPM_normalize_to_bases_sequenced = TRUE, flush_out_empty_samples = FALSE, clr_pseudocount = 1, give_info = TRUE){
+filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), GenomeCompletenessCutoff = NULL, GenomeContaminationCutoff = NULL, applyfilters = NULL, discard_SDoverMean_below = NULL, normalization = NULL, PPM_normalize_to_bases_sequenced = TRUE, only_allow_CSBs = FALSE, flush_out_empty_samples = FALSE, clr_pseudocount = 1, give_info = TRUE){
+
+    #Consider synonym
+    if (normalization[1] == FALSE){
+        normalization <- NULL
+    }
 
     #Check that, if using normalization, the method is a valid one.
     if (!is.null(normalization)){
-        #Consider synonym
-        if (normalization[1] == FALSE){
-            normalization <- NULL
-        }
         #Check validity of method
         if (!any(normalization %in% c("relabund", "clr"))){
           flog.warn('Normalization must be set to relative abundance with "relabund", or to CLR transform with "clr"')
@@ -35,6 +36,28 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
             #Also prune total counts vector in SEobj metadata
             for (mdTU in c("TotalBasesSequenced", "TotalBasesSequencedinAnalysis")){
                 metadata(SEobj)[[mdTU]] <- metadata(SEobj)[[mdTU]][ , colnames(SEobj), drop = FALSE]
+            }
+        }
+
+        #If requesting only CSBs, check that the request is valid and that there are any.
+        if (only_allow_CSBs){
+            #Check this is a ConsolidatedGenomeBin SEobj
+            if (metadata(SEobj)$analysis != "ConsolidatedGenomeBin"){
+                flog.warn("Restriction of taxonomic features to CSBs only makes sense for a ConsolidatedGenomeBin analysis type JAMS2 SummarizedExperiment object.")
+                flog.warn(paste("Ignoring request to restrict features to CSBs, this is a", metadata(SEobj)$analysis, "type SEobj."))
+            } else {
+                CSBsToKeep <- rownames(SEobj)[grep("^CSB_", rownames(SEobj))]
+                #Stop if there is nothing left. You will be amazed as to what people use as inputs.
+                if (length(CSBsToKeep) < 2){
+                    flog.warn("There are less than 2 features in which are valid CSBs in the input SEobj.")
+                    stop("Impossible to make a SummarizedExperiment object with less than 2 features. Check featuresToKeep.")
+                }
+                PctCSBs <- paste0(round(((length(CSBsToKeep) / nrow(SEobj)) * 100), 1), "%")
+                if (give_info){
+                    flog.warn(paste("Filtering out features which are not CSBs (Consolidated Species Bins), i.e. features which were not binned by MetaBAT2 in JAMSalpha."))
+                    flog.info(paste("CSBs kept are", PctCSBs, "of the number of features on the original SEobj."))
+                }
+                SEobj <- SEobj[CSBsToKeep, ]
             }
         }
 
