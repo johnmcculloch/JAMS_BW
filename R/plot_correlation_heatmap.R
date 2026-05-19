@@ -5,6 +5,10 @@
 
 plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, asPPM = TRUE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE) {
 
+
+    #Account for JAMS2 spaces
+    taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
+
     #Vet experiment object
     obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, class_to_ignore = class_to_ignore)
 
@@ -83,7 +87,7 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
             }
 
             #Rename rows to include description if not taxonomic data
-            if (analysis != "LKT"){
+            if (!analysis %in% taxonomic_spaces){
                 feattable <- rowData(currobj)
                 feattable$Feature <- paste(feattable$Accession, feattable$Description, sep = "-")
                 rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]
@@ -135,12 +139,12 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
                 ha1 <- NULL
                 ha2 <- NULL
 
-                if (analysis == "LKT"){
+                if (analysis %in% taxonomic_spaces){
 
                     if ("GenomeCompleteness" %in% names(assays(currobj))){
                         genomecompletenessdf <- assays(currobj)$GenomeCompleteness
                         genomecompletenessstats <- as.matrix(genomecompletenessdf[rownames(matstats), ])
-                        gcl <- lapply(1:nrow(genomecompletenessstats), function (x){ (as.numeric(genomecompletenessstats[x, ][which(genomecompletenessstats[x, ] != 0)])) * 100 })
+                        gcl <- lapply(1:nrow(genomecompletenessstats), function (x){ (as.numeric(genomecompletenessstats[x, ][which(genomecompletenessstats[x, ] != 0)])) * 1 })
                     }
 
                     if (any(c(showGram, showphylum))){
