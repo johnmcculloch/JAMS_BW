@@ -54,6 +54,8 @@
 
 #' @param GenomeCompletenessCutoff Requires a numeric vector of length 2 for specifying how to filter out features by genome completeness. This is, of course, only applicble for taxonomic shotgun SummarizedExperiment objects. When passed to non-taxonomic shotgun SummarizedExperiment objects, GenomeCompletenessCutoff will be ignored. The first value of the vector specifies the minimum genome completeness in percentage  and the second value is the percentage of samples which must have at least that genome completeness. Thus, passing c(50, 5) to GenomeCompletenessCutoff would filter out any taxonomic feature which does not have at least 50 percent of genome completeness in at least 5 percent of all samples being plot. Please note that when using the subsetby option (q.v.) to automatically plot multiple plots of sample subsets, the GenomeCompletenessCutoff parameters are applied within the subset. The default is c(0, 0), meaning no feature is filtered. If NULL is passed, then the value defaults to c(0, 0). See also applyfilters for a shorthand way of applying multiple filtration settings.
 
+#' @param only_allow_CSBs Requires a logical value. If set to TRUE, if the ExpObj passed as input is a taxonomic SummarizedExperiment object of JAMS analysis class "ConsolidatedGenomeBin", the only features to be considered are those which are Consolidated Species Bins (CSBs), i.e. taxa which were obtained from MetaBat2 bins in the JAMSalpha run of a sample. Taxonomic features coming exclusively from unbinned (leftover) contigs will be eliminated from the analysis. Default is FALSE, i.e. all taxa are kept.
+
 #' @param plotcentroids Requires a logical value. If set to TRUE, centroids of samples within each sample group belonging to classes within the variable specified with compareby will be plot and lines will be drawn from each sample to the group centroid. Default is FALSE.
 
 #' @param highlight_centroids Requires a logical value. If set to TRUE, when using plotcentroids, the centroids will be highlighted and marked with a slightly larger relevant group shape. Default is TRUE.
@@ -88,7 +90,7 @@
 
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, unhighlighted_transparency_percentage = 95, featuresToKeep = NULL, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, asPPM = TRUE, normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, include_components_variance_plot = FALSE, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, unhighlighted_transparency_percentage = 95, featuresToKeep = NULL, only_allow_CSBs = FALSE, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, asPPM = TRUE, normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, include_components_variance_plot = FALSE, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
@@ -112,7 +114,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     valid_vars <- c(compareby, subsetby)[which(!is.na(c(compareby, subsetby)))]
 
     #Vet experiment object
-    obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = valid_vars, class_to_ignore = class_to_ignore)
+    obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, only_allow_CSBs = only_allow_CSBs, glomby = glomby, variables_to_fix = valid_vars, class_to_ignore = class_to_ignore)
 
     analysis <- metadata(obj)$analysis
     if (!is.null(glomby)){
@@ -153,7 +155,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             #Obtain "global" list of features if applyfilters is not null, or any of the filtering arguments is not c(0,0) as to maintain same features within subsets, if any.
             if (any(c(all(presetlist$featcutoff != c(0,0)), all(presetlist$GenomeCompletenessCutoff != c(0,0)),
             !is.null(applyfilters)))){
-                currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = NULL, featuresToKeep = NULL, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, discard_SDoverMean_below = discard_SDoverMean_below)
+                currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, discard_SDoverMean_below = discard_SDoverMean_below)
                 global_FTK <- rownames(currobj)
             } else {
                 global_FTK <- rownames(obj)
@@ -218,7 +220,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (assay_for_matrix == "BaseCounts"){
 
-            currobj <- filter_experiment(SEobj = obj, featcutoff = c(0,0), samplesToKeep = samplesToKeep_sp, featuresToKeep = global_FTK, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = c(0,0), discard_SDoverMean_below = NULL, flush_out_empty_samples = FALSE)
+            currobj <- filter_experiment(SEobj = obj, featcutoff = c(0,0), samplesToKeep = samplesToKeep_sp, featuresToKeep = global_FTK, only_allow_CSBs = FALSE, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = c(0,0), discard_SDoverMean_below = NULL, flush_out_empty_samples = FALSE)
 
             if (PPM_normalize_to_bases_sequenced == TRUE){
                 pcatit <- paste(c(pcatit, "Normalized to total number of bases sequenced in sample"), collapse = "\n")

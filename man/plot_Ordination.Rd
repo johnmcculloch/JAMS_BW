@@ -12,6 +12,7 @@ plot_Ordination(
   samplesToHighlight = NULL,
   unhighlighted_transparency_percentage = 95,
   featuresToKeep = NULL,
+  only_allow_CSBs = FALSE,
   ignoreunclassified = TRUE,
   applyfilters = NULL,
   featcutoff = NULL,
@@ -69,6 +70,8 @@ plot_Ordination(
 \item{unhighlighted_transparency_percentage}{Numerical value representing the percentage transparency for unhighlighted samples when using the samplesToHighlight argument. Default is 95 percent, meaning the unhighlighted samples will have 5 percent of the brightness than highlighted samples. To turn off plotting of unhighlighted samples, set unhighlighted_transparency_percentage to 100.}
 
 \item{featuresToKeep}{Vector with feature names to keep. If NULL, all features within the SummarizedExperiment object are kept. Default is NULL. Please note that when agglomerating features with the glomby argument (see above), feature names passed to featuresToKeep must be post-agglomeration feature names. For example, if glomby="Family", featuresToKeep must be family names, such as "f__Enterobacteriaceae", etc.}
+
+\item{only_allow_CSBs}{Requires a logical value. If set to TRUE, if the ExpObj passed as input is a taxonomic SummarizedExperiment object of JAMS analysis class "ConsolidatedGenomeBin", the only features to be considered are those which are Consolidated Species Bins (CSBs), i.e. taxa which were obtained from MetaBat2 bins in the JAMSalpha run of a sample. Taxonomic features coming exclusively from unbinned (leftover) contigs will be eliminated from the analysis. Default is FALSE, i.e. all taxa are kept.}
 
 \item{ignoreunclassified}{Requires a logical value. If set to TRUE, for taxonomical SummarizedExperiment objects, the feature "LKT__Unclassified" will be omitted from being shown. In the case of non-taxonomical SummarizedExperiment objects, the completely unannotated features will be omitted. For example, for an ECNumber SummarizedExperiment object, genes *without* an Enzyme Commission Number annotation (feature "EC_none") will not be shown. Statistics are, however, computed taking the completely unclassifed feature into account, so p-values will not change.}
 

@@ -1,16 +1,16 @@
-#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, asPPM = TRUE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE)
+#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, asPPM = TRUE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE)
 #'
 #' Plots correlation heatmaps annotated by the metadata or a correlelogram of features
 #' @export
 
-plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, asPPM = TRUE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE) {
+plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, asPPM = TRUE, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = NULL, returnstats = FALSE) {
 
 
     #Account for JAMS2 spaces
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
 
     #Vet experiment object
-    obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, class_to_ignore = class_to_ignore)
+    obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, only_allow_CSBs = only_allow_CSBs, glomby = glomby, class_to_ignore = class_to_ignore)
 
     analysis <- metadata(obj)$analysis
     if (!is.null(glomby)){
@@ -61,7 +61,7 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
             subsetname <- "no_sub"
         }
 
-        currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep_sp, featuresToKeep = featuresToKeep, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff)
+        currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep_sp, featuresToKeep = featuresToKeep, only_allow_CSBs = FALSE, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff)
 
         numfeats <- nrow(currobj)
 

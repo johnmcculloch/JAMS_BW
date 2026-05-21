@@ -10,6 +10,7 @@ plot_relabund_heatmap(
   hmtype = "exploratory",
   samplesToKeep = NULL,
   featuresToKeep = NULL,
+  only_allow_CSBs = FALSE,
   subsetby = NULL,
   compareby = NULL,
   wilcox_paired_by = NULL,
@@ -71,6 +72,8 @@ plot_relabund_heatmap(
 \item{samplesToKeep}{Vector with sample names to keep. If NULL, all samples within the SummarizedExperiment object are kept. Default is NULL.}
 
 \item{featuresToKeep}{Vector with feature names to keep. If NULL, all features within the SummarizedExperiment object are kept. Default is NULL. Please note that when agglomerating features with the glomby argument (see above), feature names passed to featuresToKeep must be post-agglomeration feature names. For example, if glomby="Family", featuresToKeep must be family names, such as "f__Enterobacteriaceae", etc.}
+
+\item{only_allow_CSBs}{Requires a logical value. If set to TRUE, if the ExpObj passed as input is a taxonomic SummarizedExperiment object of JAMS analysis class "ConsolidatedGenomeBin", the only features to be considered are those which are Consolidated Species Bins (CSBs), i.e. taxa which were obtained from MetaBat2 bins in the JAMSalpha run of a sample. Taxonomic features coming exclusively from unbinned (leftover) contigs will be eliminated from the analysis. Default is FALSE, i.e. all taxa are kept.}
 
 \item{subsetby}{String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.}
 

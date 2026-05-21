@@ -5,11 +5,6 @@
 
 filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, featmaxatleastPPM = 0, featcutoff = c(0, 0), GenomeCompletenessCutoff = NULL, GenomeContaminationCutoff = NULL, applyfilters = NULL, discard_SDoverMean_below = NULL, normalization = NULL, PPM_normalize_to_bases_sequenced = TRUE, only_allow_CSBs = FALSE, flush_out_empty_samples = FALSE, clr_pseudocount = 1, give_info = TRUE){
 
-    #Consider synonym
-    if (normalization[1] == FALSE){
-        normalization <- NULL
-    }
-
     #Check that, if using normalization, the method is a valid one.
     if (!is.null(normalization)){
         #Check validity of method
