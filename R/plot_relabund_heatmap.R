@@ -500,10 +500,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     }
 
                     if ("l2fc" %in% colnames(matstats)){
-                        matstats$Colour <- ifelse(matstats$l2fc < 0, "#900000", "#000000")
+                        matstats$Colour <- ifelse(matstats$l2fc < 0, "#c30505", "#000000")
                         statmsg <- paste("MWW", compareby, sep="_")
                     } else if ("OddsRatio" %in% colnames(matstats)){
-                        matstats$Colour <- ifelse(matstats$OddsRatio < 1, "#900000", "#000000")
+                        matstats$Colour <- ifelse(matstats$OddsRatio < 1, "#c30505", "#000000")
                         statmsg <- paste("Fisher", compareby, sep="_")
                     } else {
                         matstats$Colour <- rep("#000000", nrow(matstats))
