@@ -2,7 +2,7 @@
 % Please edit documentation in R/ExpObjVetting.R
 \name{ExpObjVetting}
 \alias{ExpObjVetting}
-\title{ExpObjVetting(ExpObj = NULL)}
+\title{ExpObjVetting(ExpObj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, glomby = NULL, variables_to_fix = NULL, only_allow_CSBs = FALSE, class_to_ignore = NULL)}
 \usage{
 ExpObjVetting(
   ExpObj = NULL,
@@ -10,6 +10,7 @@ ExpObjVetting(
   featuresToKeep = NULL,
   glomby = NULL,
   variables_to_fix = NULL,
+  only_allow_CSBs = FALSE,
   class_to_ignore = NULL
 )
 }

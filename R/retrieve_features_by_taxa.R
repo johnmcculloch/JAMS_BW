@@ -1,9 +1,9 @@
-#' retrieve_features_by_taxa(FuncExpObj = NULL, glomby = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0)
+#' retrieve_features_by_taxa(FuncExpObj = NULL, glomby = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, LKTsToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE)
 #'
 #' Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
 #' @export
 
-retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, LKTsToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE){
+retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, LKTsToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE){
 
     if (assay_for_matrix == "GeneCounts"){
         sparsematrix_name <- "allfeaturesbytaxa_GeneCounts_matrix"
@@ -98,6 +98,7 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
         stt <- stt[which(stt$LKT %in% LKTs_to_glom), c(glomby, "LKT")]
         #Fill in unclassifieds
         stt[which(is.na(stt[ , glomby])), glomby] <- "Unclassified"
+        stt$Taxid <- sapply(stt$LKT, function (x) { extract_NCBI_taxid_from_featname(Taxon = x) } )
 
         #Fix level unclassifieds (as opposed to complete Unclassifieds)
         taxonomic_levels <- c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
@@ -122,11 +123,27 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
 
         LKTs_filtered <- LKTs_filtered[ , c("SampleAccession", common_LKTs), drop = FALSE]
         # Reshape LKTs_to_glom_mat to long format
-        LKTs_to_glom_long <- LKTs_filtered %>%  pivot_longer(cols = -SampleAccession, names_to = "LKT", values_to = "NumBases")
+        LKTs_to_glom_long <- LKTs_filtered %>% pivot_longer(cols = -SampleAccession, names_to = "LKT", values_to = "NumBases")
         # Join with stt to get glomby level for each LKT
         LKTs_to_glom_long <- left_join(LKTs_to_glom_long, stt, by = "LKT")
+        LKTs_to_glom_long <- as.data.frame(LKTs_to_glom_long)
+
+        feats2glomby_feats <- LKTs_to_glom_long[ , c("LKT", glomby, "Taxid")]
+        feats2glomby_feats <- feats2glomby_feats[!duplicated(feats2glomby_feats$LKT), ]
+        colnames(feats2glomby_feats)[which(colnames(feats2glomby_feats) == glomby)] <- "Glomby_feats"
+        colnames(feats2glomby_feats)[which(colnames(feats2glomby_feats) == "LKT")] <- "Feats"
+
+        feats2glomby_feats <- fix_feats2glomby_feats(feats2glomby_feats = NULL)
+
+        #Remove stale glomby information
+        LKTs_to_glom_long[ , glomby] <- NULL
+
+        #Replace with the correct info from feats2glomby_feats
+        colnames(feats2glomby_feats)[which(colnames(feats2glomby_feats) == "Feats")] <- "LKT"
+        LKTs_to_glom_long <- left_join(LKTs_to_glom_long, feats2glomby_feats, by = "LKT")
         #Rename relevant glomby column to make things more practical
-        colnames(LKTs_to_glom_long)[which(colnames(LKTs_to_glom_long) == glomby)] <- "Glomby"
+        colnames(LKTs_to_glom_long)[which(colnames(LKTs_to_glom_long) == "Glomby_feats")] <- "Glomby"
+
         #Aggregate counts per row_id × Glomby
         Glomby_sum <- LKTs_to_glom_long %>% group_by(SampleAccession, Glomby) %>% summarise(NumBases = sum(NumBases, na.rm = TRUE), .groups = "drop")
         #Spread back to wide format (one row per original row)
