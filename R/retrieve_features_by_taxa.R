@@ -133,7 +133,7 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
         colnames(feats2glomby_feats)[which(colnames(feats2glomby_feats) == glomby)] <- "Glomby_feats"
         colnames(feats2glomby_feats)[which(colnames(feats2glomby_feats) == "LKT")] <- "Feats"
 
-        feats2glomby_feats <- fix_feats2glomby_feats(feats2glomby_feats = NULL)
+        feats2glomby_feats <- fix_feats2glomby_feats(feats2glomby_feats = feats2glomby_feats)
 
         #Remove stale glomby information
         LKTs_to_glom_long[ , glomby] <- NULL
