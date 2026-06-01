@@ -16,6 +16,9 @@ fix_feats2glomby_feats <- function(feats2glomby_feats = NULL){
 
     #Update from JAMS_BW version 2.2.2 onwards: aggregate by taxid, rather than name. This is preferred, because taxid on names of unclassified species are not lower than species level. So, CSB__g__12345_Bacterium_FC1 and CSB__g__12345_Bacterium_FC2 will have the same taxid. FCs are tags for infraspecies level, so, there should be no FCs when agglomerating by Species or higher level.
     #Split feats2glomby_feats into those glommed at the desired level and those still remaining CSBs or LKTs
+    taxonomic_levels <- c("Gram", "Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "IS1", "LKT")
+    taxonomic_levels_tags <- c("", "d__", "k__", "p__", "c__", "o__", "f__", "g__", "s__", "is1__", "LKT__")
+
     CSB_tags <- paste("^CSB", taxonomic_levels_tags[2:(which(taxonomic_levels == glomby) - 1)], sep = "__")
     LKT_tags <- paste("^LKT", taxonomic_levels_tags[2:(which(taxonomic_levels == glomby) - 1)], sep = "__")
     general_expressions <- paste0(c(CSB_tags, LKT_tags), collapse = "|")
