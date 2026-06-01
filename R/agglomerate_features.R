@@ -52,7 +52,7 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
     cts$Feats <- rownames(cts)
     feats2glomby_feats <- data.frame(Feats = rownames(ftt), Glomby_feats = as.character(ftt[ , glomby]), Taxid = ftt[ , "Taxid"], stringsAsFactors = FALSE)
 
-    feats2glomby_feats <- fix_feats2glomby_feats(feats2glomby_feats = feats2glomby_feats, Feats_column = "Feats", Glomby_feats_column = "Glomby_feats")
+    feats2glomby_feats <- fix_feats2glomby_feats(feats2glomby_feats = feats2glomby_feats)
 
     cts <- left_join(cts, feats2glomby_feats, by = "Feats")
     cts$Feats <- NULL
