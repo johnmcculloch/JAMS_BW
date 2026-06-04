@@ -1,9 +1,9 @@
-#' fix_feats2glomby_feats(feats2glomby_feats = NULL)
+#' fix_feats2glomby_feats(feats2glomby_feats = NULL, glomby = NULL)
 #'
-#' Provides the correct algorithm for agglomerating taxonomic objects. This function is used by agglomerate_features and retrieve_features_by_taxa. No not attempt to use it outside of this context. 
+#' Provides the correct algorithm for agglomerating taxonomic objects. This function is used by agglomerate_features and retrieve_features_by_taxa. No not attempt to use it outside of this context.
 #' @export
 
-fix_feats2glomby_feats <- function(feats2glomby_feats = NULL){
+fix_feats2glomby_feats <- function(feats2glomby_feats = NULL, glomby = NULL){
 
     feats2glomby_feats <- as.data.frame(feats2glomby_feats)
 

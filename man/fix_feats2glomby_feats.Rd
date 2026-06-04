@@ -2,9 +2,9 @@
 % Please edit documentation in R/fix_feats2glomby_feats.R
 \name{fix_feats2glomby_feats}
 \alias{fix_feats2glomby_feats}
-\title{fix_feats2glomby_feats(feats2glomby_feats = NULL)}
+\title{fix_feats2glomby_feats(feats2glomby_feats = NULL, glomby = NULL)}
 \usage{
-fix_feats2glomby_feats(feats2glomby_feats = NULL)
+fix_feats2glomby_feats(feats2glomby_feats = NULL, glomby = NULL)
 }
 \description{
 Provides the correct algorithm for agglomerating taxonomic objects. This function is used by agglomerate_features and retrieve_features_by_taxa. No not attempt to use it outside of this context.
