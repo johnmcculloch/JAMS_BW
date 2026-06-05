@@ -1,9 +1,9 @@
-#' retrieve_features_by_taxa(FuncExpObj = NULL, glomby = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, LKTsToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE)
+#' retrieve_features_by_taxa(FuncExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, LKTsToKeep = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE)
 #'
 #' Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
 #' @export
 
-retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, LKTsToKeep = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE){
+retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, LKTsToKeep = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE){
 
     if (assay_for_matrix == "GeneCounts"){
         sparsematrix_name <- "allfeaturesbytaxa_GeneCounts_matrix"
@@ -73,9 +73,24 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, assay_fo
         }
     }
 
+    Taxoncols <- colnames(allfeaturesbytaxa_interest)[!(colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession"))]
+
+    if (only_allow_CSBs){
+        CSBsToKeep <- Taxoncols[grep("^CSB_", Taxoncols)]
+        #Stop if there is nothing left. You will be amazed as to what people use as inputs.
+        if (length(CSBsToKeep) < 1){
+            flog.warn("There are less than 1 feature in which are valid CSBs in the input SummarizedExperiment object's taxonomic stratification sparse matrix.")
+            stop("There is no information left to stratify with. Check your filtration parameters or set only_allow_CSBs - FALSE")
+        } else {
+            flog.warn(paste("Filtering out features which are not CSBs (Consolidated Species Bins), i.e. features which were not binned by MetaBAT2 in JAMSalpha."))
+            Taxoncols <- CSBsToKeep
+            #Subset taxa to what was requested.
+            allfeaturesbytaxa_interest <- allfeaturesbytaxa_interest[ , c("Sample", "Accession", Taxoncols)]
+        }  
+    }
+
     #Restrict to LKTs before glomming, if required from LKTsToKeep
     if (!is.null(LKTsToKeep)){
-        Taxoncols <- colnames(allfeaturesbytaxa_interest)[!(colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession"))]
         Taxoncols <- Taxoncols[Taxoncols %in% LKTsToKeep]
         #Check there is at least one left
         if (length(Taxoncols) < 1){
