@@ -216,18 +216,30 @@ filetype <- function(path){
 #' Trims leading and trailing whitespace from a dataframe
 #' @export
 
-trim_whitespace_from_df <- function(df = NULL){
-    #check if input is reasonable
-    if (class(df)[1] != "data.frame"){
-        stop("Input must be a data.frame")
+trim_whitespace_from_df <- function(df = NULL) {
+    # Is it a data frame, or its ilk?
+    if (!inherits(df, "data.frame")) {
+        stop("Input must be a data.frame or inherit from one (e.g., tibble).")
     }
 
-    for (colm in 1:ncol(df)){
-        df[ , colm] <- trimws(df[ , colm])
+    # Is the data frame empty?
+    if (ncol(df) == 0) {
+        return(df)
+    }
+
+    # Ok, now we can fix each column.
+    for (colm in seq_len(ncol(df))) {
+        # Process character or factor columns
+        if (is.character(df[[colm]])) {
+            df[[colm]] <- trimws(df[[colm]], whitespace = "[\\s\\h\\v]")
+        } else if (is.factor(df[[colm]])) {
+            levels(df[[colm]]) <- trimws(levels(df[[colm]]), whitespace = "[\\s\\h\\v]")
+        }
     }
 
     return(df)
 }
+
 
 #' replace_NAs_with_character(df)
 #' Replaces NAs with a specific character in a data frame
