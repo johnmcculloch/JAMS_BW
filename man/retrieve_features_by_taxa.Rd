@@ -2,7 +2,7 @@
 % Please edit documentation in R/retrieve_features_by_taxa.R
 \name{retrieve_features_by_taxa}
 \alias{retrieve_features_by_taxa}
-\title{retrieve_features_by_taxa(FuncExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, LKTsToKeep = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE)}
+\title{retrieve_features_by_taxa(FuncExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, LKTsToKeep = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE, return_taxonomy_table = FALSE)}
 \usage{
 retrieve_features_by_taxa(
   FuncExpObj = NULL,
@@ -16,7 +16,8 @@ retrieve_features_by_taxa(
   PPM_normalize_to_bases_sequenced = TRUE,
   PPMthreshold = 0,
   append_metatada = TRUE,
-  include_samples_with_zero = TRUE
+  include_samples_with_zero = TRUE,
+  return_taxonomy_table = FALSE
 )
 }
 \description{

@@ -1,9 +1,9 @@
-#' retrieve_features_by_taxa(FuncExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, LKTsToKeep = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE)
+#' retrieve_features_by_taxa(FuncExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, LKTsToKeep = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE, return_taxonomy_table = FALSE)
 #'
 #' Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
 #' @export
 
-retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, LKTsToKeep = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE){
+retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, LKTsToKeep = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE, return_taxonomy_table = FALSE){
 
     if (assay_for_matrix == "GeneCounts"){
         sparsematrix_name <- "allfeaturesbytaxa_GeneCounts_matrix"
@@ -168,8 +168,63 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, only_all
         rownames(Glomby_wide) <- Glomby_wide$SampleAccession
         Glomby_wide$SampleAccession <- NULL
         allfeaturesbytaxa_interest <- Glomby_wide
+
+        #Iron out taxonomy table if requested
+        if (return_taxonomy_table == TRUE){
+            featureorder <- colnames(Glomby_wide)[!(colnames(Glomby_wide) %in% c("Sample", "Accession"))]
+            ftt <- as.data.frame(metadata(FuncExpObj)$tt)
+            glom_ftt <- ftt
+
+            rownames(glom_ftt) <- 1:nrow(glom_ftt)
+            rownames(feats2glomby_feats) <- 1:nrow(feats2glomby_feats)
+
+            #Mark current features as leaves
+            colnames(feats2glomby_feats)[which(colnames(feats2glomby_feats) == "Feats")] <- "LKT"
+            #Mark Glomby_feats as the current agglomerating level
+            colnames(feats2glomby_feats)[which(colnames(feats2glomby_feats) == "Glomby_feats")] <- glomby
+
+            glom_ftt[ , glomby] <- NULL
+            glom_ftt$Taxid <- NULL
+            glom_ftt <- left_join(glom_ftt, feats2glomby_feats, by = "LKT")
+            #Eliminate unused rows
+            glom_ftt <- glom_ftt[!is.na(glom_ftt[ , glomby]), ]
+
+            taxonomic_levels_have <- taxonomic_levels[taxonomic_levels %in% colnames(glom_ftt)]
+            taxonomic_levels_to_keep <- taxonomic_levels_have[1:which(taxonomic_levels_have == glomby)]
+            glom_ftt <- glom_ftt[ , taxonomic_levels_to_keep]
+
+            #Again, account for completely dark matter (i.e. LKT__Unclassified) not having a taxonomic path.
+            if ("LKT__Unclassified" %in% rownames(glom_ftt)){
+                #Attribute LKT__Unclassified to that glomby
+                glom_ftt[which(rownames(glom_ftt) == "LKT__Unclassified"), taxonomic_levels_to_keep] <- "LKT__Unclassified"
+            }
+            glom_ftt <- glom_ftt[ , taxonomic_levels_to_keep]
+
+            #Try de-duplicating the entire taxonomy table data frame. Depending on how the taxonomy was built, there may be more than one alternate taxonomic path leading to a node. All was done to avoid this with JAMSbuildk2db, but you never know.
+            glom_ftt <- glom_ftt[!duplicated(glom_ftt), ]
+            #Check whether featureorder is the same length as glom_ftt rows and if they are 100% contained within
+            if ((nrow(glom_ftt) == length(featureorder)) & (all(featureorder %in% glom_ftt[ , glomby]))){
+                rownames(glom_ftt) <- glom_ftt[ , glomby]
+                glom_ftt <- glom_ftt[featureorder, ]
+            } else {
+                #There may be some alternate taxonomic paths leading to the same terminal (glomby) leaf. de-duplicate the glomby and keep the first in each case.
+                flog.warn(paste("Alternate taxonomic paths leading to the same node at", glomby, "detected. Keeping the first path in each instance."))
+                glom_ftt <- glom_ftt[!duplicated(glom_ftt[ , glomby]), ]
+                rownames(glom_ftt) <- glom_ftt[ , glomby]
+                glom_ftt <- glom_ftt[featureorder, ]
+            }
+            taxtable <- glom_ftt
+        }
+
+    } else {
+
+        if (return_taxonomy_table == TRUE){
+            taxtable <- as.data.frame(metadata(FuncExpObj)$tt)
+        }
+
     }
 
+    #Normalize if applicable
     if (asPPM){
         taxsplit <- allfeaturesbytaxa_interest
         #Transform to PPM
@@ -201,11 +256,15 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, only_all
         taxsplit <- taxsplit[ , c("Sample", "Accession", "NumBases", nonSamplecolms, TaxaToKeep)]
         taxsplit$NumBases <- NULL
 
-        return(taxsplit)
-
     } else {
 
-        return(allfeaturesbytaxa_interest)
+        taxsplit <- allfeaturesbytaxa_interest
 
+    }
+
+    if (return_taxonomy_table == TRUE){
+        return(list(taxsplit = taxsplit, taxtable = taxtable))
+    } else {
+        return(taxsplit)
     }
 }

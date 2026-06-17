@@ -1,10 +1,9 @@
-#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, compareby_order = NULL, invertbinaryorder = FALSE, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, annotate_phylum = TRUE, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, fun_for_l2fc = "geom_mean", ...)
+#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, compareby_order = NULL, invertbinaryorder = FALSE, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_cladogram_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, fun_for_l2fc = "geom_mean", ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #' @export
 
-plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, compareby_order = NULL, invertbinaryorder = FALSE, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, annotate_phylum = TRUE, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_heatmap_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, fun_for_l2fc = "geom_mean", ...){
-
+plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, compareby_order = NULL, invertbinaryorder = FALSE, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_cladogram_for_stratification = TRUE, show_prevalence_in_cladogram = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, fun_for_l2fc = "geom_mean", ...){
 
     #Account for JAMS2 spaces
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
@@ -287,7 +286,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             #See if current SummarizedExperiment object allows for stratification by taxa.
             if (all(c("allfeaturesbytaxa_matrix") %in% names(metadata(currobj)))){
-                taxsplit <- retrieve_features_by_taxa(FuncExpObj = currobj, glomby = stratify_by_taxlevel, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, assay_for_matrix = "BaseCounts", wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, append_metatada = TRUE, PPMthreshold = 0)
+                taxsplit_list <- retrieve_features_by_taxa(FuncExpObj = currobj, glomby = stratify_by_taxlevel, only_allow_CSBs = only_allow_CSBs, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, assay_for_matrix = "BaseCounts", wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, append_metatada = TRUE, PPMthreshold = 0, include_samples_with_zero = TRUE, return_taxonomy_table = TRUE)
+                taxsplit <- taxsplit_list$taxsplit
 
                 taxsplit$Compareby <- taxsplit[ , which(colnames(taxsplit) == compareby)]
 
@@ -562,31 +562,19 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             if (!is.null(stratify_by_taxlevel)){
 
                 currtaxsplit <- subset(taxsplit, Accession == feat)
+                #Maintain only relevant columns
+                annot_cols <- c("Compareby", "Shape", "Fill", "Connect", "Colour")[c("Compareby", "Shape", "Fill", "Connect", "Colour") %in% colnames(currtaxsplit)]
+                LKTcolumns <- colnames(currtaxsplit)[!(colnames(currtaxsplit) %in% unique(c(colnames(curr_pt), "Accession", annot_cols)))]
+                LKTsToKeep <- names(which(colSums(currtaxsplit[ , LKTcolumns]) > 0))
+                currtaxsplit <- currtaxsplit[ , c("Sample", "Accession", annot_cols, LKTsToKeep)]
 
-                #As per Giorgio's request, re-include samples omitted for not having a particular taxon.
-                missingSamples <- rownames(curr_pt)[!(rownames(curr_pt) %in% currtaxsplit$Sample)]
-                LKTcolumns <- colnames(currtaxsplit)[!(colnames(currtaxsplit) %in% unique(c(colnames(curr_pt), c("Sample", "Accession", "Compareby"))))]
-
-                #Matrix of empties for LKTs
-                LKTsupp_mat <- as.data.frame(matrix(data = 0, ncol = length(LKTcolumns), nrow = length(missingSamples)))
-                colnames(LKTsupp_mat) <- LKTcolumns
-                LKTsupp_mat$Sample <- missingSamples
-                curr_pt_supp <- as.data.frame(curr_pt)
-
-                curr_pt_supp$Compareby <- curr_pt_supp[ , which(colnames(curr_pt_supp) == compareby)]
-
-                LKTsupp_mat <- left_join(LKTsupp_mat, curr_pt_supp, by = "Sample")
-                LKTsupp_mat$Accession <- rep(unique(currtaxsplit$Accession), nrow(LKTsupp_mat))
-                LKTsupp_mat <- LKTsupp_mat[ , colnames(currtaxsplit)]
-
-                currtaxsplit <- rbind(currtaxsplit, LKTsupp_mat)
-
-                #for (grp in unique(currtaxsplit$Compareby)){
+                #Determine how the stratified information is going to be plot
+                if (use_cladogram_for_stratification != TRUE){
                     p <- NULL
                     dat <- NULL
                     #currtaxsplitgrp <- subset(currtaxsplit, Compareby == grp)
                     currtaxsplitgrp <- currtaxsplit
-                    LKTcolumns <- colnames(currtaxsplitgrp)[!(colnames(currtaxsplitgrp) %in% unique(c(colnames(curr_pt), c("Sample", "Accession", "Compareby"))))]
+                    LKTcolumns <- colnames(currtaxsplitgrp)[!(colnames(currtaxsplitgrp) %in% unique(c(colnames(curr_pt), c("Sample", "Accession", "Compareby", "Shape", "Fill", "Connect", "Colour"))))]
 
                     #Eliminate empties
                     LKTsToKeep <- names(which(colSums(currtaxsplitgrp[ , LKTcolumns]) > 0))
@@ -785,18 +773,23 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     #p <- p + theme(axis.text.x = element_text(colour = phcol[dat$Phylum[!duplicated(dat$Phylum)]]))
                     p <- p + theme(plot.title = element_text(size = 10))
 
-                    if (!return_plots){
-                        #print plot on the fly
-                        print(p)
-                    }
+                } else {
+                    #use cladogram stratification plotting function
+                    plotitstrat <- paste0(c(maintit, featname), collapse = "\n")
+                    data(PhyCols)
+                    p <- plot_taxsplit_tree(taxsplit_df = currtaxsplit, strat_tt = taxsplit_list$taxtable, layout = "rectangular", taxon_hilight_palette = PhyCols, low_col = "#fbfbfc", high_col = "#1b0178", show_prevalence = show_prevalence_in_cladogram, plotitstrat = plotitstrat)
+                }#End if statement for plotting as boxplot or cladogram
 
-                    gvec[[plotcount]] <- p
-                    names(gvec)[plotcount] <- paste(maintit, feat, stratify_by_taxlevel, sep = " | ")
-                    plotcount <- plotcount + 1
-                #}#End loop for plotting stratify_by_taxlevel within each group
+                if (!return_plots){
+                    #print plot on the fly
+                    print(p)
+                }
+                #Bank plot to gvec
+                gvec[[plotcount]] <- p
+                names(gvec)[plotcount] <- paste(maintit, feat, stratify_by_taxlevel, sep = " | ")
+                plotcount <- plotcount + 1
             }#End conditional of stratifying by taxonomy
         }#End loop for plotting each feature
-
     }#End loop for each subset
 
     if (return_plots){
