@@ -279,8 +279,12 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
             }
 
             #Get counts matrix
-            if (normalization == "relabund"){
-                countmat <- as.matrix(assays(currobj)[["PPM"]])
+            if (assay_for_matrix == "BaseCounts"){
+                if (normalization == "relabund"){
+                    countmat <- as.matrix(assays(currobj)[["PPM"]])
+                }
+            } else if (assay_for_matrix == "GeneCounts"){
+                countmat <- as.matrix(assays(currobj)[["GeneCounts"]])
             }
 
             if (ignoreunclassified == TRUE){
@@ -290,8 +294,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
             }
 
             #Rename rows to include description if not taxonomic data or MetaCyc which has enormous descriptions
-            #if (!(analysis %in% c("LKT", "MetaCyc"))){
-            if (!analysis %in% taxonomic_spaces){
+            if (!analysis %in% c(taxonomic_spaces, "Product")){
                 feattable <- rowData(currobj)
                 feattable$Feature <- paste(feattable$Accession, feattable$Description, sep = "-")
                 rownames(countmat) <- feattable$Feature[match(rownames(countmat), feattable$Accession)]
