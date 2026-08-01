@@ -1,0 +1,353 @@
+---
+title: "Isolate Functional Report"
+subtitle: "`r params$sample_name`"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    fig_width: 10
+    fig_height: 6
+    latex_engine: xelatex
+    keep_tex: false
+geometry: margin=0.75in
+fontsize: 10pt
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{array}
+  - \usepackage{xcolor}
+  - \usepackage{caption}
+  - \captionsetup[table]{skip=4pt}
+params:
+  report: NULL
+  sample_name: "Isolate"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo    = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width  = 10,
+  fig.height = 6
+)
+
+library(stringr)
+library(ggplot2)
+library(patchwork)
+library(knitr)
+library(scales)
+
+rpt <- params$report
+fd  <- rpt$featuredata
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+# Safe base-R column subset — immune to MASS/dplyr conflicts
+safe_select <- function(df, cols) {
+  cols <- intersect(cols, colnames(df))
+  df[, cols, drop = FALSE]
+}
+
+# Plain booktabs kable — no kableExtra, no tabu
+pkable <- function(df, col.names = NA, caption = NULL, row.names = FALSE, ...) {
+  if (identical(col.names, NA)) col.names <- colnames(df)
+  knitr::kable(df,
+               format      = "latex",
+               booktabs    = TRUE,
+               col.names   = col.names,
+               caption     = caption,
+               row.names   = row.names,
+               linesep     = "",
+               ...)
+}
+
+# Chunk large data frames and print one table per chunk
+chunked_pkable <- function(df, n = 45, col.names = NA, ...) {
+  if (is.null(df) || nrow(df) == 0) { cat("> No data.\n"); return(invisible(NULL)) }
+  if (identical(col.names, NA)) col.names <- colnames(df)
+  chunks <- split(df, ceiling(seq_len(nrow(df)) / n))
+  for (ch in chunks) {
+    print(pkable(ch, col.names = col.names, ...))
+    cat("\n\n")
+  }
+}
+```
+
+\newpage
+
+# Overview
+
+```{r overview}
+n_genes    <- nrow(fd)
+n_cds      <- sum(fd$FeatType == "CDS", na.rm = TRUE)
+n_with_ec  <- sum(!is.na(fd$ECNumber) & fd$ECNumber != "none" & fd$ECNumber != "")
+n_with_go  <- sum(!is.na(fd$GO)       & fd$GO       != "none" & fd$GO       != "")
+n_with_ipr <- sum(!is.na(fd$Interpro) & fd$Interpro != "none" & fd$Interpro != "")
+n_hypo     <- sum(str_detect(tolower(fd$Product), "hypothetical"), na.rm = TRUE)
+total_bp   <- sum(fd$NumBases, na.rm = TRUE)
+
+overview_df <- data.frame(
+  Metric = c("Total features", "CDS features", "Total bases annotated (bp)",
+             "Genes with EC number", "Genes with GO term",
+             "Genes with InterPro hit", "Hypothetical proteins"),
+  Value  = c(n_genes, n_cds, format(total_bp, big.mark = ","),
+             n_with_ec, n_with_go, n_with_ipr, n_hypo),
+  stringsAsFactors = FALSE
+)
+
+pkable(overview_df, col.names = c("Metric", "Value"),
+       caption = "Sample annotation summary")
+```
+
+\newpage
+
+# Functional Landscape
+
+## Gene categories (keyword mining)
+
+```{r category_plot, fig.height=5}
+product_hits <- rpt$product_hits
+
+cat_counts <- do.call(rbind, lapply(names(product_hits), function(cat) {
+  data.frame(Category = cat, n = nrow(product_hits[[cat]]), stringsAsFactors = FALSE)
+}))
+cat_counts <- cat_counts[cat_counts$n > 0, ]
+cat_counts <- cat_counts[order(-cat_counts$n), ]
+cat_counts$Category <- str_to_title(str_replace_all(cat_counts$Category, "_", " "))
+cat_counts$Category <- factor(cat_counts$Category, levels = cat_counts$Category)
+
+ggplot(cat_counts, aes(x = Category, y = n, fill = n)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_viridis_c(option = "D") +
+  coord_flip() +
+  labs(title = "Functional gene categories",
+       subtitle = "Keyword mining of PROKKA Product descriptions",
+       x = NULL, y = "Gene count") +
+  theme_minimal(base_size = 11)
+```
+
+```{r category_count_table}
+pkable(cat_counts, col.names = c("Functional Category", "Gene Count"),
+       caption = "Gene counts per functional category")
+```
+
+\newpage
+
+## Gene lists per category
+
+```{r category_gene_lists, results='asis'}
+for (cat in names(product_hits)) {
+  df <- product_hits[[cat]]
+  if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) next
+  cat(sprintf("\n### %s\n\n",
+              str_to_title(str_replace_all(cat, "_", " "))))
+  out <- safe_select(df, c("Feature", "Product", "ECNumber"))
+  out <- unique(out)
+  if ("Product" %in% colnames(out))
+    out$Product <- str_trunc(out$Product, 50)
+  chunked_pkable(out, n = 45, row.names = FALSE)
+  cat("\n")
+}
+```
+
+\newpage
+
+# KEGG Pathway Analysis
+
+```{r kegg_check}
+has_kegg <- !is.null(rpt$kegg) &&
+            !is.null(rpt$kegg$completeness) &&
+            nrow(rpt$kegg$completeness) > 0
+```
+
+```{r kegg_plot, eval=has_kegg, fig.height=6}
+comp   <- rpt$kegg$completeness
+top_pw <- head(comp[order(-comp$completeness), ], 25)
+top_pw$Name <- str_trunc(top_pw$Name, 45)
+top_pw$Name <- factor(top_pw$Name, levels = rev(top_pw$Name))
+top_pw$fill_col <- cut(top_pw$completeness,
+                        breaks = c(0, 0.5, 0.75, 1.001),
+                        labels = c("Low (<50%)", "Medium (50-74%)", "High (>=75%)"),
+                        right  = FALSE)
+
+ggplot(top_pw, aes(x = Name, y = completeness, fill = fill_col)) +
+  geom_col() +
+  scale_fill_manual(
+    values = c("High (>=75%)"    = "#2ecc71",
+               "Medium (50-74%)" = "#f39c12",
+               "Low (<50%)"      = "#e74c3c"),
+    name = "Completeness") +
+  geom_hline(yintercept = 0.50, linetype = "dashed", linewidth = 0.5) +
+  geom_hline(yintercept = 0.75, linetype = "dashed",
+             color = "darkgreen", linewidth = 0.5) +
+  coord_flip() +
+  scale_y_continuous(labels = percent) +
+  labs(title = "KEGG Pathway Completeness (top 25)",
+       x = NULL, y = "Completeness") +
+  theme_minimal(base_size = 11)
+```
+
+## Pathways $\geq$ 50% complete
+
+```{r kegg_table_above, eval=has_kegg}
+above <- rpt$kegg$above_threshold
+above$Name         <- str_trunc(above$Name, 46)
+above$completeness <- percent(above$completeness)
+out <- safe_select(above, c("Pathway", "Name", "n_found", "n_total", "completeness"))
+chunked_pkable(out, n = 45,
+               col.names = c("KEGG ID", "Pathway Name",
+                              "ECs found", "ECs total", "Completeness"),
+               caption = "KEGG pathways with >= 50% EC completeness")
+```
+
+## Full pathway completeness table
+
+```{r kegg_table_full, eval=has_kegg}
+full <- rpt$kegg$completeness
+full$Name         <- str_trunc(full$Name, 46)
+full$completeness <- percent(full$completeness)
+out <- safe_select(full, c("Pathway", "Name", "n_found", "n_total", "completeness"))
+chunked_pkable(out, n = 45,
+               col.names = c("KEGG ID", "Pathway Name",
+                              "ECs found", "ECs total", "Completeness"),
+               caption = "All KEGG pathways (sorted by completeness)")
+```
+
+\newpage
+
+# GO Term Analysis
+
+```{r go_check}
+has_go <- !is.null(rpt$go) &&
+          !is.null(rpt$go$go_info) &&
+          nrow(rpt$go$go_info) > 0
+```
+
+```{r go_plot, eval=has_go, fig.height=4}
+go_info <- rpt$go$go_info
+go_info <- go_info[!is.na(go_info$namespace), ]
+go_info$namespace <- str_to_title(str_replace_all(go_info$namespace, "_", " "))
+ns_counts <- as.data.frame(table(go_info$namespace), stringsAsFactors = FALSE)
+colnames(ns_counts) <- c("Namespace", "Count")
+
+ggplot(ns_counts, aes(x = reorder(Namespace, Count), y = Count, fill = Namespace)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_brewer(palette = "Set2") +
+  coord_flip() +
+  labs(title = "GO Term Distribution by Namespace", x = NULL, y = "Count") +
+  theme_minimal(base_size = 11)
+```
+
+```{r go_tables, eval=has_go, results='asis'}
+go_info_raw <- rpt$go$go_info
+go_info_raw <- go_info_raw[!is.na(go_info_raw$name), ]
+
+ns_map <- c(
+  "biological_process" = "Biological Process",
+  "molecular_function" = "Molecular Function",
+  "cellular_component" = "Cellular Component"
+)
+
+for (ns in names(ns_map)) {
+  sub <- go_info_raw[go_info_raw$namespace == ns, ]
+  if (is.null(sub) || nrow(sub) == 0) next
+  cat(sprintf("\n## %s\n\n", ns_map[ns]))
+  sub <- sub[order(sub$GO_id), ]
+  out <- safe_select(sub, c("GO_id", "name"))
+  chunked_pkable(out, n = 45,
+                 col.names = c("GO Accession", "Term Name"),
+                 row.names = FALSE)
+  cat("\n")
+}
+```
+
+\newpage
+
+# InterPro Domain Analysis
+
+```{r ipr_check}
+has_ipr <- !is.null(rpt$interpro) && nrow(rpt$interpro) > 0
+```
+
+```{r ipr_plot, eval=has_ipr, fig.height=4}
+ipr_info <- rpt$interpro[!is.na(rpt$interpro$type), ]
+type_counts <- as.data.frame(table(ipr_info$type), stringsAsFactors = FALSE)
+colnames(type_counts) <- c("Type", "Count")
+
+ggplot(type_counts, aes(x = reorder(Type, Count), y = Count, fill = Type)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_brewer(palette = "Set1") +
+  coord_flip() +
+  labs(title = "InterPro Hit Types", x = NULL, y = "Count") +
+  theme_minimal(base_size = 11)
+```
+
+```{r ipr_table, eval=has_ipr}
+ipr <- rpt$interpro[!is.na(rpt$interpro$name), ]
+ipr <- ipr[order(ipr$type, ipr$IPR_id), ]
+chunked_pkable(ipr, n = 45,
+               col.names = c("IPR Accession", "Domain/Family Name", "Type"),
+               row.names = FALSE)
+```
+
+\newpage
+
+# Targeted Pathway Probes
+
+```{r probes, results='asis'}
+probes <- rpt$probes
+
+for (i in seq_along(probes)) {
+  pr <- probes[[i]]
+  cat(sprintf("\n## %s\n\n", pr$label))
+  cat(pr$summary, "\n\n")
+  if (!is.null(pr$genes) && nrow(pr$genes) > 0) {
+    out <- safe_select(pr$genes, c("Feature", "Product", "ECNumber", "NumBases"))
+    out <- unique(out)
+    if ("Product" %in% colnames(out))
+      out$Product <- str_trunc(out$Product, 50)
+    chunked_pkable(out, n = 40, row.names = FALSE)
+  } else {
+    cat("> No genes matched this probe.\n")
+  }
+  cat("\n")
+}
+```
+
+\newpage
+
+# Hypothetical Proteins with InterPro Hits
+
+Hypothetical proteins carrying an InterPro annotation reveal functional
+information despite their uninformative Product names.
+
+```{r hypo_ipr, eval=has_ipr}
+hypo <- fd[
+  str_detect(tolower(fd$Product), "hypothetical") &
+  !is.na(fd$Interpro) & fd$Interpro != "none" & fd$Interpro != "",
+]
+
+if (nrow(hypo) > 0) {
+  hypo$First_IPR <- str_extract(hypo$Interpro, "IPR\\d+")
+  hypo <- merge(hypo, rpt$interpro,
+                by.x = "First_IPR", by.y = "IPR_id", all.x = TRUE)
+  out <- safe_select(hypo, c("Feature", "First_IPR", "name", "type", "ECNumber"))
+  out <- unique(out)
+  chunked_pkable(out, n = 40,
+                 col.names = c("Feature", "IPR Accession",
+                                "Domain Name", "Type", "EC Number"),
+                 row.names = FALSE)
+} else {
+  cat("> No hypothetical proteins with InterPro hits found.\n")
+}
+```
+
+\newpage
+
+# Session Info
+
+```{r session_info, echo=TRUE}
+sessionInfo()
+```
