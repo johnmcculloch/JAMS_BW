@@ -324,6 +324,18 @@ flog.info(print_jams_ASCII(palette = "ocean"))
 
 #note: phasing out temporary directories
 opt$workdir <- opt$sampledir
+#Log the full external dependency version snapshot for methods/reproducibility
+if ("dependency_versions" %in% names(opt)){
+    provenance_header <- paste0(
+        "Dependency version provenance stamp\n",
+        opt$verstr, "\n",
+        "Run timestamp: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), "\n",
+        "Host system: ", Sys.info()[["nodename"]], "\n",
+        "R version: ", R.version.string)
+    flog.info(paste0(provenance_header,
+        "\nExternal software dependency versions detected at runtime:\n",
+        paste(utils::capture.output(print(opt$dependency_versions)), collapse = "\n")))
+}
 
 opt$projimage <- file.path(opt$sampledir, ".RData")
 

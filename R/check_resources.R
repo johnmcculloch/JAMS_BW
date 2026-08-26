@@ -10,20 +10,129 @@ check_resources <- function(opt = opt, applications_to_check = c("base", "reads"
 
     dependencies_to_check <- unname(unlist(deplist[applications_to_check]))
 
-    #Check for non-R software dependencies
+    #Map from dependency name to the actual executable that is called on the command line
+    exec_for_dep <- function(dep){
+        switch(dep,
+            "sratoolkit" = "fasterq-dump",
+            "spades"     = "spades.py",
+            dep)
+    }
+
+    #' get_dep_version
+    #' Try to extract a version string for a given executable.
+    #' Different tools expose their version through different flags and print it
+    #' in different formats, so we try a sequence of common flags and then apply
+    #' a light, tool-aware parse of whatever gets printed.
+    get_dep_version <- function(dep, cmd){
+        #Tool-specific version flags. Order matters: first flag that yields output wins.
+        flag_lookup <- list(
+            "pigz"         = c("--version"),
+            "wget"         = c("--version"),
+            "fasterq-dump" = c("--version"),
+            "trimmomatic"  = c("-version", "--version"),
+            "seqtk"        = c("--version"), # seqtk prints version to stderr with no valid flag; handled below
+            "bowtie2"      = c("--version"),
+            "megahit"      = c("--version", "-v"),
+            "spades.py"    = c("--version", "-v"),
+            "samtools"     = c("--version"),
+            "metabat2"     = c("--help"), # prints "MetaBAT 2 (2.x ...)" banner; parsed below
+            "checkm2"      = c("--version"),
+            "prokka"       = c("--version"),
+            "convert2bed"  = c("--version"),
+            "bedtools"     = c("--version"),
+            "kraken2"      = c("--version")
+        )
+
+        raw <- character(0)
+
+        #seqtk does not accept any version flag; passing one prints an error to
+        #stderr ("unrecognized command '--version'. Abort!") which would otherwise
+        #be mistaken for version output. Invoke it bare instead: run with no args
+        #it prints a proper "Version: 1.x" banner to stderr.
+        if (cmd == "seqtk"){
+            raw <- tryCatch(
+                suppressWarnings(system("seqtk 2>&1", intern = TRUE)),
+                error = function(e) character(0)
+            )
+            raw <- raw[nzchar(raw)]
+        } else {
+            flags <- flag_lookup[[cmd]]
+            if (is.null(flags)){
+                flags <- c("--version", "-version", "-v", "--help")
+            }
+            for (flg in flags){
+                #Capture both stdout and stderr, since many bioinformatics tools
+                #print their version banner to stderr.
+                out <- tryCatch(
+                    suppressWarnings(system(str_c(cmd, " ", flg, " 2>&1"), intern = TRUE, ignore.stderr = FALSE)),
+                    error = function(e) character(0)
+                )
+                out <- out[nzchar(out)]
+                if (length(out) > 0){
+                    raw <- out
+                    break
+                }
+            }
+        }
+
+        if (length(raw) == 0){
+            return("UNDETERMINED")
+        }
+
+        #Collapse to a single searchable blob but keep the first few lines for parsing.
+        blob <- paste(head(raw, 10), collapse = " ")
+
+        #Prefer a "Version: x.y.z" style token if present (samtools, seqtk, bowtie2 etc.)
+        ver <- NA_character_
+        m <- regmatches(blob, regexpr("[Vv]ersion[:]?[[:space:]]*[Vv]?[0-9]+\\.[0-9][0-9A-Za-z\\._\\-]*", blob))
+        if (length(m) > 0 && nzchar(m)){
+            #Strip the leading "Version" label, keep the numeric part.
+            ver <- sub("^[Vv]ersion[:]?[[:space:]]*", "", m)
+        } else {
+            #Otherwise grab the first thing that looks like a dotted version number
+            #(requires a dot, so a stray standalone integer such as the "2" in
+            #"MetaBAT 2" is not mistaken for the version).
+            m <- regmatches(blob, regexpr("[0-9]+\\.[0-9][0-9A-Za-z\\._\\-]*", blob))
+            if (length(m) > 0 && nzchar(m)){
+                ver <- m
+            }
+        }
+
+        if (is.na(ver) || !nzchar(ver)){
+            #As a last resort keep the first non-empty line, trimmed, so we at
+            #least record something informative.
+            ver <- trimws(raw[1])
+        }
+
+        #Tidy trailing punctuation
+        ver <- sub("^[vV]", "", ver)
+        ver <- gsub("[[:space:],;]+$", "", ver)
+
+        return(ver)
+    }
+
+    #Check for non-R software dependencies and record versions
     missingdep <- FALSE
+    version_records <- list()
     for (dep in dependencies_to_check) {
-        cmd <- dep
-        if (cmd == "sratoolkit") {
-            cmd <- "fasterq-dump" 
-        }
-        if (cmd == "spades"){
-            cmd <- "spades.py"
-        }
-        if (system(str_c("which ", cmd), ignore.stdout = TRUE)==1) { # not found
+        cmd <- exec_for_dep(dep)
+        if (system(str_c("which ", cmd), ignore.stdout = TRUE) == 1) { # not found
             flog.info(str_c("You are missing ", dep))
             missingdep <- TRUE
+            version_records[[dep]] <- data.frame(Dependency = dep, Executable = cmd, Found = FALSE, Version = NA_character_, stringsAsFactors = FALSE)
+        } else {
+            depver <- get_dep_version(dep, cmd)
+            flog.info(str_c("Found ", dep, " (", cmd, ") version ", depver))
+            version_records[[dep]] <- data.frame(Dependency = dep, Executable = cmd, Found = TRUE, Version = depver, stringsAsFactors = FALSE)
         }
+    }
+
+    #Bequeath a tidy data frame of dependency versions to opt
+    if (length(version_records) > 0){
+        opt$dependency_versions <- do.call(rbind, version_records)
+        rownames(opt$dependency_versions) <- NULL
+    } else {
+        opt$dependency_versions <- data.frame(Dependency = character(0), Executable = character(0), Found = logical(0), Version = character(0), stringsAsFactors = FALSE)
     }
 
     if (missingdep == TRUE) {
