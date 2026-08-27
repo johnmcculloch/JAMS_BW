@@ -164,9 +164,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         subset_df <- subset_list$Subsets_stats
         subset_df <- subset_df[which(subset_df$Subset_Tier_Level != 0), , drop = FALSE]
         if (any(subset_df$Num_samples_in_subset < 2)){
-            #Some subsets have less than 2 samples. Eliminate and report.
+            #Some subsets have fewer than 2 samples. Eliminate and report.
             LowSampSubsets <- subset_df[which(subset_df$Num_samples_in_subset < 2), "Subset_Tier_Class_Name"]
-            flog.warn(paste("Subsets", paste0(LowSampSubsets, collapse = ", "), "contain less than 2 samples, and will thus be omitted."))
+            flog.warn(paste("Subsets", paste0(LowSampSubsets, collapse = ", "), "contain fewer than 2 samples, and will thus be omitted."))
             subset_df <- subset_df[which(subset_df$Num_samples_in_subset >= 2), , drop = FALSE]
         }
         #Test for valid subsets
@@ -235,7 +235,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
             if (length(unique(curr_pt[ , compareby])) == 2){
                 #Comparison is binary. Is there at least 2 of each class to get a p-value?
                 if ((min(table(curr_pt[ , compareby]))) < 2){
-                    flog.warn(paste0("There are less than 2 samples within at least one class of variable ", compareby, ", impossible to obtain a p-value. Setting hmtype = 'exploratory'."))
+                    flog.warn(paste0("There are fewer than 2 samples within at least one class of variable ", compareby, ", impossible to obtain a p-value. Setting hmtype = 'exploratory'."))
                     hmtype <- "exploratory"
                 }
             }
