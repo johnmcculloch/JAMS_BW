@@ -206,7 +206,12 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
     }
 
     #subset by metadata column
+    hmtype_master <- hmtype
+    ntop_master <- ntop
     for (sp in 1:length(subset_points)){
+        #Reset heatmap type and ntop per subset so a coercion in one subset does not leak into the next
+        hmtype <- hmtype_master
+        ntop <- ntop_master
         if (!(is.null(subsetby))){
             samplesToKeep_sp <- subset_list[[subset_points[sp]]]
             flog.info(paste("Plotting within", subset_points[sp]))
@@ -427,7 +432,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                 if (matstats$Method[1] == "variance") {
                     matstats$Colour <- rep("black", nrow(matstats))
                     countmat2 <- countmat[rownames(matstats), ]
-                    if (assay_for_matrix != "GeneCount"){
+                    if (assay_for_matrix != "GeneCounts"){
                         #Transform to log2 space
                         countmat2 <- convert_matrix_log2(mat = countmat2, transformation = "to_log2")
                     }
