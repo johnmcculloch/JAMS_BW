@@ -1,5 +1,4 @@
-#' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
-
+#' Generates alpha diversity boxplots per metadata category using a SummarizedExperiment object as input
 
 #' @param ExpObj JAMS-style SummarizedExperiment object
 
@@ -13,9 +12,9 @@
 
 #' @param featuresToKeep Vector with feature names to keep. If NULL, all features within the SummarizedExperiment object are kept. Default is NULL. Please note that when agglomerating features with the glomby argument (see above), feature names passed to featuresToKeep must be post-agglomeration feature names. For example, if glomby="Family", featuresToKeep must be family names, such as "f__Enterobacteriaceae", etc.
 
-#' @param subsetby String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.
+#' @param subsetby String or vector of up to three strings specifying the metadata variable name(s) for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different (tiered) class contained within the variable(s), using the same tiered subsetting scheme as the other JAMS plotting functions (see multiple_subsetting_sample_selector). If NULL, data is not subset. Default is NULL.
 
-#' @param compareby  String specifying the metadata variable name for grouping samples. This will define which metadata variable grouping to calculate PERMANOVA p-value. If not specified, and argument permanova is set to TRUE, (see permanova), the compareby argument will be set by colourby or shapeby. If these latter two are also NULL, and permanova is TRUE, permanova will be set to FALSE. Default is NULL.
+#' @param compareby  String specifying the metadata variable name for grouping samples. This will define which metadata variable grouping the alpha diversity boxes are drawn and compared for. Default is NULL.
 
 #' @param compareby_order String or vector specifying the order in which to compare by, if this order is different than alphabetical order of the compareby parameter. Default is NULL.
 
@@ -25,17 +24,13 @@
 
 #' @param fillby String specifying the metadata variable with which to colour/fill in the boxes with. If NULL, all boxes will be filled in white. Default is NULL.
 
-#' @param pairby .
+#' @param pairby String specifying the metadata variable used to pair samples for a paired Wilcoxon test. If NULL, comparisons are unpaired. Default is NULL.
 
+#' @param connectby String specifying the metadata variable name for drawing a line connecting samples belonging to the same class across the boxplot. This is only applied when compareby is discrete (i.e. a boxplot is drawn). Typically used to trace a subject through a time series, e.g. compareby = "Timepoint", connectby = "Study_ID" to draw one line per subject connecting their alpha diversity measure across visits. When connectby is set, point jitter is disabled so that connecting lines meet their points exactly. If NULL, samples are not connected. Default is NULL.
 
-#' @param connectby String specifying the metadata variable name for drawing a line connecting samples belonging to the same class. If NULL, samples are not connected. Default is NULL.
+#' @param facetby String specifying the metadata variable used to facet the plot. Default is NULL.
 
-
-#' @param facetby .
-
-
-#' @param wrap_facet .
-
+#' @param wrap_facet Requires a logical value. If TRUE, uses facet_wrap rather than facet_grid when facetby is set. Default is FALSE.
 
 #' @param overlay_boxplot Requires a logical value. If FALSE, will not overlay the boxplots ontop of one-another. If TRUE, the boxplots will all be plotted, one on top of another. Default is FALSE.
 
@@ -49,7 +44,7 @@
 
 #' @param PPM_normalize_to_bases_sequenced Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a **non-taxonomical** SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is FALSE.
 
-#' @param addtit Optional string with text to append to heatmap main title. Default is NULL.
+#' @param addtit Optional string with text to append to the plot main title. Default is NULL.
 
 #' @param signiflabel String specifying the label used to determine if comparisions are significant or not. Deault is p.format.
 
@@ -61,12 +56,12 @@
 
 #' @export
 
-plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_domains = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, subsetby = NULL, compareby = NULL, compareby_order = NULL,colourby = NULL, shapeby = NULL, fillby = NULL, pairby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...){
+plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_domains = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, pairby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...){
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
     #Vet experiment object
-    obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, variables_to_fix = variables_to_fix, class_to_ignore = class_to_ignore)
+    obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, glomby = glomby, only_allow_CSBs = only_allow_CSBs, variables_to_fix = variables_to_fix, class_to_ignore = class_to_ignore)
 
     analysis <- metadata(obj)$analysis
     if (!is.null(glomby)){
@@ -81,8 +76,26 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
 
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
 
+    #Use the same tiered subsetting scheme as the other JAMS plotting functions.
     if (!(is.null(subsetby))){
-        subset_points <- sort(unique(colData(obj)[, which(colnames(colData(obj)) == subsetby)]))
+        subset_list <- multiple_subsetting_sample_selector(SEobj = obj, phenotable = NULL, subsetby = subsetby, compareby = compareby, cats_to_ignore = class_to_ignore)
+        subset_df <- subset_list$Subsets_stats
+        subset_df <- subset_df[which(subset_df$Subset_Tier_Level != 0), , drop = FALSE]
+
+        #Drop subsets with fewer than 2 samples, as a boxplot comparison is meaningless.
+        if (any(subset_df$Num_samples_in_subset < 2)){
+            LowSampSubsets <- subset_df[which(subset_df$Num_samples_in_subset < 2), "Subset_Tier_Class_Name"]
+            flog.warn(paste("Subsets", paste0(LowSampSubsets, collapse = ", "), "contain fewer than 2 samples, and will thus be omitted."))
+            subset_df <- subset_df[which(subset_df$Num_samples_in_subset >= 2), , drop = FALSE]
+        }
+
+        if (nrow(subset_df) < 1){
+            flog.warn("There are no surviving subset points. Defaulting to no subsetting.")
+            subset_points <- "none"
+            subsetby <- NULL
+        } else {
+            subset_points <- subset_df$Subset_Tier_Class_Name
+        }
     } else {
         subset_points <- "none"
     }
@@ -97,42 +110,32 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
     for (sp in 1:length(subset_points)){
 
         if (!(is.null(subsetby))){
-            samplesToKeep <- rownames(colData(obj))[which(colData(obj)[ , subsetby] == subset_points[sp])]
+            samplesToKeep_sp <- subset_list[[subset_points[sp]]]
             flog.info(paste("Plotting within", subset_points[sp]))
             subsetname <- subset_points[sp]
         } else {
-            samplesToKeep <- rownames(colData(obj))
+            samplesToKeep_sp <- rownames(colData(obj))
             subsetname <- "no_sub"
         }
 
         #See if there are enough samples and features to go ahead
         proceed <- TRUE
-        curr_pt <- colData(obj)[samplesToKeep, ]
+        curr_pt <- colData(obj)[samplesToKeep_sp, ]
 
         if ((dim(curr_pt)[1] * dim(curr_pt)[2]) < 2){
             #There are less than 2 cells, a plot is meaningless.
+            flog.info(paste("Unable to make alpha diversity plots for", subsetname, "- too few samples. Skipping."))
             proceed <- FALSE
         }
 
-        if (proceed){
-
-            hmtypemsg <- "Alpha Diversity Plot"
-            asPA <- FALSE
-            hmasPA <- FALSE
-            if (can_be_made_numeric(curr_pt[ , compareby])){
-                stattype <- "spearman"
-            } else {
-                stattype <- "auto"
-            }
-
-            currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, only_allow_CSBs = only_allow_CSBs, normalization = "relabund", PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff)
-
-        } else {
-
-            flog.info("Unable to make plots with the current metadata for this comparison.")
-            return(NULL)
-
+        if (!proceed){
+            #Skip this subset, but keep processing the rest.
+            next
         }
+
+        hmtypemsg <- "Alpha Diversity Plot"
+
+        currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = samplesToKeep_sp, featuresToKeep = featuresToKeep, only_allow_CSBs = FALSE, normalization = "relabund", PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff)
 
         #Get counts matrix
         countmat <- as.matrix(assays(currobj)$PPM)
@@ -146,9 +149,9 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             rowsToKeep <- which(!(rownames(countmat) %in% dunno))
             countmat <- countmat[rowsToKeep, ]
             if (nrow(countmat) < 1){
-                #abort, nothing is left over
-                flog.info("None of the wanted features were found in SummarizedExperiment object when using the current filtration parameters.")
-                return(NULL)
+                #Nothing left over for this subset; skip it but keep processing the rest.
+                flog.info(paste("None of the wanted features were found for", subsetname, "under the current filtration parameters. Skipping this subset."))
+                next
             }
         }
 
@@ -163,7 +166,6 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             tt <- as.data.frame(rowData(currobj))
             tt <- tt[rownames(countmat), ]
             #Need at least 10 features within each Domain to measure alpha diversity
-            #table(tt$Domain)[which(table(tt$Domain) >= 10)]
             validanalyses <- names(table(tt$Domain)[which(table(tt$Domain) >= 10)])
         } else {
             validanalyses <- analysisname
@@ -186,27 +188,54 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             #Define which features are going to be kept within the subset
             if (all(c((analysis %in% c("LKT", "Contig_LKT", "ConsolidatedGenomeBin")), (stratify_by_domains == TRUE)))){
                 validfeats <- subset(tt, Domain == curranalysis)[ , analysisname]
-                currcountmat <- countmat[validfeats, ]
+                currcountmat <- countmat[validfeats, , drop = FALSE]
             } else {
                 currcountmat <- countmat
             }
 
-            #calculate alpha diversity measures
+            #Protect alpha diversity estimation against all-zero samples, which estimateR cannot handle.
             tmat <- t(currcountmat)
+            emptysamps <- rownames(tmat)[which(rowSums(tmat) == 0)]
+            if (length(emptysamps) > 0){
+                flog.warn(paste("For", tablename, ",", length(emptysamps), "sample(s) have zero counts across all features after filtration and will be omitted from alpha diversity estimation."))
+                tmat <- tmat[which(rowSums(tmat) > 0), , drop = FALSE]
+            }
+
+            #Need at least 2 samples remaining to make a meaningful comparison.
+            if (nrow(tmat) < 2){
+                flog.warn(paste("Fewer than 2 non-empty samples remain for", tablename, ". Skipping."))
+                next
+            }
+
+            #calculate alpha diversity measures
             alphadiv <- estimateR(tmat)
             for (meas in c("invsimpson", "simpson", "shannon")){
                 alphadiv2 <- diversity(tmat, index = meas)
                 alphadiv <- rbind(alphadiv, alphadiv2[colnames(alphadiv)])
                 rownames(alphadiv)[nrow(alphadiv)] <- meas
             }
-            alphadiv[c(3,5,6,7,8), ] <- round(alphadiv[c(3,5,6,7,8), ], 2)
-            alphadiv[c(1,2,4), ] <- round(alphadiv[c(1,2,4), ], 0)
+
+            #Round by row MEANING, not by hard-coded row position (which breaks if
+            #estimateR ever returns a different set/order of rows). Count-type estimators
+            #(observed richness, Chao1, ACE) are whole numbers; standard errors and the
+            #diversity indices keep two decimals.
+            count_rows <- c("S.obs", "S.chao1", "S.ACE")
+            rows_round0 <- rownames(alphadiv)[rownames(alphadiv) %in% count_rows]
+            rows_round2 <- rownames(alphadiv)[!(rownames(alphadiv) %in% count_rows)]
+            if (length(rows_round0) > 0){
+                alphadiv[rows_round0, ] <- round(alphadiv[rows_round0, , drop = FALSE], 0)
+            }
+            if (length(rows_round2) > 0){
+                alphadiv[rows_round2, ] <- round(alphadiv[rows_round2, , drop = FALSE], 2)
+            }
+
             alphadiv <- alphadiv[!(rownames(alphadiv) %in% c("se.chao1", "se.ACE")), ]
             rownames(alphadiv) <- unlist(sapply(1:nrow(alphadiv), function(x) { switch(rownames(alphadiv)[x], "S.obs" = "Observed", "S.chao1" = "Chao1", "S.ACE" = "ACE", "shannon" = "Shannon", "simpson" = "Simpson", "invsimpson" = "InvSimpson") }))
 
             if ("GeneCounts" %in% names(assays(currobj))){
-                currgenecountmat <- genecountmat[rownames(currcountmat), ]
-                genecountmatsum <- colSums(genecountmat)
+                #Restrict gene counts to the samples surviving alpha diversity estimation.
+                currgenecountmat <- genecountmat[rownames(currcountmat), colnames(alphadiv), drop = FALSE]
+                genecountmatsum <- colSums(currgenecountmat)
                 alphadiv <- rbind(alphadiv, genecountmatsum[colnames(alphadiv)])
                 rownames(alphadiv)[nrow(alphadiv)] <- "GeneCounts"
             }
@@ -222,9 +251,6 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             measurescols <- colnames(statsdf)[!(colnames(statsdf) %in% c("Samples", "Sample_Set", colnames(curr_pt)))]
             othercols <- colnames(statsdf)[!(colnames(statsdf) %in% c("Samples", "Sample_Set", measurescols))]
             statsdf <- statsdf[ , c("Sample_Set", "Sample", measurescols, othercols) ]
-            #if (!is.null(presetlist$filtermsg)){
-            #    statsdf$Filtering <- as.character(presetlist$filtermsg)
-            #}
             svec[[svn]] <- statsdf
             names(svec)[svn] <- tablename
             svn <- svn + 1
@@ -249,7 +275,7 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
             }
 
             if (!is.null(pairby)){
-              dat$Pairby <- dat[ , pairby]
+                dat$Pairby <- dat[ , pairby]
             }
 
             if (!is.null(connectby)){
@@ -264,12 +290,13 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
 
             for (meas in measures_to_show){
 
-                #Cheap trick, but it works
+                #Work on a per-measure copy so pairing reorder and renaming do not leak between measures.
                 currdat <- dat
+                #If pairing, reorder the frame that is actually plotted, so geom pairing lines up.
                 if (!is.null(pairby)) {
-                  dat <- dat[order(dat$Pairby),]
+                    currdat <- currdat[order(currdat$Pairby), ]
                 }
-                colnames(currdat)[which(colnames(dat) == meas)] <- "AlphaMeas"
+                colnames(currdat)[which(colnames(currdat) == meas)] <- "AlphaMeas"
                 #Start building a plot
                 p <- ggplot(currdat, aes(x = Compareby, y = AlphaMeas))
 
@@ -298,6 +325,12 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
                         jitfact <- 0
                     }
 
+                    #If connecting samples across the boxplot, do not jitter, so the
+                    #connecting lines land exactly on their points.
+                    if (!is.null(connectby)){
+                        jitfact <- 0
+                    }
+
                     if (!overlay_boxplot){
                         p <- p + geom_boxplot(outlier.shape = NA)
                     }
@@ -320,6 +353,13 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
 
                     if (!(is.null(shapeby))){
                         p <- add_shape_to_plot_safely(p = p, shapevec = currdat$Shape, shapeby = shapeby, cdict = cdict)
+                    }
+
+                    #Draw connecting lines across the boxplot for samples sharing a connectby class
+                    #(e.g. connectby = "Study_ID" to trace a subject across timepoints). Drawn after
+                    #the points so grouping is explicit; with jitfact forced to 0 above, lines meet points.
+                    if (!is.null(connectby)){
+                        p <- p + geom_line(aes(group = Connect), colour = "grey60", linewidth = 0.25)
                     }
 
                     if (overlay_boxplot){
@@ -348,14 +388,6 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
                     p <- p + aes(colour = Colour)
 
                     if (is.numeric(currdat$Colour)){
-                        #If it is numeric, check that range is enough for a gradient
-                        #if ((range(dat$colours)[2] - range(dat$colours)[1]) != 0){
-                        #p <- p + scale_color_gradient(low = "blue", high = "red")
-                        #} else {
-                        #dat$colours <- as.character(dat$colours)
-                        #groupcols <- setNames("black", unique(dat$colours))
-                        #p <- p + scale_color_manual(values = groupcols)
-                        #}
                         p <- p + scale_color_gradient(low = "blue", high = "red")
                     } else {
                         #if there is a colour dictionary, then use that
