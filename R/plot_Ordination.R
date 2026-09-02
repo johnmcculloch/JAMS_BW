@@ -16,6 +16,8 @@
 
 #' @param unhighlighted_transparency_percentage Numerical value representing the percentage transparency for unhighlighted samples when using the samplesToHighlight argument. Default is 95 percent, meaning the unhighlighted samples will have 5 percent of the brightness than highlighted samples. To turn off plotting of unhighlighted samples, set unhighlighted_transparency_percentage to 100.
 
+#' @param highlight_subset_in_context Requires a logical value. If set to TRUE and a subsetby variable is passed, then rather than restricting each plot to only the samples within a subset, ALL samples (all of samplesToKeep, or all samples in the SummarizedExperiment object if samplesToKeep is NULL) are plotted as a faded background, and only the samples belonging to the current subset class are highlighted at full opacity. This preserves the positional context of the subset samples relative to the entire cohort, since the ordination is computed on the full sample set and shared across all subset panels. The PERMANOVA, centroids and other statistics continue to be computed exclusively on the highlighted (subset) samples. When this mode is active, any value explicitly passed to samplesToHighlight is ignored (with a warning), as the highlight channel is used by the subset mechanism. The degree of fading of background samples is controlled by unhighlighted_transparency_percentage (q.v.). Default is FALSE, meaning each subset is plotted in isolation (the original behavior).
+
 #' @param featuresToKeep Vector with feature names to keep. If NULL, all features within the SummarizedExperiment object are kept. Default is NULL. Please note that when agglomerating features with the glomby argument (see above), feature names passed to featuresToKeep must be post-agglomeration feature names. For example, if glomby="Family", featuresToKeep must be family names, such as "f__Enterobacteriaceae", etc.
 
 #' @param subsetby String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.
@@ -25,6 +27,8 @@
 #' @param permanova Requires a logical value. If set to TRUE, will include in the title plot the PERMANOVA stats for groups set with compareby. Default is TRUE.
 
 #' @param permanova_permutations Numerical value specifying the number of permutations for PERMANOVA. Default is 10000.
+
+#' @param min_samples_per_class_for_permanova Numerical value specifying the minimum number of samples that must be present in the smallest class of the compareby variable (within a given subset) for a PERMANOVA to be attempted. Subsets whose smallest compareby class has fewer than this number of samples will still be ordinated and plotted, but without a PERMANOVA p-value. This prevents crashes when a subset contains, for example, a single sample in one class (1-vs-many), which cannot support a PERMANOVA. Default is 3.
 
 #' @param colourby String specifying the metadata variable name for colouring in samples. If NULL, all samples will be black. Default is NULL.
 
@@ -90,7 +94,7 @@
 
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, unhighlighted_transparency_percentage = 95, featuresToKeep = NULL, only_allow_CSBs = FALSE, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, asPPM = TRUE, normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, include_components_variance_plot = FALSE, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, unhighlighted_transparency_percentage = 95, highlight_subset_in_context = FALSE, featuresToKeep = NULL, only_allow_CSBs = FALSE, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, asPPM = TRUE, normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, min_samples_per_class_for_permanova = 3, include_components_variance_plot = FALSE, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
@@ -110,6 +114,13 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     if (is.null(compareby)){
         compareby <- c(colourby, shapeby, ellipseby, textby, sizeby, connectby)[1]
     }
+
+    #Sanity check for context-highlighting mode
+    if (highlight_subset_in_context && is.null(subsetby)){
+        flog.warn("highlight_subset_in_context = TRUE but no subsetby variable was passed; there is nothing to highlight in context. Proceeding as a normal (non-context) ordination.")
+        highlight_subset_in_context <- FALSE
+    }
+
     #Remove samples bearing categories within class_to_ignore
     valid_vars <- c(compareby, subsetby)[which(!is.na(c(compareby, subsetby)))]
 
@@ -163,6 +174,9 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
     }
 
+    #Resolve the global backdrop of samples once. In context-highlighting mode, this is the faded background against which each subset is highlighted.
+    global_backdrop <- if (is.null(samplesToKeep)) rownames(colData(obj)) else samplesToKeep[samplesToKeep %in% rownames(colData(obj))]
+
     if (!(is.null(subsetby))){
         subset_list <- multiple_subsetting_sample_selector(SEobj = obj, phenotable = NULL, subsetby = subsetby, compareby = compareby, cats_to_ignore = class_to_ignore)
         #Ensure there are only valid subsets which will plot on a heatmap.
@@ -185,6 +199,15 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
                 flog.warn(paste0("Subsets ", paste0(LowComparebyQCSubsets, collapse = ", "), " are extremely unbalanced for comparative variable \"", compareby,"\", and will thus be omitted. Consider changing your compareby argument, or subset argument(s)."))
                 subset_df <- subset_df[which(subset_df$Compareby_QC_in_subset >= 0.1), , drop = FALSE]
             }
+
+            #Report (but do NOT drop) subsets whose smallest compareby class is too small to support a PERMANOVA.
+            #These subsets will still be ordinated and plotted; only their PERMANOVA will be skipped, later, per subset.
+            if ("Compareby_min_num_samples_in_class" %in% colnames(subset_df)){
+                UnderpoweredPermanovaSubsets <- subset_df$Subset_Tier_Class_Name[which((!is.na(subset_df$Compareby_min_num_samples_in_class)) & (subset_df$Compareby_min_num_samples_in_class < min_samples_per_class_for_permanova))]
+                if (length(UnderpoweredPermanovaSubsets) > 0){
+                    flog.warn(paste0("Subsets ", paste0(UnderpoweredPermanovaSubsets, collapse = ", "), " have fewer than ", min_samples_per_class_for_permanova, " sample(s) in the smallest class of \"", compareby, "\". These subsets will still be plotted, but PERMANOVA will be skipped for them."))
+                }
+            }
         }
 
         #Test for valid subsets
@@ -192,6 +215,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             flog.warn("There are no surviving subset points. Defaulting to no subsetting.")
             subset_points <- "none"
             subsetby <- NULL
+            highlight_subset_in_context <- FALSE
         } else {
             subset_points <- subset_df$Subset_Tier_Class_Name
         }
@@ -205,13 +229,33 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
     for (sp in 1:length(subset_points)){
 
+        #Reset permanova per subset, so a skip in one subset does not leak into the next
+        do_permanova <- permanova
+        #Reset the per-subset highlight vector fresh each iteration, so it does not leak between subsets
+        samplesToHighlight_sp <- samplesToHighlight
+
         if (!(is.null(subsetby))){
-            samplesToKeep_sp <- subset_list[[subset_points[sp]]]
-            flog.info(paste("Plotting within", subset_points[sp]))
-            subsetname <- subset_points[sp]
-            pcatit <- paste(pcatitbase, "within", subset_points[sp])
+            subset_group_samples <- subset_list[[subset_points[sp]]]
+
+            if (highlight_subset_in_context){
+                #Context mode: plot the full backdrop, highlight only the current subset group
+                if (!is.null(samplesToHighlight)){
+                    flog.warn("highlight_subset_in_context = TRUE: ignoring the explicit samplesToHighlight argument; the current subset group will be highlighted instead.")
+                }
+                samplesToKeep_sp <- global_backdrop
+                samplesToHighlight_sp <- subset_group_samples
+                flog.info(paste("Highlighting", subset_points[sp], "in context of the full cohort"))
+                subsetname <- subset_points[sp]
+                pcatit <- paste(pcatitbase, "highlighting", subset_points[sp], "in context")
+            } else {
+                #Original behavior: restrict to subset samples
+                samplesToKeep_sp <- subset_group_samples
+                flog.info(paste("Plotting within", subset_points[sp]))
+                subsetname <- subset_points[sp]
+                pcatit <- paste(pcatitbase, "within", subset_points[sp])
+            }
         } else {
-            samplesToKeep_sp <- rownames(colData(obj))
+            samplesToKeep_sp <- global_backdrop
             subsetname <- "no_sub"
             pcatit <- pcatitbase
         }
@@ -220,7 +264,11 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         if (assay_for_matrix == "BaseCounts"){
 
-            currobj <- filter_experiment(SEobj = obj, featcutoff = c(0,0), samplesToKeep = samplesToKeep_sp, featuresToKeep = global_FTK, only_allow_CSBs = FALSE, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = c(0,0), discard_SDoverMean_below = NULL, flush_out_empty_samples = FALSE)
+            #In context mode, do NOT flush empty background samples, as they are legitimate faded context.
+            #In normal mode, flush empties to avoid NA dissimilarities crashing the ordination/PERMANOVA.
+            flush_empties <- !highlight_subset_in_context
+
+            currobj <- filter_experiment(SEobj = obj, featcutoff = c(0,0), samplesToKeep = samplesToKeep_sp, featuresToKeep = global_FTK, only_allow_CSBs = FALSE, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = c(0,0), discard_SDoverMean_below = NULL, flush_out_empty_samples = flush_empties)
 
             if (PPM_normalize_to_bases_sequenced == TRUE){
                 pcatit <- paste(c(pcatit, "Normalized to total number of bases sequenced in sample"), collapse = "\n")
@@ -230,6 +278,16 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         } else if (assay_for_matrix %in% c("GeneCounts", "GeneLengths")){
             currobj <- obj[global_FTK, samplesToKeep_sp]
+        }
+
+        #In context mode, cull the highlight set to those samples actually surviving in currobj
+        if (highlight_subset_in_context){
+            samplesToHighlight_sp <- samplesToHighlight_sp[samplesToHighlight_sp %in% colnames(currobj)]
+            #Guard: if the highlighted group has dropped below 2 samples, skip this panel gracefully
+            if (length(samplesToHighlight_sp) < 2){
+                flog.warn(paste0("After filtration, fewer than 2 samples remain in the highlighted group ", subsetname, ". Skipping this panel."))
+                next
+            }
         }
 
         currpt <- as.data.frame(colData(currobj))
@@ -270,11 +328,11 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         sampsizemsg <- paste0("Number of samples = ", ncol(countmat), "; Number of features = ", nrow(countmat))
         flog.info("getting distance")
 
-        if (!is.null(samplesToHighlight)){
-            samplesToHighlight <- samplesToHighlight[samplesToHighlight %in% rownames(countmat)]
-            currpt_stat <- currpt[(rownames(currpt) %in% samplesToHighlight), ]
+        if (!is.null(samplesToHighlight_sp)){
+            samplesToHighlight_sp <- samplesToHighlight_sp[samplesToHighlight_sp %in% rownames(countmat)]
+            currpt_stat <- currpt[(rownames(currpt) %in% samplesToHighlight_sp), ]
             d_for_plot <- vegdist(countmat, method = distmethod, na.rm = TRUE)
-            d <- vegdist(countmat[(rownames(countmat) %in% samplesToHighlight), ], method = distmethod, na.rm = TRUE)
+            d <- vegdist(countmat[(rownames(countmat) %in% samplesToHighlight_sp), ], method = distmethod, na.rm = TRUE)
             cats <- currpt_stat[ , compareby]
         } else {
             currpt_stat <- currpt
@@ -285,11 +343,31 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         #switch off permanova if there is only a single comparison
         if (length(cats) < 2){
-            permanova <- FALSE
+            do_permanova <- FALSE
+        }
+
+        #Switch off permanova (but NOT the plot) if the smallest compareby class within this subset is too small.
+        #A PERMANOVA cannot be computed for a 1-vs-many comparison, and would otherwise crash the loop.
+        if (all(c(do_permanova, (!is.null(compareby)), (!is.numeric(cats))))){
+            class_counts <- table(cats[!is.na(cats)])
+            if (length(class_counts) < 2){
+                flog.warn(paste0("There are fewer than 2 classes of \"", compareby, "\" within ", subsetname, "; skipping PERMANOVA for this subset."))
+                do_permanova <- FALSE
+            } else if (min(class_counts) < min_samples_per_class_for_permanova){
+                flog.warn(paste0("The smallest class of \"", compareby, "\" within ", subsetname, " has ", min(class_counts), " sample(s), which is fewer than the minimum of ", min_samples_per_class_for_permanova, " required. Skipping PERMANOVA for this subset, but still plotting the ordination."))
+                do_permanova <- FALSE
+            }
+        }
+
+        #Final safety net: if the distance matrix contains any NA (e.g. from empty samples that slipped through),
+        #a PERMANOVA would crash, so skip it for this subset.
+        if (all(c(do_permanova, any(is.na(as.matrix(d)))))){
+            flog.warn(paste0("The dissimilarity matrix for ", subsetname, " contains missing values; skipping PERMANOVA for this subset, but still plotting the ordination."))
+            do_permanova <- FALSE
         }
 
         flog.info("getting permanova")
-        if (permanova == TRUE){
+        if (do_permanova == TRUE){
             if (!(is.numeric(cats))){
                 permanovaout <- vegan::adonis2(formula = as.formula(paste("d ~ ", compareby)), data = currpt_stat, permutations = permanova_permutations, parallel = numthreads)
                 permanovap <- permanovaout$`Pr(>F)`[1]
@@ -407,20 +485,20 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             }
         }
 
-        if (!is.null(samplesToHighlight)){
+        if (!is.null(samplesToHighlight_sp)){
             dford$Alpha <- (pmin(pmax((100 - unhighlighted_transparency_percentage), 0), 100)) / 100
-            dford[samplesToHighlight, "Alpha"] <- 1
+            dford[samplesToHighlight_sp, "Alpha"] <- 1
         } else {
             dford$Alpha <- 1
         }
 
         #flog.info("getting centroids")
         if (!(is.numeric(cats))){
-            if (!is.null(samplesToHighlight)){
-                centroids <- aggregate(.~Comparison, data = dford[samplesToHighlight, c(paste0(axisprefix, comp), "Comparison")], FUN = mean)
+            if (!is.null(samplesToHighlight_sp)){
+                centroids <- aggregate(.~Comparison, data = dford[samplesToHighlight_sp, c(paste0(axisprefix, comp), "Comparison")], FUN = mean)
                 colnames(centroids)[c(2, 3)] <- paste0("mean", colnames(dford)[1:2])
                 rownames(centroids) <- centroids[ , "Comparison"]
-                centroiddf <- left_join(dford[samplesToHighlight, ], centroids, by = "Comparison")
+                centroiddf <- left_join(dford[samplesToHighlight_sp, ], centroids, by = "Comparison")
             } else {
                 centroids <- aggregate(.~Comparison, data = dford[ , c(paste0(axisprefix, comp), "Comparison")], FUN = mean)
                 colnames(centroids)[c(2, 3)] <- paste0("mean", colnames(dford)[1:2])
@@ -436,7 +514,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         }
 
         flog.info("plotting")
-        if (!is.null(samplesToHighlight)){
+        if (!is.null(samplesToHighlight_sp)){
             aesthetic <- aes(x = get(colnames(dford)[1]), y = get(colnames(dford)[2]), alpha = Alpha)
         } else {
             aesthetic <- aes(x = get(colnames(dford)[1]), y = get(colnames(dford)[2]))
@@ -566,8 +644,8 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
                 flog.info(paste("Calculating the euclidean distances between centroids in", ncol(dford_full), "dimesnions"))
                 dford_full$Comparison <- currpt[match(rownames(dford_full), rownames(currpt)), which(colnames(currpt) == compareby)]
 
-                if (!is.null(samplesToHighlight)){
-                    centroids_full <- aggregate(.~Comparison, data = dford_full[samplesToHighlight, ], FUN = mean)
+                if (!is.null(samplesToHighlight_sp)){
+                    centroids_full <- aggregate(.~Comparison, data = dford_full[samplesToHighlight_sp, ], FUN = mean)
                 } else {
                     centroids_full <- aggregate(.~Comparison, data = dford_full, FUN = mean)
                 }
