@@ -6,8 +6,13 @@
 get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, outputdir = NULL, assembly_accession = NULL, organism_name = NULL, infraspecific_name = NULL, taxid = NULL, species_taxid = NULL, asm_name = NULL, as_general_expression = FALSE, assembly_level = NULL, assembly_upto = NULL, bioproject = NULL, biosample = NULL, refseq_category_upto = NULL, ntop = NULL, nobs = TRUE, allow_assemblies_from_metagenomes = TRUE, fileformat = "fasta", simulate = TRUE){
 
     require(data.table)
-    if (is.null(outputdir)){
-        outputdir <- getwd()
+
+    # outputdir is only fundamental when we are actually going to download.
+    # When simulating (exploring available genomes), outputdir may remain NULL.
+    if (simulate == FALSE){
+        if (is.null(outputdir)){
+            outputdir <- getwd()
+        }
     }
 
     if (all(c(is.null(organisms), is.null(taxid), is.null(species_taxid), is.null(assembly_accession), is.null(bioproject), is.null(biosample), is.null(organism_name), is.null(infraspecific_name), is.null(refseq_category_upto), is.null(asm_name), is.null(assembly_level), is.null(assembly_upto)))){
@@ -24,12 +29,6 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
             ASURL <- paste(GBURL, "assembly_summary_genbank.txt", sep = "/")
         }
 
-        # NCBI assembly_summary.txt has TWO header lines:
-        #   Line 1: a "# See ftp://..." README comment  <-- must be skipped
-        #   Line 2: the actual column names
-        # Some rows have extra tab-delimited fields beyond the header count, so
-        # we read the true header first, then pass ncol explicitly to fread so
-        # it doesn't stop early on those malformed rows.
         # NCBI assembly_summary.txt has TWO header lines:
         #   Line 1: a "# See ftp://..." README comment  <-- must be skipped
         #   Line 2: the actual column names
@@ -109,20 +108,23 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
     wanted_assembly_summary <- assembly_summary
 
     if (!is.null(assembly_accession)){
-        flog.info(paste("Subsetting to entries only with assembly accession(s)", paste0(assembly_accession, collapse=", ")))
-        wanted_assembly_summary <- subset(wanted_assembly_summary, (assembly_accession %in% assembly_accession))
+        .acc <- assembly_accession
+        flog.info(paste("Subsetting to entries only with assembly accession(s)", paste0(.acc, collapse=", ")))
+        wanted_assembly_summary <- subset(wanted_assembly_summary, (assembly_accession %in% .acc))
         flog.info(paste("There are", nrow(wanted_assembly_summary), "entries matching the assembly accession criteria."))
     }
 
     if (!is.null(bioproject)){
-        flog.info(paste("Subsetting to entries only within BioProject(s)", paste0(bioproject, collapse=", ")))
-        wanted_assembly_summary <- subset(wanted_assembly_summary, (bioproject %in% bioproject))
+        .bp <- bioproject
+        flog.info(paste("Subsetting to entries only within BioProject(s)", paste0(.bp, collapse=", ")))
+        wanted_assembly_summary <- subset(wanted_assembly_summary, (bioproject %in% .bp))
         flog.info(paste("There are", nrow(wanted_assembly_summary), "entries matching the BioProject criteria."))
     }
 
     if (!is.null(biosample)){
-        flog.info(paste("Subsetting to entries only within BioSample(s)", paste0(biosample, collapse=", ")))
-        wanted_assembly_summary <- subset(wanted_assembly_summary, (biosample %in% biosample))
+        .bs <- biosample
+        flog.info(paste("Subsetting to entries only within BioSample(s)", paste0(.bs, collapse=", ")))
+        wanted_assembly_summary <- subset(wanted_assembly_summary, (biosample %in% .bs))
         flog.info(paste("There are", nrow(wanted_assembly_summary), "entries matching the BioSample criteria."))
     }
 
@@ -148,26 +150,30 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
             wanted_species_taxid <- unique(append(wanted_species_taxid, unique(wanted_assembly_summary$species_taxid[which(wanted_assembly_summary[ , "taxid"] %in% taxid)])))
         }
 
-        wanted_assembly_summary <- subset(wanted_assembly_summary, (species_taxid %in% wanted_species_taxid))
+        .stid <- wanted_species_taxid
+        wanted_assembly_summary <- subset(wanted_assembly_summary, (species_taxid %in% .stid))
         flog.info(paste("There are", nrow(wanted_assembly_summary), "entries matching the Species criteria."))
     }
 
     # ── Infraspecies / strain / asm_name filtering ─────────────────────────────
     if (!is.null(taxid)){
         flog.info("Filtering by Tax ID")
-        wanted_assembly_summary <- subset(wanted_assembly_summary, (taxid %in% taxid))
+        .tid <- taxid
+        wanted_assembly_summary <- subset(wanted_assembly_summary, (taxid %in% .tid))
         flog.info(paste("There are", nrow(wanted_assembly_summary), "entries matching the Tax ID criteria."))
     } else {
         if (!is.null(infraspecific_name)){
             flog.info("Filtering by strain name")
-            wanted_assembly_summary <- subset(wanted_assembly_summary, (infraspecific_name %in% infraspecific_name))
+            .inf <- infraspecific_name
+            wanted_assembly_summary <- subset(wanted_assembly_summary, (infraspecific_name %in% .inf))
             flog.info(paste("There are", nrow(wanted_assembly_summary), "entries matching the Strain Name criteria."))
         }
 
         if (!is.null(asm_name)){
             flog.info("Filtering by asm_name")
             if (as_general_expression != TRUE){
-                wanted_assembly_summary <- subset(wanted_assembly_summary, (asm_name %in% asm_name))
+                .asm <- asm_name
+                wanted_assembly_summary <- subset(wanted_assembly_summary, (asm_name %in% .asm))
             } else {
                 flog.info("Considering asm_name supplied to be a general expression.")
                 wantedrowslist <- unlist(lapply(1:length(asm_name), function(x){ grep(asm_name[x], wanted_assembly_summary[ , "asm_name"]) }))
@@ -191,7 +197,8 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
         wanted_assembly_level <- assembly_level
     }
 
-    wanted_assembly_summary <- subset(wanted_assembly_summary, (assembly_level %in% wanted_assembly_level))
+    .lvl <- wanted_assembly_level
+    wanted_assembly_summary <- subset(wanted_assembly_summary, (assembly_level %in% .lvl))
     flog.info(paste("There are", nrow(wanted_assembly_summary), "entries matching the Assembly Level criteria."))
 
     if (!is.null(refseq_category_upto)){
@@ -199,8 +206,9 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
             "reference"      = "reference genome",
             "representative" = c("reference genome", "representative genome"),
             "all"            = c("reference genome", "representative genome", "na"))
-        flog.info(paste("Subsetting by RefSeq category to include only:", paste0(wanted_refseq_category, collapse=", ")))
-        wanted_assembly_summary <- subset(wanted_assembly_summary, (refseq_category %in% wanted_refseq_category))
+        .rsc <- wanted_refseq_category
+        flog.info(paste("Subsetting by RefSeq category to include only:", paste0(.rsc, collapse=", ")))
+        wanted_assembly_summary <- subset(wanted_assembly_summary, (refseq_category %in% .rsc))
         flog.info(paste("There are", nrow(wanted_assembly_summary), "entries matching the RefSeq criteria."))
     }
 
@@ -220,16 +228,6 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
 
     if (nrow(wanted_assembly_summary) > 0){
 
-        # ── Drop rows with missing/placeholder ftp_path before URL construction ──
-        valid_ftp <- !is.na(wanted_assembly_summary$ftp_path) &
-                     wanted_assembly_summary$ftp_path != "na" &
-                     wanted_assembly_summary$ftp_path != ""
-        n_dropped <- sum(!valid_ftp)
-        if (n_dropped > 0){
-            flog.info(paste("Dropping", n_dropped, "entries with missing ftp_path."))
-            wanted_assembly_summary <- wanted_assembly_summary[valid_ftp, ]
-        }
-
         filesuffix <- switch(fileformat,
             "genbank" = "genomic.gbff.gz",
             "fasta"   = "genomic.fna.gz",
@@ -237,14 +235,51 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
             "faa"     = "protein.faa.gz",
             "rna"     = "rna_from_genomic.fna.gz")
 
-        sufreps <- sapply(seq_len(nrow(wanted_assembly_summary)), function(x){
-            parts <- unlist(strsplit(wanted_assembly_summary$ftp_path[x], split = "/"))
-            parts[length(parts)]
-        })
+        # ── Build the download URL ─────────────────────────────────────────────
+        # If a fresh summary was downloaded, ftp_path is present and we build the
+        # url from it. If a previously-processed summary was passed back in,
+        # ftp_path is gone but a url column already exists, so we reuse it.
+        if ("ftp_path" %in% colnames(wanted_assembly_summary)){
 
-        wanted_assembly_summary$url    <- paste(wanted_assembly_summary$ftp_path, paste(sufreps, filesuffix, sep = "_"), sep = "/")
-        wanted_assembly_summary$destfn <- file.path(outputdir, paste(wanted_assembly_summary$organism_name, wanted_assembly_summary$infraspecific_name, wanted_assembly_summary$assembly_accession, filesuffix, sep = "_"))
-        wanted_assembly_summary$ftp_path <- NULL
+            # Drop rows with missing/placeholder ftp_path before URL construction
+            valid_ftp <- !is.na(wanted_assembly_summary$ftp_path) &
+                         wanted_assembly_summary$ftp_path != "na" &
+                         wanted_assembly_summary$ftp_path != ""
+            n_dropped <- sum(!valid_ftp)
+            if (n_dropped > 0){
+                flog.info(paste("Dropping", n_dropped, "entries with missing ftp_path."))
+                wanted_assembly_summary <- wanted_assembly_summary[valid_ftp, ]
+            }
+
+            sufreps <- sapply(seq_len(nrow(wanted_assembly_summary)), function(x){
+                parts <- unlist(strsplit(wanted_assembly_summary$ftp_path[x], split = "/"))
+                parts[length(parts)]
+            })
+
+            wanted_assembly_summary$url    <- paste(wanted_assembly_summary$ftp_path, paste(sufreps, filesuffix, sep = "_"), sep = "/")
+            wanted_assembly_summary$ftp_path <- NULL
+
+        } else if ("url" %in% colnames(wanted_assembly_summary)){
+            flog.info("Input summary has no ftp_path; reusing existing url column.")
+        } else {
+            stop("assembly_summary has neither an ftp_path nor a url column; cannot construct download URLs.")
+        }
+
+        # ── Always (re)compute destfn from the CURRENT outputdir ────────────────
+        # This makes the outputdir of the current call authoritative, even if a
+        # summary carrying a stale destfn from an earlier call is passed in.
+        # destfn only matters when actually downloading; when simulating with a
+        # NULL outputdir we skip it (there is nowhere to write to yet).
+        if (!is.null(outputdir)){
+            wanted_assembly_summary$destfn <- file.path(
+                outputdir,
+                paste(wanted_assembly_summary$organism_name,
+                      wanted_assembly_summary$infraspecific_name,
+                      wanted_assembly_summary$assembly_accession,
+                      filesuffix, sep = "_"))
+        } else {
+            wanted_assembly_summary$destfn <- NULL
+        }
 
         # ── ntop guard: don't request more rows than exist ─────────────────────
         if (!is.null(ntop)){
@@ -258,6 +293,10 @@ get_genomes_NCBI <- function(organisms = "bacteria", assembly_summary = NULL, ou
         }
 
         if (simulate == FALSE){
+            if (!dir.exists(outputdir)){
+                flog.info(paste("Creating output directory:", outputdir))
+                dir.create(outputdir, recursive = TRUE, showWarnings = FALSE)
+            }
             flog.info("Downloading genomes")
             dnl <- sapply(seq_len(nrow(wanted_assembly_summary)), function(x){
                 tryCatch(
