@@ -1,6 +1,8 @@
 #' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, compareby_order = NULL, invertbinaryorder = FALSE, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_cladogram_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, fun_for_l2fc = "geom_mean", ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
+#'
+#' When compareby = NULL, a single boxplot is drawn per feature showing the spread of relative abundance across ALL samples in the (sub)set, with no statistical comparison. If stratify_by_taxlevel is also set, the taxon-stratified boxplot(s) are likewise drawn across all samples as a single group. This is useful for inspecting which taxa contribute to a functional feature within a single group.
 #' @export
 
 plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, compareby_order = NULL, invertbinaryorder = FALSE, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_cladogram_for_stratification = TRUE, show_prevalence_in_cladogram = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, fun_for_l2fc = "geom_mean", ...){
@@ -8,6 +10,15 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
     #Account for JAMS2 spaces
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
 
+    #SINGLE_GROUP: Decide whether we are in single-group (no comparison) mode.
+    single_group <- is.null(compareby)
+    if (single_group){
+        flog.info("compareby is NULL: plotting a single boxplot per feature across all samples with no statistical comparison.")
+        #A dummy label used for the constant grouping on the x-axis.
+        single_group_label <- "All_samples"
+    }
+
+    #SINGLE_GROUP: Do not pass a NULL compareby to variables_to_fix (it would be dropped anyway, but be explicit).
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 
     #Vet experiment object
@@ -58,7 +69,10 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             hmtypemsg <- "Relative Abundance Plot"
             asPA <- FALSE
             hmasPA <- FALSE
-            if (can_be_made_numeric(curr_pt[ , compareby])){
+            #SINGLE_GROUP: Only interrogate compareby for stat type when there is a compareby.
+            if (single_group){
+                stattype <- "variance"
+            } else if (can_be_made_numeric(curr_pt[ , compareby])){
                 stattype <- "spearman"
             } else {
                 stattype <- "auto"
@@ -125,8 +139,10 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             }
 
             #Eliminate non-relevant features if not adjusting p-value
-            if (adjustpval == FALSE){
-                countmat <- countmat[wantedfeatures, , drop = FALSE]
+            #SINGLE_GROUP: With no stats there is no p-value adjustment; cull to wantedfeatures directly.
+            if (single_group || adjustpval == FALSE){
+                keepnow <- wantedfeatures[wantedfeatures %in% rownames(countmat)]
+                countmat <- countmat[keepnow, , drop = FALSE]
             }
 
             if ("GenomeCompleteness" %in% names(assays(currobj))){
@@ -173,18 +189,33 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             #Calculate matrix stats and get new matrix.
 
-            if (!is.null(wilcox_paired_by)){
-                flog.info(paste("Will attempt to pair samples by", wilcox_paired_by, "for Mann-Whitney-Wilcoxon test"))
+            #SINGLE_GROUP: In single-group mode there is nothing to compare. Build a minimal
+            #matstats data frame by variance so downstream ordering / ntop / titles still work,
+            #and construct a constant classesdf so the plotting scaffolding is unchanged.
+            if (single_group){
+
+                classesdf <- data.frame(Sample = colnames(countmat), cl = rep(single_group_label, ncol(countmat)), stringsAsFactors = FALSE)
+                rownames(classesdf) <- classesdf$Sample
+                discretenames <- single_group_label
+
+                #Variance-based matstats purely for feature ordering; no p-values involved.
+                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = log2tran_main_plot, statsonlog = FALSE, stattype = "variance", classesdf = NULL)
+
+            } else {
+
+                if (!is.null(wilcox_paired_by)){
+                    flog.info(paste("Will attempt to pair samples by", wilcox_paired_by, "for Mann-Whitney-Wilcoxon test"))
+                }
+
+                classesdf <- make_classes_df(curr_pt = colData(currobj), compareby = compareby, wilcox_paired_by = wilcox_paired_by)
+
+                discretenames <- sort(unique(classesdf$cl))
+                if ("wilcox_pairs" %in% colnames(classesdf)){
+                    flog.info(paste("Mann-Whitney-Wilcoxon test between", discretenames[1], "and", discretenames[2], "will be paired by", wilcox_paired_by))
+                }
+
+                matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = log2tran_main_plot, statsonlog = FALSE, stattype = stattype, classesdf = classesdf, invertbinaryorder = invertbinaryorder, numthreads = numthreads, threshPA = threshPA, fun_for_l2fc = fun_for_l2fc)
             }
-
-            classesdf <- make_classes_df(curr_pt = colData(currobj), compareby = compareby, wilcox_paired_by = wilcox_paired_by)
-
-            discretenames <- sort(unique(classesdf$cl))
-            if ("wilcox_pairs" %in% colnames(classesdf)){
-                flog.info(paste("Mann-Whitney-Wilcoxon test between", discretenames[1], "and", discretenames[2], "will be paired by", wilcox_paired_by))
-            }
-
-            matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = log2tran_main_plot, statsonlog = FALSE, stattype = stattype, classesdf = classesdf, invertbinaryorder = invertbinaryorder, numthreads = numthreads, threshPA = threshPA, fun_for_l2fc = fun_for_l2fc)
 
             ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
 
@@ -192,13 +223,21 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             wantedfeatures <- wantedfeatures[wantedfeatures %in% rownames(matstats)]
             matstats <- matstats[wantedfeatures, , drop = FALSE]
             #Reorder matrix by p-value
-            matstats <- matstats[order(matstats$pval), , drop = FALSE]
+            #SINGLE_GROUP: variance matstats has no pval column; order by SD instead.
+            if (single_group){
+                if ("SD" %in% colnames(matstats)){
+                    matstats <- matstats[order(matstats$SD, decreasing = TRUE), , drop = FALSE]
+                }
+            } else {
+                matstats <- matstats[order(matstats$pval), , drop = FALSE]
+            }
             topcats <- nrow(matstats)
             if (!(is.null(ntop))) {
                 topcats <- min(topcats, ntop)
             }
 
-            if (!is.null(showonlypbelow)){
+            #SINGLE_GROUP: p-value based row selection is meaningless without a comparison.
+            if (!single_group && !is.null(showonlypbelow)){
                 if (showonlypadjusted == TRUE) {
                     sigmeas <- paste("padj", padjmeth, sep = "_")
                 } else {
@@ -222,7 +261,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             matstats <- matstats[rowcutoff, , drop = FALSE]
 
             #Filter by l2fc if applicable
-            if (all(c((!is.null(presetlist$minl2fc)), ("absl2fc" %in% colnames(matstats))))){
+            #SINGLE_GROUP: no l2fc exists without a two-class comparison; skip.
+            if (!single_group && all(c((!is.null(presetlist$minl2fc)), ("absl2fc" %in% colnames(matstats))))){
 
                 matstats <- subset(matstats, absl2fc >= presetlist$minl2fc)
 
@@ -235,7 +275,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             }
 
             #Filter by correlation coefficient, if applicable
-            if (all(c((!is.null(presetlist$minabscorrcoeff)), ("abscorrel" %in% colnames(matstats))))){
+            #SINGLE_GROUP: no correlation without a continuous compareby; skip.
+            if (!single_group && all(c((!is.null(presetlist$minabscorrcoeff)), ("abscorrel" %in% colnames(matstats))))){
                 matstats <- subset(matstats, abscorrel >= presetlist$minabscorrcoeff)
 
                 if (nrow(matstats) < 1){
@@ -289,7 +330,12 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 taxsplit_list <- retrieve_features_by_taxa(FuncExpObj = currobj, glomby = stratify_by_taxlevel, only_allow_CSBs = only_allow_CSBs, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, assay_for_matrix = "BaseCounts", wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, append_metatada = TRUE, PPMthreshold = 0, include_samples_with_zero = TRUE, return_taxonomy_table = TRUE)
                 taxsplit <- taxsplit_list$taxsplit
 
-                taxsplit$Compareby <- taxsplit[ , which(colnames(taxsplit) == compareby)]
+                #SINGLE_GROUP: assign a constant Compareby so the stratified plotting works unchanged.
+                if (single_group){
+                    taxsplit$Compareby <- single_group_label
+                } else {
+                    taxsplit$Compareby <- taxsplit[ , which(colnames(taxsplit) == compareby)]
+                }
 
             } else {
                 flog.warn("Current SummarizedExperiment object does not contain the necessary data for stratifying this function by taxonomy. Check your input.")
@@ -313,18 +359,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 }
                 taxsplit <- aggtaxsplit
             }
-
-            #Note: due to large number of Phyla in JAMS2 taxonomic table, colouring in by Phylum is now deprecated.
-            #data(JAMStaxtable)
-            #data(Gram)
-            #tt <- JAMStaxtable[ , which(colnames(JAMStaxtable) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT"))]
-            #tt <- tt[!(duplicated(tt$LKT)), ]
-            #LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% c("Sample", "Accession", "Compareby", colnames(curr_pt)))]
-            #tt <- tt[which(tt[ , stratify_by_taxlevel] %in% LKTcolumns), c(stratify_by_taxlevel, "Phylum")]
-            #Gram$Kingdom <- NULL
-            #tt <- left_join(tt, Gram, by = "Phylum")
-            #phycols <- setNames(as.character(tt$PhylumColour), as.character(tt$Phylum))[unique(tt$Phylum)]
-            #phycols <- c(phycols, Remainder = "#000000")
         }
 
         flog.info("Plotting results...")
@@ -335,7 +369,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             rownames(dat) <- dat$Sample
 
             #if there is an explicit order to compareby then set it to that
-            if (!is.null(compareby_order)){
+            if (!single_group && !is.null(compareby_order)){
                 dat$Compareby <- factor(dat$Compareby, levels = compareby_order)
             }
 
@@ -368,7 +402,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             #Start building a plot
             p <- ggplot(dat, aes(x = Compareby, y = PPM))
 
-            if (matstats$Method[1] %in% c("spearman", "pearson")){
+            #SINGLE_GROUP: force a boxplot path; there is no spearman/pearson scatter without compareby.
+            if (!single_group && matstats$Method[1] %in% c("spearman", "pearson")){
                 #Make a scatterplot
                 p <- p + geom_point()
                 p <- p + geom_smooth(method = lm, aes(group=1), se = FALSE)
@@ -406,14 +441,15 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     p <- p + geom_boxplot(outlier.shape = NA)
                 }
 
-                if ((length(discretenames) > 1) && (length(discretenames) <= max_pairwise_cats)){
+                #SINGLE_GROUP: only add significance comparisons when there is a real comparison.
+                if (!single_group && (length(discretenames) > 1) && (length(discretenames) <= max_pairwise_cats)){
                     if (is.null(signiflabel)){
                         signiflabel <- "p.format"
                     }
                     #Add pval
                     my_comparisons <- combn(discretenames, m = 2, simplify = FALSE)
                     p <- p + stat_compare_means(method = "wilcox.test", comparisons = my_comparisons, label = signiflabel)
-                } else {
+                } else if (!single_group){
                     flog.warn("There are too many combinations to plot significance.")
                 }
                 rotang <- 90
@@ -436,14 +472,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     p <- p + scale_fill_gradientn(aesthetics = "colour", colours = c("white", "forestgreen", "blue", "firebrick1", "black"),  values = scales::rescale(c(0, 100, 200, 300, 400), to = c(0, (400/max(dat$Colour)))))
                 } else {
                     if (is.numeric(dat$Colour)){
-                        #If it is numeric, check that range is enough for a gradient
-                        #if ((range(dat$colours)[2] - range(dat$colours)[1]) != 0){
-                        #p <- p + scale_color_gradient(low = "blue", high = "red")
-                        #} else {
-                        #dat$colours <- as.character(dat$colours)
-                        #groupcols <- setNames("black", unique(dat$colours))
-                        #p <- p + scale_color_manual(values = groupcols)
-                        #}
                         p <- p + scale_color_gradient(low = "blue", high = "red")
                     } else {
                         #if there is a colour dictionary, then use that
@@ -481,26 +509,32 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             p <- p + theme_minimal()
             #Build plot title
-            overallpmeth <- matstats[feat, "Method"]
-            overallp <- paste0("pval=", round(matstats[feat, "pval"], 4))
-            overalladjp <- paste0("padj_fdr=", round(matstats[feat, "padj_fdr"], 4))
-            if("stat" %in% colnames(matstats)){
-                overallstat <- paste0("stat=", round(matstats[feat, "stat"], 4))
+            #SINGLE_GROUP: no statistics to report; build a descriptive spread-only subtitle.
+            if (single_group){
+                nsampmsg <- paste0("n = ", ncol(countmat), " samples (single group, no comparison)")
+                stattit <- paste(nsampmsg, ffeatmsg, sep = " | ")
             } else {
-                overallstat <- NULL
-            }
-            stattit <- paste(overallpmeth, overallp, overalladjp, overallstat, ffeatmsg, sep = " | ")
+                overallpmeth <- matstats[feat, "Method"]
+                overallp <- paste0("pval=", round(matstats[feat, "pval"], 4))
+                overalladjp <- paste0("padj_fdr=", round(matstats[feat, "padj_fdr"], 4))
+                if("stat" %in% colnames(matstats)){
+                    overallstat <- paste0("stat=", round(matstats[feat, "stat"], 4))
+                } else {
+                    overallstat <- NULL
+                }
+                stattit <- paste(overallpmeth, overallp, overalladjp, overallstat, ffeatmsg, sep = " | ")
 
-            if ("correl" %in% colnames(matstats)){
-                correlstat <- paste0("corr_coeff=", round(matstats[feat, "correl"], 3))
-                stattit <- paste(stattit, correlstat, sep = "\n")
-            }
+                if ("correl" %in% colnames(matstats)){
+                    correlstat <- paste0("corr_coeff=", round(matstats[feat, "correl"], 3))
+                    stattit <- paste(stattit, correlstat, sep = "\n")
+                }
 
-            if ("l2fc" %in% colnames(matstats)){
-                l2fcmsg <- paste0("Log2FC=", round(matstats[feat, "l2fc"], 3))
-                l2fcmeaning <- paste("Positive l2fc means increased in", discretenames[1])
-                l2fcmsg <- paste(l2fcmsg, l2fcmeaning, sep = " | ")
-                stattit <- paste(stattit, l2fcmsg, sep = "\n")
+                if ("l2fc" %in% colnames(matstats)){
+                    l2fcmsg <- paste0("Log2FC=", round(matstats[feat, "l2fc"], 3))
+                    l2fcmeaning <- paste("Positive l2fc means increased in", discretenames[1])
+                    l2fcmsg <- paste(l2fcmsg, l2fcmeaning, sep = " | ")
+                    stattit <- paste(stattit, l2fcmsg, sep = "\n")
+                }
             }
 
             #Add description to feature, if applicable
@@ -526,7 +560,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
             if (log2tran_main_plot == TRUE){
                 ytit <- "Relative Abundance in PPM"
-                #p <- p + coord_trans(y = "log2", clip = "off")
                 p <- p + scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::trans_breaks("log2", function(x) {((2 ^ x) - 1)}), labels = scales::trans_format("log2", function(x) {((2 ^ x) - 1)}))
             } else {
                 ytit <- "Relative Abundance in PPM"
@@ -535,7 +568,9 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 }
             }
 
-            p <- p + labs(x = compareby, y = ytit)
+            #SINGLE_GROUP: label the x-axis meaningfully when there is no compareby.
+            xtit <- if (single_group) single_group_label else compareby
+            p <- p + labs(x = xtit, y = ytit)
             p <- p + theme(axis.text.x = element_text(angle = rotang, size = rel(1), colour = "black"))
             p <- p + theme(plot.title = element_text(size = 10))
 
@@ -572,7 +607,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 if (use_cladogram_for_stratification != TRUE){
                     p <- NULL
                     dat <- NULL
-                    #currtaxsplitgrp <- subset(currtaxsplit, Compareby == grp)
                     currtaxsplitgrp <- currtaxsplit
                     LKTcolumns <- colnames(currtaxsplitgrp)[!(colnames(currtaxsplitgrp) %in% unique(c(colnames(curr_pt), c("Sample", "Accession", "Compareby", "Shape", "Fill", "Connect", "Colour"))))]
 
@@ -584,33 +618,24 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     #Start building a plot
                     dat <- left_join(dat, as.data.frame(curr_pt), by = "Sample")
 
-                    #colnames(dat)[which(colnames(dat) == compareby)] <- "Compareby"
-                    dat$Compareby <- dat[ , which(colnames(dat) == compareby)]
+                    #SINGLE_GROUP: constant Compareby when there is no compareby variable.
+                    if (single_group){
+                        dat$Compareby <- single_group_label
+                    } else {
+                        dat$Compareby <- dat[ , which(colnames(dat) == compareby)]
+                    }
 
                     #if there is an explicit order to compareby then set it to that
-                    if (!is.null(compareby_order)){
+                    if (!single_group && !is.null(compareby_order)){
                         dat$Compareby <- factor(dat$Compareby, levels = compareby_order)
                     }
 
                     if (!(is.null(shapeby))){
-                        #colnames(dat)[which(colnames(dat) == shapeby)] <- "Shape"
                         dat$Shape <- dat[ , which(colnames(dat) == shapeby)]
                     }
                     if (!(is.null(colourby))){
-                        #colnames(dat)[which(colnames(dat) == colourby)] <- "Colour"
                         dat$Colour <- dat[ , which(colnames(dat) == colourby)]
                     }
-
-                    #DEPRECATED SINCE JAMS2
-                    #Colour in by phylum
-                    #tt <- JAMStaxtable[ , which(colnames(JAMStaxtable) %in% c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "LKT"))]
-                    #tt <- tt[!(duplicated(tt$LKT)), ]
-                    #Taxon2phylum <- tt[which(tt[ , "LKT"] %in% dat$LKT), ]
-                    #colnames(Taxon2phylum)[which(colnames(Taxon2phylum) == stratify_by_taxlevel)] <- "Taxon"
-                    #if (stratify_by_taxlevel == "LKT"){
-                    #    Taxon2phylum$LKT <- Taxon2phylum$Taxon
-                    #}
-                    #dat <- left_join(dat, Taxon2phylum, by = "LKT")
 
                     #Order and aggregate if more than 30
                     tally <- aggregate(PPM ~ Taxon, data = dat, FUN = "sum")
@@ -635,11 +660,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                         remaindertally$Taxon <- "Other_Taxa"
                         datremainder$Taxon <- NULL
                         datremainder$PPM <- NULL
-                        #datremainder$Phylum <- NULL
-                        #datremainder$Gram <- NULL
                         datremainder <- datremainder[!(duplicated(datremainder)), ]
                         aggremainder <- left_join(remaindertally, datremainder, by = "Sample")
-                        #aggremainder$Phylum <- "Remainder"
                         orddat <- rbind(orddat, aggremainder[ , colnames(orddat)])
                     }
 
@@ -648,18 +670,13 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     dat$Taxon <- factor(dat$Taxon, levels = unique(dat$Taxon))
 
                     if (!(is.null(colourby))){
-                        #colnames(dat)[which(colnames(dat) == colourby)] <- "Colour"
                         dat$Colour <- dat[ , which(colnames(dat) == colourby)]
                     }
 
                     p <- ggplot(dat, aes(x = Taxon, y = PPM))
 
                     if (!overlay_boxplot){
-                        #if (annotate_phylum == TRUE){
-                            #p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
-                        #} else {
                             p <- p + geom_boxplot(outlier.shape = NA)
-                        #}
                     }
 
                     #Rescale to exclude outliers
@@ -683,16 +700,8 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     }
 
                     if (overlay_boxplot){
-                        #if (annotate_phylum == TRUE){
-                        #    p <- p + geom_boxplot(aes(fill = Phylum), outlier.shape = NA)
-                        #} else {
                             p <- p + geom_boxplot(outlier.shape = NA)
-                        #}
                     }
-
-#                    if (annotate_phylum == TRUE){
-#                        p <- p + scale_fill_manual(values = phycols[(names(phycols) %in% dat$Phylum)])
-#                    }
 
                     if (!is.null(colourby)){
                         p <- p + aes(colour = Colour)
@@ -701,14 +710,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                             p <- p + scale_fill_gradientn(aesthetics = "colour", colours = c("white", "forestgreen", "blue", "firebrick1", "black"),  values = scales::rescale(c(0, 100, 200, 300, 400), to = c(0, (400/max(dat$Colour)))))
                         } else {
                             if (is.numeric(dat$Colour)){
-                                #If it is numeric, check that range is enough for a gradient
-                                #if ((range(dat$colours)[2] - range(dat$colours)[1]) != 0){
-                                #p <- p + scale_color_gradient(low = "blue", high = "red")
-                                #} else {
-                                #dat$colours <- as.character(dat$colours)
-                                #groupcols <- setNames("black", unique(dat$colours))
-                                #p <- p + scale_color_manual(values = groupcols)
-                                #}
                                 p <- p + scale_color_gradient(low = "blue", high = "red")
                             } else {
                                 #if there is a colour dictionary, then use that
@@ -735,10 +736,13 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                         p <- p + coord_flip()
                     }
 
-                    if (wrap_facet){
-                        p <- p + facet_wrap( ~ Compareby)
-                    } else {
-                        p <- p + facet_grid( ~ Compareby)
+                    #SINGLE_GROUP: no need to facet by a constant single group.
+                    if (!single_group){
+                        if (wrap_facet){
+                            p <- p + facet_wrap( ~ Compareby)
+                        } else {
+                            p <- p + facet_grid( ~ Compareby)
+                        }
                     }
 
                     p <- p + theme_minimal()
@@ -757,7 +761,6 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
 
                     if (log2tran_strat_plot == TRUE){
                         ytit <- "Relative Abundance in PPM"
-                        #p <- p + scale_y_continuous(trans = scales::pseudo_log_trans(base = 2), breaks = scales::trans_breaks("log2", function(x) {((2 ^ x) - 1)}, n = 5), labels = scales::trans_format("log2", function(x) {((2 ^ x) - 1)}))
                         p <- p + scale_y_continuous(trans = scales::pseudo_log_trans(base = 2))
 
                     } else {
@@ -765,12 +768,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     }
                     p <- p + labs(x = "Contributing Taxon", y = ytit)
 
-                    #if (!horizontal){
-                        p <- p + theme(axis.text.x = element_text(colour = "black", angle = rotang, size = rel(0.85)))
-                    #}
-                    #df <- data.frame(x = factor(levels(dat$Taxon)), colour = factor(dat$Phcol[match(levels(dat$Taxon), dat$Taxon)]))
-                    #p + geom_tile(data = df, aes(x = x, y = 2, fill = colour))
-                    #p <- p + theme(axis.text.x = element_text(colour = phcol[dat$Phylum[!duplicated(dat$Phylum)]]))
+                    p <- p + theme(axis.text.x = element_text(colour = "black", angle = rotang, size = rel(0.85)))
                     p <- p + theme(plot.title = element_text(size = 10))
 
                 } else {
