@@ -291,12 +291,12 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
             countmat <- countmat[rownames(matstats), , drop = FALSE]
 
             if ("GenomeCompleteness" %in% names(assays(currobj))){
-                #genomecompletenessdf <- as.matrix(assays(currobj)$GenomeCompleteness)
-                genomecompletenessdf <- genomecompletenessdf[rownames(matstats), drop = FALSE]
-                if (class(genomecompletenessdf)[1] != "matrix"){
-                    genomecompletenessdf <- t(as.matrix(genomecompletenessdf))
-                    rownames(genomecompletenessdf) <- rownames(matstats)
-                }
+                #Subset by row name; the comma before drop = FALSE is essential so this stays
+                #a matrix. Without it, R treats "drop" as a column index and, when matstats has
+                #few rows, collapses genomecompletenessdf to a vector. t(as.matrix()) then makes
+                #a 1-row matrix and assigning rownames(matstats) (length > 1) onto it throws
+                #"length of 'dimnames' [1] not equal to array extent".
+                genomecompletenessdf <- genomecompletenessdf[rownames(matstats), , drop = FALSE]
             } else {
                 genomecompletenessdf <- NULL
             }

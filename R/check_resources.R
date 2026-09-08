@@ -18,11 +18,9 @@ check_resources <- function(opt = opt, applications_to_check = c("base", "reads"
             dep)
     }
 
-    #' get_dep_version
-    #' Try to extract a version string for a given executable.
-    #' Different tools expose their version through different flags and print it
-    #' in different formats, so we try a sequence of common flags and then apply
-    #' a light, tool-aware parse of whatever gets printed.
+    #Define helper function get_dep_version
+    #Try to extract a version string for a given executable.
+    #Different tools expose their version through different flags and print it in different formats, so we try a sequence of common flags and then apply a light, tool-aware parse of whatever gets printed.
     get_dep_version <- function(dep, cmd){
         #Tool-specific version flags. Order matters: first flag that yields output wins.
         flag_lookup <- list(

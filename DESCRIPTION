@@ -1,6 +1,6 @@
 Package: JAMS
 Title: Just A Microbiology System
-Version: 2.2.4
+Version: 2.2.5
 Authors@R: c(person("John", "McCulloch", email = "john.mcculloch@nih.gov", role = c("aut", "cre")),
     person("Jonathan", "Badger", email = "jonathan.badger@nih.gov", role = "aut"),
     person("Nikki", "Cannon", email = "nikkicannon7@gmail.com", role = "aut"),
@@ -20,4 +20,4 @@ Description: Package for analysis of microbial (meta)genomic samples
 Depends: R (>= 4.3.0), R.utils, parallel, optparse, futile.logger, benchmarkme, RCurl, Rtsne, ape, uwot, circlize, compositions, Polychrome, openxlsx, grid, gridExtra, tidyverse, ggplot2, ggrepel, wordcloud, gplots, vegan, matrixStats, Biostrings, seqinr, dada2, DECIPHER, SummarizedExperiment, ComplexHeatmap, HybridMTest, ggpubr, combinat, data.table, genefilter, gtools, gtable, fastSave, Matrix
 License: GPL
 Encoding: UTF-8
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.0.0

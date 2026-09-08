@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_alpha_diversity.R
 \name{plot_alpha_diversity}
 \alias{plot_alpha_diversity}
-\title{Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object}
+\title{Generates alpha diversity boxplots per metadata category using a SummarizedExperiment object as input}
 \usage{
 plot_alpha_diversity(
   ExpObj = NULL,
@@ -52,9 +52,9 @@ plot_alpha_diversity(
 
 \item{only_allow_CSBs}{Requires a logical value. If set to TRUE, if the ExpObj passed as input is a taxonomic SummarizedExperiment object of JAMS analysis class "ConsolidatedGenomeBin", the only features to be considered are those which are Consolidated Species Bins (CSBs), i.e. taxa which were obtained from MetaBat2 bins in the JAMSalpha run of a sample. Taxonomic features coming exclusively from unbinned (leftover) contigs will be eliminated from the analysis. Default is FALSE, i.e. all taxa are kept.}
 
-\item{subsetby}{String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.}
+\item{subsetby}{String or vector of up to three strings specifying the metadata variable name(s) for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different (tiered) class contained within the variable(s), using the same tiered subsetting scheme as the other JAMS plotting functions (see multiple_subsetting_sample_selector). If NULL, data is not subset. Default is NULL.}
 
-\item{compareby}{String specifying the metadata variable name for grouping samples. This will define which metadata variable grouping to calculate PERMANOVA p-value. If not specified, and argument permanova is set to TRUE, (see permanova), the compareby argument will be set by colourby or shapeby. If these latter two are also NULL, and permanova is TRUE, permanova will be set to FALSE. Default is NULL.}
+\item{compareby}{String specifying the metadata variable name for grouping samples. This will define which metadata variable grouping the alpha diversity boxes are drawn and compared for. Default is NULL.}
 
 \item{compareby_order}{String or vector specifying the order in which to compare by, if this order is different than alphabetical order of the compareby parameter. Default is NULL.}
 
@@ -64,13 +64,13 @@ plot_alpha_diversity(
 
 \item{fillby}{String specifying the metadata variable with which to colour/fill in the boxes with. If NULL, all boxes will be filled in white. Default is NULL.}
 
-\item{pairby}{.}
+\item{pairby}{String specifying the metadata variable used to pair samples for a paired Wilcoxon test. If NULL, comparisons are unpaired. Default is NULL.}
 
-\item{connectby}{String specifying the metadata variable name for drawing a line connecting samples belonging to the same class. If NULL, samples are not connected. Default is NULL.}
+\item{connectby}{String specifying the metadata variable name for drawing a line connecting samples belonging to the same class across the boxplot. This is only applied when compareby is discrete (i.e. a boxplot is drawn). Typically used to trace a subject through a time series, e.g. compareby = "Timepoint", connectby = "Study_ID" to draw one line per subject connecting their alpha diversity measure across visits. When connectby is set, point jitter is disabled so that connecting lines meet their points exactly. If NULL, samples are not connected. Default is NULL.}
 
-\item{facetby}{.}
+\item{facetby}{String specifying the metadata variable used to facet the plot. Default is NULL.}
 
-\item{wrap_facet}{.}
+\item{wrap_facet}{Requires a logical value. If TRUE, uses facet_wrap rather than facet_grid when facetby is set. Default is FALSE.}
 
 \item{overlay_boxplot}{Requires a logical value. If FALSE, will not overlay the boxplots ontop of one-another. If TRUE, the boxplots will all be plotted, one on top of another. Default is FALSE.}
 
@@ -82,7 +82,7 @@ plot_alpha_diversity(
 
 \item{PPM_normalize_to_bases_sequenced}{Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a **non-taxonomical** SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is FALSE.}
 
-\item{addtit}{Optional string with text to append to heatmap main title. Default is NULL.}
+\item{addtit}{Optional string with text to append to the plot main title. Default is NULL.}
 
 \item{signiflabel}{String specifying the label used to determine if comparisions are significant or not. Deault is p.format.}
 
@@ -93,5 +93,5 @@ plot_alpha_diversity(
 \item{class_to_ignore}{String or vector specifying any classes which should lead to samples being excluded from the comparison within the variable passed to compareby. Default is N_A. This means that within any metadata variable passed to compareby containing the "N_A" string within that specific variable, the sample will be dropped from that comparison.}
 }
 \description{
-Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
+Generates alpha diversity boxplots per metadata category using a SummarizedExperiment object as input
 }

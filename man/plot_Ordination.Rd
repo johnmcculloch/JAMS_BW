@@ -11,6 +11,7 @@ plot_Ordination(
   samplesToKeep = NULL,
   samplesToHighlight = NULL,
   unhighlighted_transparency_percentage = 95,
+  highlight_subset_in_context = FALSE,
   featuresToKeep = NULL,
   only_allow_CSBs = FALSE,
   ignoreunclassified = TRUE,
@@ -51,6 +52,7 @@ plot_Ordination(
   numthreads = 8,
   return_coordinates_matrix = FALSE,
   permanova_permutations = 10000,
+  min_samples_per_class_for_permanova = 3,
   include_components_variance_plot = FALSE,
   class_to_ignore = "N_A",
   ...
@@ -68,6 +70,8 @@ plot_Ordination(
 \item{samplesToHighlight}{Vector with sample names to highlight in respect to all other sample names in the plot. If NULL, all samples within the SummarizedExperiment object are shown at the same luminocity. Default is NULL.}
 
 \item{unhighlighted_transparency_percentage}{Numerical value representing the percentage transparency for unhighlighted samples when using the samplesToHighlight argument. Default is 95 percent, meaning the unhighlighted samples will have 5 percent of the brightness than highlighted samples. To turn off plotting of unhighlighted samples, set unhighlighted_transparency_percentage to 100.}
+
+\item{highlight_subset_in_context}{Requires a logical value. If set to TRUE and a subsetby variable is passed, then rather than restricting each plot to only the samples within a subset, ALL samples (all of samplesToKeep, or all samples in the SummarizedExperiment object if samplesToKeep is NULL) are plotted as a faded background, and only the samples belonging to the current subset class are highlighted at full opacity. This preserves the positional context of the subset samples relative to the entire cohort, since the ordination is computed on the full sample set and shared across all subset panels. The PERMANOVA, centroids and other statistics continue to be computed exclusively on the highlighted (subset) samples. When this mode is active, any value explicitly passed to samplesToHighlight is ignored (with a warning), as the highlight channel is used by the subset mechanism. The degree of fading of background samples is controlled by unhighlighted_transparency_percentage (q.v.). Default is FALSE, meaning each subset is plotted in isolation (the original behavior).}
 
 \item{featuresToKeep}{Vector with feature names to keep. If NULL, all features within the SummarizedExperiment object are kept. Default is NULL. Please note that when agglomerating features with the glomby argument (see above), feature names passed to featuresToKeep must be post-agglomeration feature names. For example, if glomby="Family", featuresToKeep must be family names, such as "f__Enterobacteriaceae", etc.}
 
@@ -142,6 +146,8 @@ plot_Ordination(
 \item{return_coordinates_matrix}{Requires a logical value. If set to TRUE, the list of objects returned by this plot_Ordination will include, in addition to the ggplot2 ordination plots, a matrix with the x,y plot positions for each sample after ordination. Default is FALSE.}
 
 \item{permanova_permutations}{Numerical value specifying the number of permutations for PERMANOVA. Default is 10000.}
+
+\item{min_samples_per_class_for_permanova}{Numerical value specifying the minimum number of samples that must be present in the smallest class of the compareby variable (within a given subset) for a PERMANOVA to be attempted. Subsets whose smallest compareby class has fewer than this number of samples will still be ordinated and plotted, but without a PERMANOVA p-value. This prevents crashes when a subset contains, for example, a single sample in one class (1-vs-many), which cannot support a PERMANOVA. Default is 3.}
 
 \item{class_to_ignore}{String or vector specifying any classes which should lead to samples being excluded from the comparison within the variable passed to compareby. Default is N_A. This means that within any metadata variable passed to compareby containing the "N_A" string within that specific variable, the sample will be dropped from that comparison.}
 }

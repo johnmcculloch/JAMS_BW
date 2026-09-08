@@ -66,3 +66,6 @@ plot_relabund_features(
 \description{
 Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 }
+\details{
+When compareby = NULL, a single boxplot is drawn per feature showing the spread of relative abundance across ALL samples in the (sub)set, with no statistical comparison. If stratify_by_taxlevel is also set, the taxon-stratified boxplot(s) are likewise drawn across all samples as a single group. This is useful for inspecting which taxa contribute to a functional feature within a single group.
+}
