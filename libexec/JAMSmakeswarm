@@ -19,7 +19,6 @@ slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
 #Decide which kind of system you are on.
 if(nchar(slurmjobid) < 3){
    print("You are not on a Slurm Workload Cluster")
-   #Define appropriate functions for non-slurm system
    detectBatchCPUs <- function() {
         ncores <- detectCores()
         if (is.na(ncores)) {
@@ -36,13 +35,11 @@ if(nchar(slurmjobid) < 3){
 
 } else {
     print(paste("You are on a Slurm Workload Manager Cluster under jobID", slurmjobid))
-    #Define appropriate functions for slurm system
     detectBatchCPUs <- function() {
         slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
         ncores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
 
         if (is.na(ncores)) {
-            #Try plan B
             sacctraw <- system2("sacct", args = c("-j", slurmjobid, "-X", "-P"), stdout = TRUE)
             jobinforaw <- sacctraw[2]
             jobinfoheaders <- sacctraw[1]
@@ -57,7 +54,6 @@ if(nchar(slurmjobid) < 3){
 
         return(ncores)
     }
-
 
     detectAvailRAM <- function(){
         mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
@@ -116,7 +112,6 @@ analyze_fastq_filename <- function(fn = NULL, maintain_Illumina_format = FALSE){
 
     filefacts <- list()
     fnsplit <- unlist(strsplit(fn, split = "\\."))
-    #find out if gzipped and what the filename body is
     if (tail(fnsplit, n = 1) == "gz"){
         filefacts$gunzipped <- TRUE
         fnbody <- paste0(rev(rev(fnsplit)[3:length(fnsplit)]), collapse = ".")
@@ -127,18 +122,11 @@ analyze_fastq_filename <- function(fn = NULL, maintain_Illumina_format = FALSE){
         filefacts$suffix <- tail(fnsplit, n = 1)
     }
 
-    #Now delve into fnbody and see what it it about
-    #Does it have lane info? Must have L00X in the last 4 elements.
     contains_lane_info <- any(c("L001", "L002", "L003", "L004", "L005", "L006", "L007", "L008") %in% tail(unlist(strsplit(fnbody, split = "_")), n = 4))
-    #Does it have paired read info? Must have RX in the last 4 elements.
     contains_paired_read_info <- any(c("R1", "R2") %in% tail(unlist(strsplit(fnbody, split = "_")), n = 4))
-    #Is it Illumina output filename style?
     is_Illumina_output <- (tail(unlist(strsplit(fnbody, split = "_")), n = 1) == "001")
-    #Get number of body segments
     numfnbodysegments <- length(unlist(strsplit(fnbody, split = "_")))
 
-    #Determine the orgininal sample prefix
-    #Case 1, not Illumina style
     if (!is_Illumina_output){
         if (contains_paired_read_info){
             filefacts$OriPrefix <- paste0(unlist(strsplit(fnbody, split = "_"))[1:(numfnbodysegments - 1)], collapse = "_")
@@ -149,12 +137,9 @@ analyze_fastq_filename <- function(fn = NULL, maintain_Illumina_format = FALSE){
         }
         filefacts$Appendage <- paste0(".", filefacts$suffix)
     } else {
-        #OK, is Illumina style prefix
-        #Das Read ist immer an zweiter position
         filefacts$Read <- tail(unlist(strsplit(fnbody, split = "_")), n = 2)[1]
 
         if (contains_lane_info){
-            #Case 2, is MiSeq, HiSeq or NextSeq file
             filefacts$OriPrefix <- paste0(unlist(strsplit(fnbody, split = "_"))[1:(numfnbodysegments - 4)], collapse = "_")
             filefacts$Lane <- tail(unlist(strsplit(fnbody, split = "_")), n = 3)[1]
             filefacts$SampNum <- tail(unlist(strsplit(fnbody, split = "_")), n = 4)[1]
@@ -164,7 +149,6 @@ analyze_fastq_filename <- function(fn = NULL, maintain_Illumina_format = FALSE){
                 filefacts$Appendage <- paste(filefacts$Read, filefacts$suffix, sep = ".")
             }
         } else {
-            #Case 3, is NovaSeq joined file, or contains no lane info
             filefacts$OriPrefix <- paste0(unlist(strsplit(fnbody, split = "_"))[1:(numfnbodysegments - 3)], collapse = "_")
             filefacts$Lane <- ""
             filefacts$SampNum <- tail(unlist(strsplit(fnbody, split = "_")), n = 3)[1]
@@ -177,15 +161,69 @@ analyze_fastq_filename <- function(fn = NULL, maintain_Illumina_format = FALSE){
     }
 
     return(filefacts)
+}
 
+#Extract Flowcell from a path following Illumina folder convention. Returns NA if absent.
+extract_flowcell <- function(filepath){
+    components <- unlist(strsplit(filepath, split = "/"))
+    fc_component <- components[grep("^Flowcell_", components)]
+    if (length(fc_component) < 1){
+        return(NA_character_)
+    }
+    fc_component <- tail(fc_component, n = 1)
+    flowcell <- sub("^Flowcell_", "", fc_component)
+
+    return(flowcell)
+}
+
+is.redundant <- function(vec){
+    propunique <- length(unique(vec))/length(vec)
+    if (propunique < 1){
+        redundant = TRUE
+    } else {
+        redundant = FALSE
+    }
+
+    return(redundant)
+}
+
+find_container <- function(x) {
+    prefsuff <- unlist(strsplit(rawfastqsdf$Filenames[x], split = "\\."))
+    container <- paste(prefsuff[(which(prefsuff %in% c("fastq", "tar"))):(length(prefsuff))], collapse = ".")
+
+    return(container)
+}
+
+check_prefixes <- function(opt = NULL){
+    if (!is.null(opt$checkprefixexists)){
+        if (length(opt$usedprefixes) > 0){
+            #Compute the mask ONCE against the prefixes currently being processed,
+            #and apply it consistently to both prefixestouse and any parallel
+            #accessions vector, so the two never desynchronize.
+            already_mask <- (opt$prefixestouse %in% opt$usedprefixes)
+            opt$alreadyusedprexixes <- opt$prefixestouse[already_mask]
+            if (length(opt$alreadyusedprexixes) > 0){
+                cat("WARNING: THE FOLLOWING PREFIXES HAVE BEEN FOUND IN\n")
+                cat(paste(as.character(opt$checkprefixexists), "\n"))
+                cat(paste(paste0(opt$alreadyusedprexixes, collapse = ", "), "\n"))
+                cat("THESE PREFIXES HAVE BEEN ELIMINATED FROM THE SWARM FILE GENERATED.\n")
+                if (!is.null(opt$wantedaccessions)){
+                    #Cull accessions with the SAME mask, before prefixestouse is altered.
+                    opt$wantedaccessions <- opt$wantedaccessions[!already_mask]
+                }
+                opt$prefixestouse <- opt$prefixestouse[!already_mask]
+            }
+        }
+    }
+
+    return(opt)
 }
 
 #########################
 # Get options from args #
 #########################
-#Define defaults
 defopt <- list()
-defopt$verstr <- paste0("JAMSmakeswarm v", "1.0")
+defopt$verstr <- paste0("JAMSmakeswarm v", "1.1")
 defopt$outputfolder <- getwd()
 defopt$readsfolder <- NULL
 defopt$hostspecies <- "human"
@@ -247,8 +285,6 @@ option_list <- list(
                 help ="report version")
 )
 
-
-# parse the options
 args <- commandArgs(trailingOnly = TRUE)
 opt <- parse_args(OptionParser(option_list = option_list), args)
 opt <- merge.list(opt, defopt)
@@ -257,13 +293,11 @@ opt <- merge.list(opt, defopt)
 ## Set environment ##
 #####################
 
-# print version & exit if -v
 if (!is.null(opt$version)) {
     print(opt$verstr)
     quit()
 }
 
-#Get Script path
 opt$bindir <- getScriptPath()
 
 for (pathtofix in c("readsfolder", "outputfolder", "prefixlist", "swarmfile", "jamsdb", "substitutionmap", "substitutionspreadsheet")){
@@ -272,64 +306,14 @@ for (pathtofix in c("readsfolder", "outputfolder", "prefixlist", "swarmfile", "j
     }
 }
 
-#Define useful functions
-is.redundant <- function(vec){
-    propunique <- length(unique(vec))/length(vec)
-    if (propunique < 1){
-        redundant = TRUE
-    } else {
-        redundant = FALSE
-    }
-
-    return(redundant)
-}
-
-find_container <- function(x) {
-    prefsuff <- unlist(strsplit(rawfastqsdf$Filenames[x], split = "\\."))
-    container <- paste(prefsuff[(which(prefsuff %in% c("fastq", "tar"))):(length(prefsuff))], collapse = ".")
-
-    return(container)
-}
-
-find_read <- function(x) {
-    prefsuff <- unlist(strsplit(rawfastqsdf$Filenames[x], split = "\\."))
-    read <- tail(unlist(strsplit(prefsuff[1], split = "_")), n=1)
-
-    return(read)
-}
-
-check_prefixes <- function(opt = NULL){
-    if (!is.null(opt$checkprefixexists)){
-        if (length(opt$usedprefixes) > 0){
-            opt$alreadyusedprexixes <- opt$prefixestouse[(opt$prefixestouse %in% opt$usedprefixes)]
-            if (length(opt$alreadyusedprexixes) > 0){
-                cat("WARNING: THE FOLLOWING PREFIXES HAVE BEEN FOUND IN\n")
-                cat(paste(as.character(opt$checkprefixexists), "\n"))
-                cat(paste(paste0(opt$alreadyusedprexixes, collapse = ", "), "\n"))
-                cat("THESE PREFIXES HAVE BEEN ELIMINATED FROM THE SWARM FILE GENERATED.\n")
-                opt$prefixestouse <- opt$prefixestouse[!(opt$prefixestouse %in% opt$usedprefixes)]
-                if (!is.null(opt$wantedaccessions)){
-                    opt$wantedaccessions <- opt$wantedaccessions[!(opt$prefixestouse %in% opt$usedprefixes)]
-                }
-            }
-        }
-    }
-
-    return(opt)
-}
-
 ###################
 ## Main Function ##
 ###################
-#suppressPackageStartupMessages(library(JAMS))
 
 #Evaluate prefix restrictions. Order of precedence is spreadsheet, substitutionmap, prefixlist.
-
 if (!(is.null(opt$substitutionspreadsheet))){
 
-    #Get spreadsheet
     substitutiondf <- read.xlsx(opt$substitutionspreadsheet)
-    #Check for wanted columns
     if (!all(c("Sample", "OriPrefix") %in% colnames(substitutiondf))){
         missingcols <- c("Sample", "OriPrefix")[!(c("Sample", "OriPrefix") %in% colnames(substitutiondf))]
         flog.info(paste("Unable to find the", paste0(missingcols, collapse = ", "), "column(s) in the spreadsheet."))
@@ -346,7 +330,6 @@ if (!(is.null(opt$substitutionspreadsheet))){
 
 } else if (!(is.null(opt$substitutionmap))){
 
-    #Get substitutionmap
     substitutiondf <- data.table::fread(opt$substitutionmap, stringsAsFactors = FALSE, data.table = FALSE, header = FALSE)
     substitutiondf <- substitutiondf[ , 1:2]
     colnames(substitutiondf) <- c("Sample", "OriPrefix")
@@ -354,7 +337,6 @@ if (!(is.null(opt$substitutionspreadsheet))){
 
 } else if (!(is.null(opt$prefixlist))){
 
-    #wantedprefixes <- read.table(opt$prefixlist, header = FALSE, sep = " ", stringsAsFactors = FALSE)
     wantedprefixes <- data.table::fread(opt$prefixlist, stringsAsFactors = FALSE, data.table = FALSE, header = FALSE)
     wantedprefixes <- as.character(wantedprefixes[, 1])
     substitutiondf <- NULL
@@ -378,23 +360,35 @@ if (!is.null(opt$checkprefixexists)){
     cat("Checking if prefixes in swarm file coincide with prefixes in:\n")
     cat(paste(as.character(opt$checkprefixexists), "\n"))
     jamsfns <- list.files(path = opt$checkprefixexists, pattern = ".jams$", full.names = FALSE, recursive = TRUE, include.dirs = FALSE)
-    opt$usedprefixes <- sapply(1:length(jamsfns), function(x) { tail(unlist(strsplit(unlist(strsplit(jamsfns[x], split = "\\."))[1], split = "\\/")), n = 1) } )
+    #Guard against an empty banked folder, which would make 1:length(jamsfns) misbehave.
+    if (length(jamsfns) > 0){
+        opt$usedprefixes <- sapply(jamsfns, function(x) { tail(unlist(strsplit(unlist(strsplit(x, split = "\\."))[1], split = "\\/")), n = 1) }, USE.NAMES = FALSE)
+    } else {
+        flog.info("No banked .jams files found in the checkprefixexists folder; no prefixes will be excluded on that basis.")
+        opt$usedprefixes <- character(0)
+    }
 }
 
 if (!(is.null(opt$readsfolder))){
     flog.info("Searching for reads files in reads folder.")
+    #Anchor to end of basename so companion files (.md5, etc.) are not picked up.
     rawfastqpaths <- list.files(path = opt$readsfolder, pattern = "fastq$|gz$", full.names = TRUE, recursive = TRUE)
-    rawfastqnames <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 1) })
-    datasetids <- sapply(1:length(rawfastqpaths), function(x) { tail(unlist(strsplit(rawfastqpaths[x], split = "/")), n = 2)[1] })
+    rawfastqpaths <- rawfastqpaths[grepl("(fastq|fastq\\.gz)$", basename(rawfastqpaths))]
 
-    #Make a dataframe with all the info
-    rawfastqsdf <- data.frame(Filenames = rawfastqnames, Filepaths = rawfastqpaths, DatasetIDs = datasetids, stringsAsFactors = FALSE)
+    if (length(rawfastqpaths) < 1){
+        flog.info("No fastq or fastq.gz files found in the reads folder supplied. Aborting.")
+        q()
+    }
 
-    #rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { find_read(x) } )
-    rawfastqsdf$Read <- sapply(1:nrow(rawfastqsdf), function(x) { analyze_fastq_filename(fn = rawfastqsdf$Filenames[x])[["Read"]] } )
-    rawfastqsdf$Container <- sapply(1:nrow(rawfastqsdf), function(x) { find_container(x) } )
-    #rawfastqsdf$Prefix <- sapply(1:nrow(rawfastqsdf), function(x) { paste(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_"))[1:((which(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")) == tail(unlist(strsplit(rawfastqsdf$Filenames[x], split = "_")), n = 4)[1])) - 1)], collapse = "_") } )
-    rawfastqsdf$OriPrefix <- sapply(1:nrow(rawfastqsdf), function(x) { analyze_fastq_filename(fn = rawfastqsdf$Filenames[x])[["OriPrefix"]] } )
+    rawfastqnames <- sapply(rawfastqpaths, function(x) { tail(unlist(strsplit(x, split = "/")), n = 1) }, USE.NAMES = FALSE)
+    datasetids <- sapply(rawfastqpaths, function(x) { tail(unlist(strsplit(x, split = "/")), n = 2)[1] }, USE.NAMES = FALSE)
+    flowcells <- sapply(rawfastqpaths, extract_flowcell, USE.NAMES = FALSE)
+
+    rawfastqsdf <- data.frame(Filenames = rawfastqnames, Filepaths = rawfastqpaths, DatasetIDs = datasetids, Flowcell = flowcells, stringsAsFactors = FALSE)
+
+    rawfastqsdf$Read <- sapply(rawfastqsdf$Filenames, function(x) { analyze_fastq_filename(fn = x)[["Read"]] }, USE.NAMES = FALSE)
+    rawfastqsdf$Container <- sapply(1:nrow(rawfastqsdf), function(x) { find_container(x) })
+    rawfastqsdf$OriPrefix <- sapply(rawfastqsdf$Filenames, function(x) { analyze_fastq_filename(fn = x)[["OriPrefix"]] }, USE.NAMES = FALSE)
 
     if (!(is.null(wantedprefixes))){
          rawfastqsdf <- subset(rawfastqsdf, OriPrefix %in% wantedprefixes)
@@ -402,6 +396,19 @@ if (!(is.null(opt$readsfolder))){
              flog.info("Could not find a single prefix requested in the reads folder supplied.")
              q()
          }
+         #Report any requested prefixes that were NOT found, which is easy to miss otherwise.
+         notfound <- wantedprefixes[!(wantedprefixes %in% rawfastqsdf$OriPrefix)]
+         if (length(notfound) > 0){
+             flog.warn(paste("The following requested prefixes were NOT found in the reads folder:", paste0(notfound, collapse = ", ")))
+         }
+    }
+
+    #Vet OriPrefix uniqueness before assigning final prefixes, to protect the swarm.
+    OriPrefix_flowcell_pairs <- unique(rawfastqsdf[ , c("OriPrefix", "Flowcell")])
+    OriPrefix_spanning_flowcells <- names(which(table(OriPrefix_flowcell_pairs$OriPrefix) > 1))
+    if (length(OriPrefix_spanning_flowcells) > 0){
+        flog.warn(paste("The following OriPrefixes appear across more than one flowcell:", paste0(OriPrefix_spanning_flowcells, collapse = ", ")))
+        flog.warn("Each will yield a single swarm line pooling files from all its flowcells. If that is not intended, disambiguate before proceeding.")
     }
 
     if (!is.null(substitutiondf)){
@@ -411,15 +418,28 @@ if (!(is.null(opt$readsfolder))){
         colnames(rawfastqsdf)[which(colnames(rawfastqsdf) == "OriPrefix")] <- "Prefix"
     }
 
-    opt$prefixestouse <- unique(rawfastqsdf$Prefix)
+    #Apply prepend/append now, so the collision check reflects the FINAL prefix that will be written.
+    rawfastqsdf$FinalPrefix <- paste0(opt$prependtoprefix, rawfastqsdf$Prefix, opt$appendtoprefix)
+
+    opt$prefixestouse <- unique(rawfastqsdf$FinalPrefix)
+    #Rename usedprefixes check to operate on the final prefix, matching what a banked .jams would carry.
     opt <- check_prefixes(opt = opt)
 
     for (p in 1:length(opt$prefixestouse)){
-        prefix <- opt$prefixestouse[p]
-        relevantfiles <- subset(rawfastqsdf, Prefix == prefix)
+        finalprefix <- opt$prefixestouse[p]
+        relevantfiles <- subset(rawfastqsdf, FinalPrefix == finalprefix)
+
         if (all(c("R1", "R2") %in% relevantfiles$Read)) {
-            FR <- paste("-f", relevantfiles$Filepaths[which(relevantfiles$Read == "R1")], sep = " ")
-            RR <- paste("-r", relevantfiles$Filepaths[which(relevantfiles$Read == "R2")], sep = " ")
+            r1files <- relevantfiles$Filepaths[which(relevantfiles$Read == "R1")]
+            r2files <- relevantfiles$Filepaths[which(relevantfiles$Read == "R2")]
+            #Guard against multi-file (un-merged, multi-lane) inputs, which would silently
+            #vectorize into multiple -f/-r fragments and build a malformed command.
+            if (length(r1files) > 1 || length(r2files) > 1){
+                flog.warn(paste0("Prefix ", finalprefix, " resolves to more than one R1 or R2 file (", length(r1files), " R1, ", length(r2files), " R2). This usually means un-merged multi-lane reads. Join lanes first (JAMSjoinlanes) or supply a tarball. Skipping this prefix."))
+                next
+            }
+            FR <- paste("-f", r1files, sep = " ")
+            RR <- paste("-r", r2files, sep = " ")
             readsinput <- paste(FR, RR)
         } else {
             if (relevantfiles$Container[1] == "tar.gz"){
@@ -428,37 +448,49 @@ if (!(is.null(opt$readsfolder))){
                 readsinput <- paste("-U", relevantfiles$Filepaths[1])
             }
         }
-        swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", paste0(opt$prependtoprefix, prefix, opt$appendtoprefix), collapse = " ")
+        #FinalPrefix already includes prepend/append.
+        swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", finalprefix, collapse = " ")
     }
+    #Drop any NULL entries left by skipped prefixes.
+    swarm <- swarm[!is.na(swarm)]
     finalswarm <- append(swarm, finalswarm)
 }
-
 
 if (any(c((!is.null(opt$sralist)), (!is.null(opt$gcalist))))) {
     for(lst in c("sralist", "gcalist")){
         if(!is.null(opt[[lst]])){
             swarm <- NULL
             flag <- switch(lst, "sralist" = "-g", "gcalist" = "-a")
-            #wantedaccessions <- read.table(opt[[lst]], header = FALSE, sep = " ", stringsAsFactors = FALSE)
             wantedaccessions <- data.table::fread(opt[[lst]], stringsAsFactors = FALSE, data.table = FALSE, header = FALSE)
             opt$wantedaccessions <- as.character(wantedaccessions[, 1])
             cleanprefixes <- unname(sapply(opt$wantedaccessions, function(x) { gsub("_", "", x) }))
-            opt$prefixestouse <- unname(sapply(cleanprefixes, function (x) { unlist(strsplit(x, split = "\\."))[1] } ))
+            baseprefixes <- unname(sapply(cleanprefixes, function (x) { unlist(strsplit(x, split = "\\."))[1] } ))
+            #Apply prepend/append here too, for consistency with the reads branch.
+            opt$prefixestouse <- paste0(opt$prependtoprefix, baseprefixes, opt$appendtoprefix)
             opt <- check_prefixes(opt = opt)
 
-            for (p in 1:length(opt$prefixestouse)){
-                prefix <- opt$prefixestouse[p]
-                accession <- opt$wantedaccessions[p]
-                readsinput <- paste(flag, accession)
-                swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", paste0(opt$prependtoprefix, prefix, opt$appendtoprefix), collapse = " ")
+            #check_prefixes may have culled both vectors in lockstep; re-derive length safely.
+            if (length(opt$prefixestouse) > 0){
+                for (p in 1:length(opt$prefixestouse)){
+                    finalprefix <- opt$prefixestouse[p]
+                    accession <- opt$wantedaccessions[p]
+                    readsinput <- paste(flag, accession)
+                    swarm[p] <- paste("JAMSalpha", readsinput, commonoptions, "-p", finalprefix, collapse = " ")
+                }
+                finalswarm <- append(swarm, finalswarm)
             }
-            finalswarm <- append(swarm, finalswarm)
+            #Reset accessions so a subsequent list iteration does not inherit a stale vector.
+            opt$wantedaccessions <- NULL
         }
     }
 }
 
-
 #Write swarm file to system
+if (length(finalswarm) < 1){
+    flog.warn("No swarm lines were generated. Nothing to write.")
+    q()
+}
+
 if (!is.null(opt$split_swarmfile)){
     swarmlist <- split(finalswarm, ceiling(seq_along(finalswarm) / as.numeric(opt$split_swarmfile)))
     for (swm in 1:length(swarmlist)){
@@ -468,3 +500,5 @@ if (!is.null(opt$split_swarmfile)){
 } else {
     cat(finalswarm, file = opt$swarmfile, sep = "\n")
 }
+
+flog.info(paste("Wrote", length(finalswarm), "swarm line(s)."))
