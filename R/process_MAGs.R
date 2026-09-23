@@ -7,6 +7,34 @@ process_MAGs <- function(opt = NULL){
 
     setwd(opt$sampledir)
 
+    #############################################################################
+    ## Safe CheckM2 launcher (see evaluate_LKTs for rationale).
+    ## Caps worker count and times out to prevent the Python multiprocessing
+    ## gene-calling pool from deadlocking on deep, high-bin-count samples and
+    ## hanging the blocking system2() call indefinitely. Reaps orphaned workers
+    ## on timeout.
+    #############################################################################
+    run_checkm2_safely <- function(checkmArgs = NULL, checkm2_timeout_secs = 3600){
+        cm_status <- tryCatch(
+            system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE, timeout = checkm2_timeout_secs),
+            warning = function(w) { flog.warn(paste("CheckM2 timed out or emitted a warning:", conditionMessage(w))); 124L },
+            error   = function(e) { flog.warn(paste("CheckM2 failed to run:", conditionMessage(e))); 1L }
+        )
+
+        if (!identical(as.integer(cm_status), 0L)){
+            flog.warn(paste("CheckM2 returned non-zero exit status", cm_status, ". Downstream code will fall back to estimated genome completeness where CheckM2 output is missing."))
+            if (identical(as.integer(cm_status), 124L)){
+                flog.warn("Reaping any orphaned CheckM2 worker processes left by the timed-out run.")
+                try(system2("pkill", args = c("-u", Sys.getenv("USER"), "-f", "checkm2"), stdout = FALSE, stderr = FALSE), silent = TRUE)
+            }
+        }
+
+        return(cm_status)
+    }
+
+    #Cap CheckM2 worker count. Primary fix for the deadlock on deep samples.
+    checkm2cores <- max(2, min((opt$threads - 2), 16))
+
     if ((opt$analysis != "metagenome") || (!("MetaBATbin" %in% colnames(opt$contigsdata)))){
 
         #Nothing to see here, MetaBAT results are not available.
@@ -40,10 +68,9 @@ process_MAGs <- function(opt = NULL){
         curr_checkM_output_folder <- file.path(curr_bin_output_folder, "CheckM_out")
         dir.create(curr_checkM_output_folder, showWarnings = TRUE, recursive = TRUE)
         binfp <- file.path(curr_bin_output_folder, "*.fasta")
-        appropriatenumcores <- max(2, (opt$threads - 2))
-        checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
-        flog.info("Evaluating quality of MAGs with CheckM2")
-        system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE)
+        checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", checkm2cores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+        flog.info(paste("Evaluating quality of MAGs with CheckM2 using", checkm2cores, "threads."))
+        run_checkm2_safely(checkmArgs = checkmArgs)
         checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
 
         #Classify MAGs taxonomically as a single entity

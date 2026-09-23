@@ -7,6 +7,45 @@ evaluate_LKTs <- function(opt = opt, contigsdata_name = "contigsdata", output_li
 
     setwd(opt$sampledir)
 
+    #############################################################################
+    ## Safe CheckM2 launcher.
+    ## Two problems this guards against, both observed on deeply-sequenced
+    ## samples that produce very large numbers of bins (800+):
+    ##   1) CheckM2's Python multiprocessing gene-calling pool can DEADLOCK when
+    ##      launched with a very high worker count (e.g. 70). The parent and all
+    ##      workers then sit idle (state Sl, 0% CPU) indefinitely. Because the
+    ##      original call was a blocking system2() with no timeout, R would wait
+    ##      on the wedged pool forever and burn the entire Slurm wall clock.
+    ##   2) Capping the worker count dramatically lowers the odds of the deadlock
+    ##      and costs essentially nothing: prodigal gene-calling sees negligible
+    ##      benefit beyond ~8-16 concurrent processes.
+    ## On timeout we also reap any orphaned checkm2 workers so a wedged pool does
+    ## not leave stragglers pinning the node.
+    #############################################################################
+    run_checkm2_safely <- function(checkmArgs = NULL, checkm2_timeout_secs = 3600){
+        cm_status <- tryCatch(
+            system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE, timeout = checkm2_timeout_secs),
+            warning = function(w) { flog.warn(paste("CheckM2 timed out or emitted a warning:", conditionMessage(w))); 124L },
+            error   = function(e) { flog.warn(paste("CheckM2 failed to run:", conditionMessage(e))); 1L }
+        )
+
+        if (!identical(as.integer(cm_status), 0L)){
+            flog.warn(paste("CheckM2 returned non-zero exit status", cm_status, ". Downstream code will fall back to estimated genome completeness where CheckM2 output is missing."))
+            #If we timed out, a deadlocked pool may have left orphaned worker
+            #processes behind. Reap them so they do not pin the node.
+            if (identical(as.integer(cm_status), 124L)){
+                flog.warn("Reaping any orphaned CheckM2 worker processes left by the timed-out run.")
+                try(system2("pkill", args = c("-u", Sys.getenv("USER"), "-f", "checkm2"), stdout = FALSE, stderr = FALSE), silent = TRUE)
+            }
+        }
+
+        return(cm_status)
+    }
+
+    #Cap CheckM2 worker count. This is the primary fix for the deadlock on deep
+    #samples; do NOT hand CheckM2 the full node's worth of threads.
+    checkm2cores <- max(2, min((opt$threads - 2), 16))
+
     #Obtain valid taxonomic table for samples
     #ensure compatibility with JAMS v < 2.0.0
     JAMStaxtablefiles <- list.files(path = opt$workingkrakendb, pattern = "\\.rd")
@@ -63,10 +102,9 @@ evaluate_LKTs <- function(opt = opt, contigsdata_name = "contigsdata", output_li
                     unlink(curr_checkM_output_folder, recursive = TRUE)
                     dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
                     binfp <- file.path(curr_bin_output_folder, "*.fasta")
-                    appropriatenumcores <- max(2, (opt$threads - 2))
-                    checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
-                    flog.info(paste("Evaluating quality of bacterial and archaeal taxa at the", taxlvl, "level with CheckM2"))
-                    system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE)
+                    checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", checkm2cores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+                    flog.info(paste("Evaluating quality of bacterial and archaeal taxa at the", taxlvl, "level with CheckM2 using", checkm2cores, "threads."))
+                    run_checkm2_safely(checkmArgs = checkmArgs)
 
                     #Check an output exists before trying to read. Some garbage input may be too low even for a single assessement on a quality_report
                     if (file.exists(file.path(curr_checkM_output_folder, "quality_report.tsv"))){
@@ -198,10 +236,9 @@ evaluate_LKTs <- function(opt = opt, contigsdata_name = "contigsdata", output_li
         unlink(curr_checkM_output_folder, recursive = TRUE)
         dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
         binfp <- file.path(curr_bin_output_folder, "*.fasta")
-        appropriatenumcores <- max(2, (opt$threads - 2))
-        checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
-        flog.info(paste("Evaluating quality of bacterial or archaeal contigs with CheckM2"))
-        system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE)
+        checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", checkm2cores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+        flog.info(paste("Evaluating quality of bacterial or archaeal contigs with CheckM2 using", checkm2cores, "threads."))
+        run_checkm2_safely(checkmArgs = checkmArgs)
 
         checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
         colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "Sequence"

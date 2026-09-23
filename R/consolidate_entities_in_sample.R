@@ -3,12 +3,40 @@
 #' JAMSalpha function
 #' @export
 
-
 consolidate_entities_in_sample <- function(opt = opt){
 
     flog.info("Consolidating entities in sample")
 
     setwd(opt$sampledir)
+
+    #############################################################################
+    ## Safe CheckM2 launcher (see evaluate_LKTs for rationale).
+    ## Caps worker count and times out to prevent the Python multiprocessing
+    ## gene-calling pool from deadlocking on deep, high-bin-count samples and
+    ## hanging the blocking system2() call indefinitely. Reaps orphaned workers
+    ## on timeout. This function calls CheckM2 repeatedly within the quality-tier
+    ## loop, so guarding it here is essential for deep samples.
+    #############################################################################
+    run_checkm2_safely <- function(checkmArgs = NULL, checkm2_timeout_secs = 3600){
+        cm_status <- tryCatch(
+            system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE, timeout = checkm2_timeout_secs),
+            warning = function(w) { flog.warn(paste("CheckM2 timed out or emitted a warning:", conditionMessage(w))); 124L },
+            error   = function(e) { flog.warn(paste("CheckM2 failed to run:", conditionMessage(e))); 1L }
+        )
+
+        if (!identical(as.integer(cm_status), 0L)){
+            flog.warn(paste("CheckM2 returned non-zero exit status", cm_status, ". Downstream code will fall back to estimated genome completeness where CheckM2 output is missing."))
+            if (identical(as.integer(cm_status), 124L)){
+                flog.warn("Reaping any orphaned CheckM2 worker processes left by the timed-out run.")
+                try(system2("pkill", args = c("-u", Sys.getenv("USER"), "-f", "checkm2"), stdout = FALSE, stderr = FALSE), silent = TRUE)
+            }
+        }
+
+        return(cm_status)
+    }
+
+    #Cap CheckM2 worker count. Primary fix for the deadlock on deep samples.
+    checkm2cores <- max(2, min((opt$threads - 2), 16))
 
     opt$contigsdata$PPM <- round(((opt$contigsdata$NumBases / sum(opt$contigsdata$NumBases)) * 1E6), 0)
 
@@ -129,17 +157,23 @@ consolidate_entities_in_sample <- function(opt = opt){
                     unlink(curr_checkM_output_folder, recursive = TRUE)
                     dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
                     binfp <- file.path(curr_bin_output_folder, "*.fasta")
-                    appropriatenumcores <- max(2, (opt$threads - 2))
-                    checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
-                    system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE)
+                    checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", checkm2cores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+                    flog.info(paste("Enhancing MetaBAT2 bins: evaluating with CheckM2 using", checkm2cores, "threads."))
+                    run_checkm2_safely(checkmArgs = checkmArgs)
 
-                    checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
-                    colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "ConsolidatedGenomeBin"
-                    checkm_out$Additional_Notes <- NULL
-                    rownames(checkm_out) <- checkm_out[ , "ConsolidatedGenomeBin"]
-                    #keep only > HQ or MHQ bins
-                    checkm_out <- rate_bin_quality(completeness_df = checkm_out)
-                    checkm_out <- subset(checkm_out, Quality %in% c("HQ", "MHQ"))
+                    #Guard against a missing quality_report.tsv (e.g. CheckM2 timeout/failure).
+                    if (file.exists(file.path(curr_checkM_output_folder, "quality_report.tsv"))){
+                        checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
+                        colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "ConsolidatedGenomeBin"
+                        checkm_out$Additional_Notes <- NULL
+                        rownames(checkm_out) <- checkm_out[ , "ConsolidatedGenomeBin"]
+                        #keep only > HQ or MHQ bins
+                        checkm_out <- rate_bin_quality(completeness_df = checkm_out)
+                        checkm_out <- subset(checkm_out, Quality %in% c("HQ", "MHQ"))
+                    } else {
+                        flog.warn("CheckM2 produced no quality_report.tsv during MetaBAT2 bin enhancement. Skipping enhancement for this tier.")
+                        checkm_out <- checkm_out[0, , drop = FALSE]
+                    }
                     #Clean up
                     unlink(curr_bin_output_folder, recursive = TRUE)
                     #Transfer used supplemental contigs to opt$contigsdata as consolidated and update MB2 info 
@@ -317,24 +351,34 @@ consolidate_entities_in_sample <- function(opt = opt){
                             unlink(curr_checkM_output_folder, recursive = TRUE)
                             dir.create(curr_checkM_output_folder, showWarnings = FALSE, recursive = TRUE)
                             binfp <- file.path(curr_bin_output_folder, "*.fasta")
-                            appropriatenumcores <- max(2, (opt$threads - 2))
-                            checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", appropriatenumcores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
-                            flog.info(paste("Evaluating quality of bacterial and archaeal taxa with CheckM2"))
-                            system2('checkm2', args = checkmArgs, stdout = FALSE, stderr = FALSE)
+                            checkmArgs <- c("predict", "--database_path", opt$CheckMdb, "--threads", checkm2cores, "--input", binfp, "--output-directory", curr_checkM_output_folder)
+                            flog.info(paste("Evaluating quality of bacterial and archaeal taxa with CheckM2 using", checkm2cores, "threads."))
+                            run_checkm2_safely(checkmArgs = checkmArgs)
 
-                            checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
-                            colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "ConsolidatedGenomeBin"
-                            checkm_out$Additional_Notes <- NULL
-                            rownames(checkm_out) <- checkm_out[ , "ConsolidatedGenomeBin"]
+                            #Guard against a missing quality_report.tsv (e.g. CheckM2 timeout/failure).
+                            if (file.exists(file.path(curr_checkM_output_folder, "quality_report.tsv"))){
+                                checkm_out <- fread(file = file.path(curr_checkM_output_folder, "quality_report.tsv"), data.table = FALSE)
+                                colnames(checkm_out)[which(colnames(checkm_out) == "Name")] <- "ConsolidatedGenomeBin"
+                                checkm_out$Additional_Notes <- NULL
+                                rownames(checkm_out) <- checkm_out[ , "ConsolidatedGenomeBin"]
+                            } else {
+                                flog.warn("CheckM2 produced no quality_report.tsv during taxonomy consolidation. Falling back to estimated genome completeness for all bins in this tier.")
+                                checkm_out <- NULL
+                            }
 
                             #Some checkm outputs may have failed from the contigs being too small or not having ORFs. If there are any, fall back on estimated genome completeness.
-                            if (nrow(checkm_out) < length(wantedtaxa)){
+                            if ((is.null(checkm_out) || (nrow(checkm_out) < length(wantedtaxa)))){
                                 #Find out missing wantedtaxa
                                 missingtaxa <- wantedtaxa[!(wantedtaxa %in% checkm_out[ , "ConsolidatedGenomeBin"])]
                                 suppl_info <- as.data.frame(bacterial_contigsdata[which(bacterial_contigsdata[ , "ConsolidatedGenomeBin"] %in%  missingtaxa), ] %>% group_by_at("ConsolidatedGenomeBin") %>% summarise(Genome_Size = sum(Length), Total_Contigs = length(Length), Max_Contig_Length = max(Length)))
                                 rownames(suppl_info) <- suppl_info[ , "ConsolidatedGenomeBin"]
-                                suppl_df <- as.data.frame(matrix(data = NA, nrow = length(missingtaxa), ncol = ncol(checkm_out)))
-                                colnames(suppl_df) <- colnames(checkm_out)
+                                if (!is.null(checkm_out)){
+                                    suppl_df <- as.data.frame(matrix(data = NA, nrow = length(missingtaxa), ncol = ncol(checkm_out)))
+                                    colnames(suppl_df) <- colnames(checkm_out)
+                                } else {
+                                    suppl_df <- as.data.frame(matrix(data = NA, nrow = length(missingtaxa), ncol = 13))
+                                    colnames(suppl_df) <- c("ConsolidatedGenomeBin", "Completeness", "Contamination", "Completeness_Model_Used", "Translation_Table_Used", "Coding_Density", "Contig_N50", "Average_Gene_Length", "Genome_Size", "GC_Content", "Total_Coding_Sequences", "Total_Contigs", "Max_Contig_Length")
+                                }
                                 suppl_df[ , "ConsolidatedGenomeBin"] <- missingtaxa
                                 rownames(suppl_df) <- suppl_df[ , "ConsolidatedGenomeBin"]
                                 for (colm in c("Genome_Size", "Total_Contigs", "Max_Contig_Length")){
