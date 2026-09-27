@@ -109,6 +109,70 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
     #MB2 space is being phased out after JAMS ver 2.0.3.
     valid_taxonomic_spaces <- c("Contig_LKT", "ConsolidatedGenomeBin")[c("Contig_LKT", "ConsolidatedGenomeBin") %in% names(propsampleswithtaxspace)[propsampleswithtaxspace > 0.8]]
 
+    #############################################################################
+    ## Stratification consistency audit.
+    ## After contextualize_taxonomy has rewritten LKT names and CGB2LKTdict has been
+    ## built, this checks that every ConsolidatedGenomeBin the dict intends to rewrite
+    ## can actually be found (a) as a column in the sample's functional
+    ## ConsolidatedGenomeBin abundance table and (b) in the sample's featuredata
+    ## ConsolidatedGenomeBin column. Mismatches here would silently desynchronise the
+    ## -u taxon-stratified functional matrices from the taxonomic SEobj, so we surface
+    ## them precisely rather than letting a downstream surprise occur. A clean run logs
+    ## a single reassuring line. This is cheap: it is O(number of CGBs), not O(features).
+    #############################################################################
+    audit_stratification_consistency <- function(CGB2LKTdict = NULL, list.data = NULL){
+        n_checked <- 0
+        missing_from_featuredata <- character(0)
+        missing_from_functional <- character(0)
+
+        for (S2C in as.character(unique(CGB2LKTdict$Sample))){
+            curr_dict <- CGB2LKTdict[which(CGB2LKTdict$Sample == S2C), , drop = FALSE]
+            curr_dict <- curr_dict %>% dplyr::mutate(across(where(is.factor), as.character))
+
+            curr_featuredata <- list.data[[paste(S2C, "featuredata", sep = "_")]]
+            curr_func <- list.data[[paste(S2C, "abundances", sep = "_")]][["functional"]][["ConsolidatedGenomeBin"]]
+
+            featuredata_CGBs <- if (!is.null(curr_featuredata)) unique(curr_featuredata$ConsolidatedGenomeBin) else character(0)
+            functional_CGBs <- if (!is.null(curr_func)) colnames(curr_func) else character(0)
+
+            for (cgb in unique(curr_dict$ConsolidatedGenomeBin)){
+                n_checked <- n_checked + 1
+                if (!(cgb %in% featuredata_CGBs)){
+                    missing_from_featuredata <- c(missing_from_featuredata, paste0("Sample=", S2C, " | CGB=", cgb))
+                }
+                #Note: it is legitimate and expected for a CGB to be absent from the functional
+                #ConsolidatedGenomeBin abundance table, because JAMSalpha only records functional
+                #stratification above a small (non-zero) relative abundance. So absence here is NOT
+                #flagged as an error; it is tallied separately for information only.
+                if (!(cgb %in% functional_CGBs)){
+                    missing_from_functional <- c(missing_from_functional, paste0("Sample=", S2C, " | CGB=", cgb))
+                }
+            }
+        }
+
+        if (length(missing_from_featuredata) == 0){
+            flog.info(paste0("make_SummarizedExperiments stratification audit: all ", n_checked, " ConsolidatedGenomeBins in the contextualized dictionary reconcile with their sample featuredata. Taxonomic and functional (-u) domains are consistent."))
+        } else {
+            flog.warn(paste0("make_SummarizedExperiments stratification audit: ", length(missing_from_featuredata), " of ", n_checked, " ConsolidatedGenomeBins in the contextualized dictionary are NOT present in their sample featuredata ConsolidatedGenomeBin column. This may desynchronise the -u taxon-stratified functional matrices. Offending bins follow:"))
+            max_report <- 50
+            to_report <- missing_from_featuredata[1:min(length(missing_from_featuredata), max_report)]
+            for (msg in to_report){
+                flog.warn(paste0("   ", msg))
+            }
+            if (length(missing_from_featuredata) > max_report){
+                flog.warn(paste0("   ... and ", (length(missing_from_featuredata) - max_report), " more not shown."))
+            }
+        }
+
+        #Informational only: how many dict CGBs are below the functional-stratification recording
+        #threshold in JAMSalpha. This is expected and benign, reported at info level only if present.
+        if (length(missing_from_functional) > 0){
+            flog.info(paste0("make_SummarizedExperiments stratification audit: ", length(missing_from_functional), " of ", n_checked, " ConsolidatedGenomeBins are absent from the functional ConsolidatedGenomeBin abundance table (expected for bins below the JAMSalpha functional-stratification abundance floor; not an error)."))
+        }
+
+        return(invisible(NULL))
+    }
+
     retrieve_abundance_table <- function(Sample = NULL, taxonomic_space = NULL, colsToIgnore = NULL){
         abundance_df <- list.data[[paste(Sample, "abundances", sep = "_")]]$taxonomic[[taxonomic_space]][ , ]
         abundance_df <- abundance_df[ , which(!colnames(abundance_df) %in% colsToIgnore)]
@@ -155,6 +219,10 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             #Bequeath to opt for using later when building functional experiments
             #Keep this here for the time being. make_SummarizedExperiments does not return opt, so at a later date I might add this to the SEobj itself, depending on the object size.
             opt$CGB2LKTdict <- LKTdosesall[ , c("Sample", "ConsolidatedGenomeBin", "LKT"), drop = FALSE] %>% dplyr::mutate(across(where(is.character), as.factor))
+
+            #Audit consistency between the contextualized dictionary, featuredata, and functional
+            #abundance tables before we rely on them for -u stratification.
+            audit_stratification_consistency(CGB2LKTdict = opt$CGB2LKTdict %>% dplyr::mutate(across(where(is.factor), as.character)), list.data = list.data)
 
             #Fix list.data objects with contextualized taxonomy
 
@@ -331,6 +399,13 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
 #            flog.info("Running in single-threaded mode.")
 #        }
 
+        #Silent tally of taxon-stratification coverage across this analysis. Counts, per sample,
+        #how many features carried usable taxon columns versus none, so a systemic failure of the
+        #-u path (e.g. every feature collapsing to Ultra_low_abundance) is surfaced at the end
+        #rather than passing unnoticed. Purely observational; changes no data.
+        strat_samples_with_data <- 0
+        strat_samples_without_data <- 0
+
         batch_start_time <- Sys.time()
         for (sampnum in 1:length(Samples)){
             SN <- Samples[sampnum]
@@ -350,7 +425,19 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 curr_FD$Sample <- SN
 
                 #Deal with gene number tallies
-                curr_featdf <- list.data[[paste(SN, "featuredata", sep = "_")]][ , c("Feature", "LengthDNA", analysis, appropriate_featurdata_tax_colm)]
+                #Defensive: the column named by `analysis` (e.g. resfinder) may be ABSENT from a
+                #sample's featuredata if that blast analysis never ran at JAMSalpha time (as opposed
+                #to running and finding nothing, which yields a column full of "none"). Selecting a
+                #missing column would throw "undefined columns selected". Synthesize it as "none" so
+                #the sample stays in the analysis, mirroring how ECNumber is handled in
+                #make_featuredata_from_bedfile.
+                curr_featdf_full <- list.data[[paste(SN, "featuredata", sep = "_")]]
+                if (!(analysis %in% colnames(curr_featdf_full))){
+                    flog.warn(paste0("make_SummarizedExperiments: analysis column '", analysis, "' is absent from featuredata for sample ", SN, " (this analysis likely did not run for this sample at JAMSalpha time). Synthesizing it as 'none' so the sample is retained."))
+                    curr_featdf_full[[analysis]] <- "none"
+                }
+                curr_featdf <- curr_featdf_full[ , c("Feature", "LengthDNA", analysis, appropriate_featurdata_tax_colm)]
+                curr_featdf_full <- NULL
                 colnames(curr_featdf)[which(colnames(curr_featdf) == analysis)] <- "Accession"
                 colnames(curr_featdf)[which(colnames(curr_featdf) == appropriate_featurdata_tax_colm)] <- "Taxon"
 
@@ -445,6 +532,9 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                         master_sparse_taxon_to_space_genecounts_df <- curr_split_numgenes
                     }
 
+                    #Silent tally: this sample contributed usable stratification rows.
+                    strat_samples_with_data <- strat_samples_with_data + 1
+
                     #Clean up
                     curr_SM <- NULL
                     curr_split_numgenes <- NULL
@@ -476,6 +566,11 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
                 curr_analysisgencts <- NULL
                 curr_analysislencts <- NULL
                 gc()
+            } else {
+                #No data for this analysis in this sample. If stratifying, count it for the tally.
+                if (stratify_functions_by_taxon){
+                    strat_samples_without_data <- strat_samples_without_data + 1
+                }
             } #End conditional for there being data for that analysis for that sample
 
             #Give message on progress
@@ -491,6 +586,15 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             }
 
         } #End loop for obtaining data for each sample
+
+        #Report the stratification tally for this analysis (only when stratifying).
+        if (stratify_functions_by_taxon){
+            if (strat_samples_with_data == 0){
+                flog.warn(paste0("make_SummarizedExperiments: for analysis ", analysis, ", NO samples yielded usable taxon-stratified data (", strat_samples_without_data, " samples had no data for this analysis). The -u stratification metadata for this analysis will be empty. Check your inputs if this is unexpected."))
+            } else {
+                flog.info(paste0("make_SummarizedExperiments: taxon-stratification tally for analysis ", analysis, ": ", strat_samples_with_data, " sample(s) contributed stratified data, ", strat_samples_without_data, " sample(s) had no data for this analysis. Consistent."))
+            }
+        }
 
         #Obtain unstratified counts matrix
         cts <- analysisdoses[ , c("Sample", "Accession", "NumBases")] %>% pivot_wider(names_from = Sample, values_from = NumBases, values_fill = 0)
