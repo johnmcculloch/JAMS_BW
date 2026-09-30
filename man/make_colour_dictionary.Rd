@@ -2,20 +2,103 @@
 % Please edit documentation in R/make_colour_dictionary.R
 \name{make_colour_dictionary}
 \alias{make_colour_dictionary}
-\title{make_colour_dictionary(variable_list = NULL, pheno = NULL, phenolabels = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", colour_table = NULL, shuffle = FALSE, print_palette = FALSE, object_to_return = "cdict")}
+\title{make_colour_dictionary(variable_list = NULL, pheno = NULL, phenolabels = NULL, columnsToUse = NULL, columnsToIgnore = NULL, class_to_ignore = "N_A", colour_of_class_to_ignore = "#bcc2c2", legacy_ctable = NULL, colour_table = NULL, within_variable_palette = TRUE, diverging_palette = "Spectral", binary_positive_colour = "#0004e9", binary_negative_colour = "#E41A1C", extra_positive_tokens = NULL, extra_negative_tokens = NULL, guess_binary_polarity = TRUE, avoid_collisions = TRUE, shuffle = FALSE, object_to_return = "ctable", warn_on_collisions = TRUE)}
 \usage{
 make_colour_dictionary(
   variable_list = NULL,
   pheno = NULL,
   phenolabels = NULL,
+  columnsToUse = NULL,
+  columnsToIgnore = NULL,
   class_to_ignore = "N_A",
   colour_of_class_to_ignore = "#bcc2c2",
+  legacy_ctable = NULL,
   colour_table = NULL,
+  within_variable_palette = TRUE,
+  diverging_palette = "Spectral",
+  binary_positive_colour = "#0004e9",
+  binary_negative_colour = "#E41A1C",
+  extra_positive_tokens = NULL,
+  extra_negative_tokens = NULL,
+  guess_binary_polarity = TRUE,
+  avoid_collisions = TRUE,
   shuffle = FALSE,
-  print_palette = FALSE,
-  object_to_return = "cdict"
+  object_to_return = "ctable",
+  warn_on_collisions = TRUE
 )
 }
+\arguments{
+\item{variable_list}{Optional pre-computed output of define_kinds_of_variables. If NULL, it is derived from pheno/phenolabels.}
+
+\item{pheno}{The curated metadata data frame (rownames = sample names).}
+
+\item{phenolabels}{Optional phenolabels data frame. If NULL and variable_list is NULL, column types are imputed.}
+
+\item{columnsToUse}{Optional character vector of metadata columns to colour. If supplied, only these (plus "Sample", which is always protected) are considered. Overrides the discrete-variable auto-detection.}
+
+\item{columnsToIgnore}{Optional character vector of metadata columns to NOT colour. "Sample" is always ignored regardless.}
+
+\item{class_to_ignore}{String (or vector) of class values to treat as missing/ignored. Painted colour_of_class_to_ignore. Default "N_A".}
+
+\item{colour_of_class_to_ignore}{Hex colour for class_to_ignore. Default grey "#bcc2c2".}
+
+\item{legacy_ctable}{Optional data frame OR path to a tsv of legacy colours to override generated colours where class names match. Accepts either columns Name/Hex (or Name/Colour) or the older Class_label/Class_colour. See details.}
+
+\item{colour_table}{Deprecated alias for legacy_ctable, retained for backwards compatibility.}
+
+\item{within_variable_palette}{Logical. If TRUE (default), each variable gets its own diverging palette. If FALSE, the historical global "atom" recycling behaviour is used.}
+
+\item{diverging_palette}{String naming an RColorBrewer diverging palette used for variables with > 2 classes. Default "Spectral".}
+
+\item{binary_positive_colour}{Hex colour for the affirmative/positive class of a 2-class variable. Default "#0004e9" (blue), matching the common Responder = blue legacy convention.}
+
+\item{binary_negative_colour}{Hex colour for the negative class of a 2-class variable. Default "#E41A1C" (red).}
+
+\item{extra_positive_tokens}{Optional character vector of additional class labels to treat as "positive". They are normalised (lowercased, non-alphanumerics stripped) before matching, so "Complete Response" and "complete_response" are equivalent.}
+
+\item{extra_negative_tokens}{Optional character vector of additional class labels to treat as "negative", normalised the same way.}
+
+\item{guess_binary_polarity}{Logical. If TRUE (default), apply the semantic positive/negative guess to 2-class variables. If FALSE, all 2-class variables use the plain alphabetical fallback (first class = binary_positive_colour, second = binary_negative_colour).}
+
+\item{avoid_collisions}{Logical. If TRUE (default) and object_to_return = "ctable", run the preventive per-variable de-collision pass described above. Has no effect on the "cdict" return (per-variable dictionaries are collision-free by construction).}
+
+\item{shuffle}{Logical. If TRUE, shuffles palette order. Default FALSE.}
+
+\item{object_to_return}{Either "ctable" (a data frame with Name, Colour, Hex) or "cdict" (a named list, one data frame per variable). Default "ctable".}
+
+\item{warn_on_collisions}{Logical. If TRUE (default), warns when the same class name appears in more than one coloured variable with differing generated colours before collapsing to the global ctable.}
+}
 \description{
-Returns a dictionary of colours for each class within each variable_list or phenotable
+Returns a colour dictionary (either a legacy-style ctable data frame or a per-variable cdict list)
+for the classes within the discrete variables of a phenotable.
+}
+\details{
+Colour assignment precedence, applied per variable and per class:
+  1. legacy_ctable override (if the class name is found there)
+  2. within-variable generated palette (diverging, harmonious)
+  3. class_to_ignore is always painted colour_of_class_to_ignore
+
+For two-class variables, an OPTIONAL semantic guess (see guess_binary_polarity) tries to
+place an "affirmative/positive" class (Responder, Good, Yes, Y, CR, PR, Sensitive, ...) on
+binary_positive_colour and a "negative" class (Non_Responder, Bad, No, N, PD, Resistant,
+Refractory, ...) on binary_negative_colour. This is a heuristic and can be semantically
+wrong for valence-neutral pairs (e.g. Death_event Y/N, where Y is the bad outcome). Tokens
+that are genuinely context-dependent (High/Low, Present/Absent) are deliberately NOT guessed
+and fall back to a stable alphabetical assignment. Legacy overrides always win over the guess.
+
+When object_to_return = "ctable" and avoid_collisions = TRUE (the default), a preventive pass
+guarantees that WITHIN EACH coloured variable every class resolves to a distinct colour in the
+flat ctable. This fixes the classic artefact where two classes of one variable inherit the same
+colour after the global collapse (e.g. two 5-class variables both taking the Spectral midpoint
+#FFFFBF, one class then overwriting another during de-duplication). Legacy- and ignore-locked
+colours are never moved; when a clash must be resolved the more "local" class (present in the
+fewest variables) is nudged, and only away from its own siblings, so intended cross-variable
+colour reuse (e.g. every binary-positive class sharing one blue) is preserved.
+
+
+Reading a legacy ctable: the file/data frame is column-name agnostic. It looks for a
+class-name column among c("Name", "Class_label") and a colour column among
+c("Hex", "Colour", "Class_colour"), in that order of preference. If a legacy_ctable is
+supplied but none of its class names match any class in the (used) metadata, a warning is
+emitted rather than silently doing nothing.
 }

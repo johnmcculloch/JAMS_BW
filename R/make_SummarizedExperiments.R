@@ -107,7 +107,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
 
     #Consider building an SEobj for a taxonomic space in which there are at least 80% of samples with that taxonomic space available.
     #MB2 space is being phased out after JAMS ver 2.0.3.
-    valid_taxonomic_spaces <- c("Contig_LKT", "ConsolidatedGenomeBin")[c("Contig_LKT", "ConsolidatedGenomeBin") %in% names(propsampleswithtaxspace)[propsampleswithtaxspace > 0.8]]
+    #Contig_LKT space is being phased out after JAMS ver 2.2.6
+    valid_taxonomic_spaces <- c("ConsolidatedGenomeBin")[c("ConsolidatedGenomeBin") %in% names(propsampleswithtaxspace)[propsampleswithtaxspace > 0.8]]
 
     #############################################################################
     ## Stratification consistency audit.

@@ -191,7 +191,7 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
 
         return(invisible(NULL))
     }
-    audit_featuredata_reconciliation(BinsDF = BinsDF, verbose = FALSE)
+    audit_featuredata_reconciliation(BinsDF = BinsDF, verbose = TRUE)
 
     #Set the Working Taxid for which entities will be clustered by function
     BinsDF$WorkingTaxid <- BinsDF$Taxid
