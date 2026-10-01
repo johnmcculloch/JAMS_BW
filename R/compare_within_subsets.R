@@ -75,8 +75,7 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
 
     #Warn on likely-misapplied taxonomic-only options
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
-    #n.b. CSBs only exist in ConsolidatedGenomeBin space
-    if (only_allow_CSBs && !(analysis %in% "ConsolidatedGenomeBin")){
+    if (only_allow_CSBs && !(analysis %in% taxonomic_spaces)){
         flog.warn(paste0("only_allow_CSBs = TRUE was passed, but analysis space \"", analysis, "\" is not taxonomic. The plotting functions will ignore it."))
     }
     if (!is.null(glomby) && !(analysis %in% taxonomic_spaces)){
@@ -120,19 +119,15 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
         retained_samples <- all_samples
     }
 
-    #Report any explicitly requested features we will try to honour.
+    #featuresToKeep is interpreted in the POST-agglomeration namespace, exactly as in the
+    #standalone plotting functions (see ExpObjVetting's contract): if glomby = "Family",
+    #pass family names. We therefore do NOT pre-match featuresToKeep against the raw (pre-glom)
+    #rownames here, because that would wrongly reject correct post-glom names (e.g. species
+    #names when glomby = "Species"). Instead we hand featuresToKeep straight to ExpObjVetting
+    #below, which agglomerates first and then validates/matches in the correct namespace,
+    #erroring loudly on a namespace mismatch rather than silently collapsing.
     if (!is.null(featuresToKeep)){
         featuresToKeep <- unique(featuresToKeep)
-        present_ftk <- featuresToKeep[featuresToKeep %in% rownames(ExpObj)]
-        if (length(present_ftk) < length(featuresToKeep)){
-            flog.warn(paste0("featuresToKeep: ", (length(featuresToKeep) - length(present_ftk)), " of ", length(featuresToKeep), " requested feature(s) were not found in the (pre-glom) object and will be ignored."))
-        }
-        if (length(present_ftk) < 1){
-            flog.warn("featuresToKeep: none of the requested features were found. Proceeding as if featuresToKeep were NULL.")
-            featuresToKeep <- NULL
-        } else {
-            featuresToKeep <- present_ftk
-        }
     }
 
     #############################################################################

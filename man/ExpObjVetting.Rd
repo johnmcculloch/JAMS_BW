@@ -2,7 +2,7 @@
 % Please edit documentation in R/ExpObjVetting.R
 \name{ExpObjVetting}
 \alias{ExpObjVetting}
-\title{ExpObjVetting(ExpObj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, glomby = NULL, variables_to_fix = NULL, only_allow_CSBs = FALSE, class_to_ignore = NULL)}
+\title{ExpObjVetting(ExpObj = NULL, samplesToKeep = NULL, featuresToKeep = NULL, glomby = NULL, variables_to_fix = NULL, only_allow_CSBs = FALSE, class_to_ignore = NULL, featuresToKeep_warn_frac = 0.2, featuresToKeep_error_frac = 0.5, featuresToKeep_size_floor = 10)}
 \usage{
 ExpObjVetting(
   ExpObj = NULL,
@@ -11,9 +11,40 @@ ExpObjVetting(
   glomby = NULL,
   variables_to_fix = NULL,
   only_allow_CSBs = FALSE,
-  class_to_ignore = NULL
+  class_to_ignore = NULL,
+  featuresToKeep_warn_frac = 0.2,
+  featuresToKeep_error_frac = 0.5,
+  featuresToKeep_size_floor = 10
 )
 }
+\arguments{
+\item{featuresToKeep_warn_frac}{Fraction of absent requested features above which a strong warning is issued (large vectors only). Default 0.2.}
+
+\item{featuresToKeep_error_frac}{Fraction of absent requested features above which this stops with an error (large vectors only). Default 0.5.}
+
+\item{featuresToKeep_size_floor}{Vector-length floor below which the error rule is suspended, so small, legitimate requests (e.g. 4 species, 2 absent) only ever warn. Default 10.}
+}
 \description{
-Performs vetting of a SummarizedExperiment object for use in several functions
+Performs vetting of a SummarizedExperiment object for use in several functions.
+}
+\details{
+featuresToKeep NAMESPACE CONTRACT:
+  featuresToKeep is always interpreted in the POST-agglomeration namespace. That is,
+  if you pass glomby = "Family", featuresToKeep must contain family-level names (e.g.
+  "f__Enterobacteriaceae"), NOT the underlying LKT/CGB names that compose those families.
+  If glomby is NULL, featuresToKeep are matched against the object's native feature names.
+
+  How absence is handled (see the three threshold arguments below): because we cannot, from
+  the object alone, tell "a legitimate sparse subset" from "a wrong-namespace vector that
+  happens to contain real taxon tokens", we DO NOT consult any external taxonomy (that would
+  be both expensive and unsound, since a local JAMStaxtable may not match the Kraken database
+  that built these .jams files). Instead we judge by how many supplied names are actually
+  present in THIS object, scaled by how many were asked for:
+    - 0 present                                   -> ERROR (nothing to plot; clearest signal of a bad vector)
+    - small vector (<= size_floor), >=1 present   -> never error on absence; warn per missing name
+    - large vector, absent fraction >= error_frac -> ERROR (almost certainly a namespace mistake / stale list)
+    - large vector, absent fraction >= warn_frac  -> strong WARNING, but still proceeds
+    - otherwise                                   -> proceed (quietly note any few absentees)
+  The goal is explicitly NOT to prevent every misuse (the user must know roughly what they
+  are asking for), but to guarantee we never SILENTLY dump a wrong/degenerate heatmap into a PDF.
 }
