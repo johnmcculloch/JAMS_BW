@@ -8,6 +8,8 @@ compare_within_subsets(
   ExpObj = NULL,
   compareby = NULL,
   subsetby = NULL,
+  samplesToKeep = NULL,
+  featuresToKeep = NULL,
   glomby = NULL,
   only_allow_CSBs = FALSE,
   do_ordination = TRUE,
@@ -18,7 +20,7 @@ compare_within_subsets(
   ordination_args = list(),
   heatmap_args = list(),
   alpha_args = list(),
-  applyfilters = "light",
+  applyfilters = NULL,
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
   PPM_normalize_to_bases_sequenced = TRUE,
@@ -34,9 +36,13 @@ compare_within_subsets(
 
 \item{subsetby}{String or vector (up to 3) of metadata variables for tiered subsetting. If NULL, a single "no subset" pass is made over all samples.}
 
+\item{samplesToKeep}{Optional vector of sample names to retain BEFORE any global filtration or subsetting. Use this to drop samples you know you do not want in the comparison at all (e.g. outliers). If NULL (default), all samples are kept. Applied first, ahead of everything else.}
+
+\item{featuresToKeep}{Optional vector of feature names to retain BEFORE any global filtration or subsetting. Use this to restrict to (or drop) features you care about up front (e.g. remove noise, or focus on a shortlist). If NULL (default), all features are considered. Applied first, ahead of the global filtration that derives global_FTK. For taxonomic objects that will be agglomerated via glomby, these must be names in the ORIGINAL (pre-glom) namespace, since culling happens before agglomeration; see ExpObjVetting.}
+
 \item{glomby}{String; taxonomic level to agglomerate to (taxonomic spaces only). Default NULL.}
 
-\item{only_allow_CSBs}{Logical; restrict to Consolidated Species Bins (taxonomic ConsolidatedGenomeBin space only). Passed through to each plotting function, which apply it before any agglomeration. Default FALSE.}
+\item{only_allow_CSBs}{Logical; restrict to Consolidated Species Bins (taxonomic ConsolidatedGenomeBin space only). Applied before any agglomeration. Default FALSE.}
 
 \item{do_ordination, do_heatmap, do_alpha}{Logical switches to include/exclude each of the three plot types. All default TRUE.}
 
@@ -46,7 +52,7 @@ compare_within_subsets(
 
 \item{ordination_args, heatmap_args, alpha_args}{Named lists of extra arguments passed to plot_Ordination, plot_relabund_heatmap and plot_alpha_diversity respectively, overriding the comparator's shared defaults for that function only.}
 
-\item{applyfilters, featcutoff, GenomeCompletenessCutoff, PPM_normalize_to_bases_sequenced, cdict, class_to_ignore}{Shared arguments forwarded to all three functions unless overridden per-function via the *_args lists.}
+\item{applyfilters, featcutoff, GenomeCompletenessCutoff, PPM_normalize_to_bases_sequenced, cdict, class_to_ignore}{Shared arguments. The filtration arguments (applyfilters, featcutoff, GenomeCompletenessCutoff) are used ONCE here to derive global_FTK and are NOT forwarded to the plotting functions (which receive non-filtering values instead). PPM_normalize_to_bases_sequenced, cdict and class_to_ignore are forwarded to all three functions unless overridden per-function via the *_args lists.}
 
 \item{return_stats}{Logical; if TRUE, invisibly returns a named list collecting the returnstats output of the heatmap and alpha functions per subset. Default TRUE.}
 }
@@ -64,8 +70,26 @@ dev.off(), because the heatmap (plot_relabund_heatmap) draws directly to the act
 device and cannot be deferred into a list. Ordination and alpha diversity ggplot objects
 are printed on the fly so that all output lands in your open device in subset order.
 
-The comparator delegates all object handling (CSB restriction, agglomeration, filtration)
-to the individual plotting functions, passing samplesToKeep per subset with subsetby = NULL.
-It never pre-vets the SummarizedExperiment itself, so ordering invariants (e.g. CSB
-restriction must precede agglomeration) remain owned by the plotting functions.
+## Feature-set consistency across subsets (IMPORTANT)
+The individual plotting functions, when called standalone with a subsetby, first establish
+a GLOBAL set of surviving features across ALL samples (using the user's filtration
+parameters), and then hold that set fixed while subsetting, passing c(0,0) filters within
+each subset. This prevents the surviving-feature count from dwindling (and differing) from
+subset to subset, since featcutoff/GenomeCompletenessCutoff are prevalence-based and the
+sample count changes per subset.
+
+Because this comparator subsets OUTSIDE the plotting functions (handing each a per-subset
+samplesToKeep with subsetby = NULL), that built-in global-feature machinery never engages.
+To preserve the same guarantee, this function now computes a single global feature set
+(global_FTK) ONCE, up front, across the retained samples, using the user's filtration
+parameters. It then passes featuresToKeep = global_FTK to every plotting call with all
+filtration arguments set to non-filtering values (applyfilters = NULL, featcutoff = c(0,0),
+GenomeCompletenessCutoff = c(0,0)). Every panel in every subset therefore considers exactly
+the same features, and comparisons across subsets are honest.
+
+The global feature set is computed on an object that has ALREADY been vetted in the same
+order the plotting functions use (ExpObjVetting applies samplesToKeep/featuresToKeep, then
+only_allow_CSBs, then glomby). This matters because CSB restriction must precede
+agglomeration and agglomeration rewrites feature names: computing global_FTK in the final
+(post-CSB, post-glom) namespace guarantees the names match what each plotting function sees.
 }
