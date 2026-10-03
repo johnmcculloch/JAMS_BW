@@ -789,7 +789,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     calc_fs <- function(nm) {
                         nm_len <- nchar(nm)
                         fs <- round(10 - (nm_len - 12) * 0.2)
-                        fs <- pmax(6, pmin(12, fs))
+                        fs <- pmax(5, pmin(9, fs))
                         return(fs)
                     }
 
@@ -1013,7 +1013,15 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         annot <- resolve_tax_annotation_colours(feature_table = rowData(currobj), row_order = rownames(mathm), want_phylum = showPhylum, want_gram = showGram)
 
                         #Build the annotation from whichever components resolved successfully.
-                        ann_args <- list(annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = TRUE)
+                        #Size the row-annotation (Phylum/Gram) legends down to match the
+                        #column-annotation legends and stop them overflowing/clipping. Phylum
+                        #in particular can carry many classes, so title and labels are kept small.
+                        tax_legend_param <- list(
+                            Phylum = list(title_gp = gpar(fontsize = 7), labels_gp = gpar(fontsize = 5), grid_height = unit(3, "mm"), grid_width = unit(3, "mm"), ncol = 2),
+                            Gram   = list(title_gp = gpar(fontsize = 7), labels_gp = gpar(fontsize = 5), grid_height = unit(3, "mm"), grid_width = unit(3, "mm"))
+                        )
+                        ann_args <- list(annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = TRUE, annotation_legend_param = tax_legend_param)
+
                         ann_cols <- list()
                         if (!is.null(annot$phylum)){
                             ann_args$Phylum <- annot$phylum
