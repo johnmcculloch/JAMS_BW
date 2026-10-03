@@ -284,9 +284,10 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
 
         Taxid2gram <- JAMStaxtable[ , c("Taxid", "Gram")]
         Taxid2gram <- subset(Taxid2gram, Taxid %in% tt$Taxid)
-        Taxid2gram <- Taxid2gram[!(duplicated(Taxid2gram$LKT)), ]
+        Taxid2gram <- Taxid2gram[!(duplicated(Taxid2gram$Taxid)), ]
         tt <- left_join(as.data.frame(tt), Taxid2gram, by = "Taxid")
-        tt[which(is.na(tt[ , "Gram"])), "Gram"] <- "na"
+        tt$Gram[which(is.na(tt$Gram))] <- "na"
+        tt$Gram[!(tt$Gram %in% c("positive", "negative"))] <- "na"
         tt <- tt[ , c("Gram", taxlvlspresent)]
         rownames(tt) <- tt[ , "LKT"]
 
