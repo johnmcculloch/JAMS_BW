@@ -364,48 +364,6 @@ IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads =
     }
 }
 
-#' spew_heatmap_report(c("analysis", "report"))
-#' Wrapper for launching a report for a SINGLE analysis
-#'
-#' @export
-
-spew_heatmap_report <- function(hmcomb = NULL, outdir = NULL, expvec = NULL, applyfilters = NULL, variable_list = NULL, scaled = NULL, cdict = NULL, makespreadsheets = TRUE, makeheatmaps = TRUE, project = NULL){
-    analysis <- hmcomb[1]
-    report <- hmcomb[2]
-    if (!file.exists(file.path(outdir, "Reports", analysis))){
-        dir.create(file.path(outdir, "Reports", analysis), showWarnings = FALSE, recursive = TRUE)
-    }
-    setwd(file.path(outdir, "Reports", analysis))
-
-    if (report == "comparative"){
-
-        tryCatch((make_heatmap_report(report = "comparative", project = project, expvec = expvec, usefulexp = analysis, appendtofilename = analysis, applyfilters = applyfilters, variable_list = variable_list, scaled = scaled, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = 1, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot(paste("generating comparative heatmaps for", analysis, "analysis")))
-
-    } else if (report == "exploratory") {
-
-        tryCatch((make_heatmap_report(report = "exploratory", project = project, expvec = expvec, usefulexp = analysis, appendtofilename = analysis, applyfilters = applyfilters, variable_list = variable_list, scaled = scaled, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 2, numthreads = 1, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot(paste("generating exploratory heatmaps for", analysis, "analysis")))
-
-    } else if (report == "correlation") {
-
-        tryCatch((make_heatmap_report(report = "correlation", project = project, expvec = expvec, usefulexp = analysis, appendtofilename = analysis, applyfilters = applyfilters, variable_list = variable_list, scaled = scaled, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = 1, adjustpval = "auto", minabscorrcoeff = 0.55, ntopvar = 250)), error = function(e) whoopsieplot(paste("generating correlation heatmaps for", analysis, "analysis")))
-
-    } else if (report == "PA") {
-
-        tryCatch((make_heatmap_report(report = "PA", project = project, expvec = expvec, usefulexp = analysis, appendtofilename = analysis, applyfilters = applyfilters, variable_list = variable_list, scaled = scaled, cdict = cdict, makespreadsheets = TRUE, makeheatmaps = TRUE, maxnumheatmaps = 3, numthreads = 1, adjustpval = "auto", showonlypbelow = 0.05, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot(paste("generating presence/absence heatmaps for", analysis, "analysis")))
-
-    } else if ((report %in% c("tUMAP", "PCA", "tSNE"))){
-
-        tryCatch((make_ordination_report(algorithm = report, project = project, expvec = expvec, usefulexp = analysis, applyfilters = "none", appendtofilename = paste(analysis, report, sep = "_"), variable_list = variable_list, doreads = opt$doreads, cdict = cdict, threads = 1, class_to_ignore = opt$class_to_ignore)), error = function(e) whoopsieplot(paste("generating", report, "ordination plots for", analysis, "analysis")))
-
-    }  else if (report == "alpha") {
-
-        tryCatch(make_alpha_report(project = project, expvec = expvec, usefulexp = analysis, variable_list = variable_list, measures = c("Observed", "InvSimpson", "GeneCounts"), cdict = cdict, makespreadsheets = TRUE, stratify_by_kingdoms = TRUE, applyfilters = NULL, appendtofilename = paste(analysis, report, sep = "_"), GenomeCompletenessCutoff = c(5, 5), PPM_normalize_to_bases_sequenced = FALSE, max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = opt$class_to_ignore), error = function(e) whoopsieplot(paste("generating alpha diversity plots for", analysis, "analysis")))
-
-    }
-
-    setwd(opt$outdir)
-}
-
 
 #' RAMbytes_status(RAMbytesavail = NULL)
 #' Reports how much RAM memory is being or has maximally been used.
@@ -1218,4 +1176,93 @@ calculate_safe_threads <- function(requested_threads= NULL, totmembytes = NULL, 
     final_threads <- max(1, final_threads)
 
     return(final_threads)
+}
+
+
+#' resolve_tax_annotation_colours(feature_table = NULL, row_order = NULL, want_phylum = FALSE, want_gram = FALSE)
+#'
+#' Internal helper shared by JAMS heatmap/correlation plotting functions to resolve
+#' per-feature Phylum and Gram annotation colours consistently. Phylum colours are
+#' sourced from the package PhyCols dictionary (data(PhyCols)), with collision-aware
+#' fallback colours assigned to any phylum not in the dictionary. Gram is read directly
+#' from the feature table as a per-feature property (a phylum may contain both Gram
+#' positive and Gram negative species), and mapped to a fixed, total colour scheme.
+#'
+#' Returns a list with: phylum (character vector, ordered to row_order), gram (character
+#' vector, ordered to row_order), phylum_cols (named colour vector) and gram_cols (named
+#' colour vector). Either annotation can be requested independently via want_phylum /
+#' want_gram; unrequested components are returned as NULL. If a requested component cannot
+#' be resolved (missing column), it degrades gracefully to NULL with a warning rather than
+#' erroring, so callers can simply skip that annotation.
+#'
+#' Do not attempt to use this outside of the JAMS plotting functions.
+#' @export
+
+resolve_tax_annotation_colours <- function(feature_table = NULL, row_order = NULL, want_phylum = FALSE, want_gram = FALSE){
+
+    out <- list(phylum = NULL, gram = NULL, phylum_cols = NULL, gram_cols = NULL)
+
+    if (!any(c(want_phylum, want_gram))){
+        return(out)
+    }
+
+    tt <- as.data.frame(feature_table)
+
+    #Order to the matrix rows if supplied; otherwise leave as-is.
+    if (!is.null(row_order)){
+        row_order <- row_order[row_order %in% rownames(tt)]
+        tt <- tt[row_order, , drop = FALSE]
+    }
+
+    #--- Phylum colours ---
+    if (want_phylum){
+        if ("Phylum" %in% colnames(tt)){
+            data(PhyCols)
+            phyla_vec <- as.character(tt$Phylum)
+            phyla_vec[is.na(phyla_vec)] <- "p__Missing"
+            phyla_present <- unique(phyla_vec)
+
+            phycols <- PhyCols[names(PhyCols) %in% phyla_present]
+            missing_phyla <- setdiff(phyla_present, names(phycols))
+            if (length(missing_phyla) > 0){
+                #Fallback colours that steer clear of the fixed PhyCols hues already in use.
+                used_cols <- toupper(unname(phycols))
+                fallback_pool <- toupper(grDevices::rainbow(length(missing_phyla) + length(used_cols) + 1))
+                fallback_pool <- fallback_pool[!(fallback_pool %in% used_cols)]
+                fallback_cols <- fallback_pool[seq_along(missing_phyla)]
+                if (any(is.na(fallback_cols))){
+                    fallback_cols[is.na(fallback_cols)] <- "#BCC2C2"
+                }
+                names(fallback_cols) <- missing_phyla
+                phycols <- c(phycols, fallback_cols)
+            }
+            #Conventional fixed colours for the catch-all categories, if present.
+            if ("p__Unclassified" %in% names(phycols)) phycols["p__Unclassified"] <- "#000000"
+            if ("p__Missing" %in% names(phycols))      phycols["p__Missing"]      <- "#757575"
+
+            out$phylum <- phyla_vec
+            out$phylum_cols <- phycols
+        } else {
+            flog.warn("resolve_tax_annotation_colours: Phylum annotation requested but no Phylum column is present in the feature table (expected when agglomerating to Phylum or above). Skipping Phylum annotation.")
+        }
+    }
+
+    #--- Gram colours ---
+    if (want_gram){
+        if ("Gram" %in% colnames(tt)){
+            gram_vec <- as.character(tt$Gram)
+            gram_vec[is.na(gram_vec)] <- "na"
+            gram_vec[!(gram_vec %in% c("positive", "negative", "na"))] <- "na"
+
+            gramcols_all <- c(positive = "#7D00C4", negative = "#FC0345", "na" = "#BCC2C2")
+            gramcols <- gramcols_all[c("positive", "negative", "na")[c("positive", "negative", "na") %in% unique(gram_vec)]]
+
+            out$gram <- gram_vec
+            out$gram_cols <- gramcols
+        } else {
+            flog.warn("resolve_tax_annotation_colours: Gram annotation requested but no Gram column is present in the feature table. Skipping Gram annotation.")
+        }
+    }
+
+    return(out)
 }

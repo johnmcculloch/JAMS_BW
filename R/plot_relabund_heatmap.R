@@ -74,7 +74,9 @@
 
 #' @param showl2fc Requires a logical value. If set to TRUE, a text label with the log2 fold change between groups of each feature when applicable will be shown on the right of each row of the heatmap. Default is TRUE. See compareby and fun_for_l2fc.
 
-#' @param showGram Requires a logical value. If set to TRUE, if the SummarizedExperiment object is taxonomical (see ExpObj), annotations with the Phylum and predicted Gram cell wall category of each feature will be plot to the left of each row of the heatmap. Default is FALSE.
+#' @param showGram Requires a logical value. If set to TRUE, if the SummarizedExperiment object is taxonomical (see ExpObj), an annotation with the predicted Gram cell-wall category (positive, negative, or na) of each feature will be plot to the left of each row of the heatmap. Gram status is read on a per-feature basis from the feature table, since a single phylum may contain both Gram-positive and Gram-negative species. Default is FALSE.
+
+#' @param showPhylum Requires a logical value. If set to TRUE, if the SummarizedExperiment object is taxonomical (see ExpObj), an annotation with the Phylum of each feature will be plot to the left of each row of the heatmap. Phylum colours are drawn from the JAMS PhyCols dictionary for commonly encountered phyla, with distinct fallback colours assigned to any other phyla present. This annotation is only meaningful when the effective taxonomic level being plotted (glomby if set, otherwise the object's analysis level) is at Class or below (down to IS1 or the terminal genome-bin spaces); if showPhylum is set to TRUE at Phylum, Kingdom or Domain level, it is automatically turned off with a warning, since there is no parent Phylum to annotate. Default is FALSE.
 
 #' @param show_GenomeCompleteness Requires a logical value. When TRUE (the default), if the SummarizedExperiment object is taxonomical (see ExpObj), annotations with the Phylum and predicted Gram cell-wall category of each feature will be plot to the left of each row of the heatmap. Default is FALSE.
 
@@ -102,7 +104,7 @@
 
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "exploratory", samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = TRUE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, row_order = NULL, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, show_GenomeCompleteness = TRUE, use_checkM2_style_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
+plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "exploratory", samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = TRUE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, row_order = NULL, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, showPhylum = FALSE, show_GenomeCompleteness = TRUE, use_checkM2_style_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
 
     #Account for JAMS2 spaces
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
@@ -132,6 +134,16 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         analysisname <- glomby
     } else {
         analysisname <- analysis
+    }
+
+    #Phylum annotation only makes sense when the effective taxonomic level being plotted
+    #is at Class or below (down to IS1/terminal bins). It is meaningless at Phylum itself,
+    #Kingdom, Domain or Gram, and impossible once the table no longer carries a parent
+    #Phylum column (e.g. after agglomerating to Phylum). Abrogate with a warning.
+    phylum_annot_levels <- c("Class", "Order", "Family", "Genus", "Species", "IS1", "LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
+    if (showPhylum && !(analysisname %in% phylum_annot_levels)){
+        flog.warn(paste0("showPhylum = TRUE is not meaningful at the '", analysisname, "' level (Phylum annotation requires a sub-Class/parent-Phylum resolution). Turning showPhylum off for this plot."))
+        showPhylum <- FALSE
     }
 
     #Set applyfilters to null if featuresToKeep is set
@@ -995,30 +1007,26 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         }
                     }
 
-                    #Plot Gram and phyla, if applicable
-                    if (all(c(showGram, (analysisname %in% c(taxonomic_spaces, "Species", "Genus", "Family", "Order", "Class"))))){
-                        data(Gram)#only for colours
-                        tt <- as.data.frame(rowData(currobj))
-                        #Make backwards compatible
-                        if (!("Gram" %in% colnames(tt))){
-                            #There is no Gram information on SummarizedExperiment feature table
-                            tt <- tt[rownames(mathm), c(analysisname, "Phylum")]
-                            tt <- left_join(tt, Gram, by = "Phylum")
-                        } else {
-                            #Gram information is present on SummarizedExperiment feature table
-                            tt <- tt[rownames(mathm), c(analysisname, "Phylum", "Gram")]
+                    #Plot Gram and/or Phylum annotations, if requested and applicable.
+                    hatax <- NULL
+                    if (any(c(showGram, showPhylum)) && (analysisname %in% c(taxonomic_spaces, "Species", "Genus", "Family", "Order", "Class"))){
+                        annot <- resolve_tax_annotation_colours(feature_table = rowData(currobj), row_order = rownames(mathm), want_phylum = showPhylum, want_gram = showGram)
+
+                        #Build the annotation from whichever components resolved successfully.
+                        ann_args <- list(annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = TRUE)
+                        ann_cols <- list()
+                        if (!is.null(annot$phylum)){
+                            ann_args$Phylum <- annot$phylum
+                            ann_cols$Phylum <- annot$phylum_cols
                         }
-                        #Fill in missing colours
-                        tt <- left_join(tt, Gram[ , c("Phylum", "PhylumColour")], by = "Phylum")
-                        tt[is.na(tt$PhylumColour), "PhylumColour"] <- "#BCC2C2"
-                        tt$GramColour <- "#BCC2C2"
-                        tt$GramColour[which(tt$Gram == "negative")] <- "#FC0345"
-                        tt$GramColour[which(tt$Gram == "positive")] <- "#7D00C4"
-                        phycols <- setNames(as.character(tt[!duplicated(tt$Phylum), "PhylumColour"]), as.character(tt[!duplicated(tt$Phylum), "Phylum"]))
-                        gramcols <- setNames(as.character(tt[!duplicated(tt$Gram), "GramColour"]), as.character(tt[!duplicated(tt$Gram), "Gram"]))
-                        hatax <- rowAnnotation(Phylum = tt$Phylum, Gram = tt$Gram, col = list(Phylum = phycols, Gram = gramcols),  annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = TRUE)
-                    } else {
-                        hatax <- NULL
+                        if (!is.null(annot$gram)){
+                            ann_args$Gram <- annot$gram
+                            ann_cols$Gram <- annot$gram_cols
+                        }
+                        if (length(ann_cols) > 0){
+                            ann_args$col <- ann_cols
+                            hatax <- do.call(rowAnnotation, ann_args)
+                        }
                     }
 
                     #Determine column order explicitly if required and draw heatmap
@@ -1095,14 +1103,40 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         HT1ColumnOrder <- suppressWarnings(column_order(ht1))
 
                         if (secondaryheatmap == "GenomeCompleteness"){
-                            #Draw heatmap with completeness
-                            GCheatmapCols <- colorRamp2(c(0, 100, 200, 300, 400), c("white", "forestgreen", "blue", "firebrick1", "black"))
-                            ht2 <- Heatmap(gchmdf, name = "GenComp", column_split = column_split, column_title = "% Genome completeness", column_title_gp = gpar(fontsize = ht1fs), top_annotation = SHM_ha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, left_annotation = hatax, cluster_rows = FALSE, column_order = unlist(HT1ColumnOrder), row_order = RelabundRowOrder, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol, fontface = hmfontface), heatmap_legend_param = list(direction = "horizontal", title = "% GenComp", labels = c("0%", "100%", "200%", "300%", "> 400%"), title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 4)), row_names_max_width = unit(6, "cm"), ...)
-                        } else if (secondaryheatmap == "PctFromCtgs"){
-                            #Draw heatmap with percentage from contigs
-                            GCheatmapCols <- colorRamp2(c(0, 100), c("white", "midnightblue"))
-
-                            ht2 <- Heatmap(gchmdf, name = "PctFromCtgs", column_split = column_split, column_title = "% Taxonomic info from Contigs", column_title_gp = gpar(fontsize = ht1fs), top_annotation = SHM_ha_column, col = GCheatmapCols, column_names_gp = gpar(fontsize = fontsizex), right_annotation = NULL, left_annotation = hatax, cluster_rows = FALSE, column_order = unlist(HT1ColumnOrder), row_order = RelabundRowOrder, show_row_dend = FALSE, row_names_side = "left", row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol, fontface = hmfontface), heatmap_legend_param = list(direction = "horizontal", title = "PctFromCtgs", title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 4)), row_names_max_width = unit(6, "cm"), ...)
+                            # Capture ht1's actual slice order from its (possibly clustered) column_order list
+                            ht1_slice_order <- names(HT1ColumnOrder)
+                            
+                            # Rebuild column_split as a factor with levels in ht1's realized slice order,
+                            # so ht2 cannot re-sort them alphabetically
+                            if (!is.null(ht1_slice_order) && all(ht1_slice_order %in% unique(as.character(column_split)))){
+                                column_split_ht2 <- factor(as.character(column_split), levels = ht1_slice_order)
+                            } else {
+                                column_split_ht2 <- column_split
+                            }
+                            
+                            GCheatmapCols <- colorRamp2(c(0, 100, 200, 300, 400), 
+                                                        c("white", "forestgreen", "blue", "firebrick1", "black"))
+                            
+                            ht2 <- Heatmap(gchmdf, name = "GenComp",
+                                        column_split = column_split_ht2,
+                                        cluster_column_slices = FALSE,          # lock slice order; do not re-cluster
+                                        cluster_columns = FALSE,                # we are imposing ht1's within-slice order
+                                        column_order = unlist(HT1ColumnOrder),
+                                        column_title = "% Genome completeness",
+                                        column_title_gp = gpar(fontsize = ht1fs),
+                                        top_annotation = SHM_ha_column,
+                                        col = GCheatmapCols,
+                                        column_names_gp = gpar(fontsize = fontsizex),
+                                        right_annotation = NULL, left_annotation = hatax,
+                                        cluster_rows = FALSE,
+                                        row_order = RelabundRowOrder,
+                                        show_row_dend = FALSE,
+                                        row_names_side = "left",
+                                        row_names_gp = gpar(fontsize = fontsizey, col = rowlblcol, fontface = hmfontface),
+                                        heatmap_legend_param = list(direction = "horizontal", title = "% GenComp",
+                                            labels = c("0%", "100%", "200%", "300%", "> 400%"),
+                                            title_gp = gpar(fontsize = 8), labels_gp = gpar(fontsize = 4)),
+                                        row_names_max_width = unit(6, "cm"), ...)
                         }
 
                         #Plot heatmaps side by side if there are fewer than the threshold number of samples or less. Else plot one on each page.

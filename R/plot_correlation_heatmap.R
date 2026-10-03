@@ -1,9 +1,9 @@
-#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, showGram = TRUE, showphylum = TRUE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE)
+#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, normalization = "relabund", showGram = FALSE, showPhylum = FALSE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE)
 #'
 #' Plots correlation heatmaps annotated by the metadata or a correlelogram of features
 #' @export
 
-plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, normalization = "relabund", showGram = TRUE, showphylum = TRUE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE) {
+plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = NULL, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, normalization = "relabund", showGram = FALSE, showPhylum = FALSE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE) {
 
     #Account for JAMS2 spaces
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
@@ -29,6 +29,14 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
         analysisname <- glomby
     } else {
         analysisname <- analysis
+    }
+
+    #Phylum annotation only makes sense when the effective taxonomic level being plotted
+    #is at Class or below (down to IS1/terminal bins). Abrogate with a warning otherwise.
+    phylum_annot_levels <- c("Class", "Order", "Family", "Genus", "Species", "IS1", "LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
+    if (showPhylum && !(analysisname %in% phylum_annot_levels)){
+        flog.warn(paste0("showPhylum = TRUE is not meaningful at the '", analysisname, "' level (Phylum annotation requires a sub-Class/parent-Phylum resolution). Turning showPhylum off for this plot."))
+        showPhylum <- FALSE
     }
 
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
@@ -196,9 +204,11 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
                 fontsizey <- round((((-1 / 300) * (nrow(matstats))) + 0.85 * fontcoefficient), 2)
                 fontsizey <- max(0.5, fontsizey)
 
-                #Add annotations if taxonomic. Everything here is now defensive: any missing
-                #column (e.g. Phylum after a Species glom) degrades gracefully to no annotation
-                #rather than passing NULL into anno_boxplot()/array().
+                #Add annotations if taxonomic. Gram and Phylum are now resolved via the shared
+                #resolve_tax_annotation_colours() helper (per-feature Gram, PhyCols-based Phylum
+                #colours), requested independently via showGram / showPhylum. The genome-completeness
+                #boxplot remains governed by show_GenomeCompleteness_boxplot. Everything stays
+                #defensive: any component that cannot resolve degrades to no annotation.
                 ha1 <- NULL
                 ha2 <- NULL
 
@@ -224,57 +234,49 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
                         }
                     }
 
-                    #Resolve Phylum/Gram only if requested AND the columns actually exist post-glom.
-                    tt <- NULL
-                    phcol <- NULL
-                    have_phylo_annot <- FALSE
-                    if (any(c(showGram, showphylum))){
-                        ttall <- as.data.frame(rowData(currobj))
-                        needed_cols <- c(analysisname, "Phylum")
-                        if (all(needed_cols %in% colnames(ttall))){
-                            data(Gram)
-                            tt <- ttall[rownames(matstats), c(analysisname, "Phylum"), drop = FALSE]
-                            Gram$Kingdom <- NULL
-                            tt <- left_join(tt, Gram)
-                            tt$Gram[which(!(tt$Gram %in% c("positive", "negative")))] <- "not_sure"
-                            phcol <- colorRampPalette((brewer.pal(9, "Set1")))(length(unique(tt$Phylum)))
-                            names(phcol) <- unique(tt$Phylum)
-                            phcol[which(names(phcol) == "p__Unclassified")] <- "#000000"
-                            phcol <- phcol[!duplicated(phcol)]
-                            have_phylo_annot <- TRUE
-                        } else {
-                            flog.warn(paste("Requested Gram/Phylum annotation, but the feature table lacks a Phylum column at the", analysisname, "level (this is expected after agglomerating past Phylum, or for CSB-only Species gloms). Skipping Gram/Phylum annotation."))
+                    #Resolve Gram/Phylum colours via the shared helper, each requested independently.
+                    annot <- resolve_tax_annotation_colours(feature_table = rowData(currobj), row_order = rownames(matstats), want_phylum = showPhylum, want_gram = showGram)
+                    have_phylo_annot <- any(c(!is.null(annot$phylum), !is.null(annot$gram)))
+
+                    #Helper to append whichever Gram/Phylum components resolved onto an argument list.
+                    append_tax_annots <- function(arglist){
+                        cols <- arglist$col
+                        if (is.null(cols)) cols <- list()
+                        if (!is.null(annot$gram)){
+                            arglist$Gram <- annot$gram
+                            cols$Gram <- annot$gram_cols
                         }
+                        if (!is.null(annot$phylum)){
+                            arglist$Phylum <- annot$phylum
+                            cols$Phylum <- annot$phylum_cols
+                        }
+                        if (length(cols) > 0){
+                            arglist$col <- cols
+                        }
+                        return(arglist)
                     }
 
-                    #Build the left annotation. Assemble arguments conditionally so we never
-                    #hand a NULL vector to anno_boxplot / HeatmapAnnotation.
+                    #Build the LEFT annotation. Assemble conditionally so we never hand a NULL
+                    #vector to anno_boxplot / HeatmapAnnotation.
                     if (show_GenomeCompleteness_boxplot && have_GC){
                         left_args <- list(
                             Pct_Genome_Compl = anno_boxplot(gcl, width = unit(4, "cm"), pch = 20, size = unit(1, "mm"), axis_param = list(labels_rot = 90))
                         )
                         if (have_phylo_annot){
-                            left_args$Gram <- tt$Gram
-                            left_args$Phylum <- tt$Phylum
-                            left_args$col <- list(
-                                Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8"),
-                                Phylum = phcol
-                            )
+                            left_args <- append_tax_annots(left_args)
                         }
                         left_args$annotation_name_gp <- gpar(fontsize = 6, col = "black")
                         ha1 <- do.call(rowAnnotation, left_args)
                     } else if (have_phylo_annot){
                         #No boxplot, but we can still show Gram/Phylum on the left.
-                        ha1 <- rowAnnotation(Gram = tt$Gram, Phylum = tt$Phylum,
-                            col = list(Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8"), Phylum = phcol),
-                            annotation_name_gp = gpar(fontsize = 6, col = "black"))
+                        left_args <- append_tax_annots(list(annotation_name_gp = gpar(fontsize = 6, col = "black")))
+                        ha1 <- do.call(rowAnnotation, left_args)
                     }
 
-                    #Bottom annotation mirrors Phylum/Gram, only when available.
+                    #Bottom annotation mirrors Gram/Phylum, only when available.
                     if (have_phylo_annot){
-                        ha2 <- HeatmapAnnotation(Phylum = tt$Phylum, Gram = tt$Gram,
-                            col = list(Phylum = phcol, Gram = c("positive" = "#7D00C4", "negative" = "#FC0345", "not_sure" = "#B8B8B8")),
-                            annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = FALSE)
+                        bottom_args <- append_tax_annots(list(annotation_name_gp = gpar(fontsize = 6, col = "black"), show_legend = FALSE))
+                        ha2 <- do.call(HeatmapAnnotation, bottom_args)
                     }
                 }
 

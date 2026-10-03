@@ -43,6 +43,7 @@ plot_relabund_heatmap(
   showroundedpval = TRUE,
   showl2fc = TRUE,
   showGram = FALSE,
+  showPhylum = FALSE,
   show_GenomeCompleteness = TRUE,
   use_checkM2_style_GenomeCompleteness = TRUE,
   addtit = NULL,
@@ -135,7 +136,9 @@ plot_relabund_heatmap(
 
 \item{showl2fc}{Requires a logical value. If set to TRUE, a text label with the log2 fold change between groups of each feature when applicable will be shown on the right of each row of the heatmap. Default is TRUE. See compareby and fun_for_l2fc.}
 
-\item{showGram}{Requires a logical value. If set to TRUE, if the SummarizedExperiment object is taxonomical (see ExpObj), annotations with the Phylum and predicted Gram cell wall category of each feature will be plot to the left of each row of the heatmap. Default is FALSE.}
+\item{showGram}{Requires a logical value. If set to TRUE, if the SummarizedExperiment object is taxonomical (see ExpObj), an annotation with the predicted Gram cell-wall category (positive, negative, or na) of each feature will be plot to the left of each row of the heatmap. Gram status is read on a per-feature basis from the feature table, since a single phylum may contain both Gram-positive and Gram-negative species. Default is FALSE.}
+
+\item{showPhylum}{Requires a logical value. If set to TRUE, if the SummarizedExperiment object is taxonomical (see ExpObj), an annotation with the Phylum of each feature will be plot to the left of each row of the heatmap. Phylum colours are drawn from the JAMS PhyCols dictionary for commonly encountered phyla, with distinct fallback colours assigned to any other phyla present. This annotation is only meaningful when the effective taxonomic level being plotted (glomby if set, otherwise the object's analysis level) is at Class or below (down to IS1 or the terminal genome-bin spaces); if showPhylum is set to TRUE at Phylum, Kingdom or Domain level, it is automatically turned off with a warning, since there is no parent Phylum to annotate. Default is FALSE.}
 
 \item{show_GenomeCompleteness}{Requires a logical value. When TRUE (the default), if the SummarizedExperiment object is taxonomical (see ExpObj), annotations with the Phylum and predicted Gram cell-wall category of each feature will be plot to the left of each row of the heatmap. Default is FALSE.}
 
