@@ -1,6 +1,16 @@
 #' contextualize_taxonomy(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15, threads = 1, totmembytes = NULL)
 #'
-#' This is an internal function used exclusively within the make_SummarizedExperiments function to cluster taxonomic entities belonging to the same species taxid into functional clades. Do not attempt to use this out of this context.
+#' Internal function used exclusively within make_SummarizedExperiments to cluster taxonomic
+#' entities belonging to the same species taxid into functional clades. Do not attempt to use
+#' this out of this context.
+#'
+#' MEMORY REFACTOR (paths 1+2): the heavy per-sample featuredata is now pre-reduced ONCE on the
+#' master process (build_compact_mag_profiles) into a small per-MAG x per-Product profile, and
+#' the parallel clustering step operates only on tiny per-species slices of that profile. The
+#' clustering helpers (cluster_strains, rename_MAG_Accession) are package top-level functions,
+#' so the %dopar% closures no longer capture list.data. Previously, PSOCK workers each received
+#' a full copy of list.data (tens of GB x N workers), which is what produced the ~1.3 TB peak
+#' and the multi-hour, near-idle-CPU serialization stall.
 #' @export
 
 contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.data, normalize_length = FALSE, dissimilarity_cutoff = 0.15, threads = 1, totmembytes = NULL){
@@ -26,114 +36,6 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     }
     rownames(LKTdosesall) <- LKTdosesall$MAG_Accession
 
-    #Define useful functions
-    cluster_strains <- function(genes_df = NULL, normalize_length = FALSE, distmethod = "bray", cutoff = NULL){
-        #Aggregate lengths of features
-        if (normalize_length){
-            length_sum_df <- genes_df %>% group_by(Accession, MAG_Accession) %>% summarise(Total_LengthDNA = sum(ProportionLengthDNA, na.rm = TRUE), .groups = "drop")
-        } else {
-            length_sum_df <- genes_df %>% group_by(Accession, MAG_Accession) %>% summarise(Total_LengthDNA = sum(LengthDNA, na.rm = TRUE), .groups = "drop") 
-        }
-        length_sum_df <- length_sum_df %>% tidyr::pivot_wider(names_from = MAG_Accession, values_from = Total_LengthDNA, values_fill = 0)
-        length_sum_df <- as.data.frame(length_sum_df)
-        rownames(length_sum_df) <- length_sum_df$Accession
-        length_sum_df$Accession <- NULL
-
-        #Compute pairise distance
-        d_length_sum <- vegdist(t(as.matrix(length_sum_df)), method = distmethod)
-
-        #Cluster and bin
-        curr_hc <- stats::hclust(d_length_sum, method = "average")
-        hc_entity_clusters <- stats::cutree(curr_hc, h = cutoff)
-
-        #Add annotation
-        curr_strain_df <- as.data.frame(hc_entity_clusters)
-        colnames(curr_strain_df)[1] <- "Cluster_Number"
-        curr_strain_df$MAG_Accession <- rownames(curr_strain_df)
-
-        return(curr_strain_df)
-    }
-
-    rename_MAG_Accession <- function(MAG_Accession = NULL, Cluster_Number = NULL, BinsDF = NULL){
-
-        split_elements <- unlist(strsplit(MAG_Accession, split = "_"))
-        #Get earliest position matching a taxonomic tag
-        taxtag_pos <- which(split_elements %in% c("d", "k", "p", "c", "o", "f", "g", "s", "is1"))[1]
-
-        #Keep current taxid, unless infraspecies (is1), in which case look up the species taxid from BinsDF
-        if (split_elements[taxtag_pos] != "is1"){
-            #rejoin everything downstream from that
-            CSB <- paste(split_elements[taxtag_pos:length(split_elements)], collapse = "_")
-        } else {
-            #MAG_Accession is at the infraspecies level, so look up the species level taxid from BinsDF
-            CSB <- BinsDF[which(BinsDF$MAG_Accession == MAG_Accession), "Species"]
-        }
-
-        #Tack on the Functional Cluster k-Number (FuCk)
-        CSB <- paste(CSB, paste0("FC", Cluster_Number), sep = "_")
-        #Add Contextualized Species Bin (CSB) tag
-        CSB <- paste("CSB", CSB, sep = "__")
-
-        return(CSB)
-    }
-
-    #Helper: build the per-MAG gene data frame for a single working taxid, dropping any MAG
-    #whose ConsolidatedGenomeBin has depth in the abundance table but NO annotated features in
-    #the corresponding sample's featuredata (which would otherwise throw
-    #"replacement has 1 row, data has 0" when columns are assigned into a zero-row data frame),
-    #or whose features sum to zero total length (which would give NaN proportions).
-    #Returns a list with the bound data frame (or NULL) and a character vector of skip reasons,
-    #so that the parallel workers can hand reasons back to the master process for logging.
-    build_curr_genes_df <- function(SampleEntities_df = NULL){
-        skip_reasons <- character(0)
-        curr_genes_df_list <- lapply(1:nrow(SampleEntities_df), function(rn) {
-            curr_sample <- SampleEntities_df$Sample[rn]
-            curr_CGB <- SampleEntities_df$ConsolidatedGenomeBin[rn]
-            curr_MAG_Accession <- SampleEntities_df$MAG_Accession[rn]
-            curr_featuredata <- list.data[[paste(curr_sample, "featuredata", sep = "_")]]
-
-            #Defensive: the featuredata object itself may be missing.
-            if (is.null(curr_featuredata)){
-                skip_reasons <<- c(skip_reasons, paste0("Sample=", curr_sample, " | CGB=", curr_CGB, " | MAG=", curr_MAG_Accession, " -> featuredata object not found in list.data"))
-                return(NULL)
-            }
-
-            curr_func_df <- subset(curr_featuredata, ConsolidatedGenomeBin == curr_CGB)[, c("Feature", "LengthDNA", "Product", "ConsolidatedGenomeBin")]
-
-            #Skip bins that have depth in the abundance table but no annotated features in featuredata.
-            if (nrow(curr_func_df) < 1){
-                skip_reasons <<- c(skip_reasons, paste0("Sample=", curr_sample, " | CGB=", curr_CGB, " | MAG=", curr_MAG_Accession, " -> 0 features in featuredata (present in abundance table, absent in featuredata)"))
-                return(NULL)
-            }
-
-            curr_func_df$LengthDNA <- as.numeric(curr_func_df$LengthDNA)
-            colnames(curr_func_df)[which(colnames(curr_func_df) == "Product")] <- "Accession"
-
-            #Guard against a zero (or NA) total length, which would give NaN proportions.
-            total_len <- sum(curr_func_df$LengthDNA, na.rm = TRUE)
-            if (is.na(total_len) || total_len <= 0){
-                skip_reasons <<- c(skip_reasons, paste0("Sample=", curr_sample, " | CGB=", curr_CGB, " | MAG=", curr_MAG_Accession, " -> features present but total LengthDNA is 0 or NA"))
-                return(NULL)
-            }
-
-            curr_func_df$ProportionLengthDNA <- curr_func_df$LengthDNA / total_len
-            curr_func_df$Sample <- curr_sample
-            curr_func_df$MAG_Accession <- curr_MAG_Accession
-
-            return(curr_func_df)
-        })
-
-        #Drop bins with no usable feature data before binding.
-        curr_genes_df_list <- curr_genes_df_list[!sapply(curr_genes_df_list, is.null)]
-        if (length(curr_genes_df_list) < 1){
-            curr_genes_df <- NULL
-        } else {
-            curr_genes_df <- do.call(rbind, curr_genes_df_list)
-        }
-
-        return(list(curr_genes_df = curr_genes_df, skip_reasons = skip_reasons))
-    }
-
     #Rate all available MAG bins
     BinsDF <- rate_bin_quality(completeness_df = LKTdosesall, HQ_completeness_threshold = 90, HQ_contamination_threshold = 5, MHQ_completeness_threshold = 70, MHQ_contamination_threshold = 10, High_contamination_threshold = 20)
 
@@ -149,10 +51,10 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
 
     #############################################################################
     ## Self-audit: reconcile abundance-table CGBs against per-sample featuredata.
-    ## This is cheap and runs regardless of thread count. It tells us, directly in
-    ## the log, whether the mechanism behind the "replacement has 1 row, data has 0"
-    ## crash (a CGB with sequencing depth but no annotated features) is present in
-    ## this dataset. If everything reconciles, a single reassuring line is logged.
+    ## This is cheap and runs regardless of thread count, on the master. It tells us, directly
+    ## in the log, whether a CGB with sequencing depth but no annotated features is present in
+    ## this dataset (the condition that previously caused "replacement has 1 row, data has 0").
+    ## If everything reconciles, a single reassuring line is logged.
     #############################################################################
     audit_featuredata_reconciliation <- function(BinsDF = NULL, verbose = TRUE){
         n_checked <- 0
@@ -176,8 +78,7 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
             if (length(offenders) == 0){
                 flog.info(paste0("contextualize_taxonomy self-audit: all ", n_checked, " HQ/MHQ ConsolidatedGenomeBins reconcile with their sample featuredata (every bin with depth has annotated features). Taxonomic and functional domains are consistent."))
             } else {
-                flog.warn(paste0("contextualize_taxonomy self-audit: ", length(offenders), " of ", n_checked, " HQ/MHQ ConsolidatedGenomeBins have sequencing depth in the abundance table but NO matching annotated features in the sample featuredata. These bins will be skipped during functional contextualization (this is the condition that previously caused the 'replacement has 1 row, data has 0' crash). Offending bins follow:"))
-                #Cap the number reported so the log does not explode, but report how many were suppressed.
+                flog.warn(paste0("contextualize_taxonomy self-audit: ", length(offenders), " of ", n_checked, " HQ/MHQ ConsolidatedGenomeBins have sequencing depth in the abundance table but NO matching annotated features in the sample featuredata. These bins will be skipped during functional contextualization. Offending bins follow:"))
                 max_report <- 50
                 to_report <- offenders[1:min(length(offenders), max_report)]
                 for (msg in to_report){
@@ -208,109 +109,139 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     }
 
     strain_df <- NULL
-    #Only cluster or deconvolute working taxids which have > 1 MAG in it. Otherwise, it defeats the purpose.
+    #Only cluster working taxids which have > 1 MAG in it. Otherwise, it defeats the purpose.
     WorkingTaxids_to_decon <- names(which(table(BinsDF$WorkingTaxid) > 1))
 
-    #Collect working taxids which drop below 2 usable MAGs after the featuredata cull, so their
-    #surviving bin can be routed through the singleton path rather than silently lost.
+    #Collect working taxids whose usable-MAG count drops below 2 after the featuredata cull,
+    #so their surviving bin is routed through the singleton path rather than silently lost.
     demoted_to_singleton_MAGs <- character(0)
+
+    #Small, data-free lookup for renaming infraspecies MAGs to their species label. Tiny, safe
+    #to ship to workers (replaces passing the whole BinsDF).
+    mag2species <- setNames(BinsDF$Species, BinsDF$MAG_Accession)
 
     if (length(WorkingTaxids_to_decon) > 0){
 
-        # Calculate safe threads based on RAM
-        safe_memory_threads <- calculate_safe_threads(
-            requested_threads = threads, 
-            totmembytes = totmembytes, 
-            list.data = list.data, 
-            BinsDF = BinsDF
-        )
+        #########################################################################
+        ## PATH 1: pre-reduce featuredata ONCE on the master into a compact profile.
+        ## Only MAGs belonging to multi-MAG working taxids are profiled (singletons never need
+        ## a gene profile). From here on, list.data is not read again, and in particular it is
+        ## NEVER handed to a parallel worker.
+        #########################################################################
+        MAGs_to_profile <- BinsDF[which(BinsDF$WorkingTaxid %in% WorkingTaxids_to_decon), c("Sample", "ConsolidatedGenomeBin", "MAG_Accession"), drop = FALSE]
 
-        # Don't use more threads than the number of tasks we actually have
-        num_tasks <- length(WorkingTaxids_to_decon)
-        optimal_threads <- min(safe_memory_threads, num_tasks)
-        if (optimal_threads < threads) {
-            flog.info(sprintf("Throttling threads from %d to %d to prevent memory exhaustion or overhead.", threads, optimal_threads))
+        flog.info(paste0("contextualize_taxonomy: pre-reducing featuredata for ", nrow(MAGs_to_profile), " MAG(s) across ", length(unique(MAGs_to_profile$Sample)), " sample(s) into a compact per-MAG functional profile (single master pass)."))
+
+        profile_out <- build_compact_mag_profiles(MAGs_to_profile = MAGs_to_profile, list.data = list.data, normalize_length = normalize_length)
+        compact <- profile_out$profiles
+
+        #Log any skip reasons gathered during pre-reduction (master process).
+        if (length(profile_out$skip_reasons) > 0){
+            flog.warn(paste0("contextualize_taxonomy: ", length(profile_out$skip_reasons), " bin/sample(s) were skipped while building functional profiles (present in abundance tables, unusable in featuredata). First few:"))
+            max_report <- 50
+            to_report <- profile_out$skip_reasons[1:min(length(profile_out$skip_reasons), max_report)]
+            for (msg in to_report){
+                flog.warn(paste0("   ", msg))
+            }
+            if (length(profile_out$skip_reasons) > max_report){
+                flog.warn(paste0("   ... and ", (length(profile_out$skip_reasons) - max_report), " more not shown."))
+            }
         }
 
-        # Determine whether deconvolution will proceed in single threaded or multi thread manner
-        if (threads > 1) {
+        if (!is.null(compact) && nrow(compact) > 0){
 
-            flog.info(paste("Deconvoluting", num_tasks, "taxa using", optimal_threads, "parallel threads..."))
-            #Setup cluster
-            cl <- parallel::makeCluster(optimal_threads)
-            doParallel::registerDoParallel(cl)
+            #Attach working taxid and split into per-species slices.
+            mag2wt <- setNames(BinsDF$WorkingTaxid, BinsDF$MAG_Accession)
+            compact$WorkingTaxid <- mag2wt[compact$MAG_Accession]
+            profile_by_wt <- split(compact, compact$WorkingTaxid)
 
-            #Each worker returns a list with the strain_df (or NULL), the skip reasons gathered
-            #while building the gene data frame, and any bins demoted to singleton status. We
-            #cannot reliably flog from inside workers, so we log everything from the master
-            #process after the loop.
-            worker_out <- foreach::foreach(WT = WorkingTaxids_to_decon, .packages = c('dplyr', 'tidyr', 'vegan')) %dopar% {
-                SampleEntities_df <- subset(BinsDF, WorkingTaxid == WT)[, c("Sample", "ConsolidatedGenomeBin", "MAG_Accession")]
-                built <- build_curr_genes_df(SampleEntities_df = SampleEntities_df)
-                curr_genes_df <- built$curr_genes_df
+            #Build a list of slices aligned to WorkingTaxids_to_decon (NULL where every MAG was culled).
+            profile_slices <- lapply(WorkingTaxids_to_decon, function(wt) profile_by_wt[[as.character(wt)]])
 
-                #If fewer than 2 MAGs survived the featuredata check, there is nothing to cluster.
-                if (is.null(curr_genes_df) || length(unique(curr_genes_df$MAG_Accession)) < 2){
-                    surviving_MAG <- if (!is.null(curr_genes_df)) unique(curr_genes_df$MAG_Accession) else character(0)
-                    return(list(strain_df = NULL, skip_reasons = built$skip_reasons, demoted = surviving_MAG))
+            #Instrumentation: prove the exported footprint is small (compare to the old ~tens of GB).
+            biggest_slice_bytes <- suppressWarnings(max(sapply(profile_slices, function(x) if (is.null(x)) 0 else as.numeric(object.size(x)))))
+            flog.info(sprintf("contextualize_taxonomy: compact profile is %.1f MB total; largest single-species slice shipped to a worker is %.1f MB; MAG->Species lookup is %.2f MB.",
+                as.numeric(object.size(compact)) / 1e6, biggest_slice_bytes / 1e6, as.numeric(object.size(mag2species)) / 1e6))
+
+            #Decide thread count. We reuse calculate_safe_threads but pass the objects that are
+            #ACTUALLY exported now (the compact profile and the tiny lookup), not list.data. This
+            #is deliberately conservative (uses the full compact size as the per-worker estimate),
+            #but because the compact profile is small it will normally permit the full thread count.
+            #NOTE (future increment): make calculate_safe_threads profile-aware rather than reusing it like this.
+            safe_memory_threads <- calculate_safe_threads(requested_threads = threads, totmembytes = totmembytes, list.data = compact, BinsDF = mag2species)
+
+            num_tasks <- length(WorkingTaxids_to_decon)
+            optimal_threads <- min(safe_memory_threads, num_tasks)
+            if (optimal_threads < threads){
+                flog.info(sprintf("Throttling threads from %d to %d (bounded by number of tasks and compact-profile memory, not by list.data anymore).", threads, optimal_threads))
+            }
+
+            #####################################################################
+            ## PATH 2: cluster each species' slice. Workers call the top-level helpers and
+            ## receive only their slice + the tiny mag2species lookup. list.data, LKTdosesall,
+            ## BinsDF, the full compact table and profile_by_wt are explicitly NOT exported.
+            #####################################################################
+            if (threads > 1){
+
+                flog.info(paste("Deconvoluting", num_tasks, "taxa using", optimal_threads, "parallel threads..."))
+                cl <- parallel::makeCluster(optimal_threads)
+                doParallel::registerDoParallel(cl)
+
+                worker_out <- foreach::foreach(slice = profile_slices, WT = WorkingTaxids_to_decon,
+                    .packages = c("dplyr", "tidyr", "vegan"),
+                    .export = c("cluster_strains", "rename_MAG_Accession", "mag2species", "dissimilarity_cutoff", "normalize_length"),
+                    .noexport = c("list.data", "LKTdosesall", "BinsDF", "compact", "profile_by_wt", "profile_slices")) %dopar% {
+
+                    #Valid MAGs for this taxon are exactly those present in its slice.
+                    valid_in_wt <- if (is.null(slice)) character(0) else unique(slice$MAG_Accession)
+
+                    if (length(valid_in_wt) < 2){
+                        #Nothing to cluster; hand back any lone survivor to be treated as a singleton.
+                        return(list(strain_df = NULL, demoted = valid_in_wt))
+                    }
+
+                    curr_strain_df <- cluster_strains(genes_df = slice, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
+                    curr_strain_df$ContextualizedSpecies <- sapply(1:nrow(curr_strain_df), function(x) {
+                        rename_MAG_Accession(MAG_Accession = curr_strain_df[x, "MAG_Accession"], Cluster_Number = curr_strain_df[x, "Cluster_Number"], mag2species = mag2species)
+                    })
+                    return(list(strain_df = curr_strain_df, demoted = character(0)))
                 }
 
-                curr_strain_df <- cluster_strains(genes_df = curr_genes_df, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
-                curr_strain_df$ContextualizedSpecies <- sapply(1:nrow(curr_strain_df), function(x) { 
-                    rename_MAG_Accession(MAG_Accession = curr_strain_df[x, "MAG_Accession"], Cluster_Number = curr_strain_df[x, "Cluster_Number"], BinsDF = BinsDF) 
-                })
-                return(list(strain_df = curr_strain_df, skip_reasons = built$skip_reasons, demoted = character(0)))
-            }
-            
-            # Stop cluster
-            parallel::stopCluster(cl)
+                parallel::stopCluster(cl)
 
-            #Harvest results, log skip reasons, and gather demoted singletons.
-            for (wo in worker_out){
-                if (length(wo$skip_reasons) > 0){
-                    for (msg in wo$skip_reasons){
-                        flog.warn(paste0("contextualize_taxonomy skipping bin during clustering: ", msg))
+                #Harvest results and gather demoted singletons.
+                for (wo in worker_out){
+                    if (length(wo$demoted) > 0){
+                        demoted_to_singleton_MAGs <- c(demoted_to_singleton_MAGs, wo$demoted)
+                    }
+                    if (!is.null(wo$strain_df)){
+                        strain_df <- rbind(strain_df, wo$strain_df)
                     }
                 }
-                if (length(wo$demoted) > 0){
-                    demoted_to_singleton_MAGs <- c(demoted_to_singleton_MAGs, wo$demoted)
-                }
-                if (!is.null(wo$strain_df)){
-                    strain_df <- rbind(strain_df, wo$strain_df)
+
+            } else {
+                #Single-threaded path, same logic, same compact slices.
+                flog.info(paste("Deconvoluting", num_tasks, "taxa using a single thread..."))
+
+                for (ti in seq_along(WorkingTaxids_to_decon)){
+                    slice <- profile_slices[[ti]]
+                    valid_in_wt <- if (is.null(slice)) character(0) else unique(slice$MAG_Accession)
+
+                    if (length(valid_in_wt) < 2){
+                        demoted_to_singleton_MAGs <- c(demoted_to_singleton_MAGs, valid_in_wt)
+                        next
+                    }
+
+                    curr_strain_df <- cluster_strains(genes_df = slice, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
+                    curr_strain_df$ContextualizedSpecies <- sapply(1:nrow(curr_strain_df), function(x) {
+                        rename_MAG_Accession(MAG_Accession = curr_strain_df[x, "MAG_Accession"], Cluster_Number = curr_strain_df[x, "Cluster_Number"], mag2species = mag2species)
+                    })
+                    strain_df <- rbind(strain_df, curr_strain_df)
                 }
             }
 
         } else {
-            #Single threaded approach
-            flog.info(paste("Deconvoluting", length(WorkingTaxids_to_decon), "taxa using a single thread..."))
-
-            for (WT in WorkingTaxids_to_decon){
-                SampleEntities_df <- subset(BinsDF, WorkingTaxid == WT)[, c("Sample", "ConsolidatedGenomeBin", "MAG_Accession")]
-                built <- build_curr_genes_df(SampleEntities_df = SampleEntities_df)
-
-                #Log skip reasons directly in the single-threaded case.
-                if (length(built$skip_reasons) > 0){
-                    for (msg in built$skip_reasons){
-                        flog.warn(paste0("contextualize_taxonomy skipping bin during clustering: ", msg))
-                    }
-                }
-
-                curr_genes_df <- built$curr_genes_df
-
-                #If fewer than 2 MAGs survived the featuredata check, there is nothing to cluster.
-                if (is.null(curr_genes_df) || length(unique(curr_genes_df$MAG_Accession)) < 2){
-                    if (!is.null(curr_genes_df)){
-                        demoted_to_singleton_MAGs <- c(demoted_to_singleton_MAGs, unique(curr_genes_df$MAG_Accession))
-                    }
-                    next
-                }
-
-                curr_strain_df <- cluster_strains(genes_df = curr_genes_df, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
-                curr_strain_df$ContextualizedSpecies <- sapply(1:nrow(curr_strain_df), function(x) { 
-                    rename_MAG_Accession(MAG_Accession = curr_strain_df[x, "MAG_Accession"], Cluster_Number = curr_strain_df[x, "Cluster_Number"], BinsDF = BinsDF) 
-                })
-                strain_df <- rbind(strain_df, curr_strain_df)
-            }
+            flog.warn("contextualize_taxonomy: no usable functional profiles could be built for any multi-MAG taxon. No clustering will be performed; affected MAGs keep their original LKT.")
         }
     }
 
@@ -328,7 +259,7 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     if (length(singleton_MAGs) != 0){
         strain_df_singletons <- BinsDF[which(BinsDF$MAG_Accession %in% singleton_MAGs), "MAG_Accession", drop = FALSE]
         strain_df_singletons$Cluster_Number <- 1
-        strain_df_singletons$ContextualizedSpecies <- sapply(1:nrow(strain_df_singletons), function (x) { rename_MAG_Accession(MAG_Accession = strain_df_singletons[x, "MAG_Accession"], Cluster_Number = strain_df_singletons[x, "Cluster_Number"], BinsDF = BinsDF) } )
+        strain_df_singletons$ContextualizedSpecies <- sapply(1:nrow(strain_df_singletons), function (x) { rename_MAG_Accession(MAG_Accession = strain_df_singletons[x, "MAG_Accession"], Cluster_Number = strain_df_singletons[x, "Cluster_Number"], mag2species = mag2species) } )
         strain_df_singletons <- strain_df_singletons[ , c("Cluster_Number", "MAG_Accession", "ContextualizedSpecies")]
         strain_df <- rbind(strain_df, strain_df_singletons)
     }

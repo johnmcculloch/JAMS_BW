@@ -14,5 +14,16 @@ contextualize_taxonomy(
 )
 }
 \description{
-This is an internal function used exclusively within the make_SummarizedExperiments function to cluster taxonomic entities belonging to the same species taxid into functional clades. Do not attempt to use this out of this context.
+Internal function used exclusively within make_SummarizedExperiments to cluster taxonomic
+entities belonging to the same species taxid into functional clades. Do not attempt to use
+this out of this context.
+}
+\details{
+MEMORY REFACTOR (paths 1+2): the heavy per-sample featuredata is now pre-reduced ONCE on the
+master process (build_compact_mag_profiles) into a small per-MAG x per-Product profile, and
+the parallel clustering step operates only on tiny per-species slices of that profile. The
+clustering helpers (cluster_strains, rename_MAG_Accession) are package top-level functions,
+so the %dopar% closures no longer capture list.data. Previously, PSOCK workers each received
+a full copy of list.data (tens of GB x N workers), which is what produced the ~1.3 TB peak
+and the multi-hour, near-idle-CPU serialization stall.
 }

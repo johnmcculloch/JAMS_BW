@@ -252,7 +252,12 @@ replace_NAs_with_character <- function(df = NULL, replacement = "N_A"){
     }
 
     for (colm in 1:ncol(df)){
-        df[is.na(df[ , colm]) , colm] <- replacement
+        #Only replace values if necessary
+        if (any(is.na(df[ , colm]))){
+            #First, coerce to character
+            df[ , colm] <- as.character(df[ , colm])
+            df[is.na(df[ , colm]) , colm] <- replacement
+        }
     }
 
     return(df)
@@ -1223,12 +1228,18 @@ resolve_tax_annotation_colours <- function(feature_table = NULL, row_order = NUL
     #--- Gram colours ---
     if (want_gram){
         if ("Gram" %in% colnames(tt)){
+            #Preserve all four canonical Gram categories from JAMStaxtable:
+            #positive, negative, N_A (does not apply, e.g. eukaryotes/viruses) and
+            #undetermined (unknown). Anything unexpected (including NA) folds into
+            #"undetermined", the honest "we don't know" bucket.
+            canonical_gram <- c("positive", "negative", "N_A", "undetermined")
             gram_vec <- as.character(tt$Gram)
-            gram_vec[is.na(gram_vec)] <- "na"
-            gram_vec[!(gram_vec %in% c("positive", "negative", "na"))] <- "na"
+            gram_vec[is.na(gram_vec)] <- "undetermined"
+            gram_vec[!(gram_vec %in% canonical_gram)] <- "undetermined"
 
-            gramcols_all <- c(positive = "#7D00C4", negative = "#FC0345", "na" = "#BCC2C2")
-            gramcols <- gramcols_all[c("positive", "negative", "na")[c("positive", "negative", "na") %in% unique(gram_vec)]]
+            gramcols_all <- c(positive = "#7D00C4", negative = "#FC0345", "N_A" = "#000000", undetermined = "#BCC2C2")
+            #Keep only categories actually present, in canonical order.
+            gramcols <- gramcols_all[canonical_gram[canonical_gram %in% unique(gram_vec)]]
 
             out$gram <- gram_vec
             out$gram_cols <- gramcols
@@ -1239,3 +1250,42 @@ resolve_tax_annotation_colours <- function(feature_table = NULL, row_order = NUL
 
     return(out)
 }
+
+
+#' fix_Gram_in_SEobj(SEobj = NULL)
+#' Use this function to safely correct (or add) Gram to the featuretable of a JAMS2 compatible SummarizedExperimetn object based off of what information is available on the JAMStaxtable of the version of JAMS you have loaded (please always used the latest).
+#'
+#' @param SEobj A JAMS2-compatible SummarizedExperiment object.
+#' @export
+
+fix_Gram_in_SEobj <- function(SEobj = NULL){
+    tt <- as.data.frame(rowData(SEobj))
+    if (all(c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT") %in% colnames(tt))){
+        flog.info("Fixing Gram column in SEobj rowData")
+        data(JAMStaxtable)
+        tt_cols <- colnames(tt)
+        if (!("Gram" %in% tt_cols)){
+            flog.warn("A GRAM column was not found on the original featuretable of the SEobj. Adding one now.")
+            tt_cols <- c("Gram", tt_cols)
+        }
+        #Delete spurious Gram information
+        tt$Gram <- NULL
+        #Add Taxid
+        tt$Taxid <- sapply(tt$LKT, function(x) { extract_NCBI_taxid_from_featname(Taxon = x) } )
+        #Fill in dark matter Taxids with "0"
+        tt$Taxid[which(is.na(tt$Taxid))] <- "0"
+        #Add Gram information
+        Taxid2gram <- JAMStaxtable[which(JAMStaxtable$Taxid %in% tt$Taxid), c("Taxid", "Gram")]
+        Taxid2gram <- Taxid2gram[!(duplicated(Taxid2gram$Taxid)), ]
+        tt <- left_join(as.data.frame(tt), Taxid2gram, by = "Taxid")
+        tt[which(is.na(tt[ , "Gram"])), "Gram"] <- "undetermined"
+        tt <- tt[ , tt_cols]
+        rownames(tt) <- tt[ , "LKT"]
+        rowData(SEobj) <- tt
+    } else {
+        flog.warn(paste("Your SEobj of input must be a taxonomic object. Featuretable with all taxonomy levels was not found."))
+    }
+
+    return(SEobj)
+}
+
