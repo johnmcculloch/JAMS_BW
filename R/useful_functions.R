@@ -1289,3 +1289,10 @@ fix_Gram_in_SEobj <- function(SEobj = NULL){
     return(SEobj)
 }
 
+#' basename_safe(path)
+#' basename() that returns NA rather than erroring on NULL/NA/empty input.
+#' @export
+basename_safe <- function(path){
+    if (is.null(path) || length(path) == 0 || all(is.na(path)) || all(path == "")) return(NA_character_)
+    basename(path)
+}

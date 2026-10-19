@@ -865,12 +865,36 @@ metadata(expvec$Amplicon)$ctable <- ctable
 #Export to system as a courtesy to the user
 saveRDS(expvec$Amplicon, file = paste(paste(project, "Amplicon_SummarizedExperiment_object", sep = "_"), "rds", sep = "."))
 
+#Generate methods text
+opt$methods <- generate_JAMS16_methods(
+    opt = opt,
+    rawfastqsdf = rawfastqsdf,
+    trunclen_used = trunclen_cutoffs_R1_R2,
+    samples_requested = Samples_want,
+    samples_used = sample.names,
+    subsampling_triggered = exists("rawfastqstats") && ("High" %in% rawfastqstats$Status),
+    outfile = file.path(opt$outdir, paste0(opt$projectname, "_Methods.txt"))
+)
+
+#Generate methods table
+opt$methods_table <- tabulate_JAMS16_methods(
+    opt = opt,
+    rawfastqsdf = rawfastqsdf,
+    trunclen_used = trunclen_cutoffs_R1_R2,
+    trunclen_source = if (is.null(opt$trunclen_cutoffs_R1_R2)) "imputed" else "user_specified",
+    samples_requested = Samples_want,
+    samples_used = sample.names,
+    subsampling_triggered = exists("rawfastqstats") && ("High" %in% rawfastqstats$Status),
+    outfile = file.path(opt$outdir, paste0(opt$projectname, "_Methods_parameters.tsv"))
+)
+
 #######
 ## Clean up workspace image to reduce RAM footprint
 objects_to_clean <- c("dadaFs", "dadaRs", "derepFs", "derepRs", "mergers", "quality_list", "quality_list_tmp", "seqtab", "seqtab.nochim", "taxa", "asv2lkt", "colm", "errF", "errR", "filtFs", "filtRs", "fls")
 objects_to_clean <- objects_to_clean[objects_to_clean %in% ls()]
 rm(list = objects_to_clean)
 gc()
+
 
 flog.info(paste0("JAMS16 run of project ", opt$project, " is complete. Thank you for using JAMS."))
 flog.info(print_jams_ASCII())
