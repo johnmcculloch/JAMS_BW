@@ -591,11 +591,12 @@ generate_filename <- function(title = "ABC_look_at_me", add_date = TRUE, suffix 
 
     if (add_date){
         dte <- Sys.Date()
+        stem <- paste(title, dte, sep = "_")
     } else {
-        dte <- NULL
+        stem <- title
     }
 
-    fn <- paste(paste(title, dte, sep = "_"), suffix, sep = ".")
+    fn <- paste(stem, suffix, sep = ".")
 
     return(fn)
 }
@@ -1295,4 +1296,101 @@ fix_Gram_in_SEobj <- function(SEobj = NULL){
 basename_safe <- function(path){
     if (is.null(path) || length(path) == 0 || all(is.na(path)) || all(path == "")) return(NA_character_)
     basename(path)
+}
+
+#' export_df(df = NULL, output_basename = NULL, export_path = NULL, export_format = "xlsx", write_rownames = FALSE, add_date = TRUE)
+#'
+#' Quick wrapper for exporting a data frame or a (named) list of data frames to the system
+#' in JAMS-preferred formatting, without having to remember the write.xlsx / write.table argument
+#' differences each time. For "xlsx", a list is written as one workbook with one tab per element.
+#' For "tsv", a list is written serially to one tsv file per element.
+#' @export
+
+export_df <- function(df = NULL, output_basename = NULL, export_path = NULL, export_format = "xlsx", write_rownames = FALSE, add_date = TRUE){
+
+    #output_basename is required
+    if (is.null(output_basename)){
+        flog.warn("You must supply an output_basename. This is a required argument. Nothing was exported.")
+        return(invisible(NULL))
+    }
+
+    #Vet format
+    if (!(export_format %in% c("xlsx", "tsv"))){
+        flog.warn("export_format must be either \"xlsx\" or \"tsv\". Nothing was exported.")
+        return(invisible(NULL))
+    }
+
+    #Check there is something to export
+    if (is.null(df)){
+        flog.warn("You must supply a data frame or a list of data frames to df. Nothing was exported.")
+        return(invisible(NULL))
+    }
+
+    #Standardise input into a named list of data frames
+    if (is.data.frame(df)){
+        df_list <- list(df)
+        names(df_list) <- output_basename
+    } else if (is.list(df)){
+        #Ensure every element is a data frame
+        if (!all(sapply(df, is.data.frame))){
+            flog.warn("When df is a list, every element must be a data frame. Nothing was exported.")
+            return(invisible(NULL))
+        }
+        df_list <- df
+        #Make sure elements are named, as these become xlsx tabs or tsv filename parts
+        if (is.null(names(df_list)) || any(names(df_list) == "")){
+            flog.info("Some list elements are unnamed. Naming them sequentially.")
+            blanks <- which(names(df_list) == "" | is.na(names(df_list)))
+            if (is.null(names(df_list))){
+                names(df_list) <- paste0("Sheet_", seq_along(df_list))
+            } else {
+                names(df_list)[blanks] <- paste0("Sheet_", blanks)
+            }
+        }
+    } else {
+        flog.warn("df must be either a data frame or a list of data frames. Nothing was exported.")
+        return(invisible(NULL))
+    }
+
+    #Resolve and vet export path
+    if (is.null(export_path)){
+        export_path <- getwd()
+    } else {
+        export_path <- fixrelpath(export_path)
+        if (!dir.exists(export_path)){
+            flog.warn(paste("The export_path supplied does not exist:", export_path, "- defaulting to current working directory instead."))
+            export_path <- getwd()
+        } else if (file.access(export_path, mode = 2) != 0){
+            flog.warn(paste("HEADS UP: the export_path supplied is not writeable:", export_path, "- defaulting to current working directory instead."))
+            export_path <- getwd()
+        } else {
+            flog.warn(paste("HEADS UP: output is being written to", export_path, "and NOT to the current working directory."))
+        }
+    }
+
+    if (export_format == "xlsx"){
+        #Cap tab names to 31 characters because of Microsoft Excel.
+        if (any(nchar(names(df_list)) > 31)){
+            flog.info("Capping tab names to 31 characters because of Microsoft Excel.")
+            newnames <- sapply(names(df_list), function(x){ stringr::str_trunc(x, 29) })
+            newnames <- make.unique(newnames)
+            names(df_list) <- newnames
+        }
+        fn <- generate_filename(title = output_basename, add_date = add_date, suffix = "xlsx")
+        fullfn <- file.path(export_path, fn)
+        flog.info(paste("Saving spreadsheet as", fullfn))
+        write.xlsx(df_list, file = fullfn, asTable = TRUE, rowNames = write_rownames, colNames = TRUE, colWidths = "auto", borders = "all")
+    } else {
+        #tsv: one file per data frame
+        for (nm in names(df_list)){
+            #Fold the element name into the basename so serial files are distinguishable
+            curr_title <- if (length(df_list) > 1) paste(output_basename, nm, sep = "_") else output_basename
+            fn <- generate_filename(title = curr_title, add_date = add_date, suffix = "tsv")
+            fullfn <- file.path(export_path, fn)
+            flog.info(paste("Saving tsv as", fullfn))
+            write.table(df_list[[nm]], file = fullfn, quote = FALSE, sep = "\t", eol = "\n", na = "NA", dec = ".", row.names = write_rownames, col.names = TRUE)
+        }
+    }
+
+    return(invisible(NULL))
 }
