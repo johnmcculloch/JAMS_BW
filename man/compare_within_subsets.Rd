@@ -26,6 +26,7 @@ compare_within_subsets(
   PPM_normalize_to_bases_sequenced = TRUE,
   cdict = NULL,
   class_to_ignore = "N_A",
+  addtit = NULL,
   return_stats = TRUE
 )
 }
@@ -53,6 +54,8 @@ compare_within_subsets(
 \item{ordination_args, heatmap_args, alpha_args}{Named lists of extra arguments passed to plot_Ordination, plot_relabund_heatmap and plot_alpha_diversity respectively, overriding the comparator's shared defaults for that function only.}
 
 \item{applyfilters, featcutoff, GenomeCompletenessCutoff, PPM_normalize_to_bases_sequenced, cdict, class_to_ignore}{Shared arguments. The filtration arguments (applyfilters, featcutoff, GenomeCompletenessCutoff) are used ONCE here to derive global_FTK and are NOT forwarded to the plotting functions (which receive non-filtering values instead). PPM_normalize_to_bases_sequenced, cdict and class_to_ignore are forwarded to all three functions unless overridden per-function via the *_args lists.}
+
+\item{addtit}{Optional string with a free-text message to add to the title of EVERY output (ordination, heatmap and alpha-diversity) across all subsets. This is intended for context that the comparator itself cannot infer, most commonly when you have subset the data OUTSIDE of compare_within_subsets (e.g. by passing a curated vector to samplesToKeep), so you can annotate the plots with something like "Only looking at samples within the Responder group". When subsetting IS also performed by this function (via subsetby), your message is PREPENDED to the automatic per-subset label, so each panel shows your text on one line followed by "SUBSET: <subset name>" on the next; both pieces of context are therefore preserved. When there is no subsetting, only your message is shown. Internally this is merged into the per-subset title and handed to each plotting function's own addtit argument. If NULL (the default), only the automatic "SUBSET: <subset name>" label (when applicable) is used. Default NULL.}
 
 \item{return_stats}{Logical; if TRUE, invisibly returns a named list collecting the returnstats output of the heatmap and alpha functions per subset. Default TRUE.}
 }

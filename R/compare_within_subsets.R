@@ -47,6 +47,7 @@
 #' @param ordination_args,heatmap_args,alpha_args Named lists of extra arguments passed to plot_Ordination, plot_relabund_heatmap and plot_alpha_diversity respectively, overriding the comparator's shared defaults for that function only.
 #' @param split_heatmap_columns_by_compareby Logical; if set to TRUE, heatmap columns will be split into the same samples split by compareby
 #' @param applyfilters,featcutoff,GenomeCompletenessCutoff,PPM_normalize_to_bases_sequenced,cdict,class_to_ignore Shared arguments. The filtration arguments (applyfilters, featcutoff, GenomeCompletenessCutoff) are used ONCE here to derive global_FTK and are NOT forwarded to the plotting functions (which receive non-filtering values instead). PPM_normalize_to_bases_sequenced, cdict and class_to_ignore are forwarded to all three functions unless overridden per-function via the *_args lists.
+#' @param addtit Optional string with a free-text message to add to the title of EVERY output (ordination, heatmap and alpha-diversity) across all subsets. This is intended for context that the comparator itself cannot infer, most commonly when you have subset the data OUTSIDE of compare_within_subsets (e.g. by passing a curated vector to samplesToKeep), so you can annotate the plots with something like "Only looking at samples within the Responder group". When subsetting IS also performed by this function (via subsetby), your message is PREPENDED to the automatic per-subset label, so each panel shows your text on one line followed by "SUBSET: <subset name>" on the next; both pieces of context are therefore preserved. When there is no subsetting, only your message is shown. Internally this is merged into the per-subset title and handed to each plotting function's own addtit argument. If NULL (the default), only the automatic "SUBSET: <subset name>" label (when applicable) is used. Default NULL.
 #' @param return_stats Logical; if TRUE, invisibly returns a named list collecting the returnstats output of the heatmap and alpha functions per subset. Default TRUE.
 #'
 #' @export
@@ -60,6 +61,7 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
                                    GenomeCompletenessCutoff = NULL,
                                    PPM_normalize_to_bases_sequenced = TRUE,
                                    cdict = NULL, class_to_ignore = "N_A",
+                                   addtit = NULL,
                                    return_stats = TRUE){
 
     #Basic input checks
@@ -236,6 +238,22 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
         return(shared)
     }
 
+    #Helper to compose the title annotation handed to each plotting function's addtit.
+    #Logic: the user's free-text addtit (if any) is PREPENDED to the automatic per-subset
+    #label ("SUBSET: <name>"), on its own line, so both survive. When there is no real
+    #subsetting (subname == "no_sub"), the automatic label is meaningless, so only the
+    #user's message is used; if neither exists, NULL is returned (no annotation added).
+    compose_addtit <- function(subname){
+        has_real_subset <- !(subname == "no_sub" || is.null(subset_list))
+        subset_label <- if (has_real_subset) paste("SUBSET:", subname) else NULL
+        pieces <- c(addtit, subset_label)
+        pieces <- pieces[!sapply(pieces, is.null)]
+        if (length(pieces) == 0){
+            return(NULL)
+        }
+        return(paste(pieces, collapse = "\n"))
+    }
+
     stats_collected <- list()
 
     for (subname in subset_names){
@@ -248,14 +266,21 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
             next
         }
 
+        #Resolve the per-subset title annotation once (user addtit + automatic subset label).
+        subset_addtit <- compose_addtit(subname)
+
         #A per-subset banner page, so the PDF is navigable subset-by-subset.
         subtit <- if (subname == "no_sub") paste("All retained samples |", analysis) else paste(subname, "|", analysis)
         tryCatch({
             plot.new()
-            grid.table(c(paste("SUBSET:", subtit),
-                         paste("compareby:", compareby),
-                         paste("n samples:", length(STK)),
-                         paste("n features (global, fixed):", length(global_FTK))),
+            #Include the user's addtit on the banner too, if supplied, so the free-text
+            #context is the first thing seen for each subset block in the PDF.
+            banner_lines <- c(if (!is.null(addtit)) addtit else NULL,
+                              paste("SUBSET:", subtit),
+                              paste("compareby:", compareby),
+                              paste("n samples:", length(STK)),
+                              paste("n features (global, fixed):", length(global_FTK)))
+            grid.table(banner_lines,
                        rows = NULL, cols = NULL,
                        theme = ttheme_default(base_size = 14))
         }, error = function(e){ flog.warn(paste("Could not draw banner for", subname, ":", conditionMessage(e))) })
@@ -283,7 +308,7 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
                                GenomeCompletenessCutoff = FIXED_GenomeCompletenessCutoff,
                                PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced,
                                cdict = cdict, class_to_ignore = class_to_ignore,
-                               addtit = paste("SUBSET:", subname))
+                               addtit = subset_addtit)
             ord_call <- build_args(ord_shared, ordination_args)
             tryCatch({
                 ord_plots <- do.call(plot_Ordination, ord_call)
@@ -316,7 +341,7 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
                              GenomeCompletenessCutoff = FIXED_GenomeCompletenessCutoff,
                              PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced,
                              cdict = cdict, class_to_ignore = class_to_ignore,
-                             addtit = paste("SUBSET:", subname),
+                             addtit = subset_addtit,
                              returnstats = return_stats)
             hm_call <- build_args(hm_shared, heatmap_args)
             tryCatch({
@@ -342,7 +367,7 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
                              GenomeCompletenessCutoff = FIXED_GenomeCompletenessCutoff,
                              PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced,
                              cdict = cdict, class_to_ignore = class_to_ignore,
-                             addtit = paste("SUBSET:", subname),
+                             addtit = subset_addtit,
                              returnstats = return_stats)
             al_call <- build_args(al_shared, alpha_args)
             tryCatch({
