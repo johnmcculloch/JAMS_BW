@@ -19,9 +19,14 @@ rename_MAG_Accession <- function(MAG_Accession = NULL, Cluster_Number = NULL, ma
     #Get earliest position matching a taxonomic tag
     taxtag_pos <- which(split_elements %in% c("d", "k", "p", "c", "o", "f", "g", "s", "is1"))[1]
 
-    #Keep current taxid, unless infraspecies (is1), in which case look up the species label.
-    if (split_elements[taxtag_pos] != "is1"){
-        #rejoin everything downstream from that
+    if (is.na(taxtag_pos)){
+        #No taxonomic tag at all (e.g. "Sample§MB2__12__Unclassified": a bin classified only to
+        #root or cellular organisms). Previously this produced NA in the if() below and crashed
+        #the whole JAMSbeta run with "missing value where TRUE/FALSE needed". Fall back to the
+        #bin name itself (minus the sample prefix) so the caller always gets a valid label.
+        CSB <- sub("^[^§]*§", "", MAG_Accession)
+    } else if (split_elements[taxtag_pos] != "is1"){
+        #Keep current taxid: rejoin everything downstream from the tag
         CSB <- paste(split_elements[taxtag_pos:length(split_elements)], collapse = "_")
     } else {
         #MAG_Accession is at the infraspecies level, so look up the species label.

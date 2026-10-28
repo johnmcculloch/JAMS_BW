@@ -295,6 +295,19 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         tt$Gram[which(is.na(tt$Gram))] <- "undetermined"
         tt$Gram[!(tt$Gram %in% canonical_gram)] <- "undetermined"
         tt <- tt[ , c("Gram", taxlvlspresent)]
+
+        #The taxonomic table must have exactly ONE row per LKT, because LKT is the row key of
+        #the SummarizedExperiment (counts were already collapsed by Sample x LKT above). Two
+        #entities can legitimately share an LKT name while carrying different upstream lineage
+        #strings; the typical case is dark matter: a cLKT__Unclassified bin (taxid 0) and an
+        #unanchored MetaBAT2 bin (classified only to root/cellular organisms) both collapse to
+        #LKT__Unclassified but may differ at Domain/Kingdom. Previously this crashed JAMSbeta with
+        #"duplicate 'row.names' are not allowed". Keep the first lineage seen and say so in the log.
+        if (any(duplicated(tt$LKT))){
+            dupe_LKTs <- unique(tt$LKT[duplicated(tt$LKT)])
+            flog.warn(paste0("make_SummarizedExperiments: ", length(dupe_LKTs), " LKT name(s) in the ", taxonomic_space, " space map to more than one taxonomic lineage. Keeping the first lineage for each. LKTs: ", paste0(dupe_LKTs, collapse = ", ")))
+            tt <- tt[!(duplicated(tt$LKT)), , drop = FALSE]
+        }
         rownames(tt) <- tt[ , "LKT"]
 
         sampleorder <- rownames(pheno2)

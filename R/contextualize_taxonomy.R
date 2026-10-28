@@ -50,6 +50,30 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     BinsDF$MAG_Accession <- paste(BinsDF$Sample, BinsDF$ConsolidatedGenomeBin, sep = "§")
 
     #############################################################################
+    ## Exclude bins with NO taxonomic anchor from functional contextualization.
+    ## A high-quality MetaBAT2 bin whose k-mer classification resolved to root (taxid 1),
+    ## cellular organisms (taxid 131567) or unclassified (taxid 0) is named e.g.
+    ## "MB2__12__Unclassified" and carries no d__/k__/p__/.../s__/is1__ tag. Several such
+    ## bins from different samples share the same placeholder taxid, so they would otherwise be
+    ## grouped into a single "working taxid" and clustered together by function, which is
+    ## biologically meaningless (they are unrelated dark matter) and, worse, crashes
+    ## rename_MAG_Accession downstream ("missing value where TRUE/FALSE needed", because no
+    ## taxonomic tag can be found in the name). These bins keep their original LKT.
+    #############################################################################
+    has_taxonomic_tag <- function(x){
+        split_elements <- unlist(strsplit(x, split = "_"))
+        any(split_elements %in% c("d", "k", "p", "c", "o", "f", "g", "s", "is1"))
+    }
+    untagged <- (is.na(BinsDF$Taxid)) | (as.character(BinsDF$Taxid) %in% c("0", "1", "131567")) | (!sapply(BinsDF$ConsolidatedGenomeBin, has_taxonomic_tag))
+    if (any(untagged)){
+        flog.warn(paste0("contextualize_taxonomy: ", sum(untagged), " HQ/MHQ bin(s) have no taxonomic anchor (unclassified at every rank, e.g. root/cellular organisms) and will NOT be functionally contextualized. They keep their original name. Bins: ", paste0(BinsDF$MAG_Accession[untagged], collapse = ", ")))
+        BinsDF <- BinsDF[which(!untagged), , drop = FALSE]
+        if (nrow(BinsDF) == 0){
+            return(LKTdosesall)
+        }
+    }
+
+    #############################################################################
     ## Self-audit: reconcile abundance-table CGBs against per-sample featuredata.
     ## This is cheap and runs regardless of thread count, on the master. It tells us, directly
     ## in the log, whether a CGB with sequencing depth but no annotated features is present in
@@ -187,9 +211,12 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
                 cl <- parallel::makeCluster(optimal_threads)
                 doParallel::registerDoParallel(cl)
 
+                #n.b. mag2species, dissimilarity_cutoff and normalize_length are captured
+                #automatically by foreach (they are referenced in the body), so they must NOT be
+                #listed in .export as well, or foreach warns "already exporting variable(s)".
                 worker_out <- foreach::foreach(slice = profile_slices, WT = WorkingTaxids_to_decon,
                     .packages = c("dplyr", "tidyr", "vegan"),
-                    .export = c("cluster_strains", "rename_MAG_Accession", "mag2species", "dissimilarity_cutoff", "normalize_length"),
+                    .export = c("cluster_strains", "rename_MAG_Accession"),
                     .noexport = c("list.data", "LKTdosesall", "BinsDF", "compact", "profile_by_wt", "profile_slices")) %dopar% {
 
                     #Valid MAGs for this taxon are exactly those present in its slice.
@@ -197,20 +224,31 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
 
                     if (length(valid_in_wt) < 2){
                         #Nothing to cluster; hand back any lone survivor to be treated as a singleton.
-                        return(list(strain_df = NULL, demoted = valid_in_wt))
+                        return(list(strain_df = NULL, demoted = valid_in_wt, WorkingTaxid = WT, error = NULL))
                     }
 
-                    curr_strain_df <- cluster_strains(genes_df = slice, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
-                    curr_strain_df$ContextualizedSpecies <- sapply(1:nrow(curr_strain_df), function(x) {
-                        rename_MAG_Accession(MAG_Accession = curr_strain_df[x, "MAG_Accession"], Cluster_Number = curr_strain_df[x, "Cluster_Number"], mag2species = mag2species)
+                    #Never let a single taxon kill the whole JAMSbeta run. On failure, report
+                    #exactly which working taxid and MAGs were involved and fall back to treating
+                    #the MAGs as singletons (they keep a species-level CSB name, FC1).
+                    res <- tryCatch({
+                        curr_strain_df <- cluster_strains(genes_df = slice, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
+                        curr_strain_df$ContextualizedSpecies <- sapply(1:nrow(curr_strain_df), function(x) {
+                            rename_MAG_Accession(MAG_Accession = curr_strain_df[x, "MAG_Accession"], Cluster_Number = curr_strain_df[x, "Cluster_Number"], mag2species = mag2species)
+                        })
+                        list(strain_df = curr_strain_df, demoted = character(0), WorkingTaxid = WT, error = NULL)
+                    }, error = function(e){
+                        list(strain_df = NULL, demoted = valid_in_wt, WorkingTaxid = WT, error = conditionMessage(e))
                     })
-                    return(list(strain_df = curr_strain_df, demoted = character(0)))
+                    return(res)
                 }
 
                 parallel::stopCluster(cl)
 
                 #Harvest results and gather demoted singletons.
                 for (wo in worker_out){
+                    if (!is.null(wo$error)){
+                        flog.warn(paste0("contextualize_taxonomy: functional clustering FAILED for working taxid ", wo$WorkingTaxid, " with error \"", wo$error, "\". The ", length(wo$demoted), " MAG(s) in this taxon will be contextualized as singletons instead. MAGs: ", paste0(wo$demoted, collapse = ", ")))
+                    }
                     if (length(wo$demoted) > 0){
                         demoted_to_singleton_MAGs <- c(demoted_to_singleton_MAGs, wo$demoted)
                     }
@@ -232,10 +270,20 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
                         next
                     }
 
-                    curr_strain_df <- cluster_strains(genes_df = slice, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
-                    curr_strain_df$ContextualizedSpecies <- sapply(1:nrow(curr_strain_df), function(x) {
-                        rename_MAG_Accession(MAG_Accession = curr_strain_df[x, "MAG_Accession"], Cluster_Number = curr_strain_df[x, "Cluster_Number"], mag2species = mag2species)
+                    curr_strain_df <- tryCatch({
+                        csd <- cluster_strains(genes_df = slice, normalize_length = normalize_length, cutoff = dissimilarity_cutoff)
+                        csd$ContextualizedSpecies <- sapply(1:nrow(csd), function(x) {
+                            rename_MAG_Accession(MAG_Accession = csd[x, "MAG_Accession"], Cluster_Number = csd[x, "Cluster_Number"], mag2species = mag2species)
+                        })
+                        csd
+                    }, error = function(e){
+                        flog.warn(paste0("contextualize_taxonomy: functional clustering FAILED for working taxid ", WorkingTaxids_to_decon[ti], " with error \"", conditionMessage(e), "\". The ", length(valid_in_wt), " MAG(s) in this taxon will be contextualized as singletons instead. MAGs: ", paste0(valid_in_wt, collapse = ", ")))
+                        NULL
                     })
+                    if (is.null(curr_strain_df)){
+                        demoted_to_singleton_MAGs <- c(demoted_to_singleton_MAGs, valid_in_wt)
+                        next
+                    }
                     strain_df <- rbind(strain_df, curr_strain_df)
                 }
             }
