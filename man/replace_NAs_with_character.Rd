@@ -2,12 +2,35 @@
 % Please edit documentation in R/useful_functions.R
 \name{replace_NAs_with_character}
 \alias{replace_NAs_with_character}
-\title{replace_NAs_with_character(df)
-Replaces NAs with a specific character in a data frame}
+\title{replace_NAs_with_character(df = NULL, replacement = "N_A", coerce_all_to_character = TRUE, replace_empty_strings = TRUE)}
 \usage{
-replace_NAs_with_character(df = NULL, replacement = "N_A")
+replace_NAs_with_character(
+  df = NULL,
+  replacement = "N_A",
+  coerce_all_to_character = TRUE,
+  replace_empty_strings = TRUE
+)
+}
+\arguments{
+\item{df}{A data frame, or anything inheriting from one (tibble, data.table).}
+
+\item{replacement}{Character scalar written into every missing cell. Default "N_A". If a
+vector is passed (class_to_ignore is allowed to hold several values elsewhere in JAMS),
+only its first element is used, as there can be only one canonical sentinel.}
+
+\item{coerce_all_to_character}{Logical. If TRUE (default), EVERY column is returned as
+character, not just the ones which contained NAs. Set to FALSE for the historical
+behaviour of only touching columns which hold at least one NA.}
+
+\item{replace_empty_strings}{Logical. If TRUE (default), character cells which are empty or
+contain only whitespace are treated as missing and also receive the replacement. Note that
+with coerce_all_to_character = FALSE this can only apply to columns which are already
+character.}
 }
 \description{
-replace_NAs_with_character(df)
-Replaces NAs with a specific character in a data frame
+Conforms a data frame to the JAMS metadata convention: every cell is of class character,
+and every missing cell holds a single explicit sentinel (by default "N_A"). This is what
+allows omission to be controlled downstream solely through the class_to_ignore argument,
+including for numeric variables, whose values travel as "231", "56", ... and are coerced
+back with can_be_made_numeric() only once the ignored classes have been dropped.
 }

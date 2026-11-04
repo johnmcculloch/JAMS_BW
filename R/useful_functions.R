@@ -241,24 +241,83 @@ trim_whitespace_from_df <- function(df = NULL) {
 }
 
 
-#' replace_NAs_with_character(df)
-#' Replaces NAs with a specific character in a data frame
+#' replace_NAs_with_character(df = NULL, replacement = "N_A", coerce_all_to_character = TRUE, replace_empty_strings = TRUE)
+#'
+#' Conforms a data frame to the JAMS metadata convention: every cell is of class character,
+#' and every missing cell holds a single explicit sentinel (by default "N_A"). This is what
+#' allows omission to be controlled downstream solely through the class_to_ignore argument,
+#' including for numeric variables, whose values travel as "231", "56", ... and are coerced
+#' back with can_be_made_numeric() only once the ignored classes have been dropped.
+#'
+#' @param df A data frame, or anything inheriting from one (tibble, data.table).
+#' @param replacement Character scalar written into every missing cell. Default "N_A". If a
+#'   vector is passed (class_to_ignore is allowed to hold several values elsewhere in JAMS),
+#'   only its first element is used, as there can be only one canonical sentinel.
+#' @param coerce_all_to_character Logical. If TRUE (default), EVERY column is returned as
+#'   character, not just the ones which contained NAs. Set to FALSE for the historical
+#'   behaviour of only touching columns which hold at least one NA.
+#' @param replace_empty_strings Logical. If TRUE (default), character cells which are empty or
+#'   contain only whitespace are treated as missing and also receive the replacement. Note that
+#'   with coerce_all_to_character = FALSE this can only apply to columns which are already
+#'   character.
+#'
 #' @export
 
-replace_NAs_with_character <- function(df = NULL, replacement = "N_A"){
-    #check if input is reasonable
-    if (class(df)[1] != "data.frame"){
-        stop("Input must be a data.frame")
+replace_NAs_with_character <- function(df = NULL, replacement = "N_A", coerce_all_to_character = TRUE, replace_empty_strings = TRUE){
+    #Accept anything inheriting from data.frame, not just a bare data.frame. A data.table in
+    #particular turns up whenever metadata was read with fread() without data.table = FALSE,
+    #and its `[<-` semantics differ from a data.frame's, so flatten it before touching anything.
+    if (!inherits(df, "data.frame")){
+        stop("Input must be a data.frame or inherit from one (e.g., a tibble or a data.table).")
+    }
+    if (!identical(class(df), "data.frame")){
+        original_rownames <- rownames(df)
+        df <- as.data.frame(df, stringsAsFactors = FALSE)
+        rownames(df) <- original_rownames
     }
 
-    for (colm in 1:ncol(df)){
-        #Only replace values if necessary
-        if (any(is.na(df[ , colm]))){
-            #First, coerce to character
-            df[ , colm] <- as.character(df[ , colm])
-            df[is.na(df[ , colm]) , colm] <- replacement
-        }
+    #There can be only one sentinel. Callers routinely hand their class_to_ignore straight to
+    #this argument, and that is allowed to be a vector of several values, which would otherwise
+    #be recycled across the missing cells of a column.
+    replacement <- as.character(replacement)
+    replacement <- replacement[!is.na(replacement)]
+    if (length(replacement) < 1){
+        stop("replacement must contain at least one non-missing value.")
     }
+    replacement <- replacement[1]
+
+    if (ncol(df) == 0){
+        return(df)
+    }
+
+    df[] <- lapply(df, function(x){
+        #Record missingness BEFORE any coercion. as.character(NaN) is the string "NaN", which
+        #is no longer NA, so a NaN would otherwise survive as a phantom class.
+        na_mask <- is.na(x)
+
+        #Dates, factors, integers and logicals must all come out as plain character. A Date
+        #column is the nastiest of these, because it is numeric underneath, so it passes
+        #can_be_made_numeric() and is then compared against class_to_ignore by
+        #define_kinds_of_variables(), where `!=` dispatches to `!=.Date` and dies.
+        if (coerce_all_to_character || any(na_mask)){
+            x <- as.character(x)
+        }
+
+        if (replace_empty_strings && is.character(x)){
+            #fread() writes an empty tsv field as "" rather than NA, so a blank cell would
+            #otherwise survive as a class which class_to_ignore never catches. %in% is used
+            #rather than == so that the already-NA positions do not propagate NA into the mask.
+            na_mask <- na_mask | (trimws(x, whitespace = "[\\s\\h\\v]") %in% "")
+        }
+
+        #Guarded so that, when coerce_all_to_character is FALSE, a clean numeric column is
+        #handed back with its type intact rather than being silently turned into character.
+        if (any(na_mask)){
+            x[na_mask] <- replacement
+        }
+
+        return(x)
+    })
 
     return(df)
 }
@@ -556,26 +615,16 @@ bioconductordeps <- c("dada2", "ComplexHeatmap", "HybridMTest", "genefilter", "S
 }
 
 
-#' make_phenolabels_from_phenotable(phenotable = NULL)
+#' make_phenolabels_from_phenotable(phenotable = NULL, class_to_ignore = "N_A")
 #'
 #' Does exactly what the name says.
 #' @export
 
-make_phenolabels_from_phenotable <- function (phenotable = NULL){
+make_phenolabels_from_phenotable <- function (phenotable = NULL, class_to_ignore = "N_A"){
     Var_label <- colnames(phenotable)
-    infer_column_type <- function(colm){
-        if (colm %in% c("Sample", "sample")){
-            colmtype <- "Sample"
-        } else {
-            if (can_be_made_numeric( (phenotable[, colm] ), cats_to_ignore = class_to_ignore)){
-                colmtype <- "continuous"
-            } else {
-                colmtype <- "discrete"
-            }
-        }
-        return(colmtype)
-    }
-    Var_type <- sapply(Var_label, function (x) { infer_column_type(x) } )
+    #Delegate to the exported infer_column_type() rather than keeping a local copy of it.
+    #The former local copy referred to a class_to_ignore which was never in scope here.
+    Var_type <- sapply(Var_label, function (x) { infer_column_type(phenotable = phenotable, colm = x, class_to_ignore = class_to_ignore) } )
     phenolabels <- data.frame(Var_label = unname(Var_label), Var_type = unname(Var_type), stringsAsFactors = FALSE)
 
     return(phenolabels)
@@ -685,8 +734,24 @@ analyze_fastq_filename <- function(fn = NULL, maintain_Illumina_format = FALSE){
 infer_column_type <- function(phenotable = NULL, colm = NULL, class_to_ignore = "N_A"){
     if (colm %in% c("Sample", "sample")){
         colmtype <- "Sample"
+        return(colmtype)
+    }
+
+    #`[[` rather than `[ , colm]`: the latter returns a one-column tibble rather than a vector
+    #for a tibble, and is outright wrong for a data.table, where j is evaluated inside the
+    #table, so a bare character variable is returned as itself instead of as the column.
+    colvals <- phenotable[[colm]]
+
+    if (inherits(colvals, c("Date", "POSIXct", "POSIXlt", "POSIXt", "difftime"))){
+        #Date-like columns are numeric under the hood (days or seconds since the epoch),
+        #so can_be_made_numeric() happily calls them continuous, and define_kinds_of_variables()
+        #then compares them against class_to_ignore. Treat them as categorical instead, which is
+        #exactly how ISO date *strings* are already handled by this function. Note that "date" is
+        #deliberately NOT returned here: load_metadata_from_file() reserves that Var_type for
+        #Excel serial dates, which it pushes through convertToDate().
+        colmtype <- "discrete"
     } else {
-        if (can_be_made_numeric( (phenotable[, colm] ), cats_to_ignore = class_to_ignore)){
+        if (can_be_made_numeric(colvals, cats_to_ignore = class_to_ignore)){
             colmtype <- "continuous"
         } else {
             colmtype <- "discrete"

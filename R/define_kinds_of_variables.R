@@ -6,6 +6,18 @@
 #returns a list of variable names
 define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phenotable = NULL, maxclass = 15, maxsubclass = 4, class_to_ignore = "N_A", verbose = TRUE){
 
+    #Returns TRUE for the cells of a metadata column which hold usable (i.e. neither
+    #missing nor ignored) information. Never use a bare `x != class_to_ignore` for this:
+    #if x is a Date or POSIXct column, `!=` dispatches to `!=.Date`, which coerces
+    #class_to_ignore with as.Date() and dies with "character string is not in a standard
+    #unambiguous format". A bare `!=` also silently recycles when class_to_ignore holds
+    #more than one value, and yields NA (rather than FALSE) for empty cells.
+    #Comparing as character sidesteps all three problems. class_to_ignore is deliberately a
+    #required argument here, so that a future call site cannot silently ignore nothing.
+    is_usable_value <- function(x, class_to_ignore){
+        !is.na(x) & !(as.character(x) %in% as.character(class_to_ignore))
+    }
+
     if (!(is.null(metadataXL))){
         metadata <- load_metadata_from_file(xlsxFile = metadataXL)
         phenotable <- metadata[[1]]
@@ -69,7 +81,7 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
     if (length(variables_subs) > 0){
         numcl <- NULL
         for(v in 1:length(variables_subs)){
-            numcl[v] <- length(unique(phenotable[ , (variables_subs[v])][which(phenotable[ , (variables_subs[v])] != class_to_ignore)]))
+            numcl[v] <- length(unique(phenotable[ , (variables_subs[v])][which(is_usable_value(phenotable[ , (variables_subs[v])], class_to_ignore))]))
         }
         if (verbose){
             flog.info(paste("Found subsettable variables", paste0(variables_subs, collapse=", "), "with", paste0(numcl, collapse=", "), "classes, respectively."))
@@ -90,7 +102,7 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
     if (length(variables_disc) > 0){
         numcl <- NULL
         for(v in 1:length(variables_disc)){
-            numcl[v] <- length(unique(phenotable[ , (variables_disc[v])][which(phenotable[ , (variables_disc[v])] != class_to_ignore)]))
+            numcl[v] <- length(unique(phenotable[ , (variables_disc[v])][which(is_usable_value(phenotable[ , (variables_disc[v])], class_to_ignore))]))
         }
         if (verbose){
             flog.info(paste("Found discrete variables", paste0(variables_disc, collapse = ", "), "with", paste0(numcl, collapse = ", "),  "classes, respectively."))
@@ -112,7 +124,7 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
         #Check that valid (non-ignore values can be made numeric)
         is_numeric <- NULL
         for (v in 1:length(variables_cont)){
-            is_numeric[v] <- length(which(is.na(phenotable[ , (variables_cont[v])][which(phenotable[ , (variables_cont[v])] != class_to_ignore)]) == FALSE))
+            is_numeric[v] <- length(which(is.na(phenotable[ , (variables_cont[v])][which(is_usable_value(phenotable[ , (variables_cont[v])], class_to_ignore))]) == FALSE))
             if (is_numeric[v] == 0){
                 if (verbose){
                     flog.info(paste("No values which are numeric can be found in", variables_cont[v]))
@@ -137,7 +149,7 @@ define_kinds_of_variables <- function(metadataXL = NULL, phenolabels = NULL, phe
     if (length(variables_bin) > 0){
         numcl <- NULL
         for(v in 1:length(variables_bin)){
-            numcl[v] <- length(unique(phenotable[ , (variables_bin[v])][which(phenotable[ , (variables_bin[v])] != class_to_ignore)]))
+            numcl[v] <- length(unique(phenotable[ , (variables_bin[v])][which(is_usable_value(phenotable[ , (variables_bin[v])], class_to_ignore))]))
         }
         variables_bin <- variables_bin[which(numcl == 2)]
         if (length(variables_bin) > 0){

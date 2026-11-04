@@ -25,9 +25,9 @@
 #' fewest variables) is nudged, and only away from its own siblings, so intended cross-variable
 #' colour reuse (e.g. every binary-positive class sharing one blue) is preserved.
 #'
-#' @param variable_list Optional pre-computed output of define_kinds_of_variables. If NULL, it is derived from pheno/phenolabels.
+#' @param variable_list Optional pre-computed output of define_kinds_of_variables. If NULL, it is derived from pheno/phenolabels. Ignored when columnsToUse is supplied.
 #' @param pheno The curated metadata data frame (rownames = sample names).
-#' @param phenolabels Optional phenolabels data frame. If NULL and variable_list is NULL, column types are imputed.
+#' @param phenolabels Optional phenolabels data frame. If NULL and variable_list is NULL, column types are imputed. Ignored when columnsToUse is supplied.
 #' @param columnsToUse Optional character vector of metadata columns to colour. If supplied, only these (plus "Sample", which is always protected) are considered. Overrides the discrete-variable auto-detection.
 #' @param columnsToIgnore Optional character vector of metadata columns to NOT colour. "Sample" is always ignored regardless.
 #' @param class_to_ignore String (or vector) of class values to treat as missing/ignored. Painted colour_of_class_to_ignore. Default "N_A".
@@ -91,17 +91,22 @@ make_colour_dictionary <- function(variable_list = NULL, pheno = NULL, phenolabe
     ################################################################
     ## 2. Resolve which variables to colour
     ################################################################
-    if (is.null(variable_list)){
-        if (is.null(phenolabels)){
-            flog.info("Imputing types of columns on the metadata.")
-            Var_label <- colnames(pheno)
-            Var_type <- sapply(Var_label, function (x) { infer_column_type(phenotable = pheno, colm = x, class_to_ignore = class_to_ignore) } )
-            phenolabels <- data.frame(Var_label = unname(Var_label), Var_type = unname(Var_type), stringsAsFactors = FALSE)
+    #Only auto-detect variables when the caller has NOT said which ones to colour. If
+    #columnsToUse was supplied, imputing types for the whole metadata is wasted work, and it
+    #needlessly exposes the call to problems in columns we are never going to paint.
+    candidate_vars <- NULL
+    if (is.null(columnsToUse)){
+        if (is.null(variable_list)){
+            if (is.null(phenolabels)){
+                flog.info("Imputing types of columns on the metadata.")
+                Var_label <- colnames(pheno)
+                Var_type <- sapply(Var_label, function (x) { infer_column_type(phenotable = pheno, colm = x, class_to_ignore = class_to_ignore) } )
+                phenolabels <- data.frame(Var_label = unname(Var_label), Var_type = unname(Var_type), stringsAsFactors = FALSE)
+            }
+            variable_list <- define_kinds_of_variables(phenolabels = phenolabels, phenotable = pheno, maxclass = 30, maxsubclass = 100, class_to_ignore = class_to_ignore, verbose = FALSE)
         }
-        variable_list <- define_kinds_of_variables(phenolabels = phenolabels, phenotable = pheno, maxclass = 30, maxsubclass = 100, class_to_ignore = class_to_ignore, verbose = FALSE)
+        candidate_vars <- unique(unname(unlist(variable_list[which(!(names(variable_list) %in% c("sample", "continuous")))])))
     }
-
-    candidate_vars <- unique(unname(unlist(variable_list[which(!(names(variable_list) %in% c("sample", "continuous")))])))
 
     # Apply columnsToUse / columnsToIgnore, ALWAYS protecting Sample.
     if (!is.null(columnsToUse)){

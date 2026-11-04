@@ -28,11 +28,11 @@ make_colour_dictionary(
 )
 }
 \arguments{
-\item{variable_list}{Optional pre-computed output of define_kinds_of_variables. If NULL, it is derived from pheno/phenolabels.}
+\item{variable_list}{Optional pre-computed output of define_kinds_of_variables. If NULL, it is derived from pheno/phenolabels. Ignored when columnsToUse is supplied.}
 
 \item{pheno}{The curated metadata data frame (rownames = sample names).}
 
-\item{phenolabels}{Optional phenolabels data frame. If NULL and variable_list is NULL, column types are imputed.}
+\item{phenolabels}{Optional phenolabels data frame. If NULL and variable_list is NULL, column types are imputed. Ignored when columnsToUse is supplied.}
 
 \item{columnsToUse}{Optional character vector of metadata columns to colour. If supplied, only these (plus "Sample", which is always protected) are considered. Overrides the discrete-variable auto-detection.}
 

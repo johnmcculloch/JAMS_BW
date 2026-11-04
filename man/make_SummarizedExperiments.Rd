@@ -2,7 +2,7 @@
 % Please edit documentation in R/make_SummarizedExperiments.R
 \name{make_SummarizedExperiments}
 \alias{make_SummarizedExperiments}
-\title{make_SummarizedExperiments(pheno = NULL, onlysamples = NULL, onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8, functional_contextualization_dissimilarity_cutoff = 0.15)}
+\title{make_SummarizedExperiments(pheno = NULL, onlysamples = NULL, onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8, totmembytes = NULL, stratification_threads = NULL, functional_contextualization_dissimilarity_cutoff = 0.15)}
 \usage{
 make_SummarizedExperiments(
   pheno = NULL,
@@ -18,8 +18,17 @@ make_SummarizedExperiments(
   cdict = cdict,
   threads = 8,
   totmembytes = NULL,
+  stratification_threads = NULL,
   functional_contextualization_dissimilarity_cutoff = 0.15
 )
+}
+\arguments{
+\item{stratification_threads}{Number of forked workers used for the per-sample pass that
+builds the functional (non-taxonomic) SummarizedExperiment objects. Defaults to
+min(threads, 16), which is deliberately conservative: each worker inherits list.data
+copy-on-write for free, but also holds its own transient per-sample objects. Raise it if
+there is RAM headroom; set it to 1 to force the old single-threaded behaviour. Ignored
+(forced to 1) on platforms without fork.}
 }
 \description{
 Makes a SummarizedExperiment object for every analysis that is possible to make given loaded jams files in list.data.

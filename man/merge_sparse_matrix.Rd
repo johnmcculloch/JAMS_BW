@@ -2,13 +2,40 @@
 % Please edit documentation in R/merge_sparse_matrix.R
 \name{merge_sparse_matrix}
 \alias{merge_sparse_matrix}
-\title{Safely merges two sparse matrices. This function was written for exclusive use by the merge_JAMS_SEobj function (see). It has not been tested or benchmarked for a use other than that one.}
+\title{merge_sparse_matrix(matlist = NULL)}
 \usage{
 merge_sparse_matrix(matlist = NULL)
 }
 \arguments{
-\item{matlist}{- A list of sparse matrices}
+\item{matlist}{A list of sparse matrices, each with both row names and column names.}
+}
+\value{
+A dgCMatrix, or NULL if the matrices cannot be merged unambiguously.
 }
 \description{
-Safely merges two sparse matrices. This function was written for exclusive use by the merge_JAMS_SEobj function (see). It has not been tested or benchmarked for a use other than that one.
+Safely merges sparse matrices by taking the union of their row names and the union of their
+column names, placing every stored value at its (rowname, colname) address. Used by
+merge_JAMS_SEobj to join the taxon-stratification matrices of two JAMS SummarizedExperiment
+objects.
+}
+\details{
+A (row, column) address may be occupied by at most one input matrix. If two inputs both store
+a non-zero at the same address the merge is ambiguous, so the function warns and returns NULL,
+which is the behaviour callers have always relied on.
+
+HISTORY / WHAT CHANGED AND WHY. The original implementation widened each matrix with
+Reduce(cbind, ...), which appends a single column per call and copies the entire matrix every
+time, then permuted the columns and rbind()ed. For the per-sample accumulation in
+make_SummarizedExperiments that was the dominant cost of the whole JAMSbeta run (~26 h
+projected for 1409 samples). It also had two defects in the shared-row branch, which neither
+caller ever exercised because both guarantee disjoint row names:
+  1. conflicts were detected per COLUMN rather than per CELL, and
+  2. when rows were shared, values held by the accumulated matrix in columns that both
+     matrices had in common were silently dropped.
+This version is a single triplet-union pass: linear in the number of stored values, with
+exact per-cell conflict detection and no data loss. For the disjoint-row case that both JAMS
+callers produce, the result is identical to the old one, including row and column order.
+
+n.b. make_SummarizedExperiments no longer calls this in a loop; it uses rbind_sparse_blocks
+(see) to stack all per-sample blocks in one pass.
 }

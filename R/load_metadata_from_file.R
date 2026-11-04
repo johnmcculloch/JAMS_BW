@@ -14,6 +14,12 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
         class_to_ignore <- opt$class_to_ignore
     }
 
+    #opt does not necessarily carry a class_to_ignore, and the line above would then set it to
+    #NULL, which propagates into every downstream sentinel comparison. Fall back to the default.
+    if (is.null(class_to_ignore) || length(class_to_ignore) < 1){
+        class_to_ignore <- "N_A"
+    }
+
     if (!is.null(xlsxFile)) {
 
         xlMD <-  list()
@@ -92,21 +98,37 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
         }
     }
 
-    #If there are any empty cells, fill them with JAMS "N_A" for missing data
-    phenotable[is.na(phenotable)] <- class_to_ignore
-
     #Trim whitespace (common in Excel spreadsheets)
     phenotable <- trim_whitespace_from_df(df = phenotable)
     phenolabels <- trim_whitespace_from_df(df = phenolabels)
 
-    #Coerce all of the metadata initially to character.
-    phenotable[] <- lapply(phenotable, as.character)
+    #Conform the metadata to the JAMS convention: every cell character, every missing or blank
+    #cell set to class_to_ignore. This replaces a hand-rolled
+    #`phenotable[is.na(phenotable)] <- class_to_ignore` followed by a separate as.character pass,
+    #which left blank ("") cells alone and mishandled non-character columns such as the Date
+    #objects that openxlsx hands back for date-formatted spreadsheet cells.
+    phenotable <- replace_NAs_with_character(df = phenotable, replacement = class_to_ignore)
+
     if ("date" %in% phenolabels$Var_type){
-        #Adjust metadata to date
+        #Adjust metadata to date. Only cells which actually hold data are converted: the
+        #class_to_ignore sentinel must survive untouched, as convertToDate() would otherwise
+        #turn it into a real NA and undo the normalisation performed immediately above.
         colsToDate <- phenolabels$Var_label[which(phenolabels$Var_type == "date")]
         for (colm in 1:length(colsToDate)){
-            phenotable[ , colsToDate[colm]] <- convertToDate(phenotable[ , colsToDate[colm]])
-            phenotable[ , colsToDate[colm]] <- as.character(phenotable[ , colsToDate[colm]])
+            curr_col <- phenotable[ , colsToDate[colm]]
+            usable <- which(!(curr_col %in% class_to_ignore))
+            if (length(usable) > 0){
+                converted <- as.character(convertToDate(curr_col[usable]))
+                #convertToDate() coerces its input with as.numeric(), so it yields NA for any
+                #cell which is already an ISO date string ("2019-08-09") rather than an Excel
+                #serial number. Say so rather than silently emptying the column.
+                if (any(is.na(converted))){
+                    flog.warn(paste0("Metadata column ", colsToDate[colm], " is declared with Var_type \"date\", but ", sum(is.na(converted)), " of its ", length(usable), " value(s) could not be read as an Excel serial date and have been set to ", class_to_ignore[1], ". If this column already holds ISO dates such as 2019-08-09, declare it as discrete instead."))
+                    converted[is.na(converted)] <- class_to_ignore[1]
+                }
+                curr_col[usable] <- converted
+            }
+            phenotable[ , colsToDate[colm]] <- curr_col
         }
     }
 

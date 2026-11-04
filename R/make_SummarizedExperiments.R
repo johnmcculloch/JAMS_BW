@@ -1,9 +1,16 @@
-#' make_SummarizedExperiments(pheno = NULL, onlysamples = NULL, onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8, functional_contextualization_dissimilarity_cutoff = 0.15)
+#' make_SummarizedExperiments(pheno = NULL, onlysamples = NULL, onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8, totmembytes = NULL, stratification_threads = NULL, functional_contextualization_dissimilarity_cutoff = 0.15)
 #'
 #' Makes a SummarizedExperiment object for every analysis that is possible to make given loaded jams files in list.data.
+#'
+#' @param stratification_threads Number of forked workers used for the per-sample pass that
+#'   builds the functional (non-taxonomic) SummarizedExperiment objects. Defaults to
+#'   min(threads, 16), which is deliberately conservative: each worker inherits list.data
+#'   copy-on-write for free, but also holds its own transient per-sample objects. Raise it if
+#'   there is RAM headroom; set it to 1 to force the old single-threaded behaviour. Ignored
+#'   (forced to 1) on platforms without fork.
 #' @export
 
-make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8, totmembytes = NULL, functional_contextualization_dissimilarity_cutoff = 0.15){
+make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyanalyses = c("LKT", "Product", "ECNumber", "Pfam", "Interpro", "resfinder", "PRINTS", "GO"), minnumsampanalysis = NULL, minpropsampanalysis = 0.1, stratify_functions_by_taxon = TRUE, add_TNF_data = FALSE, list.data = NULL, phenolabels = NULL, cdict = cdict, threads = 8, totmembytes = NULL, stratification_threads = NULL, functional_contextualization_dissimilarity_cutoff = 0.15){
 
     require(SummarizedExperiment)
     require(Matrix)
@@ -375,32 +382,72 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
     }
 
     #Now, for the functional analyses.
+
+    #########################################################################################
+    ## HOW THE FUNCTIONAL PHASE WORKS (refactored for large, cross-cohort sample numbers).
+    ##
+    ## It used to be a single threaded loop over samples which, on EVERY iteration, rbind()ed
+    ## onto four growing data frames and called merge_sparse_matrix() twice to widen and extend
+    ## two growing sparse matrices. Each of those accumulations copies the whole accumulated
+    ## object, so the total cost grew with the SQUARE of the number of samples. A 1409 sample
+    ## cohort projected to roughly 26 hours for one analysis. Two full gc() calls per sample made
+    ## it worse still, because the cost of a full garbage collection is set by the size of the
+    ## live heap (list.data, hundreds of GB for a cohort this size), not by the garbage that the
+    ## iteration actually produced.
+    ##
+    ## It now works in two stages:
+    ##
+    ##   STAGE 1  Every sample is reduced INDEPENDENTLY by build_sample_stratification_block()
+    ##            into a compact per-sample contribution. Independent means it can be run with
+    ##            parallel::mclapply. Fork is used deliberately: workers inherit list.data
+    ##            copy-on-write, so not one byte of it is serialised to them, which is the same
+    ##            reasoning behind the contextualize_taxonomy refactor. Workers never call gc()
+    ##            and never log, so they neither disturb the inherited heap nor interleave output.
+    ##
+    ##   STAGE 2  The master stacks all per-sample contributions ONCE. The sparse blocks go
+    ##            through rbind_sparse_blocks() (a single linear pass, no repeated copying) and
+    ##            the tabular parts are concatenated and written into their matrices by direct
+    ##            index assignment instead of pivot_wider().
+    ##
+    ## Row numbering is unchanged. Samples are visited in the order of `Samples` and each
+    ## contributes a contiguous band of row numbers, exactly as the old serial loop did, so the
+    ## result is deterministic and does not depend on how many threads were used.
+    #########################################################################################
+
+    #Resolve how many forked workers Stage 1 may use. Each worker holds only its own transient
+    #per-sample objects on top of the shared, inherited list.data, but with very wide featuredata
+    #that still adds up, so the default is deliberately conservative and can be raised.
+    fork_is_available <- (.Platform$OS.type == "unix")
+    if (is.null(stratification_threads)){
+        stratification_threads <- min(threads, 16)
+    }
+    stratification_threads <- suppressWarnings(as.integer(stratification_threads))
+    if (is.na(stratification_threads) || (stratification_threads < 1)){
+        stratification_threads <- 1
+    }
+    stratification_threads <- min(stratification_threads, max(1, as.integer(threads)))
+    if (!fork_is_available && (stratification_threads > 1)){
+        flog.warn("make_SummarizedExperiments: parallel::mclapply needs a unix-alike (fork) in order to share list.data with its workers without copying it. This does not look like one, so the per-sample functional pass will run single threaded.")
+        stratification_threads <- 1
+    }
+    flog.info(paste0("make_SummarizedExperiments: the per-sample functional pass will use ", stratification_threads, " of the ", threads, " CPU(s) available. Raise this with the stratification_threads argument (JAMSbeta: --stratification_threads) if there is RAM headroom, or set it to 1 to force the old serial behaviour."))
+
+    #How many samples are handed out per mclapply call. Larger means fewer fork() calls (each
+    #fork of a master holding hundreds of GB has to copy its page tables, which is not free);
+    #smaller means more frequent progress lines and a tighter bound on peak memory.
+    stratification_chunk_size <- max(1L, (stratification_threads * 4L))
+
     for (analnumb in 1:length(possibleanalyses)) {
         analysis <- possibleanalyses[analnumb]
         flog.info(paste("Making", analysis, "SummarizedExperiment"))
 
-        #subset doses to contain only the analysis wanted
-        analysisdoses <- NULL
-        analysisdata <- NULL
-
-        #Make BaseCounts table
-        cts <- NULL
         phenoanal <- pheno2
-
-        #This data frame will hold the unstratified overall counts for all features and all samples.
-        analysisdoses <- NULL
-        analysisgencts <- NULL
-        analysislencts <- NULL
+        sampleorder <- rownames(phenoanal)
 
         if (!stratify_functions_by_taxon){
             #If not stratifying functions by taxa, get functional information Contig_LKT abundances
             valid_taxonomic_space <- "Contig_LKT"
         } else {
-            #Declare empty lists to hold data
-            master_sparse_featcounts_index_longform <- NULL
-            master_sparse_taxon_to_space_basecounts_df <- NULL
-            master_sparse_taxon_to_space_genecounts_df <- NULL
-
             #When stratifying, prioritize Consolidated Genome bin if present, if not, default to Contig_LKT
             valid_taxonomic_space <- c("ConsolidatedGenomeBin", "Contig_LKT")[c("ConsolidatedGenomeBin", "Contig_LKT") %in% valid_taxonomic_spaces][1]
         }
@@ -411,294 +458,202 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             appropriate_featurdata_tax_colm <- "LKT"
         }
 
-        # Ensure threads > 1 to avoid issues with makeCluster
-#        if (threads > 1) {
-#            cl <- parallel::makeCluster(threads)
-#            doParallel::registerDoParallel(cl)
-#            flog.info(paste("Registered parallel backend with", threads, "cores."))
-#        } else {
-#            flog.info("Running in single-threaded mode.")
-#        }
+        #####################################################################################
+        ## STAGE 1: reduce every sample, in parallel where possible.
+        #####################################################################################
+        reduce_one_sample <- function(SN){
+            #A single odd sample must never take the whole JAMSbeta run down with it, so the
+            #error is trapped here and reported by the master afterwards.
+            tryCatch({
+                build_sample_stratification_block(Sample = SN, list.data = list.data, analysis = analysis, valid_taxonomic_space = valid_taxonomic_space, appropriate_featurdata_tax_colm = appropriate_featurdata_tax_colm, stratify_functions_by_taxon = stratify_functions_by_taxon)
+            }, error = function(e){
+                list(Sample = SN, has_data = FALSE, failed = TRUE, error = conditionMessage(e), messages = character(0), accessions = character(0), descriptions = character(0), numbases = numeric(0), numgenes = numeric(0), lengenes = numeric(0), base_block = NULL, gene_block = NULL)
+            })
+        }
 
-        #Silent tally of taxon-stratification coverage across this analysis. Counts, per sample,
-        #how many features carried usable taxon columns versus none, so a systemic failure of the
-        #-u path (e.g. every feature collapsing to Ultra_low_abundance) is surfaced at the end
-        #rather than passing unnoticed. Purely observational; changes no data.
-        strat_samples_with_data <- 0
-        strat_samples_without_data <- 0
-
+        per_sample_results <- vector("list", length(Samples))
+        chunk_starts <- seq(1, length(Samples), by = stratification_chunk_size)
         batch_start_time <- Sys.time()
-        for (sampnum in 1:length(Samples)){
-            SN <- Samples[sampnum]
-            curr_FD <- list.data[[paste(SN, "abundances", sep = "_")]]$functional[[valid_taxonomic_space]]
-            #Subset to current analysis
-            curr_FD <- curr_FD[which(curr_FD$Analysis == analysis), , drop = FALSE]
-            #If not stratifying, eliminate taxon columns at this point
-            if (!stratify_functions_by_taxon){
-                curr_FD <- curr_FD[ , c("Accession", "Description", "NumBases")]
+
+        for (chunk_start in chunk_starts){
+            chunk_end <- min((chunk_start + stratification_chunk_size - 1), length(Samples))
+            chunk_idx <- chunk_start:chunk_end
+
+            if (stratification_threads > 1){
+                chunk_res <- parallel::mclapply(Samples[chunk_idx], reduce_one_sample, mc.cores = stratification_threads, mc.preschedule = TRUE, mc.cleanup = TRUE)
+            } else {
+                chunk_res <- lapply(Samples[chunk_idx], reduce_one_sample)
             }
 
-            #Check that there is any data for that particular sample - there may not be.
-            if (nrow(curr_FD) > 0){
-                #There shouldn't be any NAs but if there are make them 0
-                curr_FD[is.na(curr_FD)] <- 0
-                Taxoncols <- colnames(curr_FD)[5:ncol(curr_FD)]
-                curr_FD$Sample <- SN
-
-                #Deal with gene number tallies
-                #Defensive: the column named by `analysis` (e.g. resfinder) may be ABSENT from a
-                #sample's featuredata if that blast analysis never ran at JAMSalpha time (as opposed
-                #to running and finding nothing, which yields a column full of "none"). Selecting a
-                #missing column would throw "undefined columns selected". Synthesize it as "none" so
-                #the sample stays in the analysis, mirroring how ECNumber is handled in
-                #make_featuredata_from_bedfile.
-                curr_featdf_full <- list.data[[paste(SN, "featuredata", sep = "_")]]
-                if (!(analysis %in% colnames(curr_featdf_full))){
-                    flog.warn(paste0("make_SummarizedExperiments: analysis column '", analysis, "' is absent from featuredata for sample ", SN, " (this analysis likely did not run for this sample at JAMSalpha time). Synthesizing it as 'none' so the sample is retained."))
-                    curr_featdf_full[[analysis]] <- "none"
+            for (k in seq_along(chunk_idx)){
+                res <- chunk_res[[k]]
+                #A forked child that is killed outright (almost always the OOM killer) hands
+                #back a try-error or a NULL rather than our list, so say so plainly.
+                if (is.null(res) || inherits(res, "try-error") || !is.list(res) || is.null(res$Sample)){
+                    res <- list(Sample = Samples[chunk_idx[k]], has_data = FALSE, failed = TRUE, error = "the parallel worker died without returning a result, which almost always means it ran out of memory. Lower stratification_threads.", messages = character(0), accessions = character(0), descriptions = character(0), numbases = numeric(0), numgenes = numeric(0), lengenes = numeric(0), base_block = NULL, gene_block = NULL)
                 }
-                curr_featdf <- curr_featdf_full[ , c("Feature", "LengthDNA", analysis, appropriate_featurdata_tax_colm)]
-                curr_featdf_full <- NULL
-                colnames(curr_featdf)[which(colnames(curr_featdf) == analysis)] <- "Accession"
-                colnames(curr_featdf)[which(colnames(curr_featdf) == appropriate_featurdata_tax_colm)] <- "Taxon"
-
-                #Fix "none" to analysis_none
-                curr_featdf$Accession[which(curr_featdf$Accession == "none")] <- paste(analysis, "none", sep = "_")
-                #Ensure numeric
-                curr_featdf$LengthDNA <- as.numeric(curr_featdf$LengthDNA)
-
-                #Separate rows if not Product or ECNumber, as there may be more than a single accession for a single gene separated by a "|".
-                if (!(analysis %in% c("Product", "ECNumber"))){
-                    curr_featdf <- curr_featdf %>% tidyr::separate_rows(all_of("Accession"), sep = fixed("\\|"))
-                }
-
-                if (stratify_functions_by_taxon){
-                    curr_SM <- Matrix::Matrix(data = as.matrix(curr_FD[ , Taxoncols]), sparse = TRUE)
-                    colnames(curr_SM) <- Taxoncols
-                    #In order to conserve RAM and the size of the taxonomic stratification sparse matrix, do not include any taxon whose total sum of bases across the entire metagenomic proteome is smaller than 10000 bp (10 kbp). 10 kbp / ~3 Mbp is a completeness of 0.3%, with a sequencing depth of 1X if the entire sample consisted of a single species (which it doesn't). So this filtration is very conseravative and will shrink memory usage considerably.
-                    curr_taxaToMerge <- names(which(Matrix::colSums(curr_SM) < 10000))
-                    if (length(curr_taxaToMerge) > 0){
-                        #Sum all low abundance values into a single column.
-                        ULA_sums <- Matrix::rowSums(curr_SM[ , curr_taxaToMerge, drop = FALSE])
-                        compl_SM <- Matrix::Matrix(data = as.matrix(ULA_sums), sparse = TRUE)
-                        colnames(compl_SM) <- "Ultra_low_abundance_LKTs"
-                        #Eliminate ULAs from matrix
-                        curr_SM <- curr_SM[ , !(colnames(curr_SM) %in% curr_taxaToMerge), drop = FALSE]
-                        #Add aggregated column
-                        curr_SM <- cbind(curr_SM, compl_SM)
-                    }
-                    #Make row pairs temporarily named as sample-feature pairs to avoid double entries when merging sparse matrix with the next sample. For instance Urease§Sample1 should be a different row to Urease§Sample17, etc. Sparse matrix merging will preserve only column names for LKTs which are shared across samples.
-                    rownames(curr_SM) <- paste(SN, rownames(curr_SM), sep = "§")
-
-                    #Create a temporary long-form index
-                    curr_sparse_featcounts_index <- curr_FD[ , c("Sample", "Accession")]
-                    rownames(curr_sparse_featcounts_index) <- paste(SN, curr_sparse_featcounts_index$Accession, sep = "§")
-                    #Ensure row order is identical
-                    curr_sparse_featcounts_index <- curr_sparse_featcounts_index[rownames(curr_SM), ]
-                    #Add matrix row number to temporary index, counting from the last row of the previous matrix
-                    if (!is.null(master_sparse_taxon_to_space_basecounts_df)){
-                        #A previous sample was accrued so, increment the row number from the current size of the master matrix
-                        curr_sparse_featcounts_index$RowNumber <- nrow(master_sparse_taxon_to_space_basecounts_df) + (1:nrow(curr_SM))
-                    } else {
-                        #This is the first sample
-                        curr_sparse_featcounts_index$RowNumber <- 1:nrow(curr_SM)
-                    }
-                    #Map numeric row number onto rownames
-                    rownames(curr_SM) <- as.character(curr_sparse_featcounts_index[rownames(curr_SM), "RowNumber"])
-
-                    #Commit index to long form dataframe
-                    master_sparse_featcounts_index_longform <- rbind(master_sparse_featcounts_index_longform, curr_sparse_featcounts_index)
-                    #Commit rownames as index number
-                    rownames(master_sparse_featcounts_index_longform) <- as.character(master_sparse_featcounts_index_longform$RowNumber)
-
-                    #Merge curr_SM to the master matrix
-                    #only merge if it is not the first one.
-                    if (!is.null(master_sparse_taxon_to_space_basecounts_df)){
-                        master_sparse_taxon_to_space_basecounts_df <- merge_sparse_matrix(matlist = list(master_sparse_taxon_to_space_basecounts_df, curr_SM))
-                    } else {
-                        master_sparse_taxon_to_space_basecounts_df <- curr_SM
-                    }
-
-                    #Deal with gene number stratifications
-                    #Pivot to wide form
-                    curr_split_numgenes <- as.data.frame(curr_featdf %>% group_by(across(all_of(c("Taxon", "Accession")))) %>% summarise(NumGenes = length(Accession), .groups = "keep") %>% pivot_wider(names_from = Taxon, values_from = NumGenes, values_fill = 0))
-                    rownames(curr_split_numgenes) <- paste(SN, curr_split_numgenes$Accession, sep = "§")
-                    curr_split_numgenes$Accession <- NULL
-
-                    #Curtail to the same features as for basecounts and make sparse
-                    curr_split_numgenes <- Matrix::Matrix(data = as.matrix(curr_split_numgenes[rownames(curr_sparse_featcounts_index), ]), sparse = TRUE)
-
-                    #Aggregate low abundance taxa, if applicable.
-                    if (length(curr_taxaToMerge) > 0){
-                        #Sum all low abundance values into a single column.
-                        ULA_gene_sums <- Matrix::rowSums(curr_split_numgenes[ , curr_taxaToMerge, drop = FALSE])
-                        compl_split_numgenes <- Matrix::Matrix(data = as.matrix(ULA_gene_sums), sparse = TRUE)
-                        colnames(compl_split_numgenes) <- "Ultra_low_abundance_LKTs"
-                        #Eliminate ULAs from matrix
-                        curr_split_numgenes <- curr_split_numgenes[ , !(colnames(curr_split_numgenes) %in% curr_taxaToMerge), drop = FALSE]
-                        #Add aggregated column
-                        curr_split_numgenes <- cbind(curr_split_numgenes, compl_split_numgenes)
-                    }
-                    #Ensure exact row and column order
-                    curr_split_numgenes <- curr_split_numgenes[rownames(curr_sparse_featcounts_index), colnames(curr_SM)]
-
-                    #Map numeric row number onto rownames
-                    rownames(curr_split_numgenes) <- as.character(curr_sparse_featcounts_index[rownames(curr_split_numgenes), "RowNumber"])
-
-                    #Merge sparse version in to master gene count matrix
-                    #only merge if it is not the first one.
-                    if (!is.null(master_sparse_taxon_to_space_genecounts_df)){
-                        master_sparse_taxon_to_space_genecounts_df <- merge_sparse_matrix(matlist = list(master_sparse_taxon_to_space_genecounts_df, curr_split_numgenes))
-                    } else {
-                        master_sparse_taxon_to_space_genecounts_df <- curr_split_numgenes
-                    }
-
-                    #Silent tally: this sample contributed usable stratification rows.
-                    strat_samples_with_data <- strat_samples_with_data + 1
-
-                    #Clean up
-                    curr_SM <- NULL
-                    curr_split_numgenes <- NULL
-                    curr_taxaToMerge <- NULL
-                    curr_sparse_featcounts_index <- NULL
-                    gc()
-                }
-
-                #Eliminate Taxoncols to save RAM
-                curr_FD$Sample <- SN
-                rownames(curr_FD) <- paste(SN, rownames(curr_FD), sep = "§")
-                analysisdoses <- rbind(analysisdoses, curr_FD[ , c("Sample", "Accession", "Description", "NumBases")])
-                curr_featdf$Sample <- SN
-                curr_featdf$Taxon <- NULL
-                curr_analysisgencts <- as.data.frame(curr_featdf %>% group_by(Accession) %>% summarise(NumGenes = length(Accession), .groups = "keep"))
-                curr_analysislencts <- as.data.frame(curr_featdf %>% group_by(Accession) %>% summarise(LenGenes = sum(LengthDNA), .groups = "keep"))
-                curr_analysisgencts$Sample <- SN
-                curr_analysislencts$Sample <- SN
-                rownames(curr_analysisgencts) <- paste(SN, curr_analysisgencts$Accession, sep = "§")
-                rownames(curr_analysislencts) <- paste(SN, curr_analysislencts$Accession, sep = "§")
-                curr_analysisgencts <- curr_analysisgencts[rownames(curr_FD), c("Sample", "Accession", "NumGenes"), drop = FALSE]
-                curr_analysislencts <- curr_analysislencts[rownames(curr_FD), c("Sample", "Accession", "LenGenes"), drop = FALSE]
-                analysisgencts <- rbind(analysisgencts, curr_analysisgencts)
-                analysislencts <- rbind(analysislencts, curr_analysislencts)
-
-                #Clean up
-                curr_FD <- NULL
-                curr_featdf <- NULL
-                curr_analysisgencts <- NULL
-                curr_analysislencts <- NULL
-                gc()
-            } else {
-                #No data for this analysis in this sample. If stratifying, count it for the tally.
-                if (stratify_functions_by_taxon){
-                    strat_samples_without_data <- strat_samples_without_data + 1
-                }
-            } #End conditional for there being data for that analysis for that sample
+                per_sample_results[[chunk_idx[k]]] <- res
+            }
+            chunk_res <- NULL
 
             #Give message on progress
-            if (sampnum == length(Samples)) {
-                elapsed <- as.numeric(difftime(Sys.time(), batch_start_time, units = "secs"))
-                avg_per_sample <- elapsed / sampnum
-                flog.info(sprintf("Completed %d/%d samples | elapsed time: %s", sampnum, length(Samples), pretty_time(elapsed)))
-            } else if (length(Samples) > 20 && sampnum %% 20 == 0) {
-                elapsed <- as.numeric(difftime(Sys.time(), batch_start_time, units = "secs"))
-                avg_per_sample <- elapsed / sampnum
-                eta_secs <- avg_per_sample * (length(Samples) - sampnum)
-                flog.info(sprintf("Completed %d/%d samples | elapsed time: %s | ETA: %s", sampnum, length(Samples), pretty_time(elapsed), pretty_time(eta_secs)))
+            elapsed <- as.numeric(difftime(Sys.time(), batch_start_time, units = "secs"))
+            if (chunk_end == length(Samples)) {
+                flog.info(sprintf("Completed %d/%d samples | elapsed time: %s", chunk_end, length(Samples), pretty_time(elapsed)))
+            } else {
+                avg_per_sample <- elapsed / chunk_end
+                eta_secs <- avg_per_sample * (length(Samples) - chunk_end)
+                flog.info(sprintf("Completed %d/%d samples | elapsed time: %s | ETA: %s", chunk_end, length(Samples), pretty_time(elapsed), pretty_time(eta_secs)))
             }
+        } #End of the per-sample reduction
 
-        } #End loop for obtaining data for each sample
+        #Replay anything the workers wanted said, in sample order, capped so a systemic problem
+        #cannot bury the log.
+        worker_messages <- unlist(lapply(per_sample_results, function(x) { x$messages } ), use.names = FALSE)
+        if (length(worker_messages) > 0){
+            max_report <- 50
+            for (msg in worker_messages[1:min(length(worker_messages), max_report)]){
+                flog.warn(msg)
+            }
+            if (length(worker_messages) > max_report){
+                flog.warn(paste0("   ... and ", (length(worker_messages) - max_report), " further message(s) of the same kind not shown."))
+            }
+        }
+        worker_messages <- NULL
 
-        #Report the stratification tally for this analysis (only when stratifying).
+        failed_flags <- vapply(per_sample_results, function(x) { isTRUE(x$failed) }, logical(1))
+        if (any(failed_flags)){
+            failed_samples <- Samples[which(failed_flags)]
+            flog.warn(paste0("make_SummarizedExperiments: ", length(failed_samples), " sample(s) failed while being reduced for analysis ", analysis, " and will contribute NO data to it. This is not fatal, but the affected samples will read as all zero for this analysis. Samples and errors follow:"))
+            max_report <- 20
+            for (fs in failed_samples[1:min(length(failed_samples), max_report)]){
+                flog.warn(paste0("   Sample=", fs, " | error: ", per_sample_results[[which(Samples == fs)[1]]]$error))
+            }
+            if (length(failed_samples) > max_report){
+                flog.warn(paste0("   ... and ", (length(failed_samples) - max_report), " more not shown."))
+            }
+        }
+
+        #Silent tally of taxon-stratification coverage across this analysis, so a systemic
+        #failure of the -u path is surfaced here rather than passing unnoticed.
+        has_data_flags <- vapply(per_sample_results, function(x) { isTRUE(x$has_data) }, logical(1))
+        strat_samples_with_data <- sum(has_data_flags)
+        strat_samples_without_data <- sum(!has_data_flags & !failed_flags)
+
         if (stratify_functions_by_taxon){
             if (strat_samples_with_data == 0){
-                flog.warn(paste0("make_SummarizedExperiments: for analysis ", analysis, ", NO samples yielded usable taxon-stratified data (", strat_samples_without_data, " samples had no data for this analysis). The -u stratification metadata for this analysis will be empty. Check your inputs if this is unexpected."))
+                flog.warn(paste0("make_SummarizedExperiments: for analysis ", analysis, ", NO samples yielded usable taxon-stratified data (", strat_samples_without_data, " samples had no data for this analysis, ", sum(failed_flags), " failed). The -u stratification metadata for this analysis will be empty. Check your inputs if this is unexpected."))
             } else {
-                flog.info(paste0("make_SummarizedExperiments: taxon-stratification tally for analysis ", analysis, ": ", strat_samples_with_data, " sample(s) contributed stratified data, ", strat_samples_without_data, " sample(s) had no data for this analysis. Consistent."))
+                flog.info(paste0("make_SummarizedExperiments: taxon-stratification tally for analysis ", analysis, ": ", strat_samples_with_data, " sample(s) contributed stratified data, ", strat_samples_without_data, " sample(s) had no data for this analysis, ", sum(failed_flags), " sample(s) failed. Consistent."))
             }
         }
 
-        #Obtain unstratified counts matrix
-        cts <- analysisdoses[ , c("Sample", "Accession", "NumBases")] %>% pivot_wider(names_from = Sample, values_from = NumBases, values_fill = 0)
-        cts <- as.data.frame(cts)
-        cts[is.na(cts)] <- 0
-
-        #Just double check that there are no dupes
-        if (length(which(duplicated(cts$Accession) == TRUE)) > 0){
-            flog.info(paste("Found", length(which(duplicated(cts$Accession) == TRUE)), "duplicated accessions. Keeping the first one in each case."))
-            cts <- cts[!(duplicated(cts$Accession)), ]
+        if (strat_samples_with_data == 0){
+            flog.warn(paste0("make_SummarizedExperiments: not a single sample has data for analysis ", analysis, ", so no SummarizedExperiment object can be built for it. Skipping this analysis and carrying on with the rest."))
+            per_sample_results <- NULL
+            gc()
+            next
         }
-        rownames(cts) <- cts$Accession
-        cts$Accession <- NULL
 
-        #Deal with samples with NO results for this analysis
-        emptySamples <- rownames(phenoanal)[!(rownames(phenoanal) %in% colnames(cts))]
-        if (length(emptySamples) > 0){
-            complementarycts <- matrix(ncol = length(emptySamples), nrow = nrow(cts), data = 0)
-            complementarycts <- as.data.frame(complementarycts, stringsAsFactors = FALSE)
-            colnames(complementarycts) <- emptySamples
-            rownames(complementarycts) <- rownames(cts)
-            cts <- cbind(cts, complementarycts)
+        #####################################################################################
+        ## STAGE 2: stack every sample's contribution, once.
+        #####################################################################################
+        has_idx <- which(has_data_flags)
+        nrows_each <- vapply(per_sample_results[has_idx], function(x) { length(x$accessions) }, integer(1))
+        cumulative_rows <- cumsum(as.numeric(nrows_each))
+        total_rows <- cumulative_rows[length(cumulative_rows)]
+        if (total_rows > .Machine$integer.max){
+            stop(paste0("make_SummarizedExperiments: analysis ", analysis, " would need ", total_rows, " stratification rows, beyond what a single sparse matrix can address. Split the cohort, or build fewer analyses in one run."))
         }
-        cts <- as.matrix(cts)
+        total_rows <- as.integer(total_rows)
+        #Number of rows preceding each contributing sample. This reproduces, exactly, the
+        #RowNumber bookkeeping the old serial loop did as it went.
+        row_offsets <- as.integer(c(0, cumulative_rows[-length(cumulative_rows)]))
 
-        ################################
-        ## Make GeneCounts counts table
-        gennumcts <- NULL
+        analysis_long <- data.frame(
+            Sample = rep(Samples[has_idx], times = nrows_each),
+            Accession = unlist(lapply(per_sample_results[has_idx], function(x) { x$accessions } ), use.names = FALSE),
+            Description = unlist(lapply(per_sample_results[has_idx], function(x) { x$descriptions } ), use.names = FALSE),
+            NumBases = unlist(lapply(per_sample_results[has_idx], function(x) { x$numbases } ), use.names = FALSE),
+            NumGenes = unlist(lapply(per_sample_results[has_idx], function(x) { x$numgenes } ), use.names = FALSE),
+            LenGenes = unlist(lapply(per_sample_results[has_idx], function(x) { x$lengenes } ), use.names = FALSE),
+            RowNumber = seq_len(total_rows),
+            stringsAsFactors = FALSE)
 
-        #Fix for not getting duplicate accessions. Delete the Description column to get clean pivot from long to wide.
-        gennumcts <- analysisgencts[ , c("Sample", "Accession", "NumGenes")] %>% pivot_wider(names_from = Sample, values_from = NumGenes, values_fill = 0)
-        gennumcts <- as.data.frame(gennumcts)
-        gennumcts[is.na(gennumcts)] <- 0
-        rownames(gennumcts) <- gennumcts$Accession
-        gennumcts$Accession <- NULL
-
-        #Deal with samples with NO results for this analysis
-        emptySamples <- rownames(phenoanal)[!(rownames(phenoanal) %in% colnames(gennumcts))]
-        if (length(emptySamples) > 0){
-            complementarycts <- matrix(ncol = length(emptySamples), nrow = nrow(gennumcts), data = 0)
-            complementarycts <- as.data.frame(complementarycts, stringsAsFactors = FALSE)
-            colnames(complementarycts) <- emptySamples
-            rownames(complementarycts) <- rownames(gennumcts)
-            gennumcts <- cbind(gennumcts, complementarycts)
+        #The tabular per-sample payload has been copied into analysis_long, so let it go. The
+        #sparse blocks are deliberately kept until rbind_sparse_blocks has consumed them.
+        for (k in seq_along(per_sample_results)){
+            per_sample_results[[k]][["accessions"]] <- NULL
+            per_sample_results[[k]][["descriptions"]] <- NULL
+            per_sample_results[[k]][["numbases"]] <- NULL
+            per_sample_results[[k]][["numgenes"]] <- NULL
+            per_sample_results[[k]][["lengenes"]] <- NULL
         }
-        gennumcts <- as.matrix(gennumcts)
 
-        #################################
-        ## Make GeneLengths counts table
-        genlencts <- NULL
+        #####################################################################################
+        ## Unstratified assay matrices. Built by direct index assignment into a pre-made matrix,
+        ## which is both far faster and far lighter than pivot_wider() on tens of millions of
+        ## rows, and which makes the old "deal with samples with NO results" blocks unnecessary:
+        ## a sample that contributed nothing simply keeps its pre-filled column.
+        #####################################################################################
+        feature_accessions <- unique(analysis_long$Accession)
+        acc_pos <- match(analysis_long$Accession, feature_accessions)
+        samp_pos <- match(analysis_long$Sample, sampleorder)
+        placeable <- which(!is.na(acc_pos) & !is.na(samp_pos))
+        cell_index <- cbind(acc_pos[placeable], samp_pos[placeable])
 
-        #Fix for not getting duplicate accessions. Delete the Description column to get clean pivot from long to wide.
-        genlencts <- analysislencts[ , c("Sample", "Accession", "LenGenes")] %>% pivot_wider(names_from = Sample, values_from = LenGenes, values_fill = 0)
-        genlencts <- as.data.frame(genlencts)
-        genlencts[is.na(genlencts)] <- 0
-        rownames(genlencts) <- genlencts$Accession
-        genlencts$Accession <- NULL
-
-        #Deal with samples with NO results for this analysis
-        emptySamples <- rownames(phenoanal)[!(rownames(phenoanal) %in% colnames(genlencts))]
-        if (length(emptySamples) > 0){
-            complementarycts <- matrix(ncol = length(emptySamples), nrow = nrow(genlencts), data = 0)
-            complementarycts <- as.data.frame(complementarycts, stringsAsFactors = FALSE)
-            colnames(complementarycts) <- emptySamples
-            rownames(complementarycts) <- rownames(genlencts)
-            genlencts <- cbind(genlencts, complementarycts)
+        #A given accession must appear at most once per sample within an analysis. If that is
+        #violated the abundance table is malformed upstream, so say so loudly rather than let
+        #one of the values win silently.
+        if (length(placeable) > 1){
+            cell_id <- (as.numeric(samp_pos[placeable]) - 1) * as.numeric(length(feature_accessions)) + as.numeric(acc_pos[placeable])
+            n_dupe_cells <- sum(duplicated(cell_id))
+            if (n_dupe_cells > 0){
+                flog.warn(paste0("make_SummarizedExperiments: found ", n_dupe_cells, " duplicated Sample/Accession pair(s) in analysis ", analysis, ". Keeping the last occurrence of each. This points at a malformed functional abundance table upstream and is worth investigating."))
+            }
+            cell_id <- NULL
         }
-        genlencts <- as.matrix(genlencts)
 
+        make_assay_matrix <- function(values = NULL, fill = 0){
+            mat <- matrix(fill, nrow = length(feature_accessions), ncol = length(sampleorder), dimnames = list(feature_accessions, sampleorder))
+            mat[cell_index] <- values[placeable]
+
+            return(mat)
+        }
+
+        cts <- make_assay_matrix(values = analysis_long$NumBases, fill = 0)
+        gennumcts <- make_assay_matrix(values = analysis_long$NumGenes, fill = 0)
+        genlencts <- make_assay_matrix(values = analysis_long$LenGenes, fill = 0)
+
+        if (stratify_functions_by_taxon){
+            #n.b. the fill is NA, NOT 0. retrieve_features_by_taxa drops NA row numbers, but a 0
+            #would survive that filter and then fail to index the stratification matrix. The old
+            #code filled columns for empty samples with 0, which was a latent crash.
+            master_sparse_featcounts_index <- matrix(NA_integer_, nrow = length(feature_accessions), ncol = length(sampleorder), dimnames = list(feature_accessions, sampleorder))
+            master_sparse_featcounts_index[cell_index] <- analysis_long$RowNumber[placeable]
+        }
 
         ######################
         ## Make feature table
         # Account for the fact that descriptions for the same accession may diverge, due to using jams files annotated by different versions. The function below will choose the most prevalent weighted by sequencing depth.
-        find_best_description <- function(featdf = NULL){
-            descstats <- as.data.frame(featdf) %>% group_by(Description) %>% summarize(Sum = sum(NumBases))
-            best_description <- descstats$Description[which(descstats$Sum == max(descstats$Sum))]
-
-            return(best_description)
-        }
-
-        ftt <- data.frame(Accession = unique(analysisdoses$Accession))
+        # n.b. this is now done for every accession in ONE grouped pass. It used to be a sapply
+        # over accessions, each call subsetting the whole long form table, which is quadratic and
+        # on a cohort this size would have taken longer than everything else put together.
+        ftt <- data.frame(Accession = feature_accessions, stringsAsFactors = FALSE)
         if (!(analysis %in% c("ECNumber", "MetaCyc", "GO"))){
-            ftt$Description <- sapply(ftt$Accession, function (x) { find_best_description(featdf = subset(analysisdoses, Accession == x)) } )
+            descstats <- as.data.frame(analysis_long[ , c("Accession", "Description", "NumBases")] %>% group_by(Accession, Description) %>% summarize(Sum = sum(NumBases), .groups = "drop"))
+            #n.b. the old code returned EVERY description tied on the maximum, because it had no
+            #[1] on the which(). sapply() then degraded to a list, ftt$Description became a list
+            #column, and rowData ended up holding the literal text c("desc A", "desc B"). Here
+            #exactly one description is always returned, and Description is carried as an
+            #explicit third sort key so the tie-break is the alphabetically first one rather
+            #than whatever order() happened to leave behind. method = "radix" is named because
+            #order()'s default "shell" is NOT stable, and it is what gets chosen as soon as one
+            #of the keys is character, which Accession is.
+            descstats <- descstats[order(descstats$Accession, -(descstats$Sum), descstats$Description, method = "radix"), , drop = FALSE]
+            descstats <- descstats[!(duplicated(descstats$Accession)), , drop = FALSE]
+            ftt$Description <- descstats$Description[match(ftt$Accession, descstats$Accession)]
+            descstats <- NULL
         }
 
         #Fix descriptions if ECNumber, GO or MetaCyc
@@ -727,11 +682,10 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             ftt$Description <- ftt$Class
         }
 
-        cts <- cts[order(rowSums(cts), decreasing = TRUE), ]
+        cts <- cts[order(rowSums(cts), decreasing = TRUE), , drop = FALSE]
         featureorder <- rownames(cts)
-        sampleorder <- rownames(phenoanal)
-        ftt <- ftt[featureorder, ]
-        cts <- cts[, sampleorder]
+        ftt <- ftt[featureorder, , drop = FALSE]
+        cts <- cts[ , sampleorder, drop = FALSE]
         cts <- as.matrix(cts)
 
         #Register the total number of bases sequenced for each sample within that analysis
@@ -740,8 +694,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         rownames(TotalBasesSequencedinAnalysis) <- "NumBases"
 
         #Order gennumcts and genlencts
-        gennumcts <- gennumcts[featureorder, sampleorder]
-        genlencts <- genlencts[featureorder, sampleorder]
+        gennumcts <- gennumcts[featureorder, sampleorder, drop = FALSE]
+        genlencts <- genlencts[featureorder, sampleorder, drop = FALSE]
 
         assays <- list()
         assays$BaseCounts <- cts
@@ -749,23 +703,8 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         assays$GeneLengths <- genlencts
         #Add stratification index as assay if applicable
         if (stratify_functions_by_taxon){
-            master_sparse_featcounts_index <- master_sparse_featcounts_index_longform %>% group_by(Sample, Accession) %>% tidyr::pivot_wider(names_from = Sample, values_from = RowNumber, values_fill = NA)
-            master_sparse_featcounts_index <- as.data.frame(master_sparse_featcounts_index)
-            rownames(master_sparse_featcounts_index) <- master_sparse_featcounts_index$Accession
-            master_sparse_featcounts_index$Accession <- NULL
-            #Add empty samples if necessary
-            emptySamples <- rownames(phenoanal)[!(rownames(phenoanal) %in% colnames(master_sparse_featcounts_index))]
-
-            if (length(emptySamples) > 0){
-                complementarycts <- matrix(ncol = length(emptySamples), nrow = nrow(master_sparse_featcounts_index), data = 0)
-                complementarycts <- as.data.frame(complementarycts, stringsAsFactors = FALSE)
-                colnames(complementarycts) <- emptySamples
-                rownames(complementarycts) <- rownames(master_sparse_featcounts_index)
-                master_sparse_featcounts_index <- cbind(master_sparse_featcounts_index, complementarycts)
-            }
-
-            master_sparse_featcounts_index <- master_sparse_featcounts_index[rownames(cts), colnames(cts)]
-            assays$SparseIndex <- as.matrix(master_sparse_featcounts_index)
+            assays$SparseIndex <- master_sparse_featcounts_index[featureorder, sampleorder, drop = FALSE]
+            master_sparse_featcounts_index <- NULL
         }
 
         ##Create SummarizedExperiment
@@ -783,7 +722,29 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
 
         #Split functions by taxon, if applicable
         if (stratify_functions_by_taxon){
- 
+
+            #Global row names of the stratification matrices. These are the RowNumbers, as
+            #characters, which is what retrieve_features_by_taxa indexes them with.
+            stratification_rownames <- as.character(seq_len(total_rows))
+
+            base_blocks <- lapply(per_sample_results[has_idx], function(x) { x$base_block } )
+            for (k in seq_along(per_sample_results)){
+                per_sample_results[[k]][["base_block"]] <- NULL
+            }
+            master_sparse_taxon_to_space_basecounts_df <- rbind_sparse_blocks(blocks = base_blocks, row_offsets = row_offsets, total_rows = total_rows, rownames_out = stratification_rownames)
+            base_blocks <- NULL
+
+            gene_blocks <- lapply(per_sample_results[has_idx], function(x) { x$gene_block } )
+            for (k in seq_along(per_sample_results)){
+                per_sample_results[[k]][["gene_block"]] <- NULL
+            }
+            master_sparse_taxon_to_space_genecounts_df <- rbind_sparse_blocks(blocks = gene_blocks, row_offsets = row_offsets, total_rows = total_rows, rownames_out = stratification_rownames)
+            gene_blocks <- NULL
+
+            if (!is.null(master_sparse_taxon_to_space_basecounts_df)){
+                flog.info(sprintf("make_SummarizedExperiments: %s stratification matrix is %d features-in-samples x %d taxa holding %d non-zero values (%.1f MB).", analysis, nrow(master_sparse_taxon_to_space_basecounts_df), ncol(master_sparse_taxon_to_space_basecounts_df), length(master_sparse_taxon_to_space_basecounts_df@x), (as.numeric(object.size(master_sparse_taxon_to_space_basecounts_df)) / 1e6)))
+            }
+
             #Add features-by-taxon matrix and index into SummarizedExperiment object
             metadata(SEobj)$allfeaturesbytaxa_matrix <- master_sparse_taxon_to_space_basecounts_df
             metadata(SEobj)$allfeaturesbytaxa_GeneCounts_matrix <- master_sparse_taxon_to_space_genecounts_df
@@ -791,13 +752,19 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             metadata(SEobj)$tt <- CGB_tt
 
             #Clean up
-            master_sparse_featcounts_index <- NULL
             master_sparse_taxon_to_space_basecounts_df <- NULL
             master_sparse_taxon_to_space_genecounts_df <- NULL
-            master_sparse_featcounts_index_longform <- NULL
-            gc()
+            stratification_rownames <- NULL
 
         } #End of splitting features by taxonomy
+
+        #Clean up before the next analysis
+        per_sample_results <- NULL
+        analysis_long <- NULL
+        cell_index <- NULL
+        acc_pos <- NULL
+        samp_pos <- NULL
+        placeable <- NULL
 
         expvec[[e]] <- SEobj
         names(expvec)[e] <- analysis

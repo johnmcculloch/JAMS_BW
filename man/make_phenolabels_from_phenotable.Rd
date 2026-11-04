@@ -2,9 +2,9 @@
 % Please edit documentation in R/useful_functions.R
 \name{make_phenolabels_from_phenotable}
 \alias{make_phenolabels_from_phenotable}
-\title{make_phenolabels_from_phenotable(phenotable = NULL)}
+\title{make_phenolabels_from_phenotable(phenotable = NULL, class_to_ignore = "N_A")}
 \usage{
-make_phenolabels_from_phenotable(phenotable = NULL)
+make_phenolabels_from_phenotable(phenotable = NULL, class_to_ignore = "N_A")
 }
 \description{
 Does exactly what the name says.
