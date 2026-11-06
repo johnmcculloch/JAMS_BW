@@ -154,7 +154,6 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         pcatitbase <- paste(pcatitbase, "Counts matrix used for ordination represents aggregate length of genes ", sep = "\n")
     } else {
         if (normalization == "compositions"){
-            require("compositions")
             asPPM <- FALSE
             #Make scaling default for compositions, as the heatmap colour scale for clr has not yet been resolved in this plotting function. Will turn this off later.
             scaled <- TRUE
@@ -319,7 +318,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
 
         n <- nrow(countmat)
         comp <- 1:2
-        rowVars <- rowSds(countmat)
+        rowVars <- jams_rowSds(countmat)
         countmat <- countmat[order(rowVars, decreasing = TRUE), ]
         if (transp == TRUE) {
             countmat <- t(countmat)
@@ -389,7 +388,10 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
                 tsne_perplx <- round(nrow(currpt) * 0.3, 0)
             }
 
-            tsne_out <- Rtsne(countmat, dims = 3, initial_dims = 500, perplexity = tsne_perplx, theta = 0.5, check_duplicates = FALSE, pca = TRUE, max_iter = 1000)
+            if (!requireNamespace("Rtsne", quietly = TRUE)){
+                stop("algorithm = \"tSNE\" needs the optional package Rtsne. Install it with install.packages(\"Rtsne\") or use algorithm = \"tUMAP\", \"PCA\" or \"PCoA\".")
+            }
+            tsne_out <- Rtsne::Rtsne(countmat, dims = 3, initial_dims = 500, perplexity = tsne_perplx, theta = 0.5, check_duplicates = FALSE, pca = TRUE, max_iter = 1000)
             dford <- as.data.frame(tsne_out$Y)
             rownames(dford) <- rownames(currpt)
             colnames(dford)[1:2] <- c("PC1", "PC2")
@@ -403,7 +405,7 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             set.seed(2138)
             n_neighbors <- min((nrow(countmat) - 1), max_neighbors)
 
-            tumap_out <- tumap(countmat, n_components = 2, n_neighbors = n_neighbors, verbose = FALSE, n_threads = numthreads, init = "spca")
+            tumap_out <- uwot::tumap(countmat, n_components = 2, n_neighbors = n_neighbors, verbose = FALSE, n_threads = numthreads, init = "spca")
             dford <- as.data.frame(tumap_out)
             rownames(dford) <- rownames(currpt)
             colnames(dford) <- c("PC1", "PC2")

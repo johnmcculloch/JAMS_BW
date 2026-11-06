@@ -42,7 +42,10 @@ plot_wordcloud_sample <- function(featuredose_df = NULL, analysis = NULL, remove
             subtit <- paste("Top 200, or", representation, "% of signatures in sample.")
             par(oma = c(2,7,2,7) + 0.1, xpd = TRUE)
             par(mar = c(4, 7, 4, 7) + 0.1)
-            wordcloud(dffunc$Description, dffunc$Freq, normalize_plurals = FALSE, scale = c(3, 0.005), random.order = FALSE)
+            if (!requireNamespace("wordcloud", quietly = TRUE)){
+                stop("plot_wordcloud_sample() needs the optional package wordcloud: install.packages(\"wordcloud\")")
+            }
+            wordcloud::wordcloud(dffunc$Description, dffunc$Freq, normalize_plurals = FALSE, scale = c(3, 0.005), random.order = FALSE)
             title(main = maintit, sub = subtit, col.main = ctit, col.sub = ctit)
         } else {
             flog.info(paste("There are no signatures for", analysis, "available in the featuredose object for this sample."))

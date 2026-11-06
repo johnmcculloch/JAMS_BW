@@ -31,7 +31,8 @@ compare_ucobias<-function(featuredata=NULL, contigsdata=NULL, taxlevel="LKT", ta
         pca <- prcomp(ucodata)
         ucoresult <- data.frame(x=pca$x[,1],y=pca$x[,2], category=bias[,ncol(bias)])
     } else if (method == "tSNE") {
-        tsne <- Rtsne(dist(ucodata)) 
+        if (!requireNamespace("Rtsne", quietly = TRUE)) { stop("method = \"tSNE\" needs the optional package Rtsne: install.packages(\"Rtsne\")") }
+        tsne <- Rtsne::Rtsne(dist(ucodata)) 
         ucoresult <- data.frame(x=tsne$Y[,1],y=tsne$Y[,2], category=bias[,ncol(bias)])
     }
     title <- paste("Codon usage bias plot. Fraction=", frac, method)

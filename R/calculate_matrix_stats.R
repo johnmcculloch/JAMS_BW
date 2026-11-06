@@ -123,7 +123,9 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
                 statscountsvecG2 <- get(method)(countsvecG2)
             }
 
-            l2fc <- foldchange2logratio(foldchange(statscountsvecG1, statscountsvecG2), base = 2)
+            #Same arithmetic as gtools::foldchange2logratio(gtools::foldchange(num, denom), base = 2), inlined to drop gtools.
+            fc <- ifelse(statscountsvecG1 < statscountsvecG2, -statscountsvecG2 / statscountsvecG1, statscountsvecG1 / statscountsvecG2)
+            l2fc <- log(ifelse(fc < 0, 1 / -fc, fc), base = 2)
             if (is.na(l2fc)){
                 l2fc <- 0
             }
@@ -160,7 +162,8 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         if (stattype == "permanova"){
             flog.info("Calculating p-values with permanova. Please be patient...")
             flog.info(paste("Calculating p-values with PERMANOVA using", nperm, "permutations on", numthreads, "threads. Please be patient..."))
-            mwpval <- sapply(1:nrow(countmatrix), function(x) { vegan::adonis(countmatrix[x,] ~ classesvector, parallel = numthreads, permutations = nperm)$aov.tab$`Pr(>F)`[1] } )
+            #vegan::adonis() is defunct since vegan 2.7-1 (2025); adonis2(by = "terms") gives the same per-term test.
+            mwpval <- sapply(1:nrow(countmatrix), function(x) { vegan::adonis2(countmatrix[x,] ~ classesvector, parallel = numthreads, permutations = nperm, by = "terms")$`Pr(>F)`[1] } )
         } else if (stattype == "anova") {
             flog.info("Calculating p-values with ANOVA.")
             comparisons <- lapply(1:nrow(countmatrix), function(x) { summary(aov(countmatrix[x,] ~ classesvector))[[1]] })

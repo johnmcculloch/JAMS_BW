@@ -17,7 +17,9 @@ Authors@R: c(person("John", "McCulloch", email = "john.mcculloch@nih.gov", role 
     person("Amiran", "Dzutsev", email = "amiran.dzutsev@nih.gov", role = "ctb"),
     person("Giorgio", "Trinchieri", email = "trinchig@niaid.nih.gov", role = "ctb"))
 Description: Package for analysis of microbial (meta)genomic samples
-Depends: R (>= 4.3.0), R.utils, parallel, optparse, futile.logger, benchmarkme, RCurl, Rtsne, ape, uwot, circlize, compositions, Polychrome, openxlsx, grid, gridExtra, tidyverse, ggplot2, ggrepel, wordcloud, gplots, vegan, matrixStats, Biostrings, seqinr, dada2, DECIPHER, SummarizedExperiment, ComplexHeatmap, HybridMTest, ggpubr, combinat, data.table, genefilter, gtools, gtable, fastSave, Matrix
+Depends: R (>= 4.3.0), R.utils, parallel, futile.logger, circlize, openxlsx, grid, gridExtra, dplyr, stringr, ggplot2, tidyr, ggrepel, vegan, seqinr, SummarizedExperiment, ComplexHeatmap, ggpubr, data.table, gtable, Matrix
+Imports: ape, Biostrings, doParallel, foreach, matrixStats, optparse, plyr, Polychrome, purrr, RColorBrewer, reshape2, scales, tibble, tools, uwot
+Suggests: BiocManager, colourpicker, dada2, DECIPHER, ggnewscale, ggtree, ggtreeExtra, Rtsne, shiny, wordcloud
 License: GPL
 Encoding: UTF-8
 Config/roxygen2/version: 8.1.0

@@ -62,7 +62,8 @@ load_metadata_from_file <- function(opt = NULL, xlsxFile = NULL, phenotable_tsv 
             ctable <- trim_whitespace_from_df(ctable)
             fix_hex_cols <- function(colour){
                 if (length(grep("#", colour, fixed = TRUE)) == 0){
-                    colour <- col2hex(colour)
+                    #Equivalent of gplots::col2hex(), using grDevices only.
+                    colour <- grDevices::rgb(t(grDevices::col2rgb(colour)), maxColorValue = 255)
                 }
                 return(colour)
             }

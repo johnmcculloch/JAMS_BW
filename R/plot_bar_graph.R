@@ -5,8 +5,6 @@
 
 plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, ignoreunclassified = FALSE, class_to_ignore = "N_A", ...) {
 
-    require(reshape2)
-    require(Polychrome)
 
     valid_vars <- c(groupby, subsetby)[which(!is.na(c(groupby, subsetby)))]
 
@@ -139,7 +137,7 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
             p <- p + scale_color_manual(values = groupcols)
         }
         if (is.null(feature_cdict)){
-            feature_cdict <- createPalette(nrow(new_counts),  c("#ff0000", "#00ff00", "#0000ff"))
+            feature_cdict <- Polychrome::createPalette(nrow(new_counts),  c("#ff0000", "#00ff00", "#0000ff"))
             names(feature_cdict) <- rownames(new_counts)
         }
 	feature_cdict <- feature_cdict[rownames(new_counts)] # remove entries not on graph

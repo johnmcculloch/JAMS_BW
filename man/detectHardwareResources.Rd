@@ -3,13 +3,20 @@
 \name{detectHardwareResources}
 \alias{detectHardwareResources}
 \title{detectHardwareResources()
-Generic function for getting number of CPUs and total memory on Biowulf or otherwise
-Returns a named vector with available CPUs and Memory in bytes}
+Generic function for getting the number of CPUs and the total memory available to JAMS.
+Works on laptops (macOS Intel/Apple silicon, Linux, Windows), on stand-alone servers and on
+HPC clusters. Base R only (no benchmarkme), so it also works on Windows.}
 \usage{
 detectHardwareResources()
 }
 \description{
-detectHardwareResources()
-Generic function for getting number of CPUs and total memory on Biowulf or otherwise
-Returns a named vector with available CPUs and Memory in bytes
+Resolution order for CPUs: JAMS_THREADS env var (manual override) > Slurm
+(SLURM_CPUS_PER_TASK, SLURM_CPUS_ON_NODE, sacct) > PBS/Torque (PBS_NUM_PPN, NCPUS) >
+SGE/UGE (NSLOTS) > LSF (LSB_DJOB_NUMPROC) > parallel::detectCores().
+Resolution order for memory: JAMS_MEMORY_GB env var (manual override) > Slurm
+(SLURM_MEM_PER_NODE, SLURM_MEM_PER_CPU x CPUs) > Linux cgroup limit (containers, Slurm with
+cgroups, Kubernetes) > physical RAM. A scheduler/cgroup value is never allowed to exceed physical RAM.
+}
+\details{
+Returns a named numeric vector with available CPUs ("threads") and memory in bytes ("memory").
 }

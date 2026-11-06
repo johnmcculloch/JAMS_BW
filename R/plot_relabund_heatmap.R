@@ -344,7 +344,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     }
                     genomecompletenessdf <- as.data.frame(genomecompletenessmat)
                     genomecompletenessdf$MedianGenomeComp <- rowMedians(genomecompletenessmat)
-                    genomecompletenessdf$SDGenomeComp <- rowSds(genomecompletenessmat)
+                    genomecompletenessdf$SDGenomeComp <- jams_rowSds(genomecompletenessmat)
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
                     genomecompletenessdfmedians <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
                     matstatsbank <- left_join(matstatsbank, genomecompletenessdfmedians, by = "Taxa")
@@ -431,7 +431,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     }
                     genomecompletenessdf <- as.data.frame(genomecompletenessmat)
                     genomecompletenessdf$MedianGenomeComp <- rowMedians(genomecompletenessmat)
-                    genomecompletenessdf$SDGenomeComp <- rowSds(genomecompletenessmat)
+                    genomecompletenessdf$SDGenomeComp <- jams_rowSds(genomecompletenessmat)
                     genomecompletenessdf$Taxa <- rownames(genomecompletenessdf)
                     genomecompletenessdfmedians <- genomecompletenessdf[, c("Taxa", "MedianGenomeComp", "SDGenomeComp")]
                     matstatsbank <- left_join(matstatsbank, genomecompletenessdfmedians, by = "Taxa")

@@ -131,7 +131,8 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
 
         getCLR <- function(countmat_raw = NULL, Sample = NULL, clr_pseudocount = NULL){
             x <- (as.numeric(countmat_raw[, Sample]) + clr_pseudocount)
-            CLRs <- as.numeric(compositions::clr(x))
+            #Centred log-ratio, identical to as.numeric(compositions::clr(x)) for a strictly positive vector.
+            CLRs <- as.numeric(log(x) - mean(log(x)))
 
             return(CLRs)
         }
@@ -170,7 +171,7 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
     }
 
     if (!is.null(discard_SDoverMean_below)){
-        dfm <- (rowSds(PPMmatrix) / rowMeans(PPMmatrix))
+        dfm <- (jams_rowSds(PPMmatrix) / rowMeans(PPMmatrix))
         featuresToKeepSDflt <- names(dfm[dfm > discard_SDoverMean_below])
         SEobj <- SEobj[featuresToKeepSDflt, ]
         countmat_raw <- countmat_raw[featuresToKeepSDflt, ]

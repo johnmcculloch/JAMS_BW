@@ -2,9 +2,9 @@
 % Please edit documentation in R/useful_functions.R
 \name{install_biocon_deps}
 \alias{install_biocon_deps}
-\title{install_biocon_deps()}
+\title{install_biocon_deps(include_optional = TRUE)}
 \usage{
-install_biocon_deps()
+install_biocon_deps(include_optional = TRUE)
 }
 \description{
 Installs Bioconductor JAMS dependencies

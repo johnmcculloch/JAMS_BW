@@ -118,79 +118,209 @@ convert_matrix_PA <- function(mat = NULL, threshPA = 0){
 
 
 #' detectHardwareResources()
-#' Generic function for getting number of CPUs and total memory on Biowulf or otherwise
-#' Returns a named vector with available CPUs and Memory in bytes
+#' Generic function for getting the number of CPUs and the total memory available to JAMS.
+#' Works on laptops (macOS Intel/Apple silicon, Linux, Windows), on stand-alone servers and on
+#' HPC clusters. Base R only (no benchmarkme), so it also works on Windows.
+#'
+#' Resolution order for CPUs: JAMS_THREADS env var (manual override) > Slurm
+#' (SLURM_CPUS_PER_TASK, SLURM_CPUS_ON_NODE, sacct) > PBS/Torque (PBS_NUM_PPN, NCPUS) >
+#' SGE/UGE (NSLOTS) > LSF (LSB_DJOB_NUMPROC) > parallel::detectCores().
+#' Resolution order for memory: JAMS_MEMORY_GB env var (manual override) > Slurm
+#' (SLURM_MEM_PER_NODE, SLURM_MEM_PER_CPU x CPUs) > Linux cgroup limit (containers, Slurm with
+#' cgroups, Kubernetes) > physical RAM. A scheduler/cgroup value is never allowed to exceed physical RAM.
+#'
+#' Returns a named numeric vector with available CPUs ("threads") and memory in bytes ("memory").
 #' @export
 
 detectHardwareResources <- function(){
-    #First off, detect if on Slurm type cluster
-    #Get slurm job ID
-    currslurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
 
-    if(nchar(currslurmjobid) < 3){
-       #Define appropriate functions for non-slurm system
-       detectBatchCPUs <- function() {
-            ncores <- detectCores()
-            if (is.na(ncores)) {
-                stop("Could not determine how many CPUs you have. Aborting.")
+    env_num <- function(var){
+        val <- Sys.getenv(var, unset = "")
+        if (!nzchar(val)){
+            return(NA_real_)
+        }
+        #Slurm can report things like "16(x2)"; keep the leading integer.
+        suppressWarnings(as.numeric(sub("^([0-9.]+).*$", "\\1", val)))
+    }
+
+    read_first_line <- function(path){
+        if (!file.exists(path)){
+            return(NA_character_)
+        }
+        out <- tryCatch(readLines(path, n = 1, warn = FALSE), error = function(e) character(0))
+        if (length(out) == 0){
+            return(NA_character_)
+        }
+        out
+    }
+
+    ## CPUs ##
+    detectBatchCPUs <- function(){
+        ncores <- env_num("JAMS_THREADS")
+
+        if (is.na(ncores) && nzchar(Sys.getenv("SLURM_JOB_ID"))){
+            ncores <- env_num("SLURM_CPUS_PER_TASK")
+            if (is.na(ncores)){
+                ncores <- env_num("SLURM_CPUS_ON_NODE")
             }
-            return(ncores)
-        }
-
-        detectAvailRAM <- function(){
-            totmembytes<-as.numeric(get_ram())
-
-            return(totmembytes)
-        }
-
-    } else {
-        #Define appropriate functions for slurm system
-        detectBatchCPUs <- function() {
-            slurmjobid <- as.character(Sys.getenv("SLURM_JOB_ID"))
-            ncores <- as.numeric(Sys.getenv("SLURM_CPUS_PER_TASK"))
-
-            if (is.na(ncores)) {
-                #Try plan B
-                sacctraw <- system2("sacct", args = c("-j", slurmjobid, "-X", "-P"), stdout = TRUE)
-                jobinforaw <- sacctraw[2]
-                jobinfoheaders <- sacctraw[1]
-                jobinfo <- unlist(strsplit(jobinforaw, split="\\|"))
-                names(jobinfo) <- unlist(strsplit(jobinfoheaders, split="\\|"))
-                ncores <- as.integer(jobinfo["AllocCPUS"])
-                print(jobinfo)
-                if (is.na(ncores)) {
-                    stop("Could not determine how many CPUs you have. Aborting.")
+            if (is.na(ncores) && nzchar(Sys.which("sacct"))){
+                #Last resort for Slurm: ask the accounting database.
+                sacctraw <- tryCatch(suppressWarnings(system2("sacct", args = c("-j", Sys.getenv("SLURM_JOB_ID"), "-X", "-P", "-n", "-o", "AllocCPUS"), stdout = TRUE, stderr = FALSE, timeout = 20)), error = function(e) character(0))
+                if (length(sacctraw) > 0){
+                    ncores <- suppressWarnings(as.numeric(trimws(sacctraw[1])))
                 }
             }
-
-            return(ncores)
         }
 
-
-        detectAvailRAM <- function(){
-            mempercpu <- as.integer(Sys.getenv("SLURM_MEM_PER_CPU"))
-            mempernode <- as.integer(Sys.getenv("SLURM_MEM_PER_NODE"))
-            cpuspertask <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
-
-            if(!(is.na(mempernode))){
-                totmem <- mempernode
-            } else {
-                totmem <- mempercpu * cpuspertask
+        #Other common schedulers
+        for (schedvar in c("PBS_NUM_PPN", "NCPUS", "NSLOTS", "LSB_DJOB_NUMPROC")){
+            if (is.na(ncores)){
+                ncores <- env_num(schedvar)
             }
-
-            totmembytes <- totmem * 1000000
-
-            return(totmembytes)
         }
+
+        if (is.na(ncores)){
+            ncores <- parallel::detectCores(logical = TRUE)
+        }
+
+        if (is.na(ncores) || (ncores < 1)){
+            warning("Could not determine how many CPUs you have. Defaulting to 1. Set the JAMS_THREADS environment variable to override.")
+            ncores <- 1
+        }
+
+        return(as.numeric(floor(ncores)))
     }
-    hardwareRes <- NULL
-    hardwareRes[1] <- detectBatchCPUs()
-    hardwareRes[2] <- detectAvailRAM()
-    names(hardwareRes) <- c("threads", "memory")
+
+    ## Memory ##
+    #Physical RAM of the machine, in bytes, using only base R and OS-native tools.
+    physical_ram_bytes <- function(){
+        sysname <- Sys.info()[["sysname"]]
+        totmembytes <- NA_real_
+
+        if (sysname == "Linux"){
+            if (file.exists("/proc/meminfo")){
+                meminfo <- readLines("/proc/meminfo", warn = FALSE)
+                memtotal <- grep("^MemTotal:", meminfo, value = TRUE)
+                if (length(memtotal) == 1){
+                    totmembytes <- as.numeric(gsub("[^0-9]", "", memtotal)) * 1024
+                }
+            }
+        } else if (sysname == "Darwin"){
+            out <- tryCatch(suppressWarnings(system2("sysctl", c("-n", "hw.memsize"), stdout = TRUE, stderr = FALSE)), error = function(e) character(0))
+            if (length(out) > 0){
+                totmembytes <- suppressWarnings(as.numeric(out[1]))
+            }
+        } else if (.Platform$OS.type == "windows"){
+            #wmic is gone from recent Windows 11 builds (this is what broke benchmarkme), so ask PowerShell first.
+            out <- tryCatch(suppressWarnings(system2("powershell", c("-NoProfile", "-NonInteractive", "-Command", shQuote("(Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory", type = "cmd")), stdout = TRUE, stderr = FALSE)), error = function(e) character(0))
+            out <- suppressWarnings(as.numeric(trimws(out)))
+            out <- out[!is.na(out)]
+            if (length(out) > 0){
+                totmembytes <- out[1]
+            } else {
+                out <- tryCatch(suppressWarnings(system2("wmic", c("ComputerSystem", "get", "TotalPhysicalMemory", "/value"), stdout = TRUE, stderr = FALSE)), error = function(e) character(0))
+                out <- grep("TotalPhysicalMemory=", out, value = TRUE)
+                if (length(out) > 0){
+                    totmembytes <- suppressWarnings(as.numeric(gsub("[^0-9]", "", out[1])))
+                }
+            }
+        } else {
+            #Other unixes (e.g. FreeBSD)
+            out <- tryCatch(suppressWarnings(system2("sysctl", c("-n", "hw.physmem"), stdout = TRUE, stderr = FALSE)), error = function(e) character(0))
+            if (length(out) > 0){
+                totmembytes <- suppressWarnings(as.numeric(out[1]))
+            }
+        }
+
+        return(totmembytes)
+    }
+
+    #Memory limit imposed by Linux control groups (Docker/Apptainer, Kubernetes, Slurm with cgroups), in bytes.
+    cgroup_limit_bytes <- function(){
+        if (Sys.info()[["sysname"]] != "Linux" || !file.exists("/proc/self/cgroup")){
+            return(NA_real_)
+        }
+        cg <- tryCatch(readLines("/proc/self/cgroup", warn = FALSE), error = function(e) character(0))
+        limits <- NA_real_
+        #cgroup v2 (unified hierarchy): a line like "0::/path"
+        v2 <- grep("^0::", cg, value = TRUE)
+        if (length(v2) > 0){
+            cgpath <- sub("^0::", "", v2[1])
+            #Walk up the hierarchy: the effective limit is the smallest one on the way to the root.
+            repeat {
+                lim <- read_first_line(file.path("/sys/fs/cgroup", cgpath, "memory.max"))
+                if (!is.na(lim) && (lim != "max")){
+                    limits <- c(limits, suppressWarnings(as.numeric(lim)))
+                }
+                if (cgpath %in% c("/", "", ".")){
+                    break
+                }
+                cgpath <- dirname(cgpath)
+            }
+        }
+        #cgroup v1: a line like "N:memory:/path"
+        v1 <- grep(":memory:", cg, value = TRUE, fixed = TRUE)
+        if (length(v1) > 0){
+            cgpath <- sub("^[0-9]+:memory:", "", v1[1])
+            for (cand in unique(c(file.path("/sys/fs/cgroup/memory", cgpath, "memory.limit_in_bytes"), "/sys/fs/cgroup/memory/memory.limit_in_bytes"))){
+                lim <- suppressWarnings(as.numeric(read_first_line(cand)))
+                limits <- c(limits, lim)
+            }
+        }
+        limits <- limits[!is.na(limits) & (limits > 0)]
+        #cgroup v1 reports "unlimited" as a huge number (~9.2e18); ignore anything above 1 EiB.
+        limits <- limits[limits < 2^60]
+        if (length(limits) == 0){
+            return(NA_real_)
+        }
+
+        return(min(limits))
+    }
+
+    detectAvailRAM <- function(){
+        physmem <- physical_ram_bytes()
+
+        #Manual override
+        override_gb <- env_num("JAMS_MEMORY_GB")
+        if (!is.na(override_gb)){
+            return(override_gb * 1e9)
+        }
+
+        candidates <- physmem
+        if (nzchar(Sys.getenv("SLURM_JOB_ID"))){
+            #Slurm reports memory in megabytes.
+            mempernode <- env_num("SLURM_MEM_PER_NODE")
+            if (!is.na(mempernode)){
+                candidates <- c(candidates, mempernode * 1e6)
+            } else {
+                mempercpu <- env_num("SLURM_MEM_PER_CPU")
+                if (!is.na(mempercpu)){
+                    slurmcpus <- env_num("SLURM_CPUS_PER_TASK")
+                    if (is.na(slurmcpus)){
+                        slurmcpus <- env_num("SLURM_CPUS_ON_NODE")
+                    }
+                    if (is.na(slurmcpus)){
+                        slurmcpus <- 1
+                    }
+                    candidates <- c(candidates, mempercpu * slurmcpus * 1e6)
+                }
+            }
+        }
+        candidates <- c(candidates, cgroup_limit_bytes())
+        candidates <- candidates[!is.na(candidates) & (candidates > 0)]
+
+        if (length(candidates) == 0){
+            warning("Could not determine how much RAM you have. Set the JAMS_MEMORY_GB environment variable to tell JAMS.")
+            return(NA_real_)
+        }
+
+        return(as.numeric(min(candidates)))
+    }
+
+    hardwareRes <- c(threads = detectBatchCPUs(), memory = detectAvailRAM())
 
     return(hardwareRes)
 }
-
 
 #' whoopsieplot(msg = NULL)
 #' Shuts down the device and gives a message on error, useful for when making reports.
@@ -370,12 +500,15 @@ can_be_made_numeric <- function(x, cats_to_ignore = NULL){
 }
 
 
- #' IO_jams_workspace_image(opt = NULL, workspaceimage = NULL, threads = 8, operation = c("save", "load"))
- #' Safe way of either loading or saving an R workspace image. If argument workspaceimage is null, workspace image file will be searched for in opt (opt$projimage). If that is also NULL, saving or loading is aborted. If the fastSave package () is installed, multi-threaded loading or saving will be used. If opt is passed, number of CPUs will be set to opt$threads, trumping the threads argument.
- #'
- #' @export
+#' IO_jams_workspace_image(opt = NULL, workspaceimage = NULL, threads = 8, operation = c("save", "load"), verbose = FALSE, verify = TRUE)
+#' Safe way of either loading or saving an R workspace image (the global environment). If argument workspaceimage is null, workspace image file will be searched for in opt (opt$projimage). If that is also NULL, saving or loading is aborted. If opt is passed, number of CPUs will be set to opt$threads, trumping the threads argument.
+#'
+#' Saving is multi-threaded whenever the pigz program is on the PATH (no R package needed): the image is streamed through "pigz -p <threads>", which writes an ordinary gzip-compressed .RData file that base R load() reads on any OS, laptops included. Without pigz, a single-threaded base R save is used. Either way the image is first written to a temporary file next to the target and only renamed over the previous image once it is complete (and, with verify = TRUE, has passed "pigz -t"), so a crash, a full disk or a job hitting its walltime mid-save never destroys the previous image.
+#' @param verify If TRUE (default), test the integrity of a pigz-compressed image before it replaces the previous one.
+#'
+#' @export
 
-IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads = 8, operation = NULL, verbose = FALSE){
+IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads = 8, operation = NULL, verbose = FALSE, verify = TRUE){
     if (is.null(workspaceimage)){
         workspaceimage <- opt$projimage
     }
@@ -385,10 +518,21 @@ IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads =
     }
 
     if (!is.null(opt)){
-        threads <- opt$threads
+        if (!is.null(opt$threads)){
+            threads <- opt$threads
+        }
         RAMbytesavail <- opt$totmembytes
     } else {
         RAMbytesavail <- NULL
+    }
+    threads <- suppressWarnings(as.integer(threads))
+    if ((length(threads) != 1) || is.na(threads) || (threads < 1)){
+        threads <- 1L
+    }
+
+    if (is.null(operation) || !(operation %in% c("save", "load"))){
+        flog.info("You must choose between \"load\" or \"save\" as an operation.")
+        return(invisible(NULL))
     }
 
     flog.info(paste("Workspace image is", workspaceimage))
@@ -400,32 +544,98 @@ IO_jams_workspace_image <- function(opt = NULL, workspaceimage = NULL, threads =
 
     if (operation == "save"){
 
-        if ("fastSave" %in% rownames(installed.packages())){
-            flog.info(paste("Saving project workspace image using fastSave package with", threads, "CPUs"))
-            save.image.pigz(file = workspaceimage, n.cores = threads)
-        } else {
-            flog.info("Saving project workspace image. Please be patient...")
-            save.image(workspaceimage)
-        }
+        save_workspace_image_safely(workspaceimage = workspaceimage, threads = threads, verify = verify)
 
     } else if (operation == "load"){
 
-        if ("fastSave" %in% rownames(installed.packages())){
-            flog.info(paste("Loading project workspace image using fastSave package with", opt$threads, "CPUs"))
-            load.pigz(file = workspaceimage, verbose = TRUE)
-        } else {
-            flog.info("Loading project workspace image. Please be patient...")
-            save.image(workspaceimage)
-        }
+        #n.b. this previously called save.image() here when fastSave was absent, which would have overwritten
+        #the image with the current session instead of loading it. Images written by pigz are ordinary gzip
+        #streams, so base load() reads them on every OS. Load into the global environment, where they were saved from.
+        flog.info("Loading project workspace image. Please be patient...")
+        load(workspaceimage, envir = globalenv())
 
-    } else {
-        flog.info("You must choose between \"load\" or \"save\" as an operation.")
     }
 
     if (verbose){
         flog.info("Random Access Memory (RAM) status")
         print(RAMbytes_status(RAMbytesavail = RAMbytesavail))
     }
+
+    invisible(workspaceimage)
+}
+
+
+#' save_workspace_image_safely(workspaceimage = NULL, threads = 1, verify = TRUE)
+#'
+#' Internal. Saves every object in the global environment (like save.image()) to workspaceimage.
+#' Multi-threaded gzip compression through the pigz program when available, otherwise single-threaded base R.
+#' Writes to a temporary file in the same folder and renames it over workspaceimage only on success.
+#' @keywords internal
+save_workspace_image_safely <- function(workspaceimage = NULL, threads = 1, verify = TRUE){
+
+    workspaceimage <- normalizePath(workspaceimage, mustWork = FALSE)
+    targetdir <- dirname(workspaceimage)
+    if (!dir.exists(targetdir)){
+        stop(paste("Cannot save the workspace image: folder", targetdir, "does not exist."))
+    }
+    #Same folder as the target, so the final rename is atomic and never crosses file systems.
+    tmpimage <- file.path(targetdir, paste0(".", basename(workspaceimage), ".partial_", Sys.getpid()))
+    on.exit(if (file.exists(tmpimage)) unlink(tmpimage), add = TRUE)
+
+    objs <- ls(envir = globalenv(), all.names = TRUE)
+    t0 <- Sys.time()
+    saved_with <- NULL
+
+    pigz <- Sys.which("pigz")
+    if (nzchar(pigz)){
+        flog.info(paste("Saving project workspace image with pigz using", threads, "CPUs. Please be patient..."))
+        pigz_ok <- tryCatch({
+            #pigz reads the serialized workspace from the pipe and writes a standard gzip file.
+            con <- pipe(paste(shQuote(pigz), "-p", threads, ">", shQuote(tmpimage)), open = "wb")
+            pipe_status <- NULL
+            tryCatch(save(list = objs, file = con, envir = globalenv()),
+                     finally = { pipe_status <- close(con) })
+            #close() on a pipe returns the exit status of pigz (e.g. non-zero if the disk filled up).
+            (is.null(pipe_status) || identical(as.integer(pipe_status), 0L)) && file.exists(tmpimage) && (file.size(tmpimage) > 0)
+        }, error = function(e){
+            flog.warn(paste("Multi-threaded save with pigz failed:", conditionMessage(e)))
+            FALSE
+        })
+
+        if (pigz_ok && verify){
+            flog.info("Verifying integrity of the saved image...")
+            test_status <- suppressWarnings(system2(pigz, c("-t", shQuote(tmpimage)), stdout = FALSE, stderr = FALSE))
+            pigz_ok <- identical(as.integer(test_status), 0L)
+            if (!pigz_ok){
+                flog.warn("The pigz-compressed image failed its integrity test.")
+            }
+        }
+
+        if (pigz_ok){
+            saved_with <- paste("pigz with", threads, "CPUs")
+        } else {
+            unlink(tmpimage)
+            flog.warn("Falling back to single-threaded saving with base R. The previous image (if any) is untouched.")
+        }
+    } else {
+        flog.info("The pigz program was not found on your PATH, so the workspace image will be saved single-threaded, which is slow for large projects.")
+        flog.info("For multi-threaded saving install pigz (HPC: usually 'module load pigz'; macOS: 'brew install pigz'; Ubuntu/Debian: 'apt install pigz'; conda: 'conda install -c conda-forge pigz').")
+    }
+
+    if (is.null(saved_with)){
+        flog.info("Saving project workspace image. Please be patient...")
+        save(list = objs, file = tmpimage, envir = globalenv(), compress = TRUE)
+        saved_with <- "base R (single-threaded)"
+    }
+
+    #Replace the previous image only now that the new one is complete.
+    if (!file.rename(tmpimage, workspaceimage)){
+        stop(paste("The workspace image was written to", tmpimage, "but could not be renamed to", workspaceimage, "- the previous image (if any) is untouched."))
+    }
+
+    flog.info(sprintf("Workspace image saved with %s in %s (%.2f GB).", saved_with, format(round(difftime(Sys.time(), t0), 1)), file.size(workspaceimage) / 1e9))
+
+    invisible(workspaceimage)
 }
 
 
@@ -602,16 +812,23 @@ getOrdinalNumber1 <- function(num) {
 }
 
 
-#' install_biocon_deps()
+#' install_biocon_deps(include_optional = TRUE)
 #'
 #' Installs Bioconductor JAMS dependencies
 #' @export
 
-install_biocon_deps <- function(){
-bioconductordeps <- c("dada2", "ComplexHeatmap", "HybridMTest", "genefilter", "SummarizedExperiment")
-    if (!requireNamespace("BiocManager", quietly = TRUE))
-        install.packages("BiocManager")
-    BiocManager::install(bioconductordeps)
+install_biocon_deps <- function(include_optional = TRUE){
+    #Required by JAMS
+    bioconductordeps <- c("SummarizedExperiment", "ComplexHeatmap", "Biostrings")
+    #Optional: dada2/DECIPHER for JAMS16, ggtree/ggtreeExtra for plot_taxsplit_tree()
+    if (include_optional){
+        bioconductordeps <- c(bioconductordeps, "dada2", "DECIPHER", "ggtree", "ggtreeExtra")
+    }
+    if (!requireNamespace("BiocManager", quietly = TRUE)){
+        install.packages("BiocManager", repos = "https://cloud.r-project.org")
+    }
+    #Do not pin a Bioconductor version: BiocManager picks the release that matches the running R.
+    BiocManager::install(bioconductordeps, update = FALSE, ask = FALSE)
 }
 
 
@@ -1458,4 +1675,40 @@ export_df <- function(df = NULL, output_basename = NULL, export_path = NULL, exp
     }
 
     return(invisible(NULL))
+}
+
+#' jams_rowSds(x, ...)
+#'
+#' Internal. Row-wise standard deviation for dense or sparse (Matrix) matrices and data frames.
+#' Same arithmetic as genefilter::rowSds(), which used to mask matrixStats::rowSds() when JAMS
+#' attached genefilter; inlined so genefilter is no longer needed.
+#' @keywords internal
+jams_rowSds <- function(x, ...){
+    n <- rowSums(!is.na(x))
+    n[n <= 1] <- NA
+    rowvars <- rowSums((x - rowMeans(x, ...))^2, ...) / (n - 1)
+
+    return(sqrt(rowvars))
+}
+
+
+#' merge_option_lists(x = NULL, y = NULL)
+#'
+#' Returns list x with any named elements of list y that x lacks added to it (x wins on conflicts).
+#' Used to fill command line options with defaults. Same behaviour as RCurl::merge.list(), which JAMS
+#' used to get by attaching RCurl; RCurl is no longer a JAMS dependency.
+#' @export
+merge_option_lists <- function(x = NULL, y = NULL){
+    if (length(x) == 0){
+        return(y)
+    }
+    if (length(y) == 0){
+        return(x)
+    }
+    i <- is.na(match(names(y), names(x)))
+    if (any(i)){
+        x[names(y)[which(i)]] <- y[which(i)]
+    }
+
+    return(x)
 }

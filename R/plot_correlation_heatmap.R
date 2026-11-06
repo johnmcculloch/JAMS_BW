@@ -139,7 +139,7 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
             #negative and a row need not sum to >0 to be informative, so only drop rows with
             #no variance (which cannot be correlated) plus unnamed/NA rows.
             if (normalization == "clr"){
-                rowsToKeep <- which(rowSds(countmat) > 0 & rownames(countmat) != "" & !is.na(rownames(countmat)))
+                rowsToKeep <- which(jams_rowSds(countmat) > 0 & rownames(countmat) != "" & !is.na(rownames(countmat)))
             } else {
                 rowsToKeep <- which(rowSums(countmat) > 0 & rownames(countmat) != "" & !is.na(rownames(countmat)))
             }
@@ -156,7 +156,7 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
 
             if (!is.null(ntopvar)){
                 ntop <- min(ntopvar, nrow(countmat))
-                featsds <- rowSds(countmat)
+                featsds <- jams_rowSds(countmat)
                 featIndices <- names(featsds[order(featsds, decreasing = TRUE)[1:ntop]])
                 countmat <- countmat[featIndices, , drop = FALSE]
                 ntopvarmsg <- paste("Top", ntop, "most variant features across samples")

@@ -2,18 +2,21 @@
 % Please edit documentation in R/useful_functions.R
 \name{IO_jams_workspace_image}
 \alias{IO_jams_workspace_image}
-\title{IO_jams_workspace_image(opt = NULL, workspaceimage = NULL, threads = 8, operation = c("save", "load"))
-Safe way of either loading or saving an R workspace image. If argument workspaceimage is null, workspace image file will be searched for in opt (opt$projimage). If that is also NULL, saving or loading is aborted. If the fastSave package () is installed, multi-threaded loading or saving will be used. If opt is passed, number of CPUs will be set to opt$threads, trumping the threads argument.}
+\title{IO_jams_workspace_image(opt = NULL, workspaceimage = NULL, threads = 8, operation = c("save", "load"), verbose = FALSE, verify = TRUE)
+Safe way of either loading or saving an R workspace image (the global environment). If argument workspaceimage is null, workspace image file will be searched for in opt (opt$projimage). If that is also NULL, saving or loading is aborted. If opt is passed, number of CPUs will be set to opt$threads, trumping the threads argument.}
 \usage{
 IO_jams_workspace_image(
   opt = NULL,
   workspaceimage = NULL,
   threads = 8,
   operation = NULL,
-  verbose = FALSE
+  verbose = FALSE,
+  verify = TRUE
 )
 }
+\arguments{
+\item{verify}{If TRUE (default), test the integrity of a pigz-compressed image before it replaces the previous one.}
+}
 \description{
-IO_jams_workspace_image(opt = NULL, workspaceimage = NULL, threads = 8, operation = c("save", "load"))
-Safe way of either loading or saving an R workspace image. If argument workspaceimage is null, workspace image file will be searched for in opt (opt$projimage). If that is also NULL, saving or loading is aborted. If the fastSave package () is installed, multi-threaded loading or saving will be used. If opt is passed, number of CPUs will be set to opt$threads, trumping the threads argument.
+Saving is multi-threaded whenever the pigz program is on the PATH (no R package needed): the image is streamed through "pigz -p <threads>", which writes an ordinary gzip-compressed .RData file that base R load() reads on any OS, laptops included. Without pigz, a single-threaded base R save is used. Either way the image is first written to a temporary file next to the target and only renamed over the previous image once it is complete (and, with verify = TRUE, has passed "pigz -t"), so a crash, a full disk or a job hitting its walltime mid-save never destroys the previous image.
 }

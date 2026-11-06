@@ -67,6 +67,10 @@ load_jamsfiles_from_system <- function(path = ".", recursive = TRUE, onlysamples
             } else {
                 appropriatenumcores <- as.numeric(use_exactly_n_threads)
             }
+            if (.Platform$OS.type == "windows"){
+                #mclapply cannot fork on Windows
+                appropriatenumcores <- 1
+            }
             explist <- mclapply(1:nrow(jamsfilesdfwant), function (x) { decompress_jamsfile(x) }, mc.cores = appropriatenumcores)
         } else {
             for (f in 1:nrow(jamsfilesdfwant)){

@@ -33,7 +33,7 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, only_all
         index_matrix <- as.data.frame(assays(FuncExpObj)[["SparseIndex"]])
         #Subset to only wanted features and samples
         index_matrix <- index_matrix[wantedfeatures, wantedsamples, drop = FALSE]
-        rowsinterestdf <- as.data.frame(index_matrix) %>% rownames_to_column("Accession") %>% pivot_longer(cols = -Accession, names_to = "Sample", values_to = "RowNumber")
+        rowsinterestdf <- as.data.frame(index_matrix) %>% tibble::rownames_to_column("Accession") %>% pivot_longer(cols = -Accession, names_to = "Sample", values_to = "RowNumber")
         rowsinterestdf <- as.data.frame(rowsinterestdf)
 
     } else {

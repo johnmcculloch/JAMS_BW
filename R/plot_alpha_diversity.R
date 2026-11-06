@@ -438,7 +438,7 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
     }#End loop for each subset
 
     if (returnstats){
-        gvec <- merge.list(gvec, svec)
+        gvec <- merge_option_lists(gvec, svec)
     }
 
     return(gvec)

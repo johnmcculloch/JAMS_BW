@@ -1,0 +1,526 @@
+#!/usr/bin/env Rscript
+#############################################################################################
+## JAMSinstaller - installs the JAMS R package and its dependencies on any system.
+##
+## Works on:
+##   * HPC clusters (Slurm, PBS/Torque, SGE, LSF) and stand-alone Linux servers, for running JAMSalpha/JAMSbeta;
+##   * Linux and macOS (Intel and Apple silicon) laptops/desktops;
+##   * Windows laptops (R package only, for loading and plotting a JAMSbeta workspace sent by a colleague).
+##
+## Usage (Linux/macOS terminal):
+##   Rscript JAMSinstaller --install [options]
+##
+## Usage (Windows, or from inside R/RStudio on any OS):
+##   setwd("path/to/JAMS_BW")
+##   source("JAMSinstaller")                       #installs with the defaults for your system
+##   #To pass options when sourcing, first define e.g.
+##   #JAMS_INSTALL_ARGS <- c("--install", "--profile", "minimal")
+##
+## The list of R dependencies is read from the DESCRIPTION file of the JAMS clone this script lives in,
+## so this script never needs editing when dependencies change:
+##   Depends + Imports  -> required; installation stops if any of them fails.
+##   Suggests           -> optional; failures are reported but do not stop the installation.
+## Base R only is used until BiocManager/remotes are installed: we do not know yet what the user has.
+#############################################################################################
+
+print_help <- function(){
+    cat("JAMSinstaller - installs the JAMS package and its dependencies on your system.\n")
+    cat("Instructions: https://github.com/johnmcculloch/JAMS_BW/wiki\n\n")
+    cat("Usage: Rscript JAMSinstaller --install [options]\n\n")
+    cat("Options:\n")
+    cat("  --install               Required to actually install (otherwise this help is shown).\n")
+    cat("  --profile <name>        What to install. One of:\n")
+    cat("                            minimal : JAMS + required dependencies only.\n")
+    cat("                            beta    : minimal + optional plotting extras (tSNE, word clouds, taxonomy trees,\n")
+    cat("                                      interactive colour editor). Default on macOS and Windows.\n")
+    cat("                            full    : beta + dada2/DECIPHER (JAMS16). Default on Linux.\n")
+    cat("  --lib <path>            R library to install into. Default: the first writable library in .libPaths(),\n")
+    cat("                          otherwise your personal library (R_LIBS_USER), which is created if needed.\n")
+    cat("  --linkto <path>         Folder in which to create symbolic links to the JAMS executables (Linux/macOS only).\n")
+    cat("                          Default: ~/bin (created if absent). Use --no-links to skip.\n")
+    cat("  --no-links              Do not create symbolic links to the JAMS executables.\n")
+    cat("  --bioc-version <x.y>    Pin a Bioconductor release (e.g. 3.23). Default: the release that matches your R,\n")
+    cat("                          as chosen by BiocManager. Only pin if you know you need to.\n")
+    cat("  --no-update             Do not update outdated packages already in your library (by default BiocManager\n")
+    cat("                          updates them, so that new packages never meet too-old dependencies).\n")
+    cat("  --force                 Reinstall dependencies even if they are already installed.\n")
+    cat("  --dry-run               Show what would be done, without installing anything.\n")
+    cat("  --help                  Show this help.\n\n")
+    cat("Environment variables understood by JAMS at run time: JAMS_THREADS and JAMS_MEMORY_GB override the\n")
+    cat("detected number of CPUs and amount of RAM (useful on shared servers without a job scheduler).\n")
+}
+
+##########################
+## Parse the arguments  ##
+##########################
+if (exists("JAMS_INSTALL_ARGS", envir = globalenv())){
+    args <- as.character(get("JAMS_INSTALL_ARGS", envir = globalenv()))
+} else {
+    args <- commandArgs(trailingOnly = TRUE)
+    #When source()d interactively (e.g. on Windows) there are no command line arguments: use the defaults.
+    if ((length(args) == 0) && interactive()){
+        args <- "--install"
+    }
+}
+
+flags_without_value <- c("--install", "--no-links", "--no-update", "--force", "--dry-run", "--help", "-h", "--onlybeta")
+flags_with_value <- c("--profile", "--lib", "--linkto", "--bioc-version")
+opts <- list()
+i <- 1
+while (i <= length(args)){
+    a <- args[i]
+    if (a %in% flags_with_value){
+        if ((i == length(args)) || startsWith(args[i + 1], "--")){
+            stop(paste("Option", a, "needs a value. Run with --help for usage."))
+        }
+        opts[[a]] <- args[i + 1]
+        i <- i + 2
+    } else if (a %in% flags_without_value){
+        opts[[a]] <- TRUE
+        i <- i + 1
+    } else {
+        cat(paste0("Unknown option: ", a, "\n\n"))
+        print_help()
+        stop("Unknown option.", call. = FALSE)
+    }
+}
+
+if (is.null(opts[["--install"]]) || !is.null(opts[["--help"]]) || !is.null(opts[["-h"]])){
+    print_help()
+    #quit() would close an interactive R session; only use it under Rscript.
+    if (interactive()) {
+        stop("Nothing installed. Run with --install.", call. = FALSE)
+    } else {
+        quit(save = "no", status = 0)
+    }
+}
+
+#Backwards compatibility with the old JAMSinstaller_BW option
+if (!is.null(opts[["--onlybeta"]]) && is.null(opts[["--profile"]])){
+    opts[["--profile"]] <- "beta"
+}
+
+dry_run <- !is.null(opts[["--dry-run"]])
+update_old <- is.null(opts[["--no-update"]])
+force_install <- !is.null(opts[["--force"]])
+
+say <- function(...){
+    cat(paste0("[JAMSinstaller] ", paste0(...), "\n"))
+}
+rule <- function(title){
+    cat(paste0("\n==== ", title, " ", strrep("=", max(3, 70 - nchar(title))), "\n"))
+}
+
+#########################################
+## Where is JAMS, and what system is it ##
+#########################################
+getScriptPath <- function(){
+    #source()d (from R, RStudio, or the JAMSinstaller_BW shim): the innermost source() call knows the file name.
+    for (fr in rev(sys.frames())){
+        if (!is.null(fr$ofile)){
+            return(dirname(normalizePath(fr$ofile)))
+        }
+    }
+    #Run with Rscript
+    cmdArgs <- commandArgs(trailingOnly = FALSE)
+    needle <- "--file="
+    hit <- grep(needle, cmdArgs, fixed = TRUE)
+    if (length(hit) > 0){
+        return(dirname(normalizePath(sub(needle, "", cmdArgs[hit[1]], fixed = TRUE))))
+    }
+    return(normalizePath(getwd()))
+}
+
+jamsdir <- getScriptPath()
+if (!file.exists(file.path(jamsdir, "DESCRIPTION"))){
+    stop(paste("Could not find the JAMS DESCRIPTION file in", jamsdir, "- run this script from inside your JAMS_BW folder."))
+}
+jamsdesc <- read.dcf(file.path(jamsdir, "DESCRIPTION"))
+jams_version <- unname(jamsdesc[1, "Version"])
+
+os_type <- .Platform$OS.type
+sysname <- Sys.info()[["sysname"]]
+on_windows <- (os_type == "windows")
+on_mac <- (sysname == "Darwin")
+on_linux <- (sysname == "Linux")
+
+rule(paste("Installing JAMS", jams_version))
+say("JAMS source folder: ", jamsdir)
+say("Operating system: ", sysname, " ", Sys.info()[["release"]], " (", Sys.info()[["machine"]], ")")
+say("R: ", R.version.string, " (", R.version$arch, ")")
+
+#R version. The DESCRIPTION file holds the hard minimum.
+r_min <- "4.3.0"
+dep_field <- if ("Depends" %in% colnames(jamsdesc)) jamsdesc[1, "Depends"] else ""
+r_min_hit <- regmatches(dep_field, regexpr("R \\(>= *[0-9.]+\\)", dep_field))
+if (length(r_min_hit) == 1){
+    r_min <- gsub("[^0-9.]", "", sub("^R", "", r_min_hit))
+}
+if (getRversion() < r_min){
+    stop(paste0("JAMS needs R >= ", r_min, ". You have ", getRversion(), ". Please update R (https://cran.r-project.org) and try again."))
+}
+if (getRversion() < "4.5.0"){
+    say("NOTE: R ", getRversion(), " works, but the Bioconductor release for it is frozen. R 4.5 or newer is recommended.")
+}
+
+#macOS: warn if an Intel build of R is running under Rosetta on Apple silicon (slow, and different binaries).
+if (on_mac && (R.version$arch != "aarch64")){
+    translated <- tryCatch(suppressWarnings(system2("sysctl", c("-n", "sysctl.proc_translated"), stdout = TRUE, stderr = FALSE)), error = function(e) character(0))
+    if ((length(translated) > 0) && identical(trimws(translated[1]), "1")){
+        say("WARNING: this Mac has an Apple silicon processor but you are running the Intel build of R under Rosetta.")
+        say("         It will work, but installing the arm64 ('Apple silicon') build of R from CRAN is much faster.")
+    }
+}
+
+#Job scheduler (informational only; JAMS::detectHardwareResources() deals with this at run time)
+scheduler <- "none"
+if (nzchar(Sys.getenv("SLURM_JOB_ID"))) {
+    scheduler <- "Slurm"
+} else if (nzchar(Sys.getenv("PBS_JOBID"))) {
+    scheduler <- "PBS/Torque"
+} else if (nzchar(Sys.getenv("JOB_ID")) && nzchar(Sys.getenv("SGE_ROOT"))) {
+    scheduler <- "SGE/UGE"
+} else if (nzchar(Sys.getenv("LSB_JOBID"))) {
+    scheduler <- "LSF"
+}
+say("Inside a batch job: ", ifelse(scheduler == "none", "no", scheduler))
+
+#Profile
+profile <- opts[["--profile"]]
+if (is.null(profile)){
+    profile <- if (on_linux) "full" else "beta"
+}
+profile <- tolower(profile)
+if (!(profile %in% c("minimal", "beta", "full"))){
+    stop("--profile must be one of minimal, beta or full.")
+}
+if (on_windows && (profile == "full")){
+    say("NOTE: JAMSalpha and JAMS16 need a Unix system. On Windows the 'beta' profile is used instead of 'full'.")
+    profile <- "beta"
+}
+say("Installation profile: ", profile)
+
+#########################
+## R library location  ##
+#########################
+#file.access() ignores folder permissions on Windows, so actually try to create something (as install.packages does).
+is_writable <- function(path){
+    if (!dir.exists(path)){
+        return(FALSE)
+    }
+    probe <- file.path(path, paste0("_jams_write_test_", Sys.getpid()))
+    ok <- suppressWarnings(dir.create(probe, showWarnings = FALSE))
+    if (ok){
+        unlink(probe, recursive = TRUE)
+    }
+    ok
+}
+r_libs_user <- strsplit(Sys.getenv("R_LIBS_USER"), .Platform$path.sep)[[1]]
+r_libs_user <- if (length(r_libs_user) > 0) path.expand(r_libs_user[1]) else ""
+orig_libpaths <- normalizePath(.libPaths(), mustWork = FALSE)
+rlib <- opts[["--lib"]]
+if (is.null(rlib)){
+    #Like install.packages(): the first library in .libPaths() that we can really write to (personal, site,
+    #conda env or R's own library), otherwise the personal library R_LIBS_USER, created if needed.
+    candidates <- .libPaths()
+    writable <- candidates[vapply(candidates, is_writable, logical(1))]
+    if (length(writable) > 0){
+        rlib <- writable[1]
+    } else if (nzchar(r_libs_user)){
+        rlib <- r_libs_user
+    } else {
+        rlib <- file.path(Sys.getenv("HOME"), "R", "library")
+    }
+}
+rlib <- path.expand(rlib)
+if (!dir.exists(rlib) && !dry_run){
+    dir.create(rlib, recursive = TRUE, showWarnings = FALSE)
+}
+if (!dry_run && !is_writable(rlib)){
+    stop(paste("Cannot write to the R library", rlib, "- choose another one with --lib <path>."))
+}
+#Put the target library first so every installer below (BiocManager, remotes) writes there.
+.libPaths(unique(c(rlib, .libPaths())))
+say("R packages will be installed to: ", rlib)
+#Warn if future R sessions will not look in this library by themselves.
+default_libs <- c(orig_libpaths, normalizePath(r_libs_user, mustWork = FALSE))
+if (!(normalizePath(rlib, mustWork = FALSE) %in% default_libs)){
+    say("NOTE: ", rlib, " is not one of R's default libraries. Make sure future R sessions can find it, e.g. by adding")
+    say("      R_LIBS_USER=", rlib, "  to your ~/.Renviron")
+}
+
+##################################
+## What needs to be installed   ##
+##################################
+parse_dep_field <- function(field){
+    if (!(field %in% colnames(jamsdesc)) || is.na(jamsdesc[1, field])){
+        return(character(0))
+    }
+    pkgs <- trimws(strsplit(gsub("\\s+", " ", jamsdesc[1, field]), ",")[[1]])
+    pkgs <- trimws(sub("\\(.*\\)", "", pkgs))
+    pkgs[nzchar(pkgs)]
+}
+base_pkgs <- c("R", rownames(installed.packages(priority = "base")), "parallel", "grid", "tools", "utils", "stats", "methods", "graphics", "grDevices", "splines", "stats4", "tcltk", "compiler")
+required_pkgs <- setdiff(unique(c(parse_dep_field("Depends"), parse_dep_field("Imports"))), base_pkgs)
+suggested_pkgs <- setdiff(parse_dep_field("Suggests"), base_pkgs)
+
+#Optional packages that need special handling or only make sense in some profiles
+full_only <- c("dada2", "DECIPHER")                           #JAMS16 (amplicon pipeline); Unix only in practice
+optional_pkgs <- setdiff(suggested_pkgs, c(full_only, "BiocManager"))
+if (profile == "minimal"){
+    optional_pkgs <- character(0)
+} else if (profile == "full"){
+    optional_pkgs <- c(optional_pkgs, intersect(full_only, suggested_pkgs))
+}
+
+say("Required R packages (", length(required_pkgs), "): ", paste(required_pkgs, collapse = ", "))
+say("Optional R packages (", length(optional_pkgs), "): ", ifelse(length(optional_pkgs) > 0, paste(optional_pkgs, collapse = ", "), "none"))
+
+if (dry_run){
+    missing_req <- required_pkgs[!vapply(required_pkgs, requireNamespace, logical(1), quietly = TRUE)]
+    say("Dry run: ", length(missing_req), " required package(s) are currently missing: ", paste(missing_req, collapse = ", "))
+    say("Dry run: nothing was installed.")
+    if (interactive()) {
+        stop("Dry run finished.", call. = FALSE)
+    } else {
+        quit(save = "no", status = 0)
+    }
+}
+
+#####################################
+## Network and installer settings  ##
+#####################################
+cran <- "https://cloud.r-project.org"
+options(repos = c(CRAN = cran), timeout = max(600, getOption("timeout")))
+#Use binary packages without prompting on macOS and Windows; only compile when no binary exists at all.
+if (on_mac || on_windows){
+    options(install.packages.compile.from.source = "never")
+}
+#Parallel compilation for source installs (Linux mostly)
+ncpus_build <- tryCatch(max(1, min(8, parallel::detectCores() - 1)), error = function(e) 1)
+if (is.na(ncpus_build)) {
+    ncpus_build <- 1
+}
+options(Ncpus = ncpus_build)
+
+online <- tryCatch({ curlGetHeaders(cran, timeout = 20L); TRUE }, error = function(e) FALSE)
+if (!online){
+    stop(paste0("Cannot reach ", cran, ". JAMSinstaller needs internet access.\n",
+                "On an HPC cluster, compute nodes are often offline: run the installer on a login node (or a node with internet access),\n",
+                "or set the https_proxy environment variable if your site uses a proxy."))
+}
+
+#Hints shown if something fails to compile
+system_library_hints <- function(){
+    if (on_linux){
+        osrel <- if (file.exists("/etc/os-release")) tolower(paste(readLines("/etc/os-release", warn = FALSE), collapse = " ")) else ""
+        cat("\nSome packages had to be compiled from source and failed. This is nearly always a missing system library.\n")
+        if (grepl("ubuntu|debian", osrel)){
+            cat("On Ubuntu/Debian, ask your administrator (or use sudo) to run:\n")
+            cat("  apt-get install -y build-essential gfortran cmake libcurl4-openssl-dev libssl-dev libpng-dev zlib1g-dev libbz2-dev liblzma-dev\n")
+        } else if (grepl("rhel|centos|rocky|alma|fedora|red hat", osrel)){
+            cat("On RedHat/Rocky/Alma/Fedora, ask your administrator (or use sudo) to run:\n")
+            cat("  dnf install -y gcc gcc-c++ gcc-gfortran make cmake libcurl-devel openssl-devel libpng-devel zlib-devel bzip2-devel xz-devel\n")
+        } else {
+            cat("Needed: C/C++/Fortran compilers, cmake, and the development headers for libcurl, openssl, libpng, zlib, bzip2 and xz/lzma.\n")
+        }
+        cat("On an HPC cluster these are usually available as modules (e.g. 'module load cmake gcc') - check your site's documentation.\n")
+    } else if (on_mac){
+        cat("\nA package needed compiling from source and failed. Install Apple's command line tools with:  xcode-select --install\n")
+        cat("and, if Fortran is mentioned in the error, the gfortran build recommended at https://mac.r-project.org/tools/\n")
+    } else if (on_windows){
+        cat("\nA package needed compiling from source and failed. Install the Rtools version matching your R from\n")
+        cat("https://cran.r-project.org/bin/windows/Rtools/ and try again.\n")
+    }
+}
+
+#############################################
+## Bootstrap: BiocManager and remotes      ##
+#############################################
+rule("Bootstrapping BiocManager and remotes")
+for (bootpkg in c("BiocManager", "remotes")){
+    if (!requireNamespace(bootpkg, quietly = TRUE)){
+        install.packages(bootpkg, lib = rlib)
+    }
+    if (!requireNamespace(bootpkg, quietly = TRUE)){
+        stop(paste("Could not install", bootpkg, "from CRAN."))
+    }
+}
+
+bioc_version <- opts[["--bioc-version"]]
+bioc_args <- list(ask = FALSE, update = update_old, lib = rlib)
+if (!is.null(bioc_version)){
+    bioc_args$version <- bioc_version
+}
+#Let BiocManager tell us which Bioconductor release goes with this R (or validate the pinned one).
+bioc_ok <- tryCatch({
+    if (!is.null(bioc_version)){
+        do.call(BiocManager::install, c(list(pkgs = character(0)), bioc_args))
+    }
+    say("Bioconductor release: ", as.character(BiocManager::version()))
+    TRUE
+}, error = function(e){
+    say("ERROR from BiocManager: ", conditionMessage(e))
+    FALSE
+})
+if (!bioc_ok){
+    stop(paste0("BiocManager could not set up a Bioconductor release for R ", getRversion(), ".\n",
+                "If you used --bioc-version, remove it so BiocManager picks the release that matches your R.\n",
+                "Each Bioconductor release supports exactly one R x.y version (e.g. Bioconductor 3.23 needs R 4.6)."))
+}
+
+install_pkgs <- function(pkgs, label){
+    if (length(pkgs) == 0){
+        return(character(0))
+    }
+    todo <- if (force_install) pkgs else pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
+    if (length(todo) == 0){
+        say("All ", label, " packages are already installed.")
+        return(character(0))
+    }
+    say("Installing ", length(todo), " ", label, " package(s): ", paste(todo, collapse = ", "))
+    #BiocManager installs from CRAN and Bioconductor alike, with matching versions.
+    tryCatch(do.call(BiocManager::install, c(list(pkgs = todo, force = force_install), bioc_args)),
+             error = function(e) say("Installer reported: ", conditionMessage(e)))
+    failed <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
+
+    return(failed)
+}
+
+#####################################
+## Required dependencies           ##
+#####################################
+rule("Installing required dependencies")
+failed_required <- install_pkgs(required_pkgs, "required")
+if (length(failed_required) > 0){
+    system_library_hints()
+    stop(paste("These required packages could not be installed:", paste(failed_required, collapse = ", "),
+               "\nScroll up for the first error message of each one, fix it, and run the installer again (already installed packages are skipped)."))
+}
+
+#####################################
+## Optional dependencies           ##
+#####################################
+failed_optional <- character(0)
+if (length(optional_pkgs) > 0){
+    rule("Installing optional dependencies")
+    failed_optional <- install_pkgs(optional_pkgs, "optional")
+}
+#Multi-threaded saving of JAMS workspace images (IO_jams_workspace_image) needs only the pigz program, not an R package.
+if (!on_windows && !nzchar(Sys.which("pigz"))){
+    say("NOTE: the 'pigz' program is not on your PATH. JAMS will still work, but saving large JAMSbeta workspace images")
+    say("      will be single-threaded and slow. Install pigz (HPC: 'module load pigz'; macOS: 'brew install pigz';")
+    say("      Ubuntu/Debian: 'apt install pigz'; RedHat: 'dnf install pigz'; conda: 'conda install -c conda-forge pigz').")
+}
+
+#####################################
+## JAMS itself                     ##
+#####################################
+rule("Installing JAMS")
+#remotes::install_local records where JAMS was installed from (RemoteUrl), which JAMS uses to tell you when an update is available.
+jams_ok <- tryCatch({
+    remotes::install_local(jamsdir, dependencies = FALSE, upgrade = "never", force = TRUE, build = FALSE, lib = rlib)
+    TRUE
+}, error = function(e){
+    say("remotes::install_local failed (", conditionMessage(e), "); trying install.packages instead.")
+    tryCatch({
+        install.packages(jamsdir, repos = NULL, type = "source", lib = rlib)
+        TRUE
+    }, error = function(e2) FALSE)
+})
+
+#Check JAMS loads in a fresh R process, exactly as a user (or JAMSalpha/JAMSbeta) would.
+#The test code goes in a temporary file to avoid shell quoting differences between Windows and Unix.
+rscript <- file.path(R.home("bin"), ifelse(on_windows, "Rscript.exe", "Rscript"))
+check_file <- tempfile(fileext = ".R")
+writeLines(c(paste0(".libPaths(c(", deparse(rlib), ", .libPaths()))"),
+             "options(JAMS.check_updates = FALSE)",
+             "suppressPackageStartupMessages(library(JAMS))",
+             "hw <- detectHardwareResources()",
+             "cat('JAMS', as.character(packageVersion('JAMS')), 'loaded OK. Detected', hw[['threads']], 'CPUs and', round(hw[['memory']] / 1e9, 1), 'GB of RAM.', '\\n')"),
+           check_file)
+load_out <- tryCatch(suppressWarnings(system2(rscript, shQuote(check_file), stdout = TRUE, stderr = TRUE)), error = function(e) conditionMessage(e))
+load_ok <- jams_ok && any(grepl("loaded OK", load_out, fixed = TRUE))
+cat(paste(load_out, collapse = "\n"), "\n")
+if (!load_ok){
+    stop("JAMS was not installed correctly or does not load. See the messages above.")
+}
+
+#####################################
+## Executables (Linux/macOS only)  ##
+#####################################
+binexecs <- c("JAMSalpha", "JAMSbeta", "JAMS16", "JAMSbuildk2db", "JAMSjoinlanes", "JAMSmakeswarm", "JAMSbankit", "JAMSfastqprefixrenamer")
+if (!on_windows && is.null(opts[["--no-links"]])){
+    rule("Linking JAMS executables")
+    linkto <- opts[["--linkto"]]
+    if (is.null(linkto)){
+        linkto <- file.path(Sys.getenv("HOME"), "bin")
+    }
+    linkto <- path.expand(linkto)
+    if (!dir.exists(linkto)){
+        say("Creating ", linkto)
+        dir.create(linkto, recursive = TRUE, showWarnings = FALSE)
+    }
+    jamsbinpath <- file.path(jamsdir, "libexec")
+    for (binexec in binexecs){
+        sourcepath <- file.path(jamsbinpath, binexec)
+        targetpath <- file.path(linkto, binexec)
+        if (!file.exists(sourcepath)){
+            next
+        }
+        Sys.chmod(sourcepath, mode = "0755", use_umask = TRUE)
+        current_target <- Sys.readlink(targetpath)
+        if (identical(normalizePath(current_target, mustWork = FALSE), normalizePath(sourcepath, mustWork = FALSE))){
+            say(targetpath, " already points to this JAMS")
+        } else if (file.exists(targetpath) || nzchar(current_target)){
+            if (force_install && nzchar(current_target)){
+                file.remove(targetpath)
+                file.symlink(sourcepath, targetpath)
+                say("Re-linked ", targetpath, " -> ", sourcepath)
+            } else {
+                say(targetpath, " already exists and points elsewhere (", ifelse(nzchar(current_target), current_target, "regular file"), "); left untouched. Use --force to re-link symbolic links.")
+            }
+        } else {
+            file.symlink(sourcepath, targetpath)
+            say("Linked ", targetpath, " -> ", sourcepath)
+        }
+    }
+    path_dirs <- normalizePath(strsplit(Sys.getenv("PATH"), .Platform$path.sep)[[1]], mustWork = FALSE)
+    if (!(normalizePath(linkto, mustWork = FALSE) %in% path_dirs)){
+        say("NOTE: ", linkto, " is not in your PATH. Add this line to your ~/.bashrc or ~/.zshrc:")
+        say("      export PATH=\"", linkto, ":$PATH\"")
+    }
+}
+
+#####################################
+## External programs (JAMSalpha)   ##
+#####################################
+if ((profile == "full") && !on_windows){
+    rule("External programs used by JAMSalpha")
+    say("These are not R packages and are not installed by this script. On HPC clusters they are usually")
+    say("provided as modules ('module load ...'); elsewhere conda/mamba (bioconda channel) is the easiest route.")
+    ext_tools <- c("pigz", "wget", "fasterq-dump", "trimmomatic", "seqtk", "bowtie2", "megahit", "spades.py", "samtools", "metabat2", "checkm2", "prokka", "convert2bed", "bedtools", "kraken2", "blastn")
+    found <- nzchar(Sys.which(ext_tools))
+    for (k in seq_along(ext_tools)){
+        say(sprintf("  %-14s %s", ext_tools[k], ifelse(found[k], "found", "not found in the current PATH")))
+    }
+}
+
+#####################################
+## Summary                         ##
+#####################################
+rule("Done")
+say("JAMS ", jams_version, " is installed in ", rlib, " (profile: ", profile, ", Bioconductor ", as.character(BiocManager::version()), ").")
+if (length(failed_optional) > 0){
+    say("These optional packages could not be installed: ", paste(unique(failed_optional), collapse = ", "), ".")
+    say("JAMS works without them; only the features that need them are unavailable:")
+    feature_map <- c(Rtsne = "plot_Ordination(algorithm = \"tSNE\")", wordcloud = "plot_wordcloud_sample()",
+                     ggtree = "plot_taxsplit_tree()", ggtreeExtra = "plot_taxsplit_tree()", ggnewscale = "plot_taxsplit_tree()",
+                     shiny = "tweak_ctable()", colourpicker = "tweak_ctable()", dada2 = "JAMS16", DECIPHER = "JAMS16")
+    for (fp in unique(failed_optional)){
+        say("  ", fp, ": ", ifelse(fp %in% names(feature_map), feature_map[[fp]], "optional"))
+    }
+}
+if (on_windows || profile != "full"){
+    say("To analyse a JAMSbeta workspace: start R, run library(JAMS), then load(\"<the .RData file you were sent>\").")
+}

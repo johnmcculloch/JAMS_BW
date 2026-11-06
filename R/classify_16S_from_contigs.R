@@ -5,6 +5,11 @@
 
 classify_16S_from_contigs <- function(opt = NULL){
 
+    if (!requireNamespace("dada2", quietly = TRUE)){
+        flog.warn("Package dada2 (Bioconductor, optional) is not installed, so 16S rRNA features in contigs will not be classified. Install it with BiocManager::install(\"dada2\").")
+        return(opt)
+    }
+
     setwd(opt$workdir)
 
     #Find 16S features to annotate
@@ -43,7 +48,7 @@ classify_16S_from_contigs <- function(opt = NULL){
             #Classify from Phylum to Genus
             flog.info(paste("Found", length(features16Ssequences), "16S rRNA sequences in contigs. Classifying them via dada2 using database", db16S_species))
             flog.info("Step 1 - Classifying down to Genus level using a Naive Bayesian Classifier")
-            dadataxa <- assignTaxonomy(paste(opt$prefix, "16SrRNA.fna", sep= "_"), db16S_trainset, multithread=TRUE, minBoot=80)
+            dadataxa <- dada2::assignTaxonomy(paste(opt$prefix, "16SrRNA.fna", sep= "_"), db16S_trainset, multithread=TRUE, minBoot=80)
             taxa_16S<-as.data.frame(unname(dadataxa))
             taxa_16S[] <- lapply(taxa_16S, as.character)
             colnames(taxa_16S)<-c("Domain", "Phylum", "Class", "Order", "Family", "Genus")
@@ -52,7 +57,7 @@ classify_16S_from_contigs <- function(opt = NULL){
 
             #Classify Genus and species
             flog.info("Step 2 - Classifying down to Species level using exact matches.")
-            taxa_16S_Gs<-assignSpecies(paste(opt$prefix, "16SrRNA.fna", sep= "_"), db16S_species)
+            taxa_16S_Gs<-dada2::assignSpecies(paste(opt$prefix, "16SrRNA.fna", sep= "_"), db16S_species)
             taxa_16S_Gs<-as.data.frame(unname(taxa_16S_Gs))
             taxa_16S_Gs[] <- lapply(taxa_16S_Gs, as.character)
             colnames(taxa_16S_Gs)<-c("Genus", "Species")

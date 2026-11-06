@@ -90,6 +90,11 @@ option_list <- list(
                 type = "logical",
                 help = "When building SummarizedExperiment objects, split functional (non-taxonomic) analyses by taxon."),
 
+    make_option(c("--stratification_threads"),
+                action = "store", default = NULL,
+                type = "numeric",
+                help = "Number of parallel workers used for the per-sample pass that builds the functional SummarizedExperiment objects. Defaults to min(available CPUs, 16), which is deliberately conservative. Raise it if there is RAM headroom, or set it to 1 to force single-threaded behaviour."),
+
     make_option(c("-s", "--run_script"),
                 action="store", default = NULL,
                 type="character",
@@ -412,7 +417,7 @@ if (!exists("expvec")){
         flog.info("Functional (non-taxonomic) SummarizedExperiment objects will be stratified by taxonomy.")
     }
 
-    expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data, onlyanalyses = onlyanalyses, stratify_functions_by_taxon = opt$stratify_functions_by_taxon, cdict = cdict, threads = opt$threads, totmembytes = opt$totmembytes)
+    expvec <- make_SummarizedExperiments(pheno = pheno, list.data = list.data, onlyanalyses = onlyanalyses, stratify_functions_by_taxon = opt$stratify_functions_by_taxon, cdict = cdict, threads = opt$threads, totmembytes = opt$totmembytes, stratification_threads = opt$stratification_threads)
 
 }
 

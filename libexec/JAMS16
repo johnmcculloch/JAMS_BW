@@ -1,10 +1,10 @@
 #!/usr/bin/env Rscript
-suppressPackageStartupMessages(library(RCurl))
-suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(stringr))
 suppressPackageStartupMessages(library(optparse))
 suppressPackageStartupMessages(library(futile.logger))
 suppressPackageStartupMessages(library(parallel))
-suppressPackageStartupMessages(library(benchmarkme))
 #####################################
 # Define System-specific Functions ##
 #####################################
@@ -226,6 +226,14 @@ if (is.null(opt$tempdir) & (file.exists(file.path("/lscratch", as.character(Sys.
 ## Start project ##
 ###################
 suppressMessages(suppressPackageStartupMessages(library(JAMS)))
+#dada2 and DECIPHER are optional JAMS dependencies (Bioconductor) that only JAMS16 needs.
+missing16Sdeps <- c("dada2", "DECIPHER", "Biostrings")[!sapply(c("dada2", "DECIPHER", "Biostrings"), requireNamespace, quietly = TRUE)]
+if (length(missing16Sdeps) > 0){
+    stop(paste0("JAMS16 needs the Bioconductor package(s) ", paste(missing16Sdeps, collapse = ", "), ". Install them with BiocManager::install(c(", paste0("\"", missing16Sdeps, "\"", collapse = ", "), ")) or re-run the JAMS installer with --profile full."))
+}
+suppressMessages(suppressPackageStartupMessages(library(Biostrings)))
+suppressMessages(suppressPackageStartupMessages(library(dada2)))
+suppressMessages(suppressPackageStartupMessages(library(DECIPHER)))
 opt$logfile <- file.path(opt$outdir, paste0(opt$projectname, "_JAMS.log"))
 flog.appender(appender.tee(opt$logfile))
 
