@@ -296,12 +296,30 @@ options(repos = c(CRAN = cran), timeout = max(600, getOption("timeout")))
 if (on_mac || on_windows){
     options(install.packages.compile.from.source = "never")
 }
-#Parallel compilation for source installs (Linux mostly)
-ncpus_build <- tryCatch(max(1, min(8, parallel::detectCores() - 1)), error = function(e) 1)
-if (is.na(ncpus_build)) {
-    ncpus_build <- 1
+#Parallel compilation for source installs (Linux mostly). Inside a batch job, use the CPUs allocated to the job,
+#not every core on the node (detectCores() reports the whole node).
+alloc_cpus <- NA
+for (cpuvar in c("SLURM_CPUS_PER_TASK", "SLURM_CPUS_ON_NODE", "PBS_NUM_PPN", "NCPUS", "NSLOTS", "LSB_DJOB_NUMPROC")){
+    if (is.na(alloc_cpus) && nzchar(Sys.getenv(cpuvar))){
+        alloc_cpus <- suppressWarnings(as.numeric(sub("^([0-9]+).*$", "\\1", Sys.getenv(cpuvar))))
+    }
 }
+if (is.na(alloc_cpus)){
+    alloc_cpus <- tryCatch(parallel::detectCores(), error = function(e) 1)
+}
+ncpus_build <- if (is.na(alloc_cpus)) 1 else max(1, min(8, alloc_cpus - 1))
 options(Ncpus = ncpus_build)
+say("Compiling with up to ", ncpus_build, " parallel jobs")
+
+#Compilation scratch space. Package builds run in child processes that honour TMPDIR, so point it at node-local
+#scratch when there is some (e.g. Biowulf's /lscratch/$SLURM_JOB_ID): faster, and avoids filling a small /tmp.
+if (nzchar(Sys.getenv("SLURM_JOB_ID"))){
+    lscratch <- file.path("/lscratch", Sys.getenv("SLURM_JOB_ID"))
+    if (dir.exists(lscratch) && is_writable(lscratch)){
+        Sys.setenv(TMPDIR = lscratch)
+        say("Using ", lscratch, " as temporary build space")
+    }
+}
 
 online <- tryCatch({ curlGetHeaders(cran, timeout = 20L); TRUE }, error = function(e) FALSE)
 if (!online){
