@@ -41,8 +41,10 @@ print_help <- function(){
     cat("  --no-links              Do not create symbolic links to the JAMS executables.\n")
     cat("  --bioc-version <x.y>    Pin a Bioconductor release (e.g. 3.23). Default: the release that matches your R,\n")
     cat("                          as chosen by BiocManager. Only pin if you know you need to.\n")
-    cat("  --no-update             Do not update outdated packages already in your library (by default BiocManager\n")
-    cat("                          updates them, so that new packages never meet too-old dependencies).\n")
+    cat("  --no-update             Do not update outdated packages of JAMS's dependency tree that are in the target\n")
+    cat("                          library (other packages and shared site libraries are never touched).\n")
+    cat("  --rebuild-stale         Rebuild, inside the target library, packages JAMS needs that were built for a different\n")
+    cat("                          R version. Without it the installer stops and explains the options instead.\n")
     cat("  --force                 Reinstall dependencies even if they are already installed.\n")
     cat("  --dry-run               Show what would be done, without installing anything.\n")
     cat("  --help                  Show this help.\n\n")
@@ -63,7 +65,7 @@ if (exists("JAMS_INSTALL_ARGS", envir = globalenv())){
     }
 }
 
-flags_without_value <- c("--install", "--no-links", "--no-update", "--force", "--dry-run", "--help", "-h", "--onlybeta")
+flags_without_value <- c("--install", "--no-links", "--no-update", "--rebuild-stale", "--force", "--dry-run", "--help", "-h", "--onlybeta")
 flags_with_value <- c("--profile", "--lib", "--linkto", "--bioc-version")
 opts <- list()
 i <- 1
@@ -126,7 +128,8 @@ getScriptPath <- function(){
     needle <- "--file="
     hit <- grep(needle, cmdArgs, fixed = TRUE)
     if (length(hit) > 0){
-        return(dirname(normalizePath(sub(needle, "", cmdArgs[hit[1]], fixed = TRUE))))
+        #Rscript encodes spaces in the script path as ~+~
+        return(dirname(normalizePath(gsub("~+~", " ", sub(needle, "", cmdArgs[hit[1]], fixed = TRUE), fixed = TRUE))))
     }
     return(normalizePath(getwd()))
 }
@@ -276,9 +279,158 @@ if (profile == "minimal"){
 say("Required R packages (", length(required_pkgs), "): ", paste(required_pkgs, collapse = ", "))
 say("Optional R packages (", length(optional_pkgs), "): ", ifelse(length(optional_pkgs) > 0, paste(optional_pkgs, collapse = ", "), "none"))
 
+#####################################################
+## Health check of what is already installed       ##
+#####################################################
+#Done before anything is installed (and in --dry-run). Uses only what is on disk, no network.
+rscript <- file.path(R.home("bin"), ifelse(on_windows, "Rscript.exe", "Rscript"))
+r_xy <- paste(R.version$major, strsplit(R.version$minor, ".", fixed = TRUE)[[1]][1], sep = ".")
+
+#"R 4.5.1; x86_64-pc-linux-gnu; 2025-07-01 ...; unix" -> "4.5"
+built_xy <- function(built){
+    built <- as.character(built)
+    out <- sub("^R ([0-9]+\\.[0-9]+).*$", "\\1", built)
+    out[is.na(built) | (out == built)] <- NA
+    out
+}
+
+#Installed packages as R sees them: the first copy found along .libPaths() is the one that gets loaded.
+installed_first <- function(){
+    ip <- installed.packages(lib.loc = .libPaths(), noCache = TRUE)
+    ip <- ip[!duplicated(ip[, "Package"]), , drop = FALSE]
+    rownames(ip) <- ip[, "Package"]
+    ip
+}
+
+#Recursive hard dependencies (Depends, Imports, LinkingTo) of pkgs according to the package database db.
+dependency_tree <- function(pkgs, db){
+    deps <- tryCatch(tools::package_dependencies(pkgs, db = db, which = c("Depends", "Imports", "LinkingTo"), recursive = TRUE),
+                     error = function(e) list())
+    setdiff(unique(c(pkgs, unlist(deps, use.names = FALSE))), base_pkgs)
+}
+
+#Try to load each package in a FRESH R process (never in this one, where loading would lock in old versions).
+#Returns a named character vector: "OK" or the error message.
+check_loads <- function(pkgs, prepend_rlib = TRUE){
+    res <- setNames(rep("could not be checked", length(pkgs)), pkgs)
+    if (length(pkgs) == 0){
+        return(res)
+    }
+    f <- tempfile(fileext = ".R")
+    writeLines(c(if (prepend_rlib) paste0(".libPaths(c(", deparse(rlib), ", .libPaths()))") else character(0),
+                 paste0("pk <- ", paste(deparse(pkgs), collapse = " ")),
+                 "for (p in pk){",
+                 "    r <- tryCatch({ suppressWarnings(suppressPackageStartupMessages(loadNamespace(p))); 'OK' }, error = function(e) gsub('[[:space:]]+', ' ', conditionMessage(e)))",
+                 "    cat('\\nJAMSCHECK', p, r, sep = '\\t'); cat('\\n')",
+                 "}"), f)
+    out <- tryCatch(suppressWarnings(system2(rscript, shQuote(f), stdout = TRUE, stderr = TRUE)), error = function(e) character(0))
+    unlink(f)
+    for (ln in grep("^JAMSCHECK\t", out, value = TRUE)){
+        parts <- strsplit(ln, "\t", fixed = TRUE)[[1]]
+        if ((length(parts) >= 3) && (parts[2] %in% pkgs)){
+            res[parts[2]] <- paste(parts[-(1:2)], collapse = " ")
+        }
+    }
+    res
+}
+
+same_path <- function(a, b){
+    normalizePath(a, mustWork = FALSE) == normalizePath(b, mustWork = FALSE)
+}
+
+wanted_pkgs <- unique(c(required_pkgs, optional_pkgs))
+ip_now <- installed_first()
+tree_installed <- intersect(dependency_tree(wanted_pkgs, ip_now), rownames(ip_now))
+
+#Packages that JAMS needs which were built under another R x.y. Compiled code is not portable between R minor
+#versions (e.g. R 4.6 removed non-API entry points such as SETLENGTH that packages built for R 4.5 still call).
+#Pure-R packages carry over between minor versions, so only compiled ones (or ones from another major R) count.
+find_stale <- function(pkgs, ip){
+    pkgs <- intersect(pkgs, rownames(ip))
+    df <- data.frame(Package = pkgs,
+                     Built = built_xy(ip[pkgs, "Built"]),
+                     NeedsCompilation = unname(ip[pkgs, "NeedsCompilation"]),
+                     LibPath = unname(ip[pkgs, "LibPath"]),
+                     stringsAsFactors = FALSE)
+    other_major <- !is.na(df$Built) & (sub("\\..*$", "", df$Built) != R.version$major)
+    keep <- !is.na(df$Built) & (df$Built != r_xy) & ((df$NeedsCompilation %in% "yes") | other_major)
+    df[keep, , drop = FALSE]
+}
+stale_df <- find_stale(tree_installed, ip_now)
+stale_in_rlib <- stale_df$Package[same_path(stale_df$LibPath, rlib)]
+stale_elsewhere <- setdiff(stale_df$Package, stale_in_rlib)
+rebuild_stale <- !is.null(opts[["--rebuild-stale"]])
+
+#Libraries that a NEW R session will search before rlib (so their copies would win over anything we install in rlib).
+libs_before_rlib <- function(){
+    pos <- which(same_path(orig_libpaths, rlib))
+    if (length(pos) == 0) orig_libpaths else orig_libpaths[seq_len(pos[1] - 1)]
+}
+
+report_stale <- function(stale_df){
+    rule(paste("Packages built for a different R version than R", r_xy))
+    say(nrow(stale_df), " package(s) that JAMS needs were built under a different R version than the one running (R ", r_xy, ").")
+    say("Packages must be rebuilt for each R x.y version, otherwise they fail to load with errors such as")
+    say("'undefined symbol: SETLENGTH' or 'package ... was built under R version ...'.")
+    for (lp in unique(stale_df$LibPath)){
+        sub_df <- stale_df[stale_df$LibPath == lp, , drop = FALSE]
+        say("  In ", lp, " (", nrow(sub_df), "): ", paste0(sub_df$Package, " [R ", sub_df$Built, "]", collapse = ", "))
+    }
+}
+
+report_stale_elsewhere <- function(stale_df, stale_elsewhere){
+    if (length(stale_elsewhere) > 0){
+        say("Fresh copies of the ", length(stale_elsewhere), " package(s) outside ", rlib, " will be installed into ", rlib, " (the other libraries are not touched).")
+        shadowing <- unique(stale_df$LibPath[stale_df$Package %in% stale_elsewhere])
+        shadowing <- shadowing[normalizePath(shadowing, mustWork = FALSE) %in% normalizePath(libs_before_rlib(), mustWork = FALSE)]
+        if (length(shadowing) > 0){
+            say("WARNING: a new R session searches ", paste(shadowing, collapse = ", "), " BEFORE ", rlib, ",")
+            say("         so the old copies would still be loaded. Remove that folder from R_LIBS / R_LIBS_USER (check ~/.bashrc,")
+            say("         ~/.bash_profile and ~/.Renviron), or put ", rlib, " first.")
+        }
+    }
+}
+
+if (nrow(stale_df) > 0){
+    report_stale(stale_df)
+}
+
+stale_library_advice <- function(){
+    cat("\n")
+    say("The library being installed into, ", rlib, ", holds packages built for another R version.")
+    say("It is probably shared between R versions (look for R_LIBS or R_LIBS_USER in ~/.bashrc, ~/.bash_profile and ~/.Renviron).")
+    say("Choose one of:")
+    say("  A) Recommended: one library per R version. For example:")
+    say("       mkdir -p ", file.path(dirname(rlib), paste0("R_", r_xy)))
+    say("     then in ~/.Renviron set  R_LIBS_USER=", file.path(dirname(rlib), "R_%v"), "   (R replaces %v with ", r_xy, "),")
+    say("     remove ", rlib, " from R_LIBS / R_LIBS_USER wherever it is set, open a new shell and run the installer again.")
+    say("  B) Rebuild the packages listed above for R ", r_xy, " inside ", rlib, ": run the installer again with --rebuild-stale.")
+    say("     Any other R version that still uses this library would then need its packages rebuilt in turn.")
+}
+
+#Never silently overwrite packages in a library that another R version may still be using.
+stop_for_stale <- function(){
+    stale_library_advice()
+    if (interactive() || dry_run){
+        if (dry_run) say("Dry run: nothing was installed.")
+        if (interactive()) stop("Stopped before installing anything.", call. = FALSE) else quit(save = "no", status = 0)
+    } else {
+        quit(save = "no", status = 1)
+    }
+}
+if ((length(stale_in_rlib) > 0) && !rebuild_stale){
+    stop_for_stale()
+}
+report_stale_elsewhere(stale_df, stale_elsewhere)
+
 if (dry_run){
-    missing_req <- required_pkgs[!vapply(required_pkgs, requireNamespace, logical(1), quietly = TRUE)]
-    say("Dry run: ", length(missing_req), " required package(s) are currently missing: ", paste(missing_req, collapse = ", "))
+    missing_req <- setdiff(required_pkgs, rownames(ip_now))
+    missing_opt <- setdiff(optional_pkgs, rownames(ip_now))
+    say("Dry run: ", length(missing_req), " required package(s) missing: ", ifelse(length(missing_req) > 0, paste(missing_req, collapse = ", "), "none"))
+    say("Dry run: ", length(missing_opt), " optional package(s) missing: ", ifelse(length(missing_opt) > 0, paste(missing_opt, collapse = ", "), "none"))
+    if (nrow(stale_df) > 0){
+        say("Dry run: ", nrow(stale_df), " package(s) would be rebuilt for R ", r_xy, " into ", rlib, ".")
+    }
     say("Dry run: nothing was installed.")
     if (interactive()) {
         stop("Dry run finished.", call. = FALSE)
@@ -366,55 +518,175 @@ for (bootpkg in c("BiocManager", "remotes")){
 }
 
 bioc_version <- opts[["--bioc-version"]]
-bioc_args <- list(ask = FALSE, update = update_old, lib = rlib)
+#update = FALSE: BiocManager must never try to update every outdated package in every library (see below).
+bioc_args <- list(ask = FALSE, update = FALSE, lib = rlib)
 if (!is.null(bioc_version)){
     bioc_args$version <- bioc_version
 }
 #Let BiocManager tell us which Bioconductor release goes with this R (or validate the pinned one).
-bioc_ok <- tryCatch({
-    if (!is.null(bioc_version)){
+#A no-op install() makes BiocManager validate its release against this R. An old BiocVersion left in a library
+#shared with an older R (e.g. Bioconductor 3.22 under R 4.6) makes every install fail; BiocManager's error then
+#says which version to use, so install that BiocVersion into rlib and validate again.
+validate_bioc <- function(){
+    tryCatch({
         do.call(BiocManager::install, c(list(pkgs = character(0)), bioc_args))
+        TRUE
+    }, error = function(e) conditionMessage(e))
+}
+bioc_ok <- validate_bioc()
+if (!isTRUE(bioc_ok) && is.null(bioc_version)){
+    suggested <- regmatches(bioc_ok, regexpr("version = ['\"]?[0-9]+\\.[0-9]+", bioc_ok))
+    if (length(suggested) == 1){
+        right_version <- sub("^version = ['\"]?", "", suggested)
+        say("BiocManager reports a Bioconductor release that does not match R ", r_xy, " (", bioc_ok, ").")
+        say("Installing BiocVersion ", right_version, " into ", rlib, " to fix it.")
+        tryCatch(BiocManager::install(version = right_version, ask = FALSE, update = FALSE, lib = rlib),
+                 error = function(e) say("Could not install BiocVersion ", right_version, ": ", conditionMessage(e)))
+        bioc_ok <- validate_bioc()
     }
+}
+if (isTRUE(bioc_ok)){
     say("Bioconductor release: ", as.character(BiocManager::version()))
-    TRUE
-}, error = function(e){
-    say("ERROR from BiocManager: ", conditionMessage(e))
-    FALSE
-})
+} else {
+    say("ERROR from BiocManager: ", bioc_ok)
+    bioc_ok <- FALSE
+}
 if (!bioc_ok){
     stop(paste0("BiocManager could not set up a Bioconductor release for R ", getRversion(), ".\n",
                 "If you used --bioc-version, remove it so BiocManager picks the release that matches your R.\n",
                 "Each Bioconductor release supports exactly one R x.y version (e.g. Bioconductor 3.23 needs R 4.6)."))
 }
 
-install_pkgs <- function(pkgs, label){
-    if (length(pkgs) == 0){
-        return(character(0))
+#Now that the repositories are reachable, follow dependencies of packages that are not installed yet too, so a
+#stale package deep in the tree is caught before installing anything rather than after.
+avail_db <- tryCatch(available.packages(repos = BiocManager::repositories()), error = function(e) NULL)
+if (!is.null(avail_db)){
+    full_tree <- union(tree_installed, intersect(dependency_tree(wanted_pkgs, avail_db), rownames(ip_now)))
+    extra_stale <- find_stale(setdiff(full_tree, c(tree_installed, stale_df$Package)), ip_now)
+    if (nrow(extra_stale) > 0){
+        report_stale(extra_stale)
+        extra_in_rlib <- extra_stale$Package[same_path(extra_stale$LibPath, rlib)]
+        if ((length(extra_in_rlib) > 0) && !rebuild_stale){
+            stop_for_stale()
+        }
+        report_stale_elsewhere(extra_stale, setdiff(extra_stale$Package, extra_in_rlib))
+        stale_df <- rbind(stale_df, extra_stale)
+        stale_elsewhere <- union(stale_elsewhere, setdiff(extra_stale$Package, extra_in_rlib))
     }
-    todo <- if (force_install) pkgs else pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
-    if (length(todo) == 0){
-        say("All ", label, " packages are already installed.")
-        return(character(0))
-    }
-    say("Installing ", length(todo), " ", label, " package(s): ", paste(todo, collapse = ", "))
-    #BiocManager installs from CRAN and Bioconductor alike, with matching versions.
-    tryCatch(do.call(BiocManager::install, c(list(pkgs = todo, force = force_install), bioc_args)),
-             error = function(e) say("Installer reported: ", conditionMessage(e)))
-    failed <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]
+    tree_installed <- full_tree
+}
 
-    return(failed)
+#Install pkgs (CRAN or Bioconductor) into rlib. force = TRUE reinstalls packages that are already there.
+bioc_install <- function(pkgs, force = FALSE){
+    pkgs <- unique(pkgs)
+    if (length(pkgs) == 0){
+        return(invisible(NULL))
+    }
+    tryCatch(do.call(BiocManager::install, c(list(pkgs = pkgs, force = force), bioc_args)),
+             error = function(e) say("Installer reported: ", conditionMessage(e)))
+    invisible(NULL)
+}
+
+#Packages named in load errors that installing (into rlib) would fix: too-old versions and missing packages.
+fixable_from_errors <- function(msgs){
+    msgs <- msgs[msgs != "OK"]
+    hits_old <- regmatches(msgs, regexpr("namespace [^A-Za-z0-9]{1,3}[A-Za-z0-9.]+[^A-Za-z0-9.]{1,3} [0-9.-]+ is (already|being) loaded, but >= [0-9.-]+ is required", msgs))
+    hits_missing <- regmatches(msgs, regexpr("there is no package called [^A-Za-z0-9]{1,3}[A-Za-z0-9.]+", msgs))
+    hits_so <- regmatches(msgs, regexpr("/[A-Za-z0-9.]+/libs/[^/ ]+\\.(so|dylib)", msgs))
+    pk <- c(sub("^namespace [^A-Za-z0-9]{1,3}([A-Za-z0-9.]+).*$", "\\1", hits_old),
+            sub("^there is no package called [^A-Za-z0-9]{1,3}", "", hits_missing))
+    #A shared object that will not load (built for another R) can be fixed by reinstalling into rlib, unless it lives
+    #in rlib itself and the user has not allowed rebuilding there.
+    so_pk <- sub("^/([A-Za-z0-9.]+)/libs/.*$", "\\1", hits_so)
+    ip <- installed_first()
+    so_pk <- so_pk[so_pk %in% rownames(ip)]
+    so_pk <- so_pk[rebuild_stale | !same_path(ip[so_pk, "LibPath"], rlib)]
+    unique(c(pk, so_pk))
+}
+
+#Explain load failures with the actual error, and only then guess at causes.
+explain_failures <- function(results){
+    bad <- results[results != "OK"]
+    cat("\n")
+    for (p in names(bad)){
+        say("  ", p, ": ", substr(bad[[p]], 1, 400))
+    }
+    ip <- installed_first()
+    not_installed <- setdiff(names(bad), rownames(ip))
+    if (any(grepl("undefined symbol|symbol not found|built under R version|built before R", bad))){
+        say("Some packages were built for another R version (see the 'undefined symbol' / 'built under R' messages above).")
+        stale_library_advice()
+    }
+    if (any(grepl("cannot open shared object file", bad, fixed = TRUE))){
+        say("A system library needed at run time is missing (see 'cannot open shared object file' above). On an HPC cluster,")
+        say("load the module that provides it, or make sure no conda environment is active while installing.")
+    }
+    if (length(not_installed) > 0){
+        say("Not installed at all (their compilation failed - scroll up to the first error for each): ", paste(not_installed, collapse = ", "))
+        system_library_hints()
+    }
 }
 
 #####################################
 ## Required dependencies           ##
 #####################################
 rule("Installing required dependencies")
-failed_required <- install_pkgs(required_pkgs, "required")
-if (length(failed_required) > 0){
-    system_library_hints()
-    stop(paste("These required packages could not be installed:", paste(failed_required, collapse = ", "),
-               "\nScroll up for the first error message of each one, fix it, and run the installer again (already installed packages are skipped)."))
+ip_now <- installed_first()
+missing_required <- setdiff(required_pkgs, rownames(ip_now))
+to_rebuild <- if (rebuild_stale) stale_df$Package else stale_elsewhere
+
+#Outdated packages are updated only inside JAMS's own dependency tree and only in rlib: updating the whole library
+#(BiocManager's default) can mean rebuilding hundreds of unrelated packages, and shared site libraries are not ours to change.
+outdated <- character(0)
+if (update_old){
+    rlib_pkgs <- tryCatch(installed.packages(lib.loc = rlib, noCache = TRUE), error = function(e) NULL)
+    if (!is.null(rlib_pkgs) && (nrow(rlib_pkgs) > 0)){
+        old <- tryCatch(old.packages(lib.loc = rlib, repos = BiocManager::repositories(), instPkgs = rlib_pkgs), error = function(e) NULL)
+        if (!is.null(old)){
+            in_rlib <- rownames(ip_now)[same_path(ip_now[, "LibPath"], rlib)]
+            outdated <- intersect(intersect(rownames(old), tree_installed), in_rlib)
+        }
+    }
 }
+
+if (force_install){
+    to_force <- unique(c(required_pkgs, to_rebuild, outdated))
+} else {
+    to_force <- unique(c(to_rebuild, outdated))
+}
+if (length(to_force) > 0){
+    say("Rebuilding/updating ", length(to_force), " package(s) in ", rlib, ": ", paste(to_force, collapse = ", "))
+    bioc_install(to_force, force = TRUE)
+}
+if (length(missing_required) > 0){
+    say("Installing ", length(missing_required), " missing required package(s): ", paste(missing_required, collapse = ", "))
+    bioc_install(missing_required, force = FALSE)
+}
+if ((length(to_force) == 0) && (length(missing_required) == 0)){
+    say("All required packages are already installed.")
+}
+
+#Verify in a fresh R process, and fix what can be fixed automatically (up to two rounds).
+say("Checking that every required package loads...")
+req_results <- check_loads(required_pkgs)
+for (fix_round in 1:2){
+    if (all(req_results == "OK")){
+        break
+    }
+    fixable <- setdiff(fixable_from_errors(req_results), base_pkgs)
+    if (length(fixable) == 0){
+        break
+    }
+    say("Load errors point at ", paste(fixable, collapse = ", "), "; installing current version(s) into ", rlib, " and checking again.")
+    bioc_install(fixable, force = TRUE)
+    req_results <- check_loads(required_pkgs)
+}
+if (any(req_results != "OK")){
+    say("These required packages do not load:")
+    explain_failures(req_results)
+    stop("Required packages could not be installed or loaded (see the explanation above). Fix the problem and run the installer again; anything already installed is kept.", call. = FALSE)
+}
+say("All ", length(required_pkgs), " required packages load correctly.")
 
 #####################################
 ## Optional dependencies           ##
@@ -422,7 +694,18 @@ if (length(failed_required) > 0){
 failed_optional <- character(0)
 if (length(optional_pkgs) > 0){
     rule("Installing optional dependencies")
-    failed_optional <- install_pkgs(optional_pkgs, "optional")
+    missing_optional <- if (force_install) optional_pkgs else setdiff(optional_pkgs, rownames(installed_first()))
+    if (length(missing_optional) > 0){
+        say("Installing ", length(missing_optional), " optional package(s): ", paste(missing_optional, collapse = ", "))
+        bioc_install(missing_optional, force = force_install)
+    } else {
+        say("All optional packages are already installed.")
+    }
+    opt_results <- check_loads(optional_pkgs)
+    failed_optional <- names(opt_results)[opt_results != "OK"]
+    for (p in failed_optional){
+        say("  optional ", p, " does not load: ", substr(opt_results[[p]], 1, 300))
+    }
 }
 #Multi-threaded saving of JAMS workspace images (IO_jams_workspace_image) needs only the pigz program, not an R package.
 if (!on_windows && !nzchar(Sys.which("pigz"))){
@@ -449,17 +732,30 @@ jams_ok <- tryCatch({
 
 #Check JAMS loads in a fresh R process, exactly as a user (or JAMSalpha/JAMSbeta) would.
 #The test code goes in a temporary file to avoid shell quoting differences between Windows and Unix.
-rscript <- file.path(R.home("bin"), ifelse(on_windows, "Rscript.exe", "Rscript"))
-check_file <- tempfile(fileext = ".R")
-writeLines(c(paste0(".libPaths(c(", deparse(rlib), ", .libPaths()))"),
-             "options(JAMS.check_updates = FALSE)",
-             "suppressPackageStartupMessages(library(JAMS))",
-             "hw <- detectHardwareResources()",
-             "cat('JAMS', as.character(packageVersion('JAMS')), 'loaded OK. Detected', hw[['threads']], 'CPUs and', round(hw[['memory']] / 1e9, 1), 'GB of RAM.', '\\n')"),
-           check_file)
-load_out <- tryCatch(suppressWarnings(system2(rscript, shQuote(check_file), stdout = TRUE, stderr = TRUE)), error = function(e) conditionMessage(e))
+#First exactly as a brand-new R session would (no library path tweaks), so that libraries searched before rlib
+#(e.g. an old shared library in R_LIBS) cannot hide behind a passing test.
+run_jams_check <- function(prepend_rlib){
+    check_file <- tempfile(fileext = ".R")
+    writeLines(c(if (prepend_rlib) paste0(".libPaths(c(", deparse(rlib), ", .libPaths()))") else character(0),
+                 "options(JAMS.check_updates = FALSE)",
+                 "suppressPackageStartupMessages(library(JAMS))",
+                 "hw <- detectHardwareResources()",
+                 "cat('JAMS', as.character(packageVersion('JAMS')), 'loaded OK from', dirname(find.package('JAMS')), '. Detected', hw[['threads']], 'CPUs and', round(hw[['memory']] / 1e9, 1), 'GB of RAM.', '\\n')"),
+               check_file)
+    tryCatch(suppressWarnings(system2(rscript, shQuote(check_file), stdout = TRUE, stderr = TRUE)), error = function(e) conditionMessage(e))
+}
+load_out <- run_jams_check(prepend_rlib = FALSE)
 load_ok <- jams_ok && any(grepl("loaded OK", load_out, fixed = TRUE))
 cat(paste(load_out, collapse = "\n"), "\n")
+if (!load_ok && jams_ok){
+    load_out2 <- run_jams_check(prepend_rlib = TRUE)
+    if (any(grepl("loaded OK", load_out2, fixed = TRUE))){
+        cat(paste(load_out2, collapse = "\n"), "\n")
+        say("WARNING: JAMS is installed and works, but only when ", rlib, " is searched first. A new R session does not do that yet.")
+        say("         Put  R_LIBS_USER=", rlib, "  in ~/.Renviron (and remove older libraries from R_LIBS), then open a new shell.")
+        load_ok <- TRUE
+    }
+}
 if (!load_ok){
     stop("JAMS was not installed correctly or does not load. See the messages above.")
 }
