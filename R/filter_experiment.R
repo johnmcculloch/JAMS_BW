@@ -18,6 +18,10 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
 
     #Get appropriate object with which to work
     if (as.character(class(SEobj)[1]) == "SummarizedExperiment"){
+        #Reject deprecated JAMS1 objects up front. This used to be a silent branch that rescaled
+        #the genome completeness cutoff by 100 for objects with no version stamp.
+        assert_JAMS2_SEobj(SEobj = SEobj, objname = "SEobj", calling_function = "filter_experiment")
+
         #Get only samples you asked for
         if (!(is.null(samplesToKeep))){
             samplesToKeep <- colnames(SEobj)[colnames(SEobj) %in% samplesToKeep]
@@ -71,14 +75,6 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
             totbases <- metadata(SEobj)$TotalBasesSequenced
         } else {
             totbases <- metadata(SEobj)$TotalBasesSequencedinAnalysis
-        }
-
-        JAMSversion <- metadata(SEobj)$version
-
-        if (is.null(JAMSversion)){
-            JAMS2_SEobj <- FALSE
-        } else {
-            JAMS2_SEobj <- TRUE
         }
 
     } else {
@@ -184,11 +180,10 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
         if (length(presetlist$GenomeCompletenessCutoff) != 2){
             stop("Please specify the minimum Genome Completeness in what percentage of the samples you want with a numerical vector of size two. For example, GenomeCompletenessCutoff = c(10, 5) would discard features whose genome completeness is smaller than 10% from contigs in at least 5% of samples.")
         }
-        if (JAMS2_SEobj) {
-            minGenomeCompleteness <- presetlist$GenomeCompletenessCutoff[1]
-        } else {
-            minGenomeCompleteness <- (presetlist$GenomeCompletenessCutoff[1] / 100)
-        }
+        #GenomeCompleteness is stored on a 0-100 percent scale (CheckM2 style) in every JAMS2
+        #object, so the cutoff is used as supplied. JAMS1 objects stored a 0-1 fraction and were
+        #silently rescaled here; they are now rejected by assert_JAMS2_SEobj above.
+        minGenomeCompleteness <- presetlist$GenomeCompletenessCutoff[1]
 
         GenomeCompletenessmatrix <- assays(SEobj)[["GenomeCompleteness"]]
 
@@ -211,91 +206,18 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
         countmat_raw <- countmat_raw[featuresToKeep4, ]
     }
 
-    #filter out unwanted feature/sample stratification if SummarizedExperiment object contains that kind of information
-    #This is dealt with quite differently whether it is a JAMS1 or JAMS2 SEobj. Will keep functionality for JAMS1 for now for backwards compatibility, although this is now deprecated.
+    #NOTE ON FEATURE-BY-TAXON STRATIFICATION.
+    #This function deliberately does NOT prune the stratification sparse matrices in
+    #metadata(SEobj) (allfeaturesbytaxa_matrix and allfeaturesbytaxa_GeneCounts_matrix). It does
+    #not need to: the row pointers live in the SparseIndex ASSAY, which SummarizedExperiment
+    #subsets along with the object, so every lookup made by retrieve_features_by_taxa stays
+    #correct after any filtration performed above. The matrices simply keep rows and taxon
+    #columns that nothing points at any more, which costs memory but never correctness.
+    #A large commented-out block that used to prune and renumber them (plus a parallel JAMS1
+    #branch keyed on the long-form allfeaturesbytaxa_index) was removed in JAMS 2.3.1. If
+    #pruning is ever reinstated for memory reasons, note that it must renumber SparseIndex and
+    #both matrices consistently, and that merge_JAMS_SEobj does exactly that renumbering already.
 
-    #if (JAMS2_SEobj) {
-        #if (all(c("allfeaturesbytaxa_matrix", "allfeaturesbytaxa_GeneCounts_matrix") %in% names(metadata(SEobj)))){
-            #No need to eliminate unwanted samples from SparseIndex matrix, because this is done when subsetting the entire SEobj at the samplesToKeep phase above.
-            #Obtain valid index row numbers to prune sparse matrices.
-            #index_matrix <- as.data.frame(assays(SEobj)[["SparseIndex"]])
-            #rowsinterestdf <- as.data.frame(index_matrix) %>% rownames_to_column("Accession") %>% pivot_longer(cols = -Accession, names_to = "Sample", values_to = "RowNumber")
-            #rowsinterestdf <- as.data.frame(rowsinterestdf)
-            #Ensure correct class
-            #rowsinterestdf$RowNumber <- as.integer(rowsinterestdf$RowNumber)
-            #Eliminate unavailable information.
-            #rowsinterestdf <- rowsinterestdf[!is.na(rowsinterestdf$RowNumber), ]
-
-            #Process sparse martices
-            #allfeaturesbytaxa_matrix <- metadata(SEobj)[["allfeaturesbytaxa_matrix"]][rowsinterestdf$RowNumber, , drop = FALSE]
-            #Prune empty taxa, i.e. taxa which have 0 counts for all of the features of interest
-            #LKTskeep <- Matrix::colSums(allfeaturesbytaxa_matrix) != 0
-            #allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix[, LKTskeep, drop = FALSE]
-
-            #Prune the genecounts matrix accordingly
-            #allfeaturesbytaxa_GeneCounts_matrix <- metadata(SEobj)[["allfeaturesbytaxa_GeneCounts_matrix"]][rowsinterestdf$RowNumber, , drop = FALSE]
-            #allfeaturesbytaxa_GeneCounts_matrix <- allfeaturesbytaxa_GeneCounts_matrix[, colnames(allfeaturesbytaxa_matrix), drop = FALSE]
-
-            #Reset row numbers for SparseIndex and the sparse matrix
-            #rowsinterestdf$RowNumber <- 1:nrow(rowsinterestdf)
-            #rownames(allfeaturesbytaxa_matrix) <- 1:nrow(allfeaturesbytaxa_matrix)
-            #rownames(allfeaturesbytaxa_GeneCounts_matrix) <- 1:nrow(allfeaturesbytaxa_GeneCounts_matrix)
-
-            #Commit to SEobj metadata
-            #metadata(SEobj)[["allfeaturesbytaxa_matrix"]] <- allfeaturesbytaxa_matrix
-            #metadata(SEobj)[["allfeaturesbytaxa_GeneCounts_matrix"]] <- allfeaturesbytaxa_GeneCounts_matrix
-
-            #Regenerate SparseIndex assay and insert back into SummarizedExperiment object
-            #SparseIndex <- rowsinterestdf %>% group_by(Sample, Accession) %>% tidyr::pivot_wider(names_from = Sample, values_from = RowNumber, values_fill = NA)
-            #SparseIndex <- as.data.frame(SparseIndex)
-            #rownames(SparseIndex) <- SparseIndex$Accession
-            #SparseIndex$Accession <- NULL
-            #Add empty features if necessary (some may have been pruned)
-            #emptyFeatures <- rownames(SEobj)[!(rownames(SEobj) %in% rownames(SparseIndex))]
-            #if (length(emptyFeatures) > 0){
-            #    complementarycts <- matrix(ncol = ncol(SEobj), nrow = length(emptyFeatures), data = 0)
-            #    complementarycts <- as.data.frame(complementarycts, stringsAsFactors = FALSE)
-            #    colnames(complementarycts) <- colnames(SEobj)
-            #    rownames(complementarycts) <- emptyFeatures
-            #    SparseIndex <- rbind(SparseIndex, complementarycts)
-            #}
-            #SparseIndex <- SparseIndex[rownames(SEobj), colnames(SEobj)]
-            #assays(SEobj)[["SparseIndex"]] <- as.matrix(SparseIndex)
-        #}
-
-    #} else {
-
-        #Treat it as a JAMS1 style stratification object
-        #if (all(c("allfeaturesbytaxa_matrix", "allfeaturesbytaxa_GeneCounts_matrix") %in% names(metadata(SEobj)))){
-            #Obtain current index and matrix
-        #    allfeaturesbytaxa_index <- metadata(SEobj)$allfeaturesbytaxa_index
-        #    allfeaturesbytaxa_matrix <- metadata(SEobj)$allfeaturesbytaxa_matrix
-
-            #Eliminate from index irrelevant samples
-        #    allfeaturesbytaxa_index <- subset(allfeaturesbytaxa_index, Sample %in% colnames(SEobj))
-
-            #Eliminate from index irrelevant features
-        #    allfeaturesbytaxa_index <- subset(allfeaturesbytaxa_index, Accession %in% rownames(SEobj))
-
-            #Subset sparse matrix to contain only relevant rows
-        #    allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix[allfeaturesbytaxa_index$RowNumber, ]
-
-            #Rename rows with consecutive numbers
-        #    allfeaturesbytaxa_index$RowNumber <- 1:nrow(allfeaturesbytaxa_index)
-        #    rownames(allfeaturesbytaxa_index) <- allfeaturesbytaxa_index$RowNumber
-        #    rownames(allfeaturesbytaxa_matrix) <- allfeaturesbytaxa_index$RowNumber
-
-            #Eliminate irrelevant columns from sparse matrix
-        #    matcSums <- Matrix::colSums(allfeaturesbytaxa_matrix)
-        #    matcSums <- matcSums[matcSums > 0]
-        #    taxaToKeep <- names(matcSums)
-        #    allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix[ , taxaToKeep]
-
-            #Stick back into SEobj
-        #    metadata(SEobj)$allfeaturesbytaxa_index <- allfeaturesbytaxa_index
-        #    metadata(SEobj)$allfeaturesbytaxa_matrix <- allfeaturesbytaxa_matrix
-        #}
-    #}
 
     return(SEobj)
 }

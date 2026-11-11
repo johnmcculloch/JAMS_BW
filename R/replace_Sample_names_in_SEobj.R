@@ -25,7 +25,9 @@ replace_Sample_names_in_SEobj <- function(curr_SEobj = NULL, Sample_name_mapping
 
     matrices_have_list <- list()
     for (mx in matrices_have){
-        curr_mx <- as.data.frame(assays(curr_SEobj)[[mx]])
+        #optional = TRUE: this function exists to rename samples, so it must not have the old
+        #names silently mangled by make.names() before the mapping is applied.
+        curr_mx <- as.data.frame(assays(curr_SEobj)[[mx]], optional = TRUE)
         samples_present <- intersect(Sample_name_mapping[ , oldname_column], colnames(curr_mx))
         curr_mx <- curr_mx[ , samples_present]
         curr_mx_newnames <- Sample_name_mapping[match(colnames(curr_mx), Sample_name_mapping[ , oldname_column]), newname_column]
@@ -44,6 +46,13 @@ replace_Sample_names_in_SEobj <- function(curr_SEobj = NULL, Sample_name_mapping
         curr_md_newnames <- Sample_name_mapping[match(colnames(curr_md), Sample_name_mapping[ , oldname_column]), newname_column]
         colnames(curr_md) <-  curr_md_newnames
         metadata(new_SEobj)[[md]] <- curr_md
+    }
+    #Carry over every other metadata slot untouched. These are not sample-dependent, and
+    #dropping them used to lose metadata$version in particular, which from JAMS 2.3.1 makes the
+    #renamed object fail assert_JAMS2_SEobj and therefore every downstream plotting call.
+    sample_dependent_md <- c("TotalBasesSequenced", "TotalBasesSequencedinAnalysis", "analysis")
+    for (md in names(metadata(curr_SEobj))[!(names(metadata(curr_SEobj)) %in% sample_dependent_md)]){
+        metadata(new_SEobj)[[md]] <- metadata(curr_SEobj)[[md]]
     }
     metadata(new_SEobj)[["analysis"]] <- metadata(curr_SEobj)[["analysis"]]
 

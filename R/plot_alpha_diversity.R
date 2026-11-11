@@ -2,7 +2,7 @@
 
 #' @param ExpObj JAMS-style SummarizedExperiment object
 
-#' @param measures String giving the alpha diversity measurements used to quantify the alpha diversity within each category. Default includes Observed, Chao1, Shannon, Simpson, InvSimpson, and GeneCount.
+#' @param measures String giving the alpha diversity measurements used to quantify the alpha diversity within each category. Default includes Observed, Chao1, Shannon, Simpson, InvSimpson, and GeneCounts. The legacy singular spelling "GeneCount" is accepted as an alias for "GeneCounts".
 
 #' @param stratify_by_domains Requires a logical value. If TRUE, will concatenate all of the taxonomical features to the Domain level and create individual plots for each of the Domains for each measure specified. If FALSE, will forgo the Domain concatenation. Default is TRUE.
 
@@ -56,7 +56,17 @@
 
 #' @export
 
-plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"), stratify_by_domains = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, pairby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...){
+plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCounts"), stratify_by_domains = TRUE, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, subsetby = NULL, compareby = NULL, compareby_order = NULL, colourby = NULL, shapeby = NULL, fillby = NULL, pairby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, cdict = NULL, addtit = NULL, signiflabel = "p.format", max_pairwise_cats = 4, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE, ...){
+
+    #The gene count row computed below is named "GeneCounts", but the default for this argument
+    #used to be the singular "GeneCount". Because measures is later intersected with the rownames
+    #of alphadiv (measures_to_show), the mismatch silently dropped the gene count panel for anyone
+    #using the default - no warning, the plot simply never appeared. The default is now the
+    #plural, and the singular is accepted as an alias so existing user scripts keep working.
+    if (!is.null(measures)){
+        measures[measures == "GeneCount"] <- "GeneCounts"
+        measures <- unique(measures)
+    }
 
     variables_to_fix <- c(compareby, subsetby, colourby, shapeby)
 

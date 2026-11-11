@@ -60,6 +60,9 @@ make_antibiogram_experiment <- function(mgseqresfinder = NULL, SEobjresfinder = 
 
         atbobj <- SummarizedExperiment(assays, rowData = atbftt, colData = ptb)
         metadata(atbobj)$TotalBasesSequenced <- TotalBasesSequenced
+        #Carry the generation stamp over from the resfinder object this is derived from, so the
+        #antibiogram object passes assert_JAMS2_SEobj like any other.
+        metadata(atbobj)$version <- metadata(SEobjresfinder)$version
         attr(atbobj, "analysis") <- "antibiogram"
     }
 

@@ -82,6 +82,10 @@ make_SummarizedExperiment_from_tables <- function(pheno = NULL, pheno_fn= NULL, 
     metadata(SEobj)$TotalBasesSequenced <- TotalBasesSequenced
     metadata(SEobj)$TotalBasesSequencedinAnalysis <- TotalBasesSequenced #Have to assume this as info is missing.
     metadata(SEobj)$analysis <- analysisname
+    #Stamp the generation. Downstream entry points assert this with assert_JAMS2_SEobj(), and an
+    #object built here is JAMS2 by construction, so without the stamp a perfectly valid object
+    #(every JAMS16 Amplicon object, for one) would be rejected as a deprecated JAMS1 object.
+    metadata(SEobj)$version <- paste0("JAMS v", packageVersion("JAMS"))
 
     return(SEobj)
 }

@@ -1,17 +1,20 @@
 #' retrieve_features_by_taxa(FuncExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, LKTsToKeep = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE, return_taxonomy_table = FALSE)
 #'
-#' Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
+#' Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given the SparseIndex assay and the allfeaturesbytaxa_matrix metadata present in a JAMS2 SummarizedExperiment functional object built with the JAMSbeta -u option.
 #' @export
 
 retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, LKTsToKeep = NULL, assay_for_matrix = "BaseCounts", wantedfeatures = NULL, wantedsamples = NULL, asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, PPMthreshold = 0, append_metatada = TRUE, include_samples_with_zero = TRUE, return_taxonomy_table = FALSE){
 
+    #Stratification row pointers live in the SparseIndex assay. JAMS1 objects kept them in a
+    #long-form allfeaturesbytaxa_index metadata slot instead; that branch was removed in JAMS
+    #2.3.1, so reject such objects outright rather than half-supporting them.
+    assert_JAMS2_SEobj(SEobj = FuncExpObj, objname = "FuncExpObj", require_stratification = TRUE, calling_function = "retrieve_features_by_taxa")
+
     if (assay_for_matrix == "GeneCounts"){
         sparsematrix_name <- "allfeaturesbytaxa_GeneCounts_matrix"
-        sparsematrix_index_name <- "allfeaturesbytaxa_GeneCounts_index"
         asPPM <- FALSE
     } else {
         sparsematrix_name <- "allfeaturesbytaxa_matrix"
-        sparsematrix_index_name <- "allfeaturesbytaxa_index"
     }
 
     #Default to all samples and/or if wantedsamples/wantedfeatures is not passed
@@ -27,22 +30,17 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, only_all
         wantedfeatures <- wantedfeatures[wantedfeatures %in% rownames(FuncExpObj)]
     }
 
-    #Determine first if FuncExpObj is a JAMS version > 2.1 object
-    if ("SparseIndex" %in% names(assays(FuncExpObj))){
-        JAMS2_object <- TRUE
-        index_matrix <- as.data.frame(assays(FuncExpObj)[["SparseIndex"]])
-        #Subset to only wanted features and samples
-        index_matrix <- index_matrix[wantedfeatures, wantedsamples, drop = FALSE]
-        rowsinterestdf <- as.data.frame(index_matrix) %>% tibble::rownames_to_column("Accession") %>% pivot_longer(cols = -Accession, names_to = "Sample", values_to = "RowNumber")
-        rowsinterestdf <- as.data.frame(rowsinterestdf)
-
-    } else {
-        JAMS2_object <- FALSE
-        allfeaturesbytaxa_index <- metadata(FuncExpObj)[[sparsematrix_index_name]]
-        #Get appropriate rows
-        rowsinterestdf <- subset(allfeaturesbytaxa_index, Sample %in% wantedsamples)
-        rowsinterestdf <- subset(rowsinterestdf, Accession %in% wantedfeatures)
-    }
+    #Row pointers come from the SparseIndex assay, which SummarizedExperiment subsets along with
+    #the object, so it is always in step with the features and samples actually present.
+    #optional = TRUE is essential: without it as.data.frame() runs make.names() over the column
+    #names, so a sample called "P-01" silently becomes "P.01". The subset on the next line would
+    #then fail outright, and in the syntactic-but-different cases the later joins on Sample would
+    #simply miss, turning every PPM into NA with no warning at all.
+    index_matrix <- as.data.frame(assays(FuncExpObj)[["SparseIndex"]], optional = TRUE)
+    #Subset to only wanted features and samples
+    index_matrix <- index_matrix[wantedfeatures, wantedsamples, drop = FALSE]
+    rowsinterestdf <- as.data.frame(index_matrix) %>% tibble::rownames_to_column("Accession") %>% pivot_longer(cols = -Accession, names_to = "Sample", values_to = "RowNumber")
+    rowsinterestdf <- as.data.frame(rowsinterestdf)
 
     #Ensure correct class
     rowsinterestdf$RowNumber <- as.character(rowsinterestdf$RowNumber)
@@ -103,12 +101,11 @@ retrieve_features_by_taxa <- function(FuncExpObj = NULL, glomby = NULL, only_all
 
     #Agglomerate if applicable
     if ((!is.null(glomby) && (glomby != "LKT"))){
-        #Check this feature is available before proceeding
-        if (!JAMS2_object){
-            stop("Stratification of functions by taxonomic levels higher than LKT is only available for SummarizedExperiment objects made with JAMS version > 2.1.0 ")
-        }
         #Obtain taxonomy table
         stt <- as.data.frame(metadata(FuncExpObj)$tt)
+        if (is.null(stt) || (nrow(stt) < 1)){
+            stop("Stratification of functions by taxonomic levels higher than LKT requires the taxonomy table (the tt slot) in the object metadata, which is absent from this object.")
+        }
         LKTs_to_glom <- (sort(colnames(allfeaturesbytaxa_interest)[which(!colnames(allfeaturesbytaxa_interest) %in% c("Sample", "Accession", "Ultra_low_abundance_LKTs"))]))
         stt <- stt[which(stt$LKT %in% LKTs_to_glom), c(glomby, "LKT")]
         #Fill in unclassifieds

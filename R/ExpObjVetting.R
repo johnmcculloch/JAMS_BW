@@ -34,6 +34,11 @@ ExpObjVetting <- function(ExpObj = NULL, samplesToKeep = NULL, featuresToKeep = 
             stop("This function can only take a SummarizedExperiment object as input.")
         }
 
+        #Every downstream plotting function funnels through here, so this is the single place
+        #where a deprecated JAMS1 object is guaranteed to be caught before it can produce a
+        #plausible-looking but wrong figure.
+        assert_JAMS2_SEobj(SEobj = ExpObj, objname = "ExpObj", calling_function = "ExpObjVetting")
+
         if (only_allow_CSBs){
             obj <- filter_experiment(SEobj = ExpObj, only_allow_CSBs = only_allow_CSBs, give_info = TRUE)
         } else {

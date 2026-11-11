@@ -43,6 +43,11 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
     gvec <- list()
     plotcount <- 1
 
+    #Remember what the user actually asked for. The stratification block inside the subset loop
+    #sets stratify_by_taxlevel to NULL when it degrades gracefully, and that assignment would
+    #otherwise persist into every later subset.
+    stratify_by_taxlevel_requested <- stratify_by_taxlevel
+
     #subset by metadata column
     for (sp in 1:length(subset_points)){
 
@@ -310,6 +315,7 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
         }
 
         #Now, for the tricky bit of stratifying by taxa
+        stratify_by_taxlevel <- stratify_by_taxlevel_requested
         if (!is.null(stratify_by_taxlevel)){
             if (stratify_by_taxlevel == TRUE){
                 stratify_by_taxlevel <- "LKT"
@@ -325,8 +331,12 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                 featnamesforsubset <- rownames(countmat)
             }
 
-            #See if current SummarizedExperiment object allows for stratification by taxa.
-            if (all(c("allfeaturesbytaxa_matrix") %in% names(metadata(currobj)))){
+            #See if current SummarizedExperiment object allows for stratification by taxa. Both
+            #halves of the payload are required: the matrices in metadata hold the values, but
+            #the row pointers live in the SparseIndex assay, and retrieve_features_by_taxa needs
+            #both. Checking only for the matrix used to let an object with half the payload
+            #through to a much less informative failure deeper in.
+            if (all(c("allfeaturesbytaxa_matrix") %in% names(metadata(currobj))) && ("SparseIndex" %in% names(assays(currobj)))){
                 taxsplit_list <- retrieve_features_by_taxa(FuncExpObj = currobj, glomby = stratify_by_taxlevel, only_allow_CSBs = only_allow_CSBs, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, assay_for_matrix = "BaseCounts", wantedfeatures = featnamesforsubset, wantedsamples = colnames(countmat), asPPM = TRUE, append_metatada = TRUE, PPMthreshold = 0, include_samples_with_zero = TRUE, return_taxonomy_table = TRUE)
                 taxsplit <- taxsplit_list$taxsplit
 
@@ -337,27 +347,31 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
                     taxsplit$Compareby <- taxsplit[ , which(colnames(taxsplit) == compareby)]
                 }
 
-            } else {
-                flog.warn("Current SummarizedExperiment object does not contain the necessary data for stratifying this function by taxonomy. Check your input.")
-            }
+                LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% unique(c(colnames(curr_pt), c("Sample", "Accession", "Compareby"))))]
 
-            LKTcolumns <- colnames(taxsplit)[!(colnames(taxsplit) %in% unique(c(colnames(curr_pt), c("Sample", "Accession", "Compareby"))))]
-
-            #Fix taxsplit, if aggregating
-            if (aggregatefeatures == TRUE){
-                aggtaxsplit <- NULL
-                for (smpl in unique(taxsplit$Sample)){
-                    taxsplitsmpl <- subset(taxsplit, Sample == smpl)
-                    taxvalues <- as.matrix(taxsplitsmpl[ , LKTcolumns])
-                    aggtaxvalues <- colSums(taxvalues)
-                    aggtaxvalues <- t(as.matrix(aggtaxvalues))
-                    rownames(aggtaxvalues) <- aggregatefeatures_label
-                    aggtaxvalues <- as.data.frame(aggtaxvalues)
-                    aggtaxsplitsmpl <- cbind((taxsplitsmpl[1, colnames(taxsplitsmpl)[!(colnames(taxsplitsmpl) %in% LKTcolumns)]]), aggtaxvalues)
-                    aggtaxsplitsmpl[which(colnames(aggtaxsplitsmpl) == "Accession")] <- aggregatefeatures_label
-                    aggtaxsplit <- rbind(aggtaxsplit, aggtaxsplitsmpl)
+                #Fix taxsplit, if aggregating
+                if (aggregatefeatures == TRUE){
+                    aggtaxsplit <- NULL
+                    for (smpl in unique(taxsplit$Sample)){
+                        taxsplitsmpl <- subset(taxsplit, Sample == smpl)
+                        taxvalues <- as.matrix(taxsplitsmpl[ , LKTcolumns])
+                        aggtaxvalues <- colSums(taxvalues)
+                        aggtaxvalues <- t(as.matrix(aggtaxvalues))
+                        rownames(aggtaxvalues) <- aggregatefeatures_label
+                        aggtaxvalues <- as.data.frame(aggtaxvalues)
+                        aggtaxsplitsmpl <- cbind((taxsplitsmpl[1, colnames(taxsplitsmpl)[!(colnames(taxsplitsmpl) %in% LKTcolumns)]]), aggtaxvalues)
+                        aggtaxsplitsmpl[which(colnames(aggtaxsplitsmpl) == "Accession")] <- aggregatefeatures_label
+                        aggtaxsplit <- rbind(aggtaxsplit, aggtaxsplitsmpl)
+                    }
+                    taxsplit <- aggtaxsplit
                 }
-                taxsplit <- aggtaxsplit
+
+            } else {
+                #Degrade gracefully: draw the unstratified plots rather than dying. Previously
+                #this branch warned and then fell straight through to code which used taxsplit,
+                #so the warning was immediately followed by "object 'taxsplit' not found".
+                flog.warn("Current SummarizedExperiment object does not contain the necessary data for stratifying this function by taxonomy (this requires a functional analysis built with the JAMSbeta -u option). Proceeding without taxonomic stratification.")
+                stratify_by_taxlevel <- NULL
             }
         }
 

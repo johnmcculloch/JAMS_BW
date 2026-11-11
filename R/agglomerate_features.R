@@ -48,7 +48,11 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
 
     assays <- list()
     #Aggregate counts by summing
-    cts <- as.data.frame(assays(ExpObj)$BaseCounts)
+    #optional = TRUE stops as.data.frame() from running make.names() over the sample names. A
+    #sample called "P-01" would otherwise become "P.01" here, and the reordering by sampleorder
+    #further down (which uses the real names from the phenotable) would then fail outright with
+    #"undefined columns selected". Hyphens in sample IDs are common, so this was reachable.
+    cts <- as.data.frame(assays(ExpObj)$BaseCounts, optional = TRUE)
     cts$Feats <- rownames(cts)
     feats2glomby_feats <- data.frame(Feats = rownames(ftt), Glomby_feats = as.character(ftt[ , glomby]), Taxid = ftt[ , "Taxid"], stringsAsFactors = FALSE)
 
@@ -71,7 +75,7 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
     for (CurrAssay in c("GenomeCompleteness", "GenomeContamination", "GeneCounts", "GeneLengths")){
         if (CurrAssay %in% as.character(names(assays(ExpObj)))){
             #Aggregate counts by summing
-            gcdf <- as.data.frame(assays(ExpObj)[[CurrAssay]])
+            gcdf <- as.data.frame(assays(ExpObj)[[CurrAssay]], optional = TRUE)
             gcdf$Feats <- rownames(gcdf)
             gcdf <- left_join(gcdf, feats2glomby_feats, by = "Feats")
             gcdf$Feats <- NULL
