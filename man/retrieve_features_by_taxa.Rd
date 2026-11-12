@@ -21,5 +21,5 @@ retrieve_features_by_taxa(
 )
 }
 \description{
-Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given allfeaturesbytaxa_matrix and allfeaturesbytaxa_index metadata present in a JAMS SummarizedExperiment functional object.
+Returns a long form data frame of stratification by taxa of the relative abundance or number of bases wanted of functional features in wanted samples, given the SparseIndex assay and the allfeaturesbytaxa_matrix metadata present in a JAMS2 SummarizedExperiment functional object built with the JAMSbeta -u option.
 }

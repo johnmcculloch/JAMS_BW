@@ -6,7 +6,7 @@
 \usage{
 plot_alpha_diversity(
   ExpObj = NULL,
-  measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCount"),
+  measures = c("Observed", "Chao1", "Shannon", "Simpson", "InvSimpson", "GeneCounts"),
   stratify_by_domains = TRUE,
   glomby = NULL,
   samplesToKeep = NULL,
@@ -40,7 +40,7 @@ plot_alpha_diversity(
 \arguments{
 \item{ExpObj}{JAMS-style SummarizedExperiment object}
 
-\item{measures}{String giving the alpha diversity measurements used to quantify the alpha diversity within each category. Default includes Observed, Chao1, Shannon, Simpson, InvSimpson, and GeneCount.}
+\item{measures}{String giving the alpha diversity measurements used to quantify the alpha diversity within each category. Default includes Observed, Chao1, Shannon, Simpson, InvSimpson, and GeneCounts. The legacy singular spelling "GeneCount" is accepted as an alias for "GeneCounts".}
 
 \item{stratify_by_domains}{Requires a logical value. If TRUE, will concatenate all of the taxonomical features to the Domain level and create individual plots for each of the Domains for each measure specified. If FALSE, will forgo the Domain concatenation. Default is TRUE.}
 

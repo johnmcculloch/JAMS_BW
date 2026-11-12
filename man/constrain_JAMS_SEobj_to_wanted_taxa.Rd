@@ -4,12 +4,18 @@
 \alias{constrain_JAMS_SEobj_to_wanted_taxa}
 \title{Constrains a functional (non-taxonomic) JAMS-style SummarizedExperiment object which has feature-by-taxon stratification information (see JAMSbeta -u option) into a SummarizedExperiment object with BaseCounts and GeneCounts only pertaining to the wanted LKTs.}
 \usage{
-constrain_JAMS_SEobj_to_wanted_taxa(SEobj = NULL, wanted_LKTs = NULL)
+constrain_JAMS_SEobj_to_wanted_taxa(
+  SEobj = NULL,
+  wanted_LKTs = NULL,
+  drop_empty_features = TRUE
+)
 }
 \arguments{
-\item{SEobj}{a functional (non-taxonomic) JAMS-style SummarizedExperiment object which has feature-by-taxon stratification information (see JAMSbeta -u option)}
+\item{SEobj}{a functional (non-taxonomic) JAMS2-style SummarizedExperiment object which has feature-by-taxon stratification information (see JAMSbeta -u option)}
 
 \item{wanted_LKTs}{vector of LKTs to constrain the functional features of the original SEobj into}
+
+\item{drop_empty_features}{If TRUE (the default), features which have no bases attributable to any of the wanted LKTs in any sample are dropped from the returned object. If FALSE, every feature of the input object is retained, with zeroes where nothing is attributable.}
 }
 \description{
 Constrains a functional (non-taxonomic) JAMS-style SummarizedExperiment object which has feature-by-taxon stratification information (see JAMSbeta -u option) into a SummarizedExperiment object with BaseCounts and GeneCounts only pertaining to the wanted LKTs.

@@ -2,15 +2,42 @@
 % Please edit documentation in R/useful_functions.R
 \name{dichotomize_variable_in_md}
 \alias{dichotomize_variable_in_md}
-\title{dichotomize_variable_in_md(md = NULL, column_to_dichotomize = NULL, threshold = NULL, func_for_threshold = "median")}
+\title{dichotomize_variable_in_md(md = NULL, column_to_dichotomize = NULL, threshold = NULL, func_for_threshold = "median", class_to_ignore = "N_A", high_label = "High", low_label = "Low", missing_label = NULL)}
 \usage{
 dichotomize_variable_in_md(
   md = NULL,
   column_to_dichotomize = NULL,
   threshold = NULL,
-  func_for_threshold = "median"
+  func_for_threshold = "median",
+  class_to_ignore = "N_A",
+  high_label = "High",
+  low_label = "Low",
+  missing_label = NULL
 )
 }
+\arguments{
+\item{md}{data.frame (or S4 DataFrame, e.g. colData of a SummarizedExperiment) containing the variable.}
+
+\item{column_to_dichotomize}{String giving the name of the column to dichotomize.}
+
+\item{threshold}{Optional single number to use as the cut-point. If given, func_for_threshold is ignored. Default is NULL.}
+
+\item{func_for_threshold}{Function, or the name of a function, applied to the non-missing values to obtain the cut-point when threshold is NULL. It is called without an na.rm argument (missing values are removed beforehand) and must return a single number. Default is "median".}
+
+\item{class_to_ignore}{String or vector of strings to be treated as missing data. Default is "N_A".}
+
+\item{high_label}{String used for values at or above the threshold. Default is "High".}
+
+\item{low_label}{String used for values below the threshold. Default is "Low".}
+
+\item{missing_label}{Value returned for missing or unreadable cells. If NULL (the default), the first element of class_to_ignore is used (i.e. "N_A"), or NA if class_to_ignore is NULL.}
+}
+\value{
+Unnamed character vector, the same length and order as nrow(md).
+}
 \description{
-Translates a continuous variable in metadata into a dichotomous discrete variable, either by set threshold, or by being above or below a particular value computeby by func_for_threshold, e.g. median.
+Translates a continuous variable in metadata into a dichotomous discrete variable, either by a set threshold, or by being above or below a particular value computed by func_for_threshold, e.g. the median. Values greater than or equal to the threshold are labelled high_label ("High"), values strictly below it low_label ("Low"). Ties with the threshold therefore always go to the High group, which matters for the median of variables with many repeated values.
+}
+\details{
+In keeping with the JAMS convention that all metadata cells are character, numbers stored as strings (e.g. "52.5") are handled transparently, and factors are converted through their labels rather than their internal level codes. Cells that are NA or that belong to class_to_ignore are treated as missing, do not contribute to the threshold, and are returned as missing_label. Any other cell that cannot be read as a number is also returned as missing_label, with a warning naming the offending values.
 }
