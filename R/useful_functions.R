@@ -1363,41 +1363,118 @@ plot_table_a4_autofit_paged <- function(dataframe = NULL, title = NULL, orientat
   ))
 }
 
-#' dichotomize_variable_in_md(md = NULL, column_to_dichotomize = NULL, threshold = NULL, func_for_threshold = "median")
+#' resolve_dichotomization_threshold(x = NULL, threshold = NULL, func_for_threshold = "median")
 #'
-#' Translates a continuous variable in metadata into a dichotomous discrete variable, either by set threshold, or by being above or below a particular value computeby by func_for_threshold, e.g. median.
-#' @export
+#' Internal helper shared by dichotomize_variable_in_md() and plot_Ordination(). Returns the numeric cut-point used to split a continuous vector into two groups, plus a short human-readable description of how it was obtained (for plot titles and log messages). If threshold is given, it is validated and used as is; otherwise func_for_threshold (a function, or the name of one, e.g. "median", "mean") is applied to the non-missing values of x. The function is called with the missing values already removed and WITHOUT an na.rm argument, so user functions that do not accept na.rm, such as function(v) quantile(v, 0.75), work.
+#' @keywords internal
+#' @noRd
 
-dichotomize_variable_in_md <- function(md = NULL, column_to_dichotomize = NULL, threshold = NULL, func_for_threshold = "median"){
+resolve_dichotomization_threshold <- function(x = NULL, threshold = NULL, func_for_threshold = "median"){
 
-    if (!is.numeric(md[ , column_to_dichotomize])){
-        #coerce to numeric
-        md[ , column_to_dichotomize] <- as.numeric(md[ , column_to_dichotomize])
+    x_ok <- x[!is.na(x)]
+    if (length(x_ok) == 0){
+        stop("Unable to dichotomize: there are no usable (non-missing, numeric) values in the variable.")
     }
 
-    #If no threshold set, then obtain one by applying the function
-    if (is.null(threshold)){
-        threshold <- match.fun(func_for_threshold)(md[ , column_to_dichotomize], na.rm = TRUE)
-    }
+    fmt_num <- function(v){ format(signif(v, 6), scientific = FALSE, trim = TRUE) }
 
-    above_or_below <- function (x = NULL, threshold = NULL) {
-        if (!is.na(x)){
-            if (x >= threshold){
-                dichotval <- "High"
-            } else {
-                dichotval <- "Low"
-            }
+    if (!is.null(threshold)){
+        if (!(is.numeric(threshold) && (length(threshold) == 1) && is.finite(threshold))){
+            stop("The dichotomization threshold must be a single finite number.")
+        }
+        thr <- unname(threshold)
+        thrdesc <- paste0("threshold ", fmt_num(thr))
+    } else {
+        if (is.function(func_for_threshold)){
+            thrfun <- func_for_threshold
+            funcname <- "custom function"
+        } else if (is.character(func_for_threshold) && (length(func_for_threshold) == 1)){
+            thrfun <- tryCatch(match.fun(func_for_threshold), error = function(e){
+                stop(paste0("Unable to find a function called \"", func_for_threshold, "\" for computing the dichotomization threshold."), call. = FALSE)
+            })
+            funcname <- func_for_threshold
         } else {
-            #Input is NA
-            dichotval <- NA
+            stop("func_for_threshold must be a function, or the name of a function (e.g. \"median\"), returning a single number.")
         }
 
-        return(dichotval)
+        thr <- tryCatch(thrfun(x_ok), error = function(e){
+            stop(paste0("Applying ", funcname, " to compute the dichotomization threshold failed: ", conditionMessage(e)), call. = FALSE)
+        })
+        if (!(is.numeric(thr) && (length(thr) == 1) && is.finite(thr))){
+            stop(paste0("The function used to compute the dichotomization threshold (", funcname, ") must return a single finite number, but it returned something else (length ", length(thr), ", class ", class(thr)[1], ")."))
+        }
+        thr <- unname(thr)
+        thrdesc <- paste0(funcname, " (", fmt_num(thr), ")")
     }
 
-    dichot_vector <- sapply(md[ , column_to_dichotomize], above_or_below, threshold = threshold)
+    return(list(threshold = thr, description = thrdesc, formatted_threshold = fmt_num(thr)))
+}
 
-    return(dichot_vector)
+
+#' dichotomize_variable_in_md(md = NULL, column_to_dichotomize = NULL, threshold = NULL, func_for_threshold = "median", class_to_ignore = "N_A", high_label = "High", low_label = "Low", missing_label = NULL)
+#'
+#' Translates a continuous variable in metadata into a dichotomous discrete variable, either by a set threshold, or by being above or below a particular value computed by func_for_threshold, e.g. the median. Values greater than or equal to the threshold are labelled high_label ("High"), values strictly below it low_label ("Low"). Ties with the threshold therefore always go to the High group, which matters for the median of variables with many repeated values.
+#'
+#' In keeping with the JAMS convention that all metadata cells are character, numbers stored as strings (e.g. "52.5") are handled transparently, and factors are converted through their labels rather than their internal level codes. Cells that are NA or that belong to class_to_ignore are treated as missing, do not contribute to the threshold, and are returned as missing_label. Any other cell that cannot be read as a number is also returned as missing_label, with a warning naming the offending values.
+#'
+#' @param md data.frame (or S4 DataFrame, e.g. colData of a SummarizedExperiment) containing the variable.
+#' @param column_to_dichotomize String giving the name of the column to dichotomize.
+#' @param threshold Optional single number to use as the cut-point. If given, func_for_threshold is ignored. Default is NULL.
+#' @param func_for_threshold Function, or the name of a function, applied to the non-missing values to obtain the cut-point when threshold is NULL. It is called without an na.rm argument (missing values are removed beforehand) and must return a single number. Default is "median".
+#' @param class_to_ignore String or vector of strings to be treated as missing data. Default is "N_A".
+#' @param high_label String used for values at or above the threshold. Default is "High".
+#' @param low_label String used for values below the threshold. Default is "Low".
+#' @param missing_label Value returned for missing or unreadable cells. If NULL (the default), the first element of class_to_ignore is used (i.e. "N_A"), or NA if class_to_ignore is NULL.
+#' @return Unnamed character vector, the same length and order as nrow(md).
+#' @export
+
+dichotomize_variable_in_md <- function(md = NULL, column_to_dichotomize = NULL, threshold = NULL, func_for_threshold = "median", class_to_ignore = "N_A", high_label = "High", low_label = "Low", missing_label = NULL){
+
+    if (!(is.data.frame(md) || inherits(md, c("DataFrame", "DFrame")))){
+        stop("md must be a data.frame (or an S4 DataFrame such as the colData of a SummarizedExperiment).")
+    }
+    if (!(is.character(column_to_dichotomize) && (length(column_to_dichotomize) == 1))){
+        stop("column_to_dichotomize must be a single column name.")
+    }
+    if (!(column_to_dichotomize %in% colnames(md))){
+        stop(paste0("Column \"", column_to_dichotomize, "\" was not found in md."))
+    }
+    if (!(is.character(high_label) && is.character(low_label) && (length(high_label) == 1) && (length(low_label) == 1) && (high_label != low_label))){
+        stop("high_label and low_label must be two different single strings.")
+    }
+    if (is.null(missing_label)){
+        missing_label <- if (is.null(class_to_ignore)) NA_character_ else as.character(class_to_ignore[1])
+    }
+
+    #`[[` works for data.frame, tibble, data.table and S4 DataFrame alike, and always returns a plain vector.
+    rawvals <- md[[column_to_dichotomize]]
+
+    if (is.numeric(rawvals) || is.logical(rawvals) || inherits(rawvals, c("Date", "POSIXt", "difftime"))){
+        #Already numeric-like; use directly, avoiding a lossy round trip through character.
+        xnum <- as.numeric(rawvals)
+        #Honour class_to_ignore here too (e.g. a numeric sentinel such as -999)
+        if (!is.null(class_to_ignore)){
+            xnum[as.character(rawvals) %in% as.character(class_to_ignore)] <- NA
+        }
+    } else {
+        #Character (the JAMS norm) or factor. as.character() first, so a factor yields its labels, not its level codes.
+        rawchar <- as.character(rawvals)
+        ignored <- is.na(rawchar) | (rawchar %in% as.character(class_to_ignore))
+        xnum <- suppressWarnings(as.numeric(rawchar))
+        xnum[ignored] <- NA
+        unreadable <- (!ignored) & is.na(xnum)
+        if (any(unreadable)){
+            badvals <- unique(rawchar[unreadable])
+            flog.warn(paste0("dichotomize_variable_in_md: ", sum(unreadable), " value(s) of \"", column_to_dichotomize, "\" could not be read as numbers and will be set to ", missing_label, ": ", paste0(utils::head(badvals, 10), collapse = ", "), if (length(badvals) > 10) ", ..." else "", ". If these represent missing data, consider adding them to class_to_ignore."))
+        }
+    }
+
+    thrinfo <- resolve_dichotomization_threshold(x = xnum, threshold = threshold, func_for_threshold = func_for_threshold)
+
+    dichot_vector <- ifelse(xnum >= thrinfo$threshold, high_label, low_label)
+    dichot_vector[is.na(xnum)] <- missing_label
+
+    return(unname(as.character(dichot_vector)))
 }
 
 

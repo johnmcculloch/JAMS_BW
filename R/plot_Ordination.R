@@ -22,7 +22,9 @@
 
 #' @param subsetby String specifying the metadata variable name for subsetting samples. If passed, multiple plots will be drawn, one plot for samples within each different class contained within the variable.  If NULL, data is not subset. Default is NULL.
 
-#' @param compareby String specifying the metadata variable name for grouping samples. This will define which metadata variable grouping to calculate PERMANOVA p-value. If not specified, and argument permanova is set to TRUE, (see permanova), the compareby argument will be set by colourby or shapeby. If these latter two are also NULL, and permanova is TRUE, permanova will be set to FALSE. Default is NULL.
+#' @param compareby String specifying the metadata variable name for grouping samples. This will define which metadata variable grouping to calculate PERMANOVA p-value. If not specified, and argument permanova is set to TRUE, (see permanova), the compareby argument will be set by colourby or shapeby. If these latter two are also NULL, and permanova is TRUE, permanova will be set to FALSE. Default is NULL. The compareby variable must be categorical. If it is continuous (see dichotomize_continuous_compareby_threshold), it must be dichotomized into High and Low groups, otherwise nothing is plotted.
+
+#' @param dichotomize_continuous_compareby_threshold Controls what happens when the compareby variable (whether passed explicitly, or inherited from colourby, shapeby, etc.) is continuous. A variable is considered continuous when, after discarding class_to_ignore values, all of its values are numbers, it has more than two distinct values, and it is not declared as anything other than "continuous" in the phenolabels of the SummarizedExperiment object (a numeric-coded variable declared "discrete" or "subsettable" in phenolabels, or one with only two distinct values such as 0/1, is left untouched and treated as categorical). If NULL (the default) and compareby was passed explicitly, a continuous compareby is refused: a warning explaining the options is issued and an empty list is returned without plotting. If NULL and compareby was NOT passed (i.e. it was inherited from colourby, shapeby, etc.), the plot is drawn as before, without dichotomizing. If FALSE, the variable is deliberately treated as categorical, each distinct value being a class (useful for numerically coded groups such as timepoints 0, 7, 14). If a single number (a number given as a string, e.g. "30", is also accepted), samples with values greater than or equal to that number are labelled "High" and the others "Low". If "median" (or the name of any other function, e.g. "mean"), or a function returning a single number (e.g. function(x) quantile(x, 0.75)), the threshold is computed by applying it to the compareby values. The threshold is computed ONCE, across all samples remaining after samplesToKeep and class_to_ignore are applied, and NOT separately within each subset, so that High and Low mean the same thing in every panel. The dichotomized values are stored in a new variable called <compareby>_dichotomized, which is then used for PERMANOVA and centroids, and also for colourby, shapeby and ellipseby if any of these were the same variable as compareby (textby, sizeby, connectby and connection_orderby keep the original continuous values). High and Low are coloured with the colours for "High" and "Low" in the cdict entry for either <compareby>_dichotomized or the original compareby variable or, failing that, in the colour table of the SummarizedExperiment object (ctable), but only if both labels are present there, or otherwise always with the same fixed pair of colours (High = red, Low = blue). The threshold used is reported in the plot title. This argument is ignored if compareby is categorical.
 
 #' @param permanova Requires a logical value. If set to TRUE, will include in the title plot the PERMANOVA stats for groups set with compareby. Default is TRUE.
 
@@ -94,7 +96,7 @@
 
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, unhighlighted_transparency_percentage = 95, highlight_subset_in_context = FALSE, featuresToKeep = NULL, only_allow_CSBs = FALSE, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, asPPM = TRUE, normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, min_samples_per_class_for_permanova = 3, include_components_variance_plot = FALSE, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, unhighlighted_transparency_percentage = 95, highlight_subset_in_context = FALSE, featuresToKeep = NULL, only_allow_CSBs = FALSE, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, asPPM = TRUE, normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, dichotomize_continuous_compareby_threshold = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, min_samples_per_class_for_permanova = 3, include_components_variance_plot = FALSE, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
@@ -111,8 +113,26 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     }
 
     #Define what is being compared for permanova
+    compareby_was_explicit <- !is.null(compareby)
     if (is.null(compareby)){
         compareby <- c(colourby, shapeby, ellipseby, textby, sizeby, connectby)[1]
+    }
+
+    #Vet the dichotomization argument up front, before any expensive work
+    dichot_spec <- dichotomize_continuous_compareby_threshold
+    treat_compareby_as_is <- isFALSE(dichot_spec)
+    if (treat_compareby_as_is){
+        dichot_spec <- NULL
+    }
+    if (!is.null(dichot_spec)){
+        #A number passed as a string (easy to do, given that all JAMS metadata is character) is a number, not a function name
+        if (is.character(dichot_spec) && (length(dichot_spec) == 1) && !is.na(dichot_spec) && can_be_made_numeric(dichot_spec)){
+            dichot_spec <- as.numeric(dichot_spec)
+        }
+        dichot_spec_ok <- is.function(dichot_spec) || (is.numeric(dichot_spec) && (length(dichot_spec) == 1) && is.finite(dichot_spec)) || (is.character(dichot_spec) && (length(dichot_spec) == 1) && !is.na(dichot_spec))
+        if (!dichot_spec_ok){
+            stop("dichotomize_continuous_compareby_threshold must be NULL, FALSE, a single number, the name of a function such as \"median\", or a function returning a single number.")
+        }
     }
 
     #Sanity check for context-highlighting mode
@@ -135,6 +155,87 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     }
     pcatitbase <- paste(algorithm, "of", analysisname)
 
+    #### Continuous compareby: refuse, or dichotomize into High/Low ####
+    #JAMS metadata is all-character, so "continuous" is decided by whether the usable values can be read as numbers.
+    #This is done ONCE, on the whole vetted object (samplesToKeep and class_to_ignore already applied), and BEFORE
+    #subsetting, so that the threshold, and therefore the meaning of High and Low, is identical in every subset panel.
+    dichotomized_compareby <- FALSE
+    dichot_labels <- c(High = "High", Low = "Low")
+    #Fixed fallback colours, used whenever ctable/cdict do not carry BOTH labels. Matches the blue-to-red gradient used for continuous colourby.
+    dichot_fallback_colours <- c(High = "#D7301F", Low = "#2B8CBE")
+
+    if ((length(compareby) == 1) && !is.na(compareby) && (compareby %in% colnames(colData(obj)))){
+        cb_vals <- as.character(colData(obj)[[compareby]])
+        cb_usable <- cb_vals[!is.na(cb_vals) & !(cb_vals %in% class_to_ignore)]
+        cb_is_numeric <- (length(cb_usable) > 0) && can_be_made_numeric(cb_usable)
+        cb_n_distinct <- if (cb_is_numeric) length(unique(as.numeric(cb_usable))) else 0
+
+        #Respect an explicit declaration in phenolabels, if there is one for this variable
+        cb_declared_type <- NA_character_
+        pl <- metadata(obj)$phenolabels
+        if (!is.null(pl) && all(c("Var_label", "Var_type") %in% colnames(pl)) && (compareby %in% pl$Var_label)){
+            cb_declared_type <- as.character(pl$Var_type[match(compareby, pl$Var_label)])
+        }
+
+        cb_is_continuous <- cb_is_numeric && (cb_n_distinct > 2) && (is.na(cb_declared_type) || (cb_declared_type == "continuous"))
+
+        if (cb_is_continuous && treat_compareby_as_is){
+            flog.info(paste0("compareby variable \"", compareby, "\" looks continuous, but dichotomize_continuous_compareby_threshold = FALSE, so each of its ", cb_n_distinct, " distinct values will be treated as a separate category."))
+
+        } else if (cb_is_continuous && is.null(dichot_spec) && !compareby_was_explicit){
+            #compareby was not asked for; it was inherited from colourby/shapeby/etc. Do not refuse a plot the user never
+            #asked to be a comparison: carry on exactly as before (PERMANOVA is skipped downstream if classes are too small).
+            flog.info(paste0("compareby was not passed, and the variable it was taken from (\"", compareby, "\") is continuous. Plotting without dichotomizing it. To compare High vs Low groups of \"", compareby, "\", set dichotomize_continuous_compareby_threshold (e.g. = \"median\")."))
+
+        } else if (cb_is_continuous){
+            if (is.null(dichot_spec)){
+                flog.warn(paste0("The compareby variable \"", compareby, "\" is continuous (", cb_n_distinct, " distinct numeric values), but plot_Ordination can only compare categorical groups (PERMANOVA, centroids, group colours). Nothing will be plotted. Either pass a categorical variable to compareby, or set dichotomize_continuous_compareby_threshold to split \"", compareby, "\" into High and Low groups: use a number (e.g. dichotomize_continuous_compareby_threshold = 30), \"median\" (or the name of another function, e.g. \"mean\"), or a function returning a single number (e.g. function(x) quantile(x, 0.75)). If \"", compareby, "\" is really a categorical variable coded with numbers (e.g. timepoints 0, 7, 14), set dichotomize_continuous_compareby_threshold = FALSE to treat each value as a category, or declare it as \"discrete\" in the phenolabels."))
+                return(invisible(list()))
+            }
+
+            cb_num <- as.numeric(cb_usable)
+            if (is.numeric(dichot_spec)){
+                thrinfo <- resolve_dichotomization_threshold(x = cb_num, threshold = dichot_spec)
+            } else {
+                thrinfo <- resolve_dichotomization_threshold(x = cb_num, threshold = NULL, func_for_threshold = dichot_spec)
+            }
+
+            dichot_vals <- dichotomize_variable_in_md(md = data.frame(cbvar = cb_vals, stringsAsFactors = FALSE), column_to_dichotomize = "cbvar", threshold = thrinfo$threshold, class_to_ignore = class_to_ignore, high_label = dichot_labels[["High"]], low_label = dichot_labels[["Low"]])
+
+            dichot_colname <- paste0(compareby, "_dichotomized")
+            if (dichot_colname %in% colnames(colData(obj))){
+                flog.warn(paste0("A metadata variable called \"", dichot_colname, "\" already exists. It will be overwritten (within this plot only; your SummarizedExperiment object is not modified) by the dichotomized values of \"", compareby, "\"."))
+            }
+            colData(obj)[[dichot_colname]] <- dichot_vals
+
+            #Defensive: should not happen, as ExpObjVetting already removed class_to_ignore samples for compareby
+            dichot_missing <- which(!(dichot_vals %in% dichot_labels))
+            if (length(dichot_missing) > 0){
+                flog.warn(paste0(length(dichot_missing), " sample(s) could not be assigned to High or Low for \"", compareby, "\" and will be omitted."))
+                obj <- obj[ , -dichot_missing]
+            }
+
+            n_high <- sum(colData(obj)[[dichot_colname]] == dichot_labels[["High"]])
+            n_low <- sum(colData(obj)[[dichot_colname]] == dichot_labels[["Low"]])
+            dichot_msg <- paste0(compareby, " dichotomized at ", thrinfo$description, ": High >= ", thrinfo$formatted_threshold, " (n=", n_high, "); Low < ", thrinfo$formatted_threshold, " (n=", n_low, ")")
+            flog.info(dichot_msg)
+            if (min(n_high, n_low) == 0){
+                flog.warn(paste0("Dichotomizing \"", compareby, "\" at ", thrinfo$description, " placed every sample in a single group. The ordination will be plotted, but there is nothing to compare, so PERMANOVA and centroid comparisons will not be meaningful. Consider a different threshold."))
+            }
+
+            #Grouping aesthetics that were the same variable follow the dichotomized version. textby, sizeby, connectby and connection_orderby keep the raw values.
+            if (identical(colourby, compareby)){ colourby <- dichot_colname }
+            if (identical(shapeby, compareby)){ shapeby <- dichot_colname }
+            if (identical(ellipseby, compareby)){ ellipseby <- dichot_colname }
+            compareby_original <- compareby
+            compareby <- dichot_colname
+            dichotomized_compareby <- TRUE
+            pcatitbase <- paste(pcatitbase, dichot_msg, sep = "\n")
+
+        } else if (!is.null(dichot_spec)){
+            flog.info(paste0("compareby variable \"", compareby, "\" is categorical; ignoring dichotomize_continuous_compareby_threshold."))
+        }
+    }
     flog.info(pcatitbase)
 
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, is16S = ("asv2lkt" %in% names(metadata(obj))))
@@ -543,26 +644,49 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             p <- p + scale_shape_manual(values = dotsize:(dotsize + numsizes))
         }
 
-        if (is.numeric(dford$Colours)){
-            #Check if there is enough variance in the continuous data to plot a gradient
-            if ((max(dford$Colours) - min(dford$Colours)) > 0){
-                p <- p + scale_color_gradient(low = "blue", high = "red")
-            }
-        } else {
-            #if there is a colour dictionary, then use that
-            if (!(is.null(cdict))){
-                ct <- cdict[[colourby]]
-                groupcols <- setNames(as.character(ct$Colour), as.character(ct$Name))
+        if (!is.null(colourby)){
+            if (is.numeric(dford$Colours)){
+                #Check if there is enough variance in the continuous data to plot a gradient
+                if ((max(dford$Colours) - min(dford$Colours)) > 0){
+                    p <- p + scale_color_gradient(low = "blue", high = "red")
+                }
+            } else if (dichotomized_compareby && identical(colourby, compareby)){
+                #Colouring by the dichotomized compareby. Neither the cdict entry nor the ctable can be assumed to
+                #know about "High" and "Low", so only use them when they carry BOTH labels; otherwise always use the
+                #same fixed pair, so that High and Low look the same across every plot.
+                groupcols <- dichot_fallback_colours
+                has_both_labels <- function(ct){ !is.null(ct) && all(c("Name", "Colour") %in% colnames(ct)) && all(dichot_labels %in% as.character(ct$Name)) }
+                ct <- NULL
+                if (!is.null(cdict)){
+                    #Look under the dichotomized variable name first, then under the original variable name
+                    if (has_both_labels(cdict[[colourby]])){
+                        ct <- cdict[[colourby]]
+                    } else if (has_both_labels(cdict[[compareby_original]])){
+                        ct <- cdict[[compareby_original]]
+                    }
+                }
+                if (!is.null(ct)){
+                    groupcols <- setNames(as.character(ct$Colour[match(dichot_labels, as.character(ct$Name))]), dichot_labels)
+                } else if (("ctable" %in% names(metadata(currobj))) && all(dichot_labels %in% rownames(metadata(currobj)$ctable))){
+                    groupcols <- setNames(as.character(metadata(currobj)$ctable[dichot_labels, "Hex"]), dichot_labels)
+                }
                 p <- p + scale_color_manual(values = groupcols)
             } else {
-                #Use colour table if available
-                if ("ctable" %in% names(metadata(currobj))){
-                    discretenames <- sort(unique(dford$Colours))
-                    colourshave <- discretenames[discretenames %in% rownames(metadata(currobj)$ctable)]
-                    cores <- as.vector(rainbow(length(discretenames)))
-                    names(cores) <- discretenames
-                    cores[colourshave] <- metadata(currobj)$ctable[colourshave, "Hex"]
-                    p <- p + scale_color_manual(values = cores)
+                #if there is a colour dictionary, then use that
+                if (!(is.null(cdict))){
+                    ct <- cdict[[colourby]]
+                    groupcols <- setNames(as.character(ct$Colour), as.character(ct$Name))
+                    p <- p + scale_color_manual(values = groupcols)
+                } else {
+                    #Use colour table if available
+                    if ("ctable" %in% names(metadata(currobj))){
+                        discretenames <- sort(unique(dford$Colours))
+                        colourshave <- discretenames[discretenames %in% rownames(metadata(currobj)$ctable)]
+                        cores <- as.vector(rainbow(length(discretenames)))
+                        names(cores) <- discretenames
+                        cores[colourshave] <- metadata(currobj)$ctable[colourshave, "Hex"]
+                        p <- p + scale_color_manual(values = cores)
+                    }
                 }
             }
         }
