@@ -15,3 +15,6 @@ load_metadata_from_file(
 \description{
 Loads an Excel(TM) file or tsv files and returns a list containing 1) the metadata itself and 2) description of label types for the metadata, provided the Excel file contains these data on sheets 1 and 2, respsctively.
 }
+\details{
+Column names are read exactly as written and then conformed to JAMS style by enforce_JAMS_style_metadata() (q.v.), which also trims whitespace, fills missing cells with class_to_ignore, and drops empty rows, rows without a sample name and duplicated samples. Every column rename is logged, one line each (so it appears in the _JAMS.log file of JAMSbeta and JAMS16), and, when opt is passed, the table of original -> new names is written to <outdir>/<projectname>_metadata_column_name_changes.tsv and kept in opt$metadata_column_name_changes. phenolabels entries are renamed to match, whether they were written with the original names or with the dotted names produced by earlier JAMS versions.
+}

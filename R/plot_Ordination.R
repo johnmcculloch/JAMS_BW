@@ -141,12 +141,56 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         highlight_subset_in_context <- FALSE
     }
 
+    #### Guard: every metadata variable named in the call must exist ####
+    #Without this, a misspelt or absent variable only surfaces deep inside the loop as the cryptic "undefined columns selected".
+    #This returns an empty list with a warning, rather than stopping, so a loop over many variables carries on.
+    named_vars <- list(compareby = compareby, subsetby = subsetby, colourby = colourby, shapeby = shapeby, sizeby = sizeby, connectby = connectby, connection_orderby = connection_orderby, textby = textby, ellipseby = ellipseby)
+    named_vars <- named_vars[vapply(named_vars, function(v){ is.character(v) && length(v) > 0 }, logical(1))]
+    find_missing_vars <- function(available){
+        missing_desc <- character(0)
+        for (argname in names(named_vars)){
+            absent <- setdiff(named_vars[[argname]][!is.na(named_vars[[argname]])], available)
+            if (length(absent) > 0){
+                missing_desc <- c(missing_desc, paste0(argname, " = \"", paste0(absent, collapse = "\", \""), "\""))
+            }
+        }
+        return(missing_desc)
+    }
+    missing_vars <- find_missing_vars(colnames(colData(ExpObj)))
+    if (length(missing_vars) > 0){
+        flog.warn(paste0("plot_Ordination: the following metadata variable(s) are not present in the SummarizedExperiment object: ", paste0(missing_vars, collapse = "; "), ". Nothing will be plotted. Check spelling with colnames(colData(ExpObj))."))
+        return(invisible(list()))
+    }
+
     #Remove samples bearing categories within class_to_ignore
     valid_vars <- c(compareby, subsetby)[which(!is.na(c(compareby, subsetby)))]
 
     #Vet experiment object
     obj <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = samplesToKeep, featuresToKeep = featuresToKeep, only_allow_CSBs = only_allow_CSBs, glomby = glomby, variables_to_fix = valid_vars, class_to_ignore = class_to_ignore)
 
+    #Same check again after vetting: catches any variable lost or renamed during vetting/agglomeration (e.g. by make.names() mangling of names containing spaces or hyphens)
+    missing_vars <- find_missing_vars(colnames(colData(obj)))
+    if (length(missing_vars) > 0){
+        flog.warn(paste0("plot_Ordination: metadata variable(s) ", paste0(missing_vars, collapse = "; "), " were present in the input object but were lost while preparing it for plotting. This is a JAMS bug, please report it. Nothing will be plotted."))
+        return(invisible(list()))
+    }
+
+    #### Guard: there must be something left to ordinate and compare ####
+    #filter_sample_by_class_to_ignore() returns ALL samples when a variable is entirely class_to_ignore, so check explicitly
+    #rather than silently plotting everyone as a single "N_A" group.
+    if (!is.null(compareby) && !is.na(compareby)){
+        cb_check <- as.character(colData(obj)[[compareby]])
+        n_cb_usable <- sum(!is.na(cb_check) & !(cb_check %in% class_to_ignore))
+        if (n_cb_usable == 0){
+            flog.warn(paste0("plot_Ordination: compareby variable \"", compareby, "\" has no usable values (all are NA or in class_to_ignore = ", paste0(class_to_ignore, collapse = ", "), ") among the samples being plotted. Nothing will be plotted."))
+            return(invisible(list()))
+        }
+    }
+    min_samples_to_ordinate <- 3
+    if (ncol(obj) < min_samples_to_ordinate){
+        flog.warn(paste0("plot_Ordination: only ", ncol(obj), " sample(s) remain after applying samplesToKeep and class_to_ignore", if (!is.null(compareby)) paste0(" to \"", compareby, "\"") else "", "; at least ", min_samples_to_ordinate, " are needed for an ordination. Nothing will be plotted."))
+        return(invisible(list()))
+    }
     analysis <- metadata(obj)$analysis
     if (!is.null(glomby)){
         analysisname <- glomby
@@ -390,7 +434,8 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             }
         }
 
-        currpt <- as.data.frame(colData(currobj))
+        #optional = TRUE stops make.names() renaming variables with spaces/hyphens (e.g. "IL_1 alpha" -> "IL_1.alpha")
+        currpt <- as.data.frame(colData(currobj), optional = TRUE)
 
         #Get counts matrix
         if (assay_for_matrix != "BaseCounts"){
@@ -469,7 +514,8 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
         flog.info("getting permanova")
         if (do_permanova == TRUE){
             if (!(is.numeric(cats))){
-                permanovaout <- vegan::adonis2(formula = as.formula(paste("d ~ ", compareby)), data = currpt_stat, permutations = permanova_permutations, parallel = numthreads)
+                #Backticks so that variable names with spaces or other non-syntactic characters parse as a single term
+                permanovaout <- vegan::adonis2(formula = as.formula(paste0("d ~ `", compareby, "`")), data = currpt_stat, permutations = permanova_permutations, parallel = numthreads)
                 permanovap <- permanovaout$`Pr(>F)`[1]
                 permanovaF <- permanovaout$`F`[1]
             } else {

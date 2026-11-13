@@ -5,7 +5,7 @@
 
 filter_sample_by_class_to_ignore <- function(SEobj = NULL, variables = NULL, class_to_ignore = NULL){
 
-    ptb <- as.data.frame(colData(SEobj))
+    ptb <- as.data.frame(colData(SEobj), optional = TRUE)
     allmetadata <- metadata(SEobj)
     Samples <- rownames(ptb)
 
@@ -25,7 +25,7 @@ filter_sample_by_class_to_ignore <- function(SEobj = NULL, variables = NULL, cla
             omitted_samples <- rownames(ptb)[!(rownames(ptb) %in% valid_samples)]
             flog.info(paste("A total of", length(omitted_samples), "samples were omitted for containing", paste0(class_to_ignore, collapse = ", "), "within metadata variables", paste0(variables, collapse = ", ")))
             SEobj <- SEobj[ , valid_samples]
-            ptb <- as.data.frame(colData(SEobj))
+            ptb <- as.data.frame(colData(SEobj), optional = TRUE)
         }
     }
 

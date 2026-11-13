@@ -12,10 +12,11 @@ multiple_subsetting_sample_selector <- function(SEobj = NULL, phenotable = NULL,
     subset_level_2 <- subsetby[2]
     subset_level_3 <- subsetby[3]
 
+    #optional = TRUE stops make.names() renaming variables with spaces/hyphens, which would make subsetby/compareby "not found"
     if (is.null(phenotable)){
-        curr_pheno <- as.data.frame(colData(SEobj))
+        curr_pheno <- as.data.frame(colData(SEobj), optional = TRUE)
     } else {
-        curr_pheno <- as.data.frame(phenotable)
+        curr_pheno <- as.data.frame(phenotable, optional = TRUE)
     }
 
     variable_list <- define_kinds_of_variables(phenotable = curr_pheno, verbose = FALSE)

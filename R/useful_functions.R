@@ -453,6 +453,280 @@ replace_NAs_with_character <- function(df = NULL, replacement = "N_A", coerce_al
 }
 
 
+#' enforce_JAMS_style_metadata(pheno = NULL, phenolabels = NULL, sample_column = "Sample", class_to_ignore = "N_A", fix_column_names = TRUE)
+#'
+#' Checks a metadata table (phenotable) and conforms it to JAMS conventions, so that it will not cause trouble in downstream JAMS functions. It is meant to be run once, right after reading metadata in and before building or updating SummarizedExperiment objects, and it reports everything it changes.
+#'
+#' In order, it:
+#' (1) checks that pheno is a data.frame (tibbles and data.tables are flattened to a plain data.frame);
+#' (2) makes column names safe: leading/trailing whitespace is removed; "%" becomes "pct" and "+" becomes "plus"; every other character that is not an ASCII letter, digit, underscore or dot (spaces, "-", "!@#$^&()", "/", accented letters, etc.) becomes "_"; runs of "_" are collapsed; leading/trailing "_" and "." are removed; names starting with a digit get an "X" prefix; R reserved words (TRUE, NA, if, function...) get a "_var" suffix; empty names become "Unnamed_column_<n>"; and names left duplicated are made unique by appending _1, _2, etc. (e.g. "IL-6 (pg/mL)" becomes "IL_6_pg_mL", "Olink_IL_1 alpha_Serum" becomes "Olink_IL_1_alpha_Serum");
+#' (3) finds the Sample column. If there is no column named exactly sample_column, a single column whose name differs from it only in case (e.g. "sample", "SAMPLE") is renamed to it; otherwise it stops;
+#' (4) trims leading and trailing whitespace from every cell (trim_whitespace_from_df);
+#' (5) enforces the JAMS all-character convention, with every NA or empty cell set to class_to_ignore[1] (replace_NAs_with_character);
+#' (6) vets the sample names. Rows where every cell is empty are dropped quietly (common at the bottom of spreadsheets); rows with a missing sample name are dropped with a warning; duplicated sample names make it stop, listing them, as there is no safe way to choose between them (or, with on_duplicate_samples = "drop", every row of a duplicated sample is dropped with a warning). Sample names are NEVER altered, as they must match the JAMS file prefixes; a warning is issued if they contain characters other than letters, digits, "_", "." or "-".
+#' (7) warns if any cell contains the section sign character, which JAMS uses internally to separate subset tiers.
+#'
+#' Everything is reported through futile.logger, one line per renamed column, so when it is called from JAMSbeta or JAMS16 (via load_metadata_from_file) the full record of changes ends up in the project's _JAMS.log file.
+#'
+#' @param pheno data.frame (or tibble/data.table) with the metadata, one row per sample.
+#' @param phenolabels Optional data.frame with columns Var_label and Var_type. If given, its Var_label entries are renamed in step with the pheno columns. A label is matched to its column by the column's original name or, failing that, by the dotted form older JAMS versions produced on reading (e.g. "IL.6..pg.mL." for "IL-6 (pg/mL)"), so existing phenolabels keep working. The Sample column is ensured to be the only one with Var_type "Sample". See also reconcile_phenolabels.
+#' @param sample_column Name of the column holding the sample names (prefixes). Default is "Sample". If this name is itself changed by the column name fixing, the fixed name is used.
+#' @param class_to_ignore String (or vector, of which the first element is used for filling) used for missing data. Default is "N_A".
+#' @param fix_column_names Logical. If TRUE (the default), unsafe column names are fixed. If FALSE, they are only reported with a warning and left as they are.
+#' @param reconcile_phenolabels Logical, only used if phenolabels is given. If TRUE (the default), phenolabels entries with no matching pheno column are dropped, pheno columns missing from phenolabels are added with an inferred Var_type, and phenolabels is put in pheno column order. If FALSE, phenolabels is only renamed (and its Sample entry fixed), and nothing is added, dropped or reordered; this is what load_metadata_from_file uses, because JAMSbeta treats phenolabels as the list of columns to keep.
+#' @param on_duplicate_samples Either "stop" (the default) or "drop". What to do when a sample name occurs in more than one row.
+#' @return If phenolabels is NULL, the fixed phenotable data.frame. If phenolabels is given, a list with elements phenotable and phenolabels. In both cases the phenotable carries an attribute "JAMS_column_name_changes", a data.frame with columns Original and New listing every column that was renamed (zero rows if none), retrievable with attr(x, "JAMS_column_name_changes"). It also carries the attributes "JAMS_sample_column" (the name of the Sample column after fixing) and "JAMS_duplicated_samples_dropped" (sample names dropped with on_duplicate_samples = "drop").
+#' @examples
+#' \dontrun{
+#' pheno <- enforce_JAMS_style_metadata(pheno = pheno)
+#' attr(pheno, "JAMS_column_name_changes")
+#' md <- enforce_JAMS_style_metadata(pheno = pheno, phenolabels = phenolabels)
+#' }
+#' @export
+
+enforce_JAMS_style_metadata <- function(pheno = NULL, phenolabels = NULL, sample_column = "Sample", class_to_ignore = "N_A", fix_column_names = TRUE, reconcile_phenolabels = TRUE, on_duplicate_samples = "stop"){
+
+    #### 1. Is it a data frame? ####
+    if (is.null(pheno) || !inherits(pheno, "data.frame")){
+        stop("pheno must be a data.frame (or a tibble or data.table).")
+    }
+    if (!(is.character(on_duplicate_samples) && (length(on_duplicate_samples) == 1) && (on_duplicate_samples %in% c("stop", "drop")))){
+        stop("on_duplicate_samples must be either \"stop\" or \"drop\".")
+    }
+    #Flatten tibble/data.table; optional = TRUE so that as.data.frame() does not itself mangle the names with make.names()
+    pheno <- as.data.frame(pheno, optional = TRUE)
+    if ((ncol(pheno) == 0) || (nrow(pheno) == 0)){
+        stop("pheno has no columns or no rows.")
+    }
+    flog.info(paste0("enforce_JAMS_style_metadata: checking metadata with ", nrow(pheno), " row(s) and ", ncol(pheno), " column(s) for conformity with JAMS style."))
+    nrow_in <- nrow(pheno)
+    if (!(is.character(class_to_ignore) && (length(class_to_ignore) >= 1) && !is.na(class_to_ignore[1]))){
+        stop("class_to_ignore must be a character string (or vector of strings), e.g. \"N_A\".")
+    }
+    if (!(is.character(sample_column) && (length(sample_column) == 1) && !is.na(sample_column))){
+        stop("sample_column must be a single column name.")
+    }
+
+    #### 2. Column names ####
+    orignames <- colnames(pheno)
+    if (is.null(orignames)){
+        orignames <- rep("", ncol(pheno))
+    }
+    orignames[is.na(orignames)] <- ""
+
+    sanitize_one_name <- function(x, i){
+        #To ASCII first: every non-ASCII byte becomes "_", which also sidesteps any invalid-encoding errors in gsub()
+        y <- iconv(enc2utf8(x), from = "UTF-8", to = "ASCII", sub = "_")
+        if (is.na(y)){
+            y <- ""
+        }
+        y <- trimws(y)
+        y <- gsub("%", "pct", y, fixed = TRUE)
+        y <- gsub("+", "plus", y, fixed = TRUE)
+        y <- gsub("[^A-Za-z0-9_.]", "_", y, perl = TRUE)
+        y <- gsub("_+", "_", y, perl = TRUE)
+        y <- gsub("^[_.]+|[_.]+$", "", y, perl = TRUE)
+        if (y == ""){
+            y <- paste0("Unnamed_column_", i)
+        }
+        if (grepl("^[0-9]", y)){
+            y <- paste0("X", y)
+        }
+        #What survives is syntactic except for reserved words (TRUE, NA, if, function, ...), which make.names() alters
+        if (make.names(y) != y){
+            y <- paste0(y, "_var")
+        }
+        return(y)
+    }
+
+    proposed <- vapply(seq_along(orignames), function(i){ sanitize_one_name(orignames[i], i) }, character(1))
+    if (anyDuplicated(proposed)){
+        dupnames <- unique(proposed[duplicated(proposed)])
+        flog.warn(paste0("enforce_JAMS_style_metadata: after making them safe, these column names occur more than once, and will be made unique with a numeric suffix (_1, _2, ...): ", paste0(dupnames, collapse = ", "), ". Please check which column is which."))
+        proposed <- make.unique(proposed, sep = "_")
+    }
+
+    if (fix_column_names){
+        colnames(pheno) <- proposed
+    } else {
+        unsafe <- which(orignames != proposed)
+        if (length(unsafe) > 0){
+            flog.warn(paste0("enforce_JAMS_style_metadata: ", length(unsafe), " column name(s) are unsafe for JAMS but fix_column_names = FALSE, so they were left as they are: ", paste0("\"", orignames[unsafe], "\" (suggested: \"", proposed[unsafe], "\")", collapse = "; ")))
+        }
+        colnames(pheno) <- orignames
+    }
+    #Finds which ORIGINAL column a name refers to: the name as written, else the dotted forms older JAMS versions
+    #produced on reading (read.table's make.names, with or without unique = TRUE; read.xlsx's spaces-to-dots).
+    #Used both for the Sample column and for phenolabels, so the two always agree.
+    match_to_original_column <- function(labels){
+        tn <- trimws(orignames)
+        idx <- match(labels, tn)
+        for (alt in list(make.names(tn), make.names(tn, unique = TRUE), gsub(" ", ".", tn, fixed = TRUE))){
+            idx[is.na(idx)] <- match(labels[is.na(idx)], alt)
+        }
+        return(idx)
+    }
+
+    #If the requested Sample column name was itself unsafe (or given in an old dotted form), follow it to its current name
+    if (!(sample_column %in% colnames(pheno))){
+        m <- match_to_original_column(sample_column)
+        if (!is.na(m)){
+            sample_column <- colnames(pheno)[m]
+        }
+    }
+
+    #### 3. Sample column ####
+    if (!(sample_column %in% colnames(pheno))){
+        candidates <- which(tolower(colnames(pheno)) == tolower(sample_column))
+        if (length(candidates) == 1){
+            flog.warn(paste0("enforce_JAMS_style_metadata: no column called \"", sample_column, "\"; renaming column \"", colnames(pheno)[candidates], "\" to \"", sample_column, "\"."))
+            colnames(pheno)[candidates] <- sample_column
+        } else if (length(candidates) > 1){
+            stop(paste0("There is no column called \"", sample_column, "\", and several columns differ from it only in case (", paste0(colnames(pheno)[candidates], collapse = ", "), "). Rename the right one to \"", sample_column, "\"."))
+        } else {
+            hints <- grep("sample", colnames(pheno), ignore.case = TRUE, value = TRUE)
+            stop(paste0("No \"", sample_column, "\" column found. JAMS needs a column holding the sample names (the prefixes used for the JAMS files). ", if (length(hints) > 0) paste0("Possible candidates: ", paste0(hints, collapse = ", "), ". ") else "", "Rename the right column to \"", sample_column, "\", or pass its name with the sample_column argument."))
+        }
+    }
+
+    #Record every rename (from steps 2 and 3)
+    changed <- which(orignames != colnames(pheno))
+    namechanges <- data.frame(Original = orignames[changed], New = colnames(pheno)[changed], stringsAsFactors = FALSE)
+    if (nrow(namechanges) > 0){
+        flog.warn(paste0("enforce_JAMS_style_metadata: ", nrow(namechanges), " of ", ncol(pheno), " metadata column name(s) were changed to conform to JAMS style (no spaces, hyphens or other special characters). The original -> new names follow, one per line. Use the NEW names in all JAMS functions (compareby, subsetby, colourby, etc.)."))
+        for (nc in seq_len(nrow(namechanges))){
+            flog.warn(paste0("enforce_JAMS_style_metadata: metadata column renamed: \"", namechanges$Original[nc], "\" -> \"", namechanges$New[nc], "\""))
+        }
+    } else {
+        flog.info("enforce_JAMS_style_metadata: all metadata column names already conform to JAMS style; none were changed.")
+    }
+
+    #### 4 and 5. Trim whitespace, then enforce all-character with explicit missing-data sentinel ####
+    pheno <- trim_whitespace_from_df(df = pheno)
+    pheno <- replace_NAs_with_character(df = pheno, replacement = class_to_ignore[1])
+
+    #### 6. Sample names ####
+    is_missing <- function(v){ v %in% c(class_to_ignore, "") }
+    all_empty_rows <- which(apply(pheno, 1, function(r){ all(is_missing(r)) }))
+    if (length(all_empty_rows) > 0){
+        flog.info(paste0("enforce_JAMS_style_metadata: dropping ", length(all_empty_rows), " completely empty row(s)."))
+        pheno <- pheno[-all_empty_rows, , drop = FALSE]
+    }
+    no_name_rows <- which(is_missing(pheno[[sample_column]]))
+    if (length(no_name_rows) > 0){
+        flog.warn(paste0("enforce_JAMS_style_metadata: dropping ", length(no_name_rows), " row(s) with no sample name in column \"", sample_column, "\" (row number(s) ", paste0(utils::head(no_name_rows, 20), collapse = ", "), if (length(no_name_rows) > 20) ", ..." else "", " after removing empty rows)."))
+        pheno <- pheno[-no_name_rows, , drop = FALSE]
+    }
+    if (nrow(pheno) == 0){
+        stop("No rows with a sample name are left in pheno.")
+    }
+    sampnames <- pheno[[sample_column]]
+    dupsamps <- unique(sampnames[duplicated(sampnames)])
+    if (length(dupsamps) > 0){
+        if (on_duplicate_samples == "drop"){
+            flog.warn(paste0("enforce_JAMS_style_metadata: these sample names appear more than once in column \"", sample_column, "\", and ALL their rows have been dropped: ", paste0(dupsamps, collapse = ", "), ". If you want these samples, fix the metadata so each has exactly one row."))
+            pheno <- pheno[!(pheno[[sample_column]] %in% dupsamps), , drop = FALSE]
+            if (nrow(pheno) == 0){
+                stop("No rows are left in pheno after dropping duplicated samples.")
+            }
+            sampnames <- pheno[[sample_column]]
+        } else {
+            stop(paste0("These sample names appear more than once in column \"", sample_column, "\": ", paste0(dupsamps, collapse = ", "), ". Each sample must have exactly one row. Fix the metadata and try again."))
+        }
+    }
+    oddsamps <- sampnames[grepl("[^A-Za-z0-9_.-]", sampnames, perl = TRUE)]
+    if (length(oddsamps) > 0){
+        flog.warn(paste0("enforce_JAMS_style_metadata: ", length(oddsamps), " sample name(s) contain characters other than letters, digits, \"_\", \".\" or \"-\" (e.g. ", paste0("\"", utils::head(oddsamps, 5), "\"", collapse = ", "), "). They have NOT been changed, because sample names must match the JAMS file prefixes, but such names are likely to cause trouble."))
+    }
+    rownames(pheno) <- NULL
+
+    #### 7. Reserved JAMS separator ####
+    section_cols <- colnames(pheno)[vapply(pheno, function(v){ any(grepl("\u00a7", v, fixed = TRUE)) }, logical(1))]
+    if (length(section_cols) > 0){
+        flog.warn(paste0("enforce_JAMS_style_metadata: the character \"\u00a7\" occurs in column(s) ", paste0(section_cols, collapse = ", "), ". JAMS uses it internally to separate subset tiers, so subsetting by these columns will misbehave. Please replace it."))
+    }
+
+    attr(pheno, "JAMS_column_name_changes") <- namechanges
+    attr(pheno, "JAMS_duplicated_samples_dropped") <- if ((length(dupsamps) > 0) && (on_duplicate_samples == "drop")) dupsamps else character(0)
+    attr(pheno, "JAMS_sample_column") <- sample_column
+    flog.info(paste0("enforce_JAMS_style_metadata: done. Metadata now has ", nrow(pheno), " row(s) (", nrow_in - nrow(pheno), " dropped) and ", ncol(pheno), " column(s) (", nrow(namechanges), " renamed). Sample column is \"", sample_column, "\"."))
+
+    #### Optional: keep phenolabels in step ####
+    if (!is.null(phenolabels)){
+        if (!inherits(phenolabels, "data.frame") || !all(c("Var_label", "Var_type") %in% colnames(phenolabels))){
+            stop("phenolabels must be a data.frame with columns Var_label and Var_type.")
+        }
+        phenolabels <- as.data.frame(phenolabels, optional = TRUE)
+        phenolabels[] <- lapply(phenolabels, as.character)
+        #Blank rows (e.g. from an Excel sheet read with skipEmptyRows = FALSE) carry no information; drop them
+        blank_labels <- is.na(phenolabels$Var_label) | (phenolabels$Var_label %in% c(class_to_ignore, ""))
+        if (any(blank_labels)){
+            flog.info(paste0("enforce_JAMS_style_metadata: dropping ", sum(blank_labels), " phenolabels row(s) with an empty Var_label."))
+            phenolabels <- phenolabels[!blank_labels, , drop = FALSE]
+        }
+        phenolabels <- trim_whitespace_from_df(df = phenolabels)
+
+        #Rename labels in step with the columns: first by the original column name, then by the dotted forms
+        #that older JAMS versions produced on reading (read.table check.names / read.xlsx sep.names), so that
+        #phenolabels written against those dotted names keep working.
+        old_labels <- phenolabels$Var_label
+        idx <- match_to_original_column(phenolabels$Var_label)
+        phenolabels$Var_label[!is.na(idx)] <- colnames(pheno)[idx[!is.na(idx)]]
+        relabelled <- which(old_labels != phenolabels$Var_label)
+        for (rl in relabelled){
+            flog.info(paste0("enforce_JAMS_style_metadata: phenolabels Var_label renamed: \"", old_labels[rl], "\" -> \"", phenolabels$Var_label[rl], "\""))
+        }
+
+        if (reconcile_phenolabels){
+            orphan_labels <- phenolabels$Var_label[!(phenolabels$Var_label %in% colnames(pheno))]
+            if (length(orphan_labels) > 0){
+                flog.warn(paste0("enforce_JAMS_style_metadata: phenolabels entries with no matching pheno column were dropped: ", paste0(orphan_labels, collapse = ", ")))
+                phenolabels <- phenolabels[phenolabels$Var_label %in% colnames(pheno), , drop = FALSE]
+            }
+            phenolabels <- phenolabels[!duplicated(phenolabels$Var_label), , drop = FALSE]
+
+            unlabelled <- colnames(pheno)[!(colnames(pheno) %in% phenolabels$Var_label)]
+            if (length(unlabelled) > 0){
+                newtypes <- vapply(unlabelled, function(x){ infer_column_type(phenotable = pheno, colm = x, class_to_ignore = class_to_ignore) }, character(1))
+                flog.info(paste0("enforce_JAMS_style_metadata: added ", length(unlabelled), " pheno column(s) missing from phenolabels, with inferred Var_type: ", paste0(unlabelled, " (", newtypes, ")", collapse = ", ")))
+                extra <- phenolabels[rep(NA_integer_, length(unlabelled)), , drop = FALSE]
+                extra$Var_label <- unlabelled
+                extra$Var_type <- unname(newtypes)
+                phenolabels <- rbind(phenolabels, extra)
+            }
+        } else {
+            orphan_labels <- phenolabels$Var_label[!(phenolabels$Var_label %in% colnames(pheno))]
+            if (length(orphan_labels) > 0){
+                flog.warn(paste0("enforce_JAMS_style_metadata: these phenolabels entries do not match any metadata column (left as they are): ", paste0(orphan_labels, collapse = ", ")))
+            }
+            duplabels <- unique(phenolabels$Var_label[duplicated(phenolabels$Var_label)])
+            if (length(duplabels) > 0){
+                flog.warn(paste0("enforce_JAMS_style_metadata: these phenolabels entries occur more than once (after renaming); only the first of each is kept: ", paste0(duplabels, collapse = ", ")))
+                phenolabels <- phenolabels[!duplicated(phenolabels$Var_label), , drop = FALSE]
+            }
+        }
+
+        #Exactly one Sample, and it is sample_column
+        other_samples <- which((phenolabels$Var_type %in% "Sample") & !(phenolabels$Var_label %in% sample_column))
+        if (length(other_samples) > 0){
+            flog.warn(paste0("enforce_JAMS_style_metadata: column(s) ", paste0(phenolabels$Var_label[other_samples], collapse = ", "), " were declared with Var_type \"Sample\" in phenolabels; changed to \"discrete\", as \"", sample_column, "\" is the Sample column."))
+            phenolabels$Var_type[other_samples] <- "discrete"
+        }
+        phenolabels$Var_type[phenolabels$Var_label %in% sample_column] <- "Sample"
+
+        if (reconcile_phenolabels){
+            #Same order as the pheno columns
+            phenolabels <- phenolabels[match(colnames(pheno), phenolabels$Var_label), , drop = FALSE]
+        }
+        rownames(phenolabels) <- NULL
+
+        return(list(phenotable = pheno, phenolabels = phenolabels))
+    }
+
+    return(pheno)
+}
+
+
 #' exporttabletsv(dataobj = NULL, project = NULL, basename = NULL, row.names = TRUE, col.names = TRUE, path = NULL)
 #' Generic function to export a dataframe to tsv format
 #' @export
