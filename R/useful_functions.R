@@ -464,7 +464,8 @@ replace_NAs_with_character <- function(df = NULL, replacement = "N_A", coerce_al
 #' (4) trims leading and trailing whitespace from every cell (trim_whitespace_from_df);
 #' (5) enforces the JAMS all-character convention, with every NA or empty cell set to class_to_ignore[1] (replace_NAs_with_character);
 #' (6) vets the sample names. Rows where every cell is empty are dropped quietly (common at the bottom of spreadsheets); rows with a missing sample name are dropped with a warning; duplicated sample names make it stop, listing them, as there is no safe way to choose between them (or, with on_duplicate_samples = "drop", every row of a duplicated sample is dropped with a warning). Sample names are NEVER altered, as they must match the JAMS file prefixes; a warning is issued if they contain characters other than letters, digits, "_", "." or "-".
-#' (7) warns if any cell contains the section sign character, which JAMS uses internally to separate subset tiers.
+#' (7) warns if any cell contains the section sign character, which JAMS uses internally to separate subset tiers;
+#' (8) sets the row names of the returned table to the sample names (pheno[[sample_column]]), as required for building and updating SummarizedExperiment objects.
 #'
 #' Everything is reported through futile.logger, one line per renamed column, so when it is called from JAMSbeta or JAMS16 (via load_metadata_from_file) the full record of changes ends up in the project's _JAMS.log file.
 #'
@@ -638,7 +639,9 @@ enforce_JAMS_style_metadata <- function(pheno = NULL, phenolabels = NULL, sample
     if (length(oddsamps) > 0){
         flog.warn(paste0("enforce_JAMS_style_metadata: ", length(oddsamps), " sample name(s) contain characters other than letters, digits, \"_\", \".\" or \"-\" (e.g. ", paste0("\"", utils::head(oddsamps, 5), "\"", collapse = ", "), "). They have NOT been changed, because sample names must match the JAMS file prefixes, but such names are likely to cause trouble."))
     }
-    rownames(pheno) <- NULL
+    #Row names = sample names, as required for building and updating SummarizedExperiment objects. Safe here:
+    #by this point every sample name is present and unique (missing ones dropped, duplicates stopped or dropped).
+    rownames(pheno) <- pheno[[sample_column]]
 
     #### 7. Reserved JAMS separator ####
     section_cols <- colnames(pheno)[vapply(pheno, function(v){ any(grepl("\u00a7", v, fixed = TRUE)) }, logical(1))]

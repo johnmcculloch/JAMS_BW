@@ -232,6 +232,7 @@ In order, `enforce_JAMS_style_metadata()`:
    - Duplicated sample names make it **stop**, listing them, because there is no safe way to choose between them.
    - Sample names themselves are **never changed**, since they must match the JAMS file prefixes; odd characters in them only trigger a warning.
 7. **Flags the `§` character** in any cell. JAMS uses `§` internally to separate subset levels.
+8. **Sets the row names to the sample names** (`rownames(pheno) == pheno$Sample`), as required for building and updating the SummarizedExperiment objects.
 
 Some typical renames:
 
@@ -281,8 +282,8 @@ This function rebuilds the SEobj from scratch with the new phenotable, after che
 pheno <- load_metadata_from_file(xlsxFile = "MyProject_curated_metadata.xlsx")$phenotable
 #    ...or, for a data frame already in R:  pheno <- enforce_JAMS_style_metadata(pheno = pheno)
 
-# 2. Make the pheno rownames the sample names (the objects match samples by rowname)
-rownames(pheno) <- pheno$Sample
+# 2. Nothing to do for row names: the cleaned pheno already has rownames == pheno$Sample,
+#    which is how the objects match samples.
 
 # 3. Rebuild a fresh colour dictionary from the curated metadata.
 #    You do NOT need to pre-subset pheno by hand. Name the columns you want
@@ -1294,7 +1295,7 @@ Taxon-stratified functional objects hold large sparse matrices. Restrict to the 
 - Build `ctable` with `make_colour_dictionary()` from curated metadata (use `columnsToUse` / `columnsToIgnore`; `Sample` is always protected), and re-attach it after `update_ExpObj_metadata`.
 - Reuse a `legacy_ctable` to keep fixed project colours across studies; hand-tune the rest with `tweak_ctable(ctable, pheno = pheno)`.
 - Collision avoidance is on by default — every class within a variable gets a distinct colour.
-- Clean curated metadata with `enforce_JAMS_style_metadata()` (or read it with `load_metadata_from_file()`, the same code path JAMSbeta uses) before pushing it into the objects; then set `rownames(pheno) <- pheno$Sample`.
+- Clean curated metadata with `enforce_JAMS_style_metadata()` (or read it with `load_metadata_from_file()`, the same code path JAMSbeta uses) before pushing it into the objects; it also sets `rownames(pheno)` to the sample names for you.
 - Keep `pheno` and every `colData` in sync — always propagate via the replacement loop.
 - To pull metadata out of an object, use `as.data.frame(colData(SEobj), optional = TRUE)` so column names are not mangled.
 - A continuous `compareby` in `plot_Ordination` needs `dichotomize_continuous_compareby_threshold` (a number, `"median"`, or a function); for a reusable split, add a column with `dichotomize_variable_in_md()`.
