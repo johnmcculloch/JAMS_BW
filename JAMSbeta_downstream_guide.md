@@ -32,11 +32,12 @@ This guide walks through how to explore, filter, and plot your data **after** JA
 9. [Arguments common to all the plotting functions](#9-arguments-common-to-all-the-plotting-functions)
 10. [Ordination plots](#10-ordination-plots)
 11. [Relative abundance heatmaps](#11-relative-abundance-heatmaps)
-12. [Alpha diversity](#12-alpha-diversity)
-13. [Putting it together with `compare_within_subsets`](#13-putting-it-together-with-compare_within_subsets)
-14. [Worked examples on the MR50 dataset](#14-worked-examples-on-the-mr50-dataset)
-15. [Troubleshooting](#15-troubleshooting)
-16. [Quick reference](#16-quick-reference)
+12. [Volcano plots](#12-volcano-plots)
+13. [Alpha diversity](#13-alpha-diversity)
+14. [Putting it together with `compare_within_subsets`](#14-putting-it-together-with-compare_within_subsets)
+15. [Worked examples on the MR50 dataset](#15-worked-examples-on-the-mr50-dataset)
+16. [Troubleshooting](#16-troubleshooting)
+17. [Quick reference](#17-quick-reference)
 
 ---
 
@@ -132,7 +133,7 @@ Because `expvec_MR50` already carries this metadata in its `colData`, you can us
 
 > **Note on the example object.** `expvec_MR50` still contains the deprecated `Contig_LKT` space so that older material keeps working. As with any project, ignore it and use `ConsolidatedGenomeBin` (see [§5](#5-analysis-spaces-taxonomic-and-functional)).
 
-Fully worked, copy-pasteable analyses on this dataset are collected in [§14](#14-worked-examples-on-the-mr50-dataset). If you are new to JAMS, read [§3](#3-getting-oriented-the-key-objects)–[§13](#13-putting-it-together-with-compare_within_subsets) first, then run §14 to see it all in action.
+Fully worked, copy-pasteable analyses on this dataset are collected in [§15](#15-worked-examples-on-the-mr50-dataset). If you are new to JAMS, read [§3](#3-getting-oriented-the-key-objects)–[§14](#14-putting-it-together-with-compare_within_subsets) first, then run §15 to see it all in action.
 
 ---
 
@@ -623,7 +624,7 @@ Remember these cutoffs apply across the **whole** sample set of the object (or w
 
 ## 9. Arguments common to all the plotting functions
 
-The three main plotting functions (`plot_Ordination`, `plot_relabund_heatmap`, `plot_alpha_diversity`) and the comparator share a large common vocabulary. Here is the core set.
+The main plotting functions (`plot_Ordination`, `plot_relabund_heatmap`, `plot_volcano`, `plot_alpha_diversity`) and the comparator share a large common vocabulary. Here is the core set.
 
 ### Selecting samples and features
 
@@ -798,7 +799,105 @@ If a comparative heatmap comes back empty, it usually means nothing survived the
 
 ---
 
-## 12. Alpha diversity
+## 12. Volcano plots
+
+`plot_volcano` answers the same question as a comparative heatmap — **"which features are associated with this variable, and how strongly?"** — but shows the whole result at once: every feature is one dot, placed by effect size on the X axis and significance on the Y axis.
+
+It has **two modes**, chosen from the nature of `compareby`:
+
+| `compareby` | Test | X axis | Pages |
+|---|---|---|---|
+| categorical, 2 classes | Mann–Whitney–Wilcoxon | log2 fold change | one |
+| categorical, 3+ classes | Mann–Whitney–Wilcoxon, every pair | log2 fold change | one per pair |
+| continuous | Spearman (or Pearson) correlation | correlation coefficient | one |
+| continuous + `dichotomize_continuous_compareby_threshold` | Mann–Whitney–Wilcoxon on High vs Low | log2 fold change | one |
+
+Everything else — the Y axis, the thresholds, the labelling, the colouring, the refusal pages, the subtitle audit trail — is shared between them. This mirrors `plot_relabund_features`, which likewise switches to Spearman when `compareby` is continuous.
+
+It is deliberately the *same function* as `plot_relabund_heatmap` up to the point of drawing. Object vetting, `glomby`, `samplesToKeep`/`featuresToKeep`, `subsetby`, the filtration presets, the normalisation and the statistics (`calculate_matrix_stats`, Mann–Whitney–Wilcoxon plus log2 fold change) are all identical calls on identical data. So for a given comparison, the p-values and fold changes on the volcano are the same numbers the heatmap would print in its right-hand annotations.
+
+```r
+pdf("Volcanoes.pdf", paper = "a4r")
+plot_volcano(
+    ExpObj       = expvec$ConsolidatedGenomeBin,
+    glomby       = "Species",
+    compareby    = "Group",
+    applyfilters = "moderate",
+    pval_threshold  = 0.05,
+    l2fc_threshold  = 1
+)
+dev.off()
+```
+
+Like the heatmap, it draws to the active device and returns nothing unless you ask for `returnstats = TRUE`, so wrap it in your own `pdf(...)` / `dev.off()`.
+
+### Correlation mode
+
+Pass a numeric `compareby` and leave `dichotomize_continuous_compareby_threshold` at its default `NULL`, and every feature is correlated against it:
+
+```r
+pdf("Volcano_vs_BMI.pdf", paper = "a4r")
+plot_volcano(
+    ExpObj      = expvec$ConsolidatedGenomeBin,
+    glomby      = "Species",
+    compareby   = "BMI",             # a continuous metadata variable
+    corr_method = "spearman",        # the default
+    corr_threshold = 0.4,            # where the vertical lines go
+    pval_threshold = 0.05,
+    applyfilters   = "moderate"
+)
+dev.off()
+```
+
+The X axis is then the coefficient, fixed to the full `[-1, 1]` range so that every correlation volcano is directly comparable with every other, and a dot on the right means the feature becomes *more* abundant as the variable rises. Points are red for positive and blue for negative (there are no classes to look up in the `ctable`, so `use_class_colours` does not apply; `up_colour` / `down_colour` still override).
+
+Three things specific to this mode:
+
+- **`corr_threshold`** replaces `l2fc_threshold`, and defaults the same way: from the `minabscorrcoeff` implied by `applyfilters` (0.4 / 0.6 / 0.8 for light / moderate / stringent), falling back to 0.4. `label_corr_threshold` mirrors `label_l2fc_threshold`. A `minabscorrcoeff` passed out of habit is picked up with a warning.
+- **Constant features are always dropped** before testing, whatever `drop_features_absent_in_all_samples` says, because a feature with no variance has no correlation with anything. The count is reported on the plot, since it reduces the FDR denominator.
+- **Several arguments stop meaning anything** and are reported as ignored: `classes_to_compare`, `wilcox_paired_by`, `invertbinaryorder`, `fun_for_l2fc`, `l2fc_threshold` and `cap_l2fc_at`.
+
+Spearman is the default for the same reason Mann–Whitney is the default in binary mode: it is rank based and makes no normality assumption about zero-inflated relative abundances. `corr_method = "pearson"` is available if you want it.
+
+### What is different from the heatmap
+
+- **`compareby` is mandatory.** There is no exploratory mode: a volcano without two groups is meaningless.
+- **Nothing is discarded by effect size.** In `plot_relabund_heatmap`, `minl2fc` (and the one implied by `applyfilters`) *removes* features. On a volcano that would destroy the shape the plot exists to show, and would quietly change the FDR denominator too. So the same number becomes `l2fc_threshold`: where the vertical dashed lines go, and therefore which dots are coloured. If you pass `minl2fc` out of habit it is picked up as `l2fc_threshold`, with a warning saying so. The same applies to `showonlypbelow`, which becomes `pval_threshold`.
+- **Three or more classes give you every pair.** Where the heatmap would run an ANOVA, the volcano draws one page per pairwise contrast (A vs B, A vs C, B vs C), capped by `max_pairwise_comparisons`. Pin it to one contrast with `classes_to_compare = c("Control", "Treated")`.
+- **It refuses loudly, on paper.** Every reason it declines to draw is both logged and written as a full text page into your PDF, so an unattended loop never just silently skips a comparison.
+
+### The sanity checks, and why they matter
+
+The commonest way to get a baffling, uniformly grey volcano is to have asked for a comparison the test cannot answer. `plot_volcano` works this out *before* computing anything and tells you in plain words:
+
+- **Group sizes.** A two-sided Mann–Whitney–Wilcoxon U-test on n1 vs n2 samples cannot return a p-value below `2 / choose(n1 + n2, n1)`, however perfect the separation. That is 0.333 for 2 vs 2, 0.1 for 3 vs 3, and 0.029 for 4 vs 4 — so **four samples per group is the smallest comparison that can reach p < 0.05 at all**. In correlation mode the same arithmetic applies with `2 / n!`: 0.083 at n = 4 and 0.017 at n = 5, so **five samples is the floor there**, and below ten the plot carries a note that a coefficient from so few points is very unstable. (Pearson has no such floor — a perfect line through three points gives an arbitrarily small p — so only the sample-count guard and the note apply to it.) If your `pval_threshold` lies below that floor, the comparison is refused with a page showing the arithmetic and naming the group size you would need. Set `refuse_if_underpowered = FALSE` to draw it anyway and read it purely as a picture of effect sizes. The paired test (`wilcox_paired_by`) has its own, higher floor of `2 / 2^n`, and that is the one used when pairing actually succeeds.
+- **Small `samplesToKeep` / `featuresToKeep`.** Both are checked up front against what is really in the object, and a vector that matches nothing, or too little to compare, produces an explanatory page rather than an error that would kill the rest of your PDF. Restricting `featuresToKeep` also shrinks the multiple-testing denominator, which changes every FDR-adjusted p-value; the plot says so on its face.
+- **A continuous `compareby`.** Refused, exactly as in `plot_Ordination`, unless you pass `dichotomize_continuous_compareby_threshold` (a number, `"median"`, or any function returning one number) to split it into High/Low — or `FALSE` to treat numerically-coded groups as categories. The threshold is computed once, before subsetting, so High and Low mean the same thing on every page.
+- **Too few features, or degenerate statistics.** Fewer than `min_features_for_volcano` surviving features, or a statistics routine that falls over, both produce a page naming the filters in force.
+
+### Most-used arguments
+
+- **`pval_threshold`** (default `0.05`) and **`l2fc_threshold`** (default: whatever `applyfilters` implies, else 1) — the horizontal and vertical dashed lines, and therefore which dots are coloured.
+- **`adj_pval_for_threshold`** — `FALSE` (default), `TRUE`, or `"auto"`. This governs **both** the Y axis and the threshold, so the dashed line always means what it says. The count of features passing the *other* p-value is still reported in the subtitle.
+- **`label_features`**, **`max_features_to_label`** (default 30), **`label_pval_threshold`** / **`label_l2fc_threshold`** — which dots get named. The labels are drawn with ggrepel, sized automatically from how many there are, wrapped at `label_wrap_width` characters, and set in italics for taxonomic spaces. Set the two label thresholds tighter than the colour thresholds to colour generously but name sparingly.
+- **`highlight_features`** — a vector of features that are always ringed in black and named, whether or not they are significant. Good for following a handful of taxa across many comparisons.
+- **`classes_to_compare`** — pin a 3+-class variable to one contrast. Note that it does not set the direction: as everywhere in JAMS the two classes are sorted alphabetically and a positive fold change means increased in the first. Use `invertbinaryorder = TRUE` to flip it.
+- **`use_class_colours`** (default `TRUE`) — colour the two sides with the colours those classes already have in the object's `ctable` (or in a `cdict` you pass), so a volcano matches every other plot in the project. Falls back to a fixed red/blue pair if either class has no colour or both share one.
+- **`fun_for_l2fc`** (default `"geom_mean"`) — how samples are aggregated within a group. The geometric mean adds 1 before logging, so it never produces an infinite fold change; `"mean"`, `"median"` and `"sum"` can, and those dots are drawn as triangles at the plot edge rather than dropped.
+- **`returnstats = TRUE`** — a named list, one data frame per comparison, holding every feature with its p-values, fold change, and a `Volcano_direction` column of `"Up"` / `"Down"` / `"NS"`.
+
+### How to read it
+
+- **X axis**: log2 fold change, with the axis label naming which class each side belongs to. **Y axis**: `-log10` of the p-value actually being thresholded.
+- **Colour**: up in one class, up in the other, or grey for not significant. The legend carries the counts.
+- **Triangles at the edge** are features clamped to the axis limits — an infinite fold change, or a p-value that underflowed to zero.
+- **The subtitle is the audit trail**: the test and group sizes, the filters in force, the number of features assessed, the significance rule, the directionality, the up/down/not-significant counts, and any caveat that applies (underpowered, features capped, NA statistics dropped, labels truncated).
+
+A volcano in which nothing is coloured is still drawn by default, with a note giving the closest p-value and the largest effect seen — the absence of a signal is a result. Set `plot_when_nothing_significant = FALSE` if you would rather have a text page instead.
+
+---
+
+## 13. Alpha diversity
 
 `plot_alpha_diversity` answers **"is within-sample richness/evenness different between groups?"** It computes standard diversity measures per sample and compares them across groups with box plots and tests.
 
@@ -838,7 +937,7 @@ Each box summarises the distribution of a diversity measure within a group; the 
 
 ---
 
-## 13. Putting it together with `compare_within_subsets`
+## 14. Putting it together with `compare_within_subsets`
 
 Once the individual functions make sense, `compare_within_subsets` lets you run the **whole standard trio — ordination, heatmap, alpha diversity — for one analysis space, organised subset by subset, in a single call.** For each subset tier it emits, in order:
 
@@ -953,13 +1052,13 @@ dev.off()
 1. Clean the curated metadata with `enforce_JAMS_style_metadata()`, swap it in and rebuild `ctable` ([§4](#4-metadata-pheno-ctable-and-replacing-metadata-safely)).
 2. Drop deprecated spaces (`expvec$Contig_LKT <- NULL`) ([§5](#5-analysis-spaces-taxonomic-and-functional)).
 3. Titrate to pick filters ([§8](#8-choosing-taxonomic-filters-with-titrate_feature_counts)); store them in a list.
-4. Explore with individual functions to sanity-check arguments ([§10](#10-ordination-plots)–[§12](#12-alpha-diversity)).
+4. Explore with individual functions to sanity-check arguments ([§10](#10-ordination-plots)–[§13](#13-alpha-diversity)).
 5. Run `compare_within_subsets` to produce the full comparison PDF(s), once with `only_allow_CSBs = FALSE` and once `TRUE` if strain-level confidence matters. Optionally drop known outlier samples or noise features up front with `samplesToKeep` / `featuresToKeep` (post-glom names).
 6. Save the workspace (`IO_jams_workspace_image(...)`) so the state is reproducible.
 
 ---
 
-## 14. Worked examples on the MR50 dataset
+## 15. Worked examples on the MR50 dataset
 
 Everything below runs on the bundled example data with no metadata setup — load it and go. Each block is self-contained (opens its own PDF), so you can run them one at a time, inspect the figure, and keep the ones you want for the tutorial. The MR50 effects are large, so these make clear teaching figures.
 
@@ -1066,6 +1165,53 @@ dev.off()
 ```
 
 The `showGram = TRUE` annotation is pedagogically nice here: vancomycin targets Gram-positive organisms, and the direction of change (row-label colour + Log2FC column) should line up with Gram status.
+
+### Example 3b — The same comparison as a volcano
+
+Exactly the same samples, filters and statistics as Example 3, drawn as one page instead of a ranked list. Note that `minl2fc` has become `l2fc_threshold` (the vertical lines) and `showonlypbelow` has become `pval_threshold` (the horizontal line): nothing is removed, so you can see the features that *failed* the cut-off as well as those that passed.
+
+```r
+pdf("MR50_03b_volcano_G1_vs_G2_day5.pdf", paper = "a4r")
+plot_volcano(
+    ExpObj    = SE,
+    glomby    = "Species",
+    samplesToKeep = rownames(subset(pheno_MR50,
+                    Timepoint == "Day_05" & Group %in% c("G1", "G2"))),
+    compareby = "Group",
+    pval_threshold = 0.05,
+    l2fc_threshold = 1,
+    featcutoff = fc, GenomeCompletenessCutoff = gcc,
+    PPM_normalize_to_bases_sequenced = TRUE,
+    max_features_to_label = 25,
+    no_underscores = TRUE
+)
+dev.off()
+```
+
+Two variations worth knowing. Drop `samplesToKeep` and add `subsetby = "Timepoint"` to get the same contrast at every timepoint, one page each, with any timepoint that has too few mice per group reported on its own explanatory page. And drop the `Group %in% c("G1","G2")` restriction to let `plot_volcano` work through every pair of groups automatically.
+
+### Example 3c — A continuous variable: which species track with a biomarker?
+
+No groups at all. Correlate every species against a continuous metadata column and show which associations are both strong and significant.
+
+```r
+pdf("MR50_03c_volcano_vs_continuous.pdf", paper = "a4r")
+plot_volcano(
+    ExpObj      = SE,
+    glomby      = "Species",
+    compareby   = "Final_weight_g",      # any numeric metadata column
+    corr_method = "spearman",
+    corr_threshold = 0.4,
+    pval_threshold = 0.05,
+    featcutoff = fc, GenomeCompletenessCutoff = gcc,
+    PPM_normalize_to_bases_sequenced = TRUE,
+    max_features_to_label = 25,
+    no_underscores = TRUE
+)
+dev.off()
+```
+
+To compare the top and bottom halves of that same variable as two groups instead, add `dichotomize_continuous_compareby_threshold = "median"` and you are back in binary mode with a log2 fold change on the X axis.
 
 ### Example 4 — Exploratory heatmap across the whole experiment
 
@@ -1196,7 +1342,7 @@ Two nice variations for the tutorial:
 
 ---
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 **"It says my object only has `Contig_LKT` / I get odd taxonomic results."**
 You are probably on a deprecated space. Use `ConsolidatedGenomeBin` and drop the rest: `expvec$Contig_LKT <- NULL`. See [§5](#5-analysis-spaces-taxonomic-and-functional).
@@ -1216,6 +1362,18 @@ Almost always a column name with a space, hyphen, bracket or other special chara
 **My metadata column names changed between JAMS runs.**
 Since metadata cleaning was unified, JAMSbeta and JAMS16 make every column name JAMS-style (e.g. `IL.6..pg.mL.` or `IL-6 (pg/mL)` becomes `IL_6_pg_mL`), and the sample column is always called `Sample`. The exact mapping is in the project's `_JAMS.log` (one line per rename) and in `<project>_metadata_column_name_changes.tsv` in the JAMSbeta output folder. See [§4](#4-metadata-pheno-ctable-and-replacing-metadata-safely).
 
+**`plot_volcano` wrote a page saying "the comparison cannot reach significance".**
+Your groups are too small for the test, not too noisy. A two-sided Mann–Whitney–Wilcoxon U-test on n1 vs n2 samples cannot return a p-value below `2 / choose(n1 + n2, n1)`: 0.333 for 2 vs 2, 0.1 for 3 vs 3, 0.029 for 4 vs 4. Below four per group nothing can clear 0.05, so a volcano would be uniformly grey. The page names the group size you would need. Widen `samplesToKeep`, raise `pval_threshold`, or set `refuse_if_underpowered = FALSE` to draw it anyway and read it as a picture of effect sizes only. See [§12](#12-volcano-plots).
+
+**I passed a numeric `compareby` and got a correlation plot, not the two groups I expected.**
+That is the intended behaviour: a continuous variable has no fold change, so `plot_volcano` correlates against it instead (the title, the axis label and the log all say so). If the column is really a set of numerically-coded categories such as timepoints 0/7/14, pass `dichotomize_continuous_compareby_threshold = FALSE` to treat each value as its own class. To split it into two groups, pass a number, `"median"`, or any function returning one number. See [§12](#12-volcano-plots).
+
+**`plot_volcano` warns that my `minl2fc` is being used as `l2fc_threshold`.**
+That is deliberate, not a failure. A volcano never discards features by effect size, so the number becomes the position of the vertical significance lines instead. Same for `showonlypbelow`, which becomes `pval_threshold`. See [§12](#12-volcano-plots).
+
+**My volcano drew far more pages than I expected.**
+`compareby` has three or more classes, so every pair is being plotted. Pin it with `classes_to_compare = c("A", "B")`, or lower `max_pairwise_comparisons`. The overall ceiling is `max_total_pages`. See [§12](#12-volcano-plots).
+
 **`plot_Ordination` returned an empty list.**
 It refused to plot and said why in a warning. The usual causes are a continuous `compareby` with no `dichotomize_continuous_compareby_threshold`, a variable missing from the object, a `compareby` that is entirely `N_A`, or fewer than 3 samples. See [§10](#10-ordination-plots).
 
@@ -1223,7 +1381,7 @@ It refused to plot and said why in a warning. The usual causes are a continuous 
 A subset had too few samples in the smallest `compareby` class (default minimum is 3 per class), or only one class survived after `class_to_ignore` removals. The ordination is still plotted; only the p-value is withheld. Increase samples, merge classes, or lower `min_samples_per_class_for_permanova`.
 
 **Alpha diversity looks implausibly high / groups all look the same.**
-You almost certainly ran it too loosely. Never use `featcutoff = c(0,0)` for diversity; unfiltered noise inflates richness. Use at least `applyfilters = "light"` or a titration-based cutoff. See [§12](#12-alpha-diversity).
+You almost certainly ran it too loosely. Never use `featcutoff = c(0,0)` for diversity; unfiltered noise inflates richness. Use at least `applyfilters = "light"` or a titration-based cutoff. See [§13](#13-alpha-diversity).
 
 **Colours are inconsistent between plots, or random.**
 The object has no `ctable`, or you passed a `cdict` in some calls but not others. Rebuild a colour dictionary with `make_colour_dictionary()` and attach it to every object's metadata (see [§4](#4-metadata-pheno-ctable-and-replacing-metadata-safely)); once `ctable` is in the object's metadata the plotting functions use it automatically. To keep specific classes fixed across studies, pass a `legacy_ctable`. To keep colours consistent across successive re-runs, note that `make_colour_dictionary()` is deterministic (no random palette) unless you set `shuffle = TRUE`.
@@ -1251,7 +1409,7 @@ Taxon-stratified functional objects hold large sparse matrices. Restrict to the 
 
 ---
 
-## 16. Quick reference
+## 17. Quick reference
 
 ### Objects
 
@@ -1280,12 +1438,13 @@ Taxon-stratified functional objects hold large sparse matrices. Restrict to the 
 | `PPM_normalize_to_bases_sequenced` | total-bases (TRUE) vs in-analysis (FALSE) denominator |
 | `class_to_ignore` | drop samples with this token in the comparison variable (default `"N_A"`) |
 
-### The three plots
+### The main plots
 
 | Function | Question | Returns | Device? |
 |---|---|---|---|
 | `plot_Ordination` | different overall? | list of ggplots | you may print/edit |
-| `plot_relabund_heatmap` | which features differ? | stats list (not a plot) | **must** wrap in pdf/dev.off |
+| `plot_relabund_heatmap` | which features differ, feature by feature? | stats list (not a plot) | **must** wrap in pdf/dev.off |
+| `plot_volcano` | which features differ (or correlate), all at once? | stats list (not a plot) | **must** wrap in pdf/dev.off |
 | `plot_alpha_diversity` | richness different? | list of ggplots (+stats) | you may print/edit |
 | `compare_within_subsets` | all three, per subset; one fixed global feature set across subsets | invisible stats (optional) | **must** wrap in pdf/dev.off |
 
@@ -1301,5 +1460,7 @@ Taxon-stratified functional objects hold large sparse matrices. Restrict to the 
 - A continuous `compareby` in `plot_Ordination` needs `dichotomize_continuous_compareby_threshold` (a number, `"median"`, or a function); for a reusable split, add a column with `dichotomize_variable_in_md()`.
 - Titrate before trusting a filter.
 - **Never** run alpha diversity unfiltered.
-- Wrap heatmaps and `compare_within_subsets` in your own `pdf(...)` / `dev.off()`.
+- Wrap heatmaps, volcanoes and `compare_within_subsets` in your own `pdf(...)` / `dev.off()`.
+- A volcano needs **4 samples per group** (binary) or **5 samples total** (Spearman correlation) before p < 0.05 is attainable at all; below that `plot_volcano` refuses and shows you the arithmetic.
+- A numeric `compareby` puts `plot_volcano` into correlation mode; use `dichotomize_continuous_compareby_threshold` if you wanted two groups.
 - `compare_within_subsets` computes **one global feature set up front** so panels stay comparable across subsets; use `samplesToKeep` / `featuresToKeep` to drop outliers/noise before that step. `featuresToKeep` uses **post-agglomeration** names (same as the standalone plotting functions) — e.g. species names when `glomby = "Species"`. A wrong namespace or stale list is caught (warns at a high miss rate, errors at a very high one), never plotted silently.
