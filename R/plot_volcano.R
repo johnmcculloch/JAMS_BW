@@ -25,10 +25,12 @@
 #' report_failures_on_device = FALSE if you would rather it only logged.
 #'
 #' The one deliberate departure from plot_relabund_heatmap is that nothing is ever discarded
-#' by effect size. A minl2fc arriving from applyfilters, or passed explicitly, becomes the
-#' position of the vertical significance lines rather than a filter, because removing
+#' by effect size. l2fc_threshold (binary mode) and corr_threshold (correlation mode) set the
+#' position of the vertical significance lines rather than acting as filters, because removing
 #' features by fold change would destroy the very shape a volcano exists to show, and would
-#' silently change the multiple-testing denominator along with it.
+#' silently change the multiple-testing denominator along with it. A minl2fc or minabscorrcoeff
+#' passed by a call written for another JAMS function is picked up as the corresponding
+#' threshold, with a warning, so such a call can be redirected here unedited.
 
 #' @param ExpObj JAMS-style SummarizedExperiment object.
 
@@ -54,7 +56,7 @@
 
 #' @param invertbinaryorder Requires a logical value. If set to TRUE, the sign of the log2 fold change is inverted, which mirrors the volcano left-to-right and swaps which class counts as "up". Default is FALSE. Has no meaning in correlation mode, where the sign of the coefficient is a property of the data, and is reported as ignored there.
 
-#' @param applyfilters Optional string specifying filtration setting "combos", used as a shorthand for setting featcutoff and GenomeCompletenessCutoff. Permissible values are "light", "moderate" or "stringent". Default is "light". Note an important difference from plot_relabund_heatmap: the minl2fc implied by a preset is **not** used to discard features here, because removing features by effect size would gut the very shape a volcano exists to show. It is instead used as the *default* value of l2fc_threshold, i.e. as the vertical significance cut-off. Set l2fc_threshold explicitly to override.
+#' @param applyfilters Optional string specifying filtration setting "combos", used as a shorthand for setting featcutoff and GenomeCompletenessCutoff. Permissible values are "light", "moderate" or "stringent". Default is "light". A filtration preset decides which features are real enough to be tested, and nothing else. It does not set, and has never any business setting, the effect-size cut-offs: l2fc_threshold and corr_threshold are independent arguments with their own defaults. Note also that, unlike plot_relabund_heatmap, this function never discards a feature for having too small an effect size, because doing so would gut the very shape a volcano exists to show.
 
 #' @param featcutoff Requires a numeric vector of length 2 for filtering out features by relative abundance: minimum PPM, and the percentage of samples which must reach it. Default is NULL, which defers to applyfilters. As in plot_relabund_heatmap, when subsetby is used the cut-off is applied within the whole object to define a common feature universe across subsets.
 
@@ -68,11 +70,11 @@
 
 #' @param adj_pval_for_threshold Requires TRUE, FALSE or the string "auto". Governs **both** which p-value is plotted on the Y axis and which one pval_threshold is applied to, so that the dashed line on the figure always means what it says. When "auto", the proportion of features still below 0.05 after FDR adjustment is compared with the proportion below 0.05 before adjustment, and the adjusted p-value is used if that ratio exceeds 0.2 (the same rule plot_relabund_heatmap uses). Default is FALSE, i.e. plot and threshold the raw p-value. Whichever is chosen, the count of features passing the *other* one is still reported in the subtitle.
 
-#' @param l2fc_threshold Numeric value, used in binary mode only, setting the minimum absolute log2 fold change for a feature to be considered significant, i.e. the position of the two vertical dashed lines. When NULL (the default), it is taken from the minl2fc implied by applyfilters (1 for "light" and "moderate", 2 for taxonomic / 2.5 for functional objects under "stringent"), falling back to 1 when no preset applies. If a call written for plot_relabund_heatmap passes minl2fc instead, that value is picked up and used here, with a warning. Set to 0 to colour on the p-value alone, except that features whose effect size is exactly zero always stay grey.
+#' @param l2fc_threshold Numeric value, used in binary mode only, setting the minimum absolute log2 fold change for a feature to be considered significant, i.e. the position of the two vertical dashed lines. Default is 1, meaning a two-fold difference, and it is independent of applyfilters. Features below it are never discarded, only drawn in grey. If a call written for plot_relabund_heatmap passes minl2fc instead, that value is picked up and used here, with a warning. Set to 0, or to NULL, to colour on the p-value alone, except that features whose effect size is exactly zero always stay grey.
 
 #' @param corr_method String naming the correlation test used when compareby is continuous. Permissible values are "spearman" (the default) and "pearson". Spearman is the sensible default for abundance data: it is rank based, as the Mann-Whitney-Wilcoxon test used in binary mode is, and it does not assume normality of zero-inflated relative abundances. It is also what plot_correlation_heatmap defaults to. Ignored when compareby is categorical, or when dichotomize_continuous_compareby_threshold has turned a continuous variable into High/Low groups.
 
-#' @param corr_threshold Numeric value between 0 and 1, used in correlation mode only, setting the minimum absolute correlation coefficient for a feature to be considered significant, i.e. the position of the two vertical dashed lines. When NULL (the default), it is taken from the minabscorrcoeff implied by applyfilters (0.4 for "light", 0.6 for "moderate", 0.8 for "stringent"), falling back to 0.4 when no preset applies. If a call written for another JAMS function passes minabscorrcoeff instead, that value is picked up and used here, with a warning. As with l2fc_threshold, features below it are never discarded, only drawn in grey.
+#' @param corr_threshold Numeric value between 0 and 1, used in correlation mode only, setting the minimum absolute correlation coefficient for a feature to be considered significant, i.e. the position of the two vertical dashed lines. Default is 0.4, and it is independent of applyfilters. If a call written for another JAMS function passes minabscorrcoeff instead, that value is picked up and used here, with a warning. As with l2fc_threshold, features below it are never discarded, only drawn in grey; set it to 0 or NULL to colour on the p-value alone.
 
 #' @param label_features Requires a logical value. If TRUE (the default), feature names are drawn next to the dots which pass the labelling thresholds, using ggrepel so that labels do not overlap each other or the points.
 
@@ -104,13 +106,15 @@
 
 #' @param down_colour Optional colour for the features on the negative side of the X axis. Overrides use_class_colours for that side only. Default is NULL.
 
-#' @param nonsignificant_colour Colour for features which do not pass both thresholds. Default is "grey75".
+#' @param nonsignificant_colour Colour for features which do not pass both thresholds. Default is "grey70", which stays distinguishable from the panel grid lines once point_alpha has been applied.
 
 #' @param show_threshold_lines Requires a logical value. If TRUE (the default), dashed guide lines are drawn at the p-value and effect-size thresholds, together with a faint solid line at zero effect size.
 
-#' @param cap_l2fc_at Numeric value at which to clamp the X axis. Infinite log2 fold changes (which arise when a feature is wholly absent from one group and fun_for_l2fc is not "geom_mean") are drawn at the cap as triangles rather than being dropped. When NULL (the default), the cap is the largest finite value present widened by 5 percent, and it is never allowed to fall inside the threshold lines. Ignored in correlation mode, where the X axis is fixed to the full [-1, 1] range of the coefficient so that every correlation volcano is directly comparable with every other.
+#' @param cap_l2fc_at Numeric value at which to clamp the X axis. Features beyond the cap, including those with an infinite log2 fold change (which arise when a feature is wholly absent from one group and fun_for_l2fc is not "geom_mean"), are drawn at the cap as triangles rather than being dropped. When NULL (the default), the cap is chosen from rescale_axis_quantiles, and it is never allowed to fall inside the threshold lines. Ignored in correlation mode, where the X axis is fixed to the full [-1, 1] range of the coefficient so that every correlation volcano is directly comparable with every other.
 
-#' @param cap_neglog10p_at Numeric value at which to clamp the Y axis, used in the same way for p-values that underflow to zero. When NULL (the default), the cap is the largest finite value present widened by 5 percent, and it is never allowed to fall below the horizontal threshold line.
+#' @param cap_neglog10p_at Numeric value at which to clamp the Y axis, used in the same way for very small p-values and for any that underflow to zero. When NULL (the default), the cap is the largest finite value present widened by 5 percent, since on this axis the extreme features are the result rather than an artefact, and it is never allowed to fall below the horizontal threshold line. Set it by hand if one enormously significant feature is flattening all the others.
+
+#' @param rescale_axis_quantiles A number between 0 and 1 giving the quantile from which the X axis limit is taken when cap_l2fc_at is left NULL. The two-element form plot_relabund_features uses, such as c(0, 0.99), is accepted for consistency, but only the larger element is read, since a volcano is symmetric about zero. It applies to the X axis only: on the Y axis the extreme values are the result itself, so the limit there remains the largest finite value present. Default is c(0, 0.99). This exists because setting the limits from the single most extreme feature, which is what a naive volcano does, is actively misleading on JAMS data: a ratio of geometric means of PPM + 1 gives an absolute log2 fold change of 15 to 20 for any taxon abundant in one group and absent in the other, while the bulk of a Species-level universe sits between -2 and +2. One such taxon is then enough to compress every other point, and both dashed threshold lines, into a few millimetres either side of zero, so that the plot appears to contain nothing but its handful of significant features. Features beyond the resulting limits are drawn as triangles on the edge and counted in the subtitle, so nothing is hidden. Set to NULL to span the full range of the data instead.
 
 #' @param fun_for_l2fc String specifying the function used to aggregate samples within each group when computing the log2 fold change. Permissible entries are "sum", "mean", "median" or "geom_mean". Default is "geom_mean", for which the geometric mean within each group is exp(mean(log(x + 1))) and which therefore never produces an infinite fold change. Ignored when normalization = "clr", where the effect size is the difference between the arithmetic group means of the centred log-ratio (see normalization), and ignored in correlation mode, which has no groups to aggregate.
 
@@ -156,7 +160,7 @@
 
 #' @export
 
-plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes_to_compare = NULL, dichotomize_continuous_compareby_threshold = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, highlight_features = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, use_checkM2_style_GenomeCompleteness = TRUE, discard_SDoverMean_below = NULL, pval_threshold = 0.05, adj_pval_for_threshold = FALSE, l2fc_threshold = NULL, corr_method = "spearman", corr_threshold = NULL, label_features = TRUE, label_pval_threshold = NULL, label_l2fc_threshold = NULL, label_corr_threshold = NULL, max_features_to_label = 30, label_fontsize = NULL, label_wrap_width = 24, max_label_nchar = 80, no_underscores = FALSE, point_size = NULL, point_alpha = 0.7, use_class_colours = TRUE, cdict = NULL, up_colour = NULL, down_colour = NULL, nonsignificant_colour = "grey75", show_threshold_lines = TRUE, cap_l2fc_at = NULL, cap_neglog10p_at = NULL, fun_for_l2fc = "geom_mean", assay_for_matrix = "BaseCounts", normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, statsonlog = FALSE, ignoreunclassified = TRUE, drop_features_absent_in_all_samples = FALSE, numthreads = 1, min_samples_per_class = 2, min_samples_for_correlation = 5, refuse_if_underpowered = TRUE, min_features_for_volcano = 3, max_pairwise_comparisons = 10, max_total_pages = 200, plot_when_nothing_significant = TRUE, report_failures_on_device = TRUE, addtit = NULL, returnstats = FALSE, class_to_ignore = "N_A", ...){
+plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes_to_compare = NULL, dichotomize_continuous_compareby_threshold = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, highlight_features = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, use_checkM2_style_GenomeCompleteness = TRUE, discard_SDoverMean_below = NULL, pval_threshold = 0.05, adj_pval_for_threshold = FALSE, l2fc_threshold = 1, corr_method = "spearman", corr_threshold = 0.4, label_features = TRUE, label_pval_threshold = NULL, label_l2fc_threshold = NULL, label_corr_threshold = NULL, max_features_to_label = 30, label_fontsize = NULL, label_wrap_width = 24, max_label_nchar = 80, no_underscores = FALSE, point_size = NULL, point_alpha = 0.7, use_class_colours = TRUE, cdict = NULL, up_colour = NULL, down_colour = NULL, nonsignificant_colour = "grey70", show_threshold_lines = TRUE, cap_l2fc_at = NULL, cap_neglog10p_at = NULL, rescale_axis_quantiles = c(0, 0.99), fun_for_l2fc = "geom_mean", assay_for_matrix = "BaseCounts", normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, statsonlog = FALSE, ignoreunclassified = TRUE, drop_features_absent_in_all_samples = FALSE, numthreads = 1, min_samples_per_class = 2, min_samples_for_correlation = 5, refuse_if_underpowered = TRUE, min_features_for_volcano = 3, max_pairwise_comparisons = 10, max_total_pages = 200, plot_when_nothing_significant = TRUE, report_failures_on_device = TRUE, addtit = NULL, returnstats = FALSE, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
@@ -331,28 +335,34 @@ plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes
     }
     dotargs <- dotargs[nzchar(dotargs)]
 
-    if (("minl2fc" %in% dotargs) && !is.null(dots$minl2fc)){
-        if (is.null(l2fc_threshold)){
+    if ("minl2fc" %in% dotargs){
+        dotargs <- setdiff(dotargs, "minl2fc")
+    }
+    if (("minl2fc" %in% names(dots)) && !is.null(dots$minl2fc)){
+        if (missing(l2fc_threshold)){
             l2fc_threshold <- as.numeric(dots$minl2fc)
             flog.warn(paste0("minl2fc = ", l2fc_threshold, " was passed. On a volcano, features are never discarded by effect size, so this is being used as l2fc_threshold, i.e. the position of the vertical significance lines."))
         } else {
             flog.warn("Both minl2fc and l2fc_threshold were passed. l2fc_threshold wins.")
         }
-        dotargs <- setdiff(dotargs, "minl2fc")
     }
-    if (("minabscorrcoeff" %in% dotargs) && !is.null(dots$minabscorrcoeff)){
-        if (is.null(corr_threshold)){
+    if ("minabscorrcoeff" %in% dotargs){
+        dotargs <- setdiff(dotargs, "minabscorrcoeff")
+    }
+    if (("minabscorrcoeff" %in% names(dots)) && !is.null(dots$minabscorrcoeff)){
+        if (missing(corr_threshold)){
             corr_threshold <- as.numeric(dots$minabscorrcoeff)
             flog.warn(paste0("minabscorrcoeff = ", corr_threshold, " was passed. On a volcano, features are never discarded by effect size, so this is being used as corr_threshold, i.e. the position of the vertical significance lines in correlation mode."))
         } else {
             flog.warn("Both minabscorrcoeff and corr_threshold were passed. corr_threshold wins.")
         }
-        dotargs <- setdiff(dotargs, "minabscorrcoeff")
     }
-    if (("showonlypbelow" %in% dotargs) && !is.null(dots$showonlypbelow)){
+    if ("showonlypbelow" %in% dotargs){
+        dotargs <- setdiff(dotargs, "showonlypbelow")
+    }
+    if (("showonlypbelow" %in% names(dots)) && !is.null(dots$showonlypbelow)){
         pval_threshold <- as.numeric(dots$showonlypbelow)
         flog.warn(paste0("showonlypbelow = ", pval_threshold, " was passed. On a volcano, features are never hidden by p-value, so this is being used as pval_threshold, i.e. the height of the horizontal significance line."))
-        dotargs <- setdiff(dotargs, "showonlypbelow")
     }
     if (length(dotargs) > 0){
         flog.warn(paste0("plot_volcano: the following argument(s) have no volcano equivalent and are being IGNORED: ", paste0(dotargs, collapse = ", "), "."))
@@ -361,10 +371,15 @@ plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes
     if (!(is.numeric(pval_threshold) && (length(pval_threshold) == 1) && is.finite(pval_threshold) && (pval_threshold > 0) && (pval_threshold <= 1))){
         stop("pval_threshold must be a single number greater than 0 and no greater than 1.")
     }
-    if (!is.null(l2fc_threshold)){
-        if (!(is.numeric(l2fc_threshold) && (length(l2fc_threshold) == 1) && is.finite(l2fc_threshold) && (l2fc_threshold >= 0))){
-            stop("l2fc_threshold must be NULL or a single non-negative number.")
-        }
+    #NULL is accepted, and means "put the vertical lines on top of zero", i.e. colour on the
+    #p-value alone. It is turned into 0 here rather than carried, so that nothing downstream
+    #has to keep asking whether the threshold exists.
+    if (is.null(l2fc_threshold)){
+        l2fc_threshold <- 0
+        flog.warn("l2fc_threshold was explicitly set to NULL, so no effect-size requirement will be applied and features will be coloured on the p-value alone. A feature can then be called significant on a fold change of essentially zero, which is rarely what anyone wants.")
+    }
+    if (!(is.numeric(l2fc_threshold) && (length(l2fc_threshold) == 1) && is.finite(l2fc_threshold) && (l2fc_threshold >= 0))){
+        stop("l2fc_threshold must be a single non-negative number, or NULL to colour on the p-value alone.")
     }
     if (!(fun_for_l2fc %in% c("sum", "mean", "median", "geom_mean"))){
         stop("fun_for_l2fc must be one of \"sum\", \"mean\", \"median\" or \"geom_mean\".")
@@ -380,14 +395,26 @@ plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes
     if (!(length(corr_method) == 1) || !(corr_method %in% c("spearman", "pearson"))){
         stop("corr_method must be either \"spearman\" or \"pearson\".")
     }
-    if (!is.null(corr_threshold)){
-        if (!(is.numeric(corr_threshold) && (length(corr_threshold) == 1) && is.finite(corr_threshold) && (corr_threshold >= 0) && (corr_threshold <= 1))){
-            stop("corr_threshold must be NULL or a single number between 0 and 1, since it is an absolute correlation coefficient.")
-        }
+    if (is.null(corr_threshold)){
+        corr_threshold <- 0
+        flog.warn("corr_threshold was explicitly set to NULL, so in correlation mode features will be coloured on the p-value alone, and a coefficient of essentially zero can be called significant.")
+    }
+    if (!(is.numeric(corr_threshold) && (length(corr_threshold) == 1) && is.finite(corr_threshold) && (corr_threshold >= 0) && (corr_threshold <= 1))){
+        stop("corr_threshold must be a single number between 0 and 1, since it is an absolute correlation coefficient, or NULL to colour on the p-value alone.")
     }
     if (!(identical(adj_pval_for_threshold, TRUE) || identical(adj_pval_for_threshold, FALSE) || identical(adj_pval_for_threshold, "auto"))){
         stop("adj_pval_for_threshold must be TRUE, FALSE or \"auto\".")
     }
+    #Vetted once here rather than per comparison, so that a bad value produces one warning
+    #instead of one per page. Only the upper quantile is ever used: a volcano is symmetric
+    #about zero on X, and its Y axis starts at zero.
+    #A bare 0.99 is accepted as well as plot_relabund_features' c(0, 0.99) form, because only
+    #the upper quantile is meaningful here and asking for the pair would be a trap.
+    use_quantile_cap <- (!is.null(rescale_axis_quantiles) && is.numeric(rescale_axis_quantiles) && (length(rescale_axis_quantiles) %in% c(1, 2)) && all(is.finite(rescale_axis_quantiles)) && all(rescale_axis_quantiles >= 0) && (max(rescale_axis_quantiles) > 0) && (max(rescale_axis_quantiles) <= 1))
+    if (!is.null(rescale_axis_quantiles) && !use_quantile_cap){
+        flog.warn("rescale_axis_quantiles must be a number between 0 and 1, or two of them as in c(0, 0.99). The value given could not be used, so the X axis will span the full range of the data, which lets a single extreme feature flatten all the others onto the zero line.")
+    }
+    cap_quantile <- if (use_quantile_cap) max(rescale_axis_quantiles) else 1
     if (!(assay_for_matrix %in% c("BaseCounts", "GeneCounts"))){
         stop("assay_for_matrix must be either \"BaseCounts\" or \"GeneCounts\".")
     }
@@ -659,31 +686,12 @@ plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes
     presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, is16S = ("asv2lkt" %in% names(metadata(obj))))
 
     #A volcano must NOT drop features by effect size, or its characteristic shape disappears
-    #and the FDR denominator silently changes. The minl2fc (or minabscorrcoeff) implied by a
-    #preset is therefore reinterpreted here as the significance cut-off, i.e. where the
-    #vertical lines go. Both modes resolve their own threshold the same way.
-    if (is.null(l2fc_threshold)){
-        if (!is.null(presetlist$minl2fc) && is.finite(presetlist$minl2fc)){
-            l2fc_threshold <- as.numeric(presetlist$minl2fc)
-            flog.info(paste0("l2fc_threshold was not set; taking it from applyfilters = \"", applyfilters, "\", which implies a minimum absolute log2 fold change of ", round(l2fc_threshold, 2), ". Note that, unlike in plot_relabund_heatmap, features below this are NOT discarded: they are drawn in grey as non-significant."))
-        } else {
-            l2fc_threshold <- 1
-            flog.info("l2fc_threshold was not set and no filtration preset implies one; defaulting to 1.")
-        }
-    }
-    if (is.null(corr_threshold)){
-        if (!is.null(presetlist$minabscorrcoeff) && is.finite(presetlist$minabscorrcoeff)){
-            corr_threshold <- as.numeric(presetlist$minabscorrcoeff)
-            if (volcano_mode == "correlation"){
-                flog.info(paste0("corr_threshold was not set; taking it from applyfilters = \"", applyfilters, "\", which implies a minimum absolute correlation coefficient of ", round(corr_threshold, 2), ". As with the fold change, features below this are NOT discarded, only drawn in grey."))
-            }
-        } else {
-            corr_threshold <- 0.4
-            if (volcano_mode == "correlation"){
-                flog.info("corr_threshold was not set and no filtration preset implies one; defaulting to 0.4, which is the value the \"light\" preset uses for minabscorrcoeff.")
-            }
-        }
-    }
+    #and the FDR denominator silently changes. l2fc_threshold and corr_threshold therefore only
+    #say where the vertical lines go and which side of them a feature is coloured on. They are
+    #arguments in their own right, with their own defaults, and are deliberately NOT derived
+    #from applyfilters: a filtration preset decides which features are real, not which ones
+    #count as different. Setting either to 0 colours on the p-value alone.
+    flog.info(paste0("Significance cut-offs for this volcano: ", if (volcano_mode == "correlation") paste0("absolute ", corr_method, " coefficient >= ", round(corr_threshold, 3)) else paste0("absolute log2 fold change >= ", round(l2fc_threshold, 3)), ", and ", if (isTRUE(adj_pval_for_threshold)) "FDR-adjusted p" else "p", " <= ", pval_threshold, ". Features falling short of these are NOT discarded; they are drawn in grey as non-significant."))
 
     #From here on, a single pair of names carries whichever effect size this call is using,
     #so that everything downstream of the statistics is shared between the two modes.
@@ -1336,7 +1344,19 @@ plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes
 
             vdf$neglog10p <- -log10(vdf$pplot)
 
-            #### Clamp infinities so that they are shown at the edge rather than silently dropped ####
+            #### Choose the axis limits, then clamp outliers to them rather than dropping them ####
+            #The naive choice, "widen the axis until the single most extreme feature fits", is
+            #actively harmful on JAMS data. getl2fc takes a ratio of geometric means of PPM + 1,
+            #so one taxon abundant in one group and absent in the other yields an absolute log2
+            #fold change of 15-20, while the bulk of a Species-level universe sits between -2 and
+            #+2. A single such taxon therefore squeezes every other point, and both dashed
+            #threshold lines, into a few millimetres either side of the zero line: the plot then
+            #looks as though it holds nothing but its handful of significant features, which is
+            #precisely the complaint this logic exists to prevent. rescale_axis_quantiles (the
+            #same argument name plot_relabund_features uses for the same purpose) instead sets
+            #the limit from an upper quantile of the data, and the few features beyond it are
+            #drawn as triangles on the edge and counted in the subtitle. Set it to NULL to get
+            #the full range back.
             finite_l2fc <- vdf$l2fc[is.finite(vdf$l2fc)]
             n_inf_x <- sum(!is.finite(vdf$l2fc))
             if (volcano_mode == "correlation"){
@@ -1349,11 +1369,12 @@ plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes
                 }
             } else if (!is.null(cap_l2fc_at)){
                 #Never let an explicit cap hide the threshold lines themselves
-                xcap <- max(abs(as.numeric(cap_l2fc_at)), (l2fc_threshold * 1.05), 0.1)
+                xcap <- max(abs(as.numeric(cap_l2fc_at)), (effect_threshold * 1.05), 0.1)
             } else if (length(finite_l2fc) > 0){
-                xcap <- max(c(abs(finite_l2fc), (l2fc_threshold * 1.2), 0.5)) * 1.05
+                #Always keep both threshold lines comfortably inside the panel, whatever the quantile says
+                xcap <- max(c(stats::quantile(abs(finite_l2fc), probs = cap_quantile, names = FALSE, na.rm = TRUE), (effect_threshold * 1.2), 0.5)) * 1.05
             } else {
-                xcap <- max((l2fc_threshold * 1.5), 1)
+                xcap <- max((effect_threshold * 1.5), 1)
             }
             vdf$l2fc_plot <- pmin(pmax(vdf$l2fc, (xcap * -1)), xcap)
             vdf$l2fc_plot[is.na(vdf$l2fc_plot)] <- 0
@@ -1363,6 +1384,13 @@ plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes
             if (!is.null(cap_neglog10p_at)){
                 ycap <- max(abs(as.numeric(cap_neglog10p_at)), (-log10(pval_threshold) * 1.05))
             } else if (length(finite_y) > 0){
+                #Deliberately NOT quantile-capped, unlike the X axis. The two axes fail in
+                #opposite directions: on X the extreme values are an artefact of the pseudocount
+                #in getl2fc and crushing them is the whole problem, whereas on Y the extreme
+                #values ARE the result, and clamping the most significant features onto the top
+                #edge as triangles would throw away what the reader came for. -log10(p) is also
+                #bounded below by the test's own p-value floor, so its dynamic range is modest.
+                #Use cap_neglog10p_at if one enormous feature does flatten the rest.
                 ycap <- max(c(finite_y, -log10(pval_threshold), 1)) * 1.05
             } else {
                 ycap <- max(-log10(pval_threshold) * 2, 2)
@@ -1379,8 +1407,10 @@ plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes
                 if (n_inf_y > 0){
                     capbits <- c(capbits, paste0(n_inf_y, " with a p-value that underflowed to zero"))
                 }
-                cap_msg <- paste0("NOTE: ", sum(vdf$Capped), " feature(s) are drawn as triangles at the plot edge because they lie beyond the axis limits", if (length(capbits) > 0) paste0(", including ", paste0(capbits, collapse = " and ")) else "", ".")
+                cap_msg <- paste0("NOTE: ", sum(vdf$Capped), " of ", nrow(vdf), " feature(s) lie beyond the axis limits (|", effect_axis_name, "| > ", signif(xcap, 3), " or -log10(p) > ", signif(ycap, 3), ") and are drawn as triangles on the plot edge, so that one extreme feature does not squash all the others onto the zero line", if (length(capbits) > 0) paste0(". These include ", paste0(capbits, collapse = " and ")) else "", ". Set rescale_axis_quantiles = NULL to span the full range instead, or cap_l2fc_at / cap_neglog10p_at to choose the limits yourself.")
+                flog.info(cap_msg)
             }
+            flog.info(paste0("Volcano axis limits for ", where_label, ": ", effect_axis_name, " +/- ", signif(xcap, 3), ", -log10(p) 0 to ", signif(ycap, 3), "."))
 
             #### Direction and significance ####
             if (volcano_mode == "correlation"){
@@ -1610,9 +1640,9 @@ plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes
             p <- ggplot(vdf, aes(x = l2fc_plot, y = neglog10p_plot, colour = Status))
 
             if (show_threshold_lines){
-                p <- p + geom_hline(yintercept = -log10(pval_threshold), linetype = "dashed", colour = "grey45", linewidth = 0.3)
+                p <- p + geom_hline(yintercept = -log10(pval_threshold), linetype = "dashed", colour = "grey30", linewidth = 0.4)
                 if (effect_threshold > 0){
-                    p <- p + geom_vline(xintercept = c((effect_threshold * -1), effect_threshold), linetype = "dashed", colour = "grey45", linewidth = 0.3)
+                    p <- p + geom_vline(xintercept = c((effect_threshold * -1), effect_threshold), linetype = "dashed", colour = "grey30", linewidth = 0.4)
                 }
                 p <- p + geom_vline(xintercept = 0, linetype = "solid", colour = "grey85", linewidth = 0.25)
             }
