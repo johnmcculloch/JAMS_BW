@@ -515,19 +515,25 @@ This only makes sense for **taxonomic** spaces (it relies on the `GenomeComplete
 
 ### `applyfilters` — shorthand presets
 
-Instead of setting the two cutoffs by hand you can pass `applyfilters = "light"`, `"moderate"`, or `"stringent"`. Each expands to sensible `featcutoff`, `GenomeCompletenessCutoff`, and `minl2fc` values, and the presets differ between taxonomic and functional objects. For taxonomic objects, roughly:
+Instead of setting the two cutoffs by hand you can pass `applyfilters = "light"`, `"moderate"`, or `"stringent"`. Each expands to sensible `featcutoff` and `GenomeCompletenessCutoff` values, and the presets differ between taxonomic and functional objects. For taxonomic objects:
 
-| preset | featcutoff | GenomeCompletenessCutoff | minl2fc |
-|---|---|---|---|
-| light | c(50, 5) | c(5, 5) | 1 |
-| moderate | c(250, 15) | c(10, 5) | 1 |
-| stringent | c(2000, 15) | c(30, 10) | 2 |
+| preset | featcutoff | GenomeCompletenessCutoff |
+|---|---|---|
+| light | c(50, 5) | c(5, 5) |
+| moderate | c(250, 15) | c(10, 5) |
+| stringent | c(2000, 15) | c(30, 10) |
+
+For functional objects there is no genome completeness, and `featcutoff` is `c(0, 0)` / `c(5, 5)` / `c(50, 15)` respectively.
 
 Any value you set explicitly **overrides** the preset for that one argument, so you can say `applyfilters = "moderate", GenomeCompletenessCutoff = c(20, 5)` and only that cutoff changes.
 
-### `minl2fc` / `maxl2fc` — effect-size filters
+> **A preset decides which features are real, and nothing else.** Until v2.3.2 `applyfilters` also set `minl2fc` and `minabscorrcoeff`, so changing "light" to "stringent" quietly moved the statistical goalposts as well as the detection floor. Those two are now ordinary arguments with their own defaults, and a preset never touches them.
 
-Minimum (and maximum) absolute **log2 fold change** between the two groups of a binary comparison. Used to show only features whose difference is large enough to care about. Only relevant in comparative contexts where a fold change is computed.
+### `minl2fc` / `maxl2fc` — effect-size thresholds
+
+Minimum (and maximum) absolute **log2 fold change** between the two groups of a binary comparison. Used to show only features whose difference is large enough to care about. Only relevant in comparative contexts where a fold change is computed, and entirely independent of `applyfilters`.
+
+`minl2fc` defaults to **1** (a two-fold difference) wherever it is offered, and `minabscorrcoeff` defaults to **0.4**. They used to default to `NULL`, which meant a feature differing by a factor of 1.007, or correlating at rho = 0.02, could occupy a row of a heatmap. If you really want that, pass `minl2fc = NULL` explicitly. `maxl2fc` still defaults to `NULL`, since there is no sensible universal ceiling.
 
 ### `PPM_normalize_to_bases_sequenced`
 
@@ -853,7 +859,7 @@ The X axis is then the coefficient, fixed to the full `[-1, 1]` range so that ev
 
 Three things specific to this mode:
 
-- **`corr_threshold`** replaces `l2fc_threshold`, and defaults the same way: from the `minabscorrcoeff` implied by `applyfilters` (0.4 / 0.6 / 0.8 for light / moderate / stringent), falling back to 0.4. `label_corr_threshold` mirrors `label_l2fc_threshold`. A `minabscorrcoeff` passed out of habit is picked up with a warning.
+- **`corr_threshold`** replaces `l2fc_threshold` and defaults to 0.4, independently of `applyfilters`. `label_corr_threshold` mirrors `label_l2fc_threshold`. A `minabscorrcoeff` passed out of habit is picked up with a warning.
 - **Constant features are always dropped** before testing, whatever `drop_features_absent_in_all_samples` says, because a feature with no variance has no correlation with anything. The count is reported on the plot, since it reduces the FDR denominator.
 - **Several arguments stop meaning anything** and are reported as ignored: `classes_to_compare`, `wilcox_paired_by`, `invertbinaryorder`, `fun_for_l2fc`, `l2fc_threshold` and `cap_l2fc_at`.
 
@@ -862,7 +868,8 @@ Spearman is the default for the same reason Mann–Whitney is the default in bin
 ### What is different from the heatmap
 
 - **`compareby` is mandatory.** There is no exploratory mode: a volcano without two groups is meaningless.
-- **Nothing is discarded by effect size.** In `plot_relabund_heatmap`, `minl2fc` (and the one implied by `applyfilters`) *removes* features. On a volcano that would destroy the shape the plot exists to show, and would quietly change the FDR denominator too. So the same number becomes `l2fc_threshold`: where the vertical dashed lines go, and therefore which dots are coloured. If you pass `minl2fc` out of habit it is picked up as `l2fc_threshold`, with a warning saying so. The same applies to `showonlypbelow`, which becomes `pval_threshold`.
+- **Nothing is discarded by effect size.** In `plot_relabund_heatmap`, `minl2fc` *removes* features. On a volcano that would destroy the shape the plot exists to show, and would quietly change the FDR denominator too. So the equivalent number, `l2fc_threshold` (default 1), only says where the vertical dashed lines go, and therefore which dots are coloured. If you pass `minl2fc` out of habit it is picked up as `l2fc_threshold`, with a warning saying so. The same applies to `showonlypbelow`, which becomes `pval_threshold`.
+- **The axes are set from a quantile, not from the most extreme feature.** `rescale_axis_quantiles` defaults to `c(0, 0.99)` and governs the X axis, and the handful of features outside that limit are drawn as triangles on the edge and counted in the subtitle. The Y axis is left alone, because there the extreme points are the result rather than an artefact; use `cap_neglog10p_at` if one enormously significant feature flattens the rest. This matters more than it sounds: because a JAMS log2 fold change is a ratio of geometric means of PPM + 1, a single taxon present in one group and absent in the other reaches `|l2fc|` of 15 to 20, which is enough to flatten every other point — and both dashed threshold lines — into a smear on the zero line. Pass `rescale_axis_quantiles = NULL` for the full range, or set `cap_l2fc_at` / `cap_neglog10p_at` by hand.
 - **Three or more classes give you every pair.** Where the heatmap would run an ANOVA, the volcano draws one page per pairwise contrast (A vs B, A vs C, B vs C), capped by `max_pairwise_comparisons`. Pin it to one contrast with `classes_to_compare = c("Control", "Treated")`.
 - **It refuses loudly, on paper.** Every reason it declines to draw is both logged and written as a full text page into your PDF, so an unattended loop never just silently skips a comparison.
 
@@ -877,7 +884,7 @@ The commonest way to get a baffling, uniformly grey volcano is to have asked for
 
 ### Most-used arguments
 
-- **`pval_threshold`** (default `0.05`) and **`l2fc_threshold`** (default: whatever `applyfilters` implies, else 1) — the horizontal and vertical dashed lines, and therefore which dots are coloured.
+- **`pval_threshold`** (default `0.05`) and **`l2fc_threshold`** (default `1`, independent of `applyfilters`) — the horizontal and vertical dashed lines, and therefore which dots are coloured.
 - **`adj_pval_for_threshold`** — `FALSE` (default), `TRUE`, or `"auto"`. This governs **both** the Y axis and the threshold, so the dashed line always means what it says. The count of features passing the *other* p-value is still reported in the subtitle.
 - **`label_features`**, **`max_features_to_label`** (default 30), **`label_pval_threshold`** / **`label_l2fc_threshold`** — which dots get named. The labels are drawn with ggrepel, sized automatically from how many there are, wrapped at `label_wrap_width` characters, and set in italics for taxonomic spaces. Set the two label thresholds tighter than the colour thresholds to colour generously but name sparingly.
 - **`highlight_features`** — a vector of features that are always ringed in black and named, whether or not they are significant. Good for following a handful of taxa across many comparisons.
@@ -1168,7 +1175,7 @@ The `showGram = TRUE` annotation is pedagogically nice here: vancomycin targets 
 
 ### Example 3b — The same comparison as a volcano
 
-Exactly the same samples, filters and statistics as Example 3, drawn as one page instead of a ranked list. Note that `minl2fc` has become `l2fc_threshold` (the vertical lines) and `showonlypbelow` has become `pval_threshold` (the horizontal line): nothing is removed, so you can see the features that *failed* the cut-off as well as those that passed.
+Exactly the same samples, filters and statistics as Example 3, drawn as one page instead of a ranked list. Note that `minl2fc` corresponds to `l2fc_threshold` (the vertical lines) and `showonlypbelow` to `pval_threshold` (the horizontal line): nothing is removed, so you can see the features that *failed* the cut-off as well as those that passed.
 
 ```r
 pdf("MR50_03b_volcano_G1_vs_G2_day5.pdf", paper = "a4r")
@@ -1370,6 +1377,12 @@ That is the intended behaviour: a continuous variable has no fold change, so `pl
 
 **`plot_volcano` warns that my `minl2fc` is being used as `l2fc_threshold`.**
 That is deliberate, not a failure. A volcano never discards features by effect size, so the number becomes the position of the vertical significance lines instead. Same for `showonlypbelow`, which becomes `pval_threshold`. See [§12](#12-volcano-plots).
+
+**My volcano looks almost empty: I can see the labelled significant features but no grey cloud, and the dashed fold-change lines seem to be missing.**
+The points and the lines are all there, squashed into a few millimetres either side of zero. This was the default behaviour before v2.3.2, when the X axis was stretched to fit the single most extreme feature. A JAMS log2 fold change is a ratio of geometric means of PPM + 1, so one taxon present in one group and absent in the other reaches `|l2fc|` of 15 to 20 while the bulk of a Species-level universe sits between -2 and +2; the axis then runs to ±20 and everything else collapses onto the zero line, taking the dashed lines at ±1 with it. The axis limits now come from `rescale_axis_quantiles` (default `c(0, 0.99)`) and the outliers are drawn as triangles on the edge. On an older build, or to tighten it further, pass `cap_l2fc_at = 4, cap_neglog10p_at = 3`. See [§12](#12-volcano-plots).
+
+**My heatmap or feature plot lost rows after upgrading, and I did not change `applyfilters`.**
+`minl2fc` now defaults to 1 and `minabscorrcoeff` to 0.4 in the functions that offer them, instead of `NULL`. Previously, with `applyfilters = NULL`, no effect-size threshold applied at all and a feature differing by a factor of 1.007 could occupy a row. If you want the old behaviour, pass `minl2fc = NULL` (and `minabscorrcoeff = NULL`) explicitly. Note also that `applyfilters` no longer raises `minl2fc` to 2 or 2.5 under `"stringent"` — effect size and feature survival are now separate decisions.
 
 **My volcano drew far more pages than I expected.**
 `compareby` has three or more classes, so every pair is being plotted. Pin it with `classes_to_compare = c("A", "B")`, or lower `max_pairwise_comparisons`. The overall ceiling is `max_total_pages`. See [§12](#12-volcano-plots).

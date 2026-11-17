@@ -1,11 +1,11 @@
-#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, compareby_order = NULL, invertbinaryorder = FALSE, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_cladogram_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, fun_for_l2fc = "geom_mean", ...)
+#' plot_relabund_features(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, compareby_order = NULL, invertbinaryorder = FALSE, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ntop = NULL, minabscorrcoeff = 0.4, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = 1, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_cladogram_for_stratification = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, fun_for_l2fc = "geom_mean", ...)
 #'
 #' Generates relative abundance plots per feature annotated by the metadata using as input a SummarizedExperiment object
 #'
 #' When compareby = NULL, a single boxplot is drawn per feature showing the spread of relative abundance across ALL samples in the (sub)set, with no statistical comparison. If stratify_by_taxlevel is also set, the taxon-stratified boxplot(s) are likewise drawn across all samples as a single group. This is useful for inspecting which taxa contribute to a functional feature within a single group.
 #' @export
 
-plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, compareby_order = NULL, invertbinaryorder = FALSE, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ntop = NULL, minabscorrcoeff = NULL, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = NULL, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_cladogram_for_stratification = TRUE, show_prevalence_in_cladogram = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, fun_for_l2fc = "geom_mean", ...){
+plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, aggregatefeatures = FALSE, aggregatefeatures_label = "Sum_of_wanted_features", subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, compareby_order = NULL, invertbinaryorder = FALSE, colourby = NULL, shapeby = NULL, fillby = NULL, connectby = NULL, facetby = NULL, wrap_facet = FALSE, overlay_boxplot = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ntop = NULL, minabscorrcoeff = 0.4, adjustpval = TRUE, padjmeth = "fdr", showonlypbelow = NULL, showonlypadjusted = FALSE, maxl2fc = NULL, minl2fc = 1, addtit = NULL, PPM_normalize_to_bases_sequenced = FALSE, log2tran_main_plot = FALSE, log2tran_strat_plot = FALSE, statsonlog = FALSE, y_axis_range = NULL, cdict = NULL, stratify_by_taxlevel = NULL, maxnumplots = NULL, signiflabel = "p.format", max_pairwise_cats = 4, dump_interpro_descriptions_to_plot = FALSE, numthreads = 1, nperm = 99, ignoreunclassified = TRUE, class_to_ignore = "N_A", maxnumtaxa = 20, horizontal = TRUE, plot_points_on_taxonomy = FALSE, use_cladogram_for_stratification = TRUE, show_prevalence_in_cladogram = TRUE, return_taxon_stratification_df = FALSE, return_plots = FALSE, rescale_axis_quantiles = NULL, fun_for_l2fc = "geom_mean", ...){
 
     #Account for JAMS2 spaces
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
@@ -31,7 +31,26 @@ plot_relabund_features <- function(ExpObj = NULL, glomby = NULL, samplesToKeep =
         analysisname <- analysis
     }
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, maxl2fc = maxl2fc, minl2fc = minl2fc, minabscorrcoeff = minabscorrcoeff)
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
+
+    #Effect-size thresholds are not filtration presets. applyfilters decides which features are
+    #real; minl2fc, maxl2fc and minabscorrcoeff decide which of the real ones are worth showing.
+    #They travel in presetlist only because the code below has always read them from there.
+    #When the user has named the features, though, those thresholds must stand down: naming a
+    #feature is an explicit request to see it, and silently dropping it for a fold change under
+    #two would be indefensible. This mirrors plot_relabund_heatmap, which nulls applyfilters for
+    #the same reason, and matters now that minl2fc and minabscorrcoeff have non-NULL defaults.
+    if (!is.null(featuresToKeep) || (aggregatefeatures == TRUE)){
+        if (!is.null(minl2fc) || !is.null(maxl2fc) || !is.null(minabscorrcoeff)){
+            flog.info("Specific features were requested, so the effect-size thresholds (minl2fc, maxl2fc, minabscorrcoeff) are being stood down for this call: every feature asked for will be shown, whatever its effect size.")
+        }
+        minl2fc <- NULL
+        maxl2fc <- NULL
+        minabscorrcoeff <- NULL
+    }
+    presetlist$minl2fc <- minl2fc
+    presetlist$maxl2fc <- maxl2fc
+    presetlist$minabscorrcoeff <- minabscorrcoeff
 
     if (!(is.null(subsetby))){
         subset_points <- sort(unique(colData(obj)[, which(colnames(colData(obj)) == subsetby)]))

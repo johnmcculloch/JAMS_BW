@@ -2,7 +2,7 @@
 % Please edit documentation in R/declare_filtering_presets.R
 \name{declare_filtering_presets}
 \alias{declare_filtering_presets}
-\title{declare_filtering_presets(analysis = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, maxl2fc = NULL, minl2fc = NULL)}
+\title{declare_filtering_presets(analysis = NULL, is16S = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ...)}
 \usage{
 declare_filtering_presets(
   analysis = NULL,
@@ -10,11 +10,20 @@ declare_filtering_presets(
   applyfilters = NULL,
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
-  maxl2fc = NULL,
-  minl2fc = NULL,
-  minabscorrcoeff = NULL
+  ...
 )
 }
 \description{
-Performs vetting of a SummarizedExperiment object for use in several functions
+Resolves the JAMS filtration presets into the concrete cutoffs used by several functions.
+}
+\details{
+A filtration preset decides one thing only: whether a feature survives into the analysis at
+all. It therefore sets featcutoff and, for taxonomic spaces, GenomeCompletenessCutoff, and
+nothing else. Effect-size thresholds such as minl2fc, maxl2fc and minabscorrcoeff are NOT
+filtration criteria. They decide how a surviving feature is judged or drawn, which is an
+entirely separate question, and they are consequently set by their own arguments in the
+functions which offer them, each with its own sensible default. Prior to JAMS 2.3.2 the
+presets did set minl2fc and minabscorrcoeff, which coupled "is this feature real" to "is
+this feature interesting" and made a plain applyfilters string silently change the
+statistical verdict of a plot. That coupling has been removed.
 }

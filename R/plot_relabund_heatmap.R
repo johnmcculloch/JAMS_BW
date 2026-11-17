@@ -54,7 +54,7 @@
 
 #' @param only_allow_CSBs Requires a logical value. If set to TRUE, if the ExpObj passed as input is a taxonomic SummarizedExperiment object of JAMS analysis class "ConsolidatedGenomeBin", the only features to be considered are those which are Consolidated Species Bins (CSBs), i.e. taxa which were obtained from MetaBat2 bins in the JAMSalpha run of a sample. Taxonomic features coming exclusively from unbinned (leftover) contigs will be eliminated from the analysis. Default is FALSE, i.e. all taxa are kept.
 
-#' @param applyfilters Optional string specifying filtration setting "combos", used as a shorthand for setting the featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff arguments in JAMS plotting functions. If NULL, none of these arguments are set if not specified. Permissible values for applyfilters are "light", "moderate" or "stringent". The actual values vary whether the SummarizedExperiment object is taxonomical (LKT) or not. For a taxonomical SummarizedExperiment object, using "light" will set featcutoff=c(50, 5), GenomeCompletenessCutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(250, 15), GenomeCompletenessCutoff=c(10, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(2000, 15), GenomeCompletenessCutoff=c(30, 10), minl2fc=2, minabscorrcoeff=0.8. For non-taxonomical (i.e. functional) SummarizedExperiment objects, using "light" will set featcutoff=c(0, 0), minl2fc=1, minabscorrcoeff=0.4; using "moderate" will set featcutoff=c(5, 5), minl2fc=1, minabscorrcoeff=0.6; and using "stringent" will set featcutoff=c(50, 15), minl2fc=2.5, minabscorrcoeff=0.8. When using applyfilters, one can still set one or more of featcutoff, GenomeCompletenessCutoff, minl2fc and minabscorrcoeff, which will then take the user set value in lieu of those set by the applyfilters shorthand. Default is light.
+#' @param applyfilters Optional string specifying filtration setting "combos", used as a shorthand for setting the featcutoff and GenomeCompletenessCutoff arguments in JAMS plotting functions. A filtration preset decides one thing only, namely whether a feature survives into the analysis at all; it has no bearing on effect-size thresholds such as minl2fc or minabscorrcoeff, which are set by their own arguments wherever they apply. If NULL, neither featcutoff nor GenomeCompletenessCutoff is set unless specified. Permissible values for applyfilters are "light", "moderate" or "stringent". The actual values vary whether the SummarizedExperiment object is taxonomical (LKT) or not. For a taxonomical SummarizedExperiment object, using "light" will set featcutoff=c(50, 5), GenomeCompletenessCutoff=c(5, 5); using "moderate" will set featcutoff=c(250, 15), GenomeCompletenessCutoff=c(10, 5); and using "stringent" will set featcutoff=c(2000, 15), GenomeCompletenessCutoff=c(30, 10). For non-taxonomical (i.e. functional) SummarizedExperiment objects, using "light" will set featcutoff=c(0, 0); using "moderate" will set featcutoff=c(5, 5); and using "stringent" will set featcutoff=c(50, 15). When using applyfilters, one can still set featcutoff or GenomeCompletenessCutoff explicitly, which will then take the user set value in lieu of that set by the applyfilters shorthand. Default is light.
 
 #' @param discard_SDoverMean_below Numeric value setting the minimum standard deviation over mean (sd/mean) value cutoff for a feature to be kept. Features with an sd/mean value smaller than this threshold will be discarded. When NULL, this filtration is not applied. Default is NULL.
 
@@ -66,9 +66,9 @@
 
 #' @param adj_pval_for_threshold Requires a logical value. If set to TRUE, then if setting a numerical value for p-value cutoff with showonlypbelow (q.v.), only **adjusted** p-values below or equal to the threshold will be shown. Default is FALSE, i.e. use a raw p-value for cutoff.
 
-#' @param minl2fc Numeric value setting the minimum absolute log2 fold change value to report within a heatmap. This only applies to "comparative" heatmaps (see hmtype) when the variable being compared (see compareby) has exactly two classes. When NULL, this filtration is not applied and features with minimum log2 foldchanges of any value down to 0 will be shown. Default is NULL.
+#' @param minl2fc Numeric value setting the minimum absolute log2 fold change value to report within a heatmap. This only applies to "comparative" heatmaps (see hmtype) when the variable being compared (see compareby) has exactly two classes. Note that this is an effect-size threshold, not a filtration criterion, and is therefore independent of applyfilters: it is set here and nowhere else. Default is 1, on the grounds that a feature differing between two groups by a factor of less than two is rarely worth a row of a heatmap. Set to NULL to switch the threshold off entirely and show features with log2 fold changes of any value down to 0, at your own risk.
 
-#' @param maxl2fc Numeric value setting the maximum absolute log2 fold change value to report within a heatmap. This only applies to "comparative" heatmaps (see hmtype) when the variable being compared (see compareby) has exactly two classes. When NULL, this filtration is not applied and features with maximum log2 foldchanges of any value up to Inf will be shown. Default is NULL.
+#' @param maxl2fc Numeric value setting the maximum absolute log2 fold change value to report within a heatmap. This only applies to "comparative" heatmaps (see hmtype) when the variable being compared (see compareby) has exactly two classes. Like minl2fc, this is an effect-size threshold rather than a filtration criterion, and is independent of applyfilters. When NULL, no ceiling is imposed and features with log2 fold changes of any value up to Inf will be shown. Default is NULL.
 
 #' @param fun_for_l2fc String specifying the mathematical function for aggregating samples within each group when calculating the log2 fold change for each feature. This only applies to "comparative" heatmaps (see hmtype) when the variable being compared (see compareby) has exactly two classes. Permissible entries are "sum", "mean", "median" or "geom_mean". Default is geom_mean. For "geom_mean", the geometric mean within each group is calculated with exp(mean(log((x1, x2, x3, ...) + 1))).
 
@@ -104,7 +104,7 @@
 
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "exploratory", samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = TRUE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, row_order = NULL, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = NULL, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, showPhylum = FALSE, show_GenomeCompleteness = TRUE, use_checkM2_style_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
+plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "exploratory", samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = TRUE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, row_order = NULL, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = 1, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, showPhylum = FALSE, show_GenomeCompleteness = TRUE, use_checkM2_style_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
 
     #Account for JAMS2 spaces
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
@@ -151,7 +151,22 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         applyfilters <- NULL
     }
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, maxl2fc = maxl2fc, minl2fc = minl2fc)
+    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
+
+    #Effect-size thresholds are deliberately NOT part of the filtration presets: applyfilters
+    #decides which features are real, minl2fc and maxl2fc decide which of the real ones are
+    #worth drawing. They are carried in presetlist purely because the code below, which can
+    #relax minl2fc when too few features survive it, has always read them from there.
+    #Naming features explicitly stands the thresholds down for the same reason it nulls
+    #applyfilters above: asking for a feature by name is asking to see it, whatever its
+    #fold change. This matters now that minl2fc has a non-NULL default.
+    if (!is.null(featuresToKeep) && (!is.null(minl2fc) || !is.null(maxl2fc))){
+        flog.info("Specific features were requested via featuresToKeep, so minl2fc and maxl2fc are being stood down for this call: every feature asked for will be shown, whatever its fold change.")
+        minl2fc <- NULL
+        maxl2fc <- NULL
+    }
+    presetlist$minl2fc <- minl2fc
+    presetlist$maxl2fc <- maxl2fc
 
     if (assay_for_matrix == "GeneCounts"){
         flog.warn("Counts matrix used for heatmap will represent the *number of genes* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
@@ -493,28 +508,55 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     #Stats are not variance
                     if (all(c((!(is.null(presetlist$minl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
                         #Check if there is enough leftover after filter.
-                        if (length(which(matstats$absl2fc > presetlist$minl2fc)) < 2){
-                            flog.info(paste("There are fewer than 2 features which have > ", presetlist$minl2fc, "l2fc."))
-                            #Redefine min l2fc to whatever is the lowest available keeping between 2 and 40 features to plot.
-                            presetlist$minl2fc <- matstats[order(matstats$absl2fc, decreasing = TRUE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
-                            flog.info(paste("Resetting minimum l2fc to", round(presetlist$minl2fc, 2)))
+                        if (length(which(matstats$absl2fc >= presetlist$minl2fc)) < 2){
+                            flog.info(paste("There are fewer than 2 features which have >= ", presetlist$minl2fc, "l2fc."))
+                            #Redefine min l2fc to whatever is the lowest available keeping up to 40 features to plot.
+                            #min(nrow, 40), not min(max(nrow, 2), 40): with a single surviving feature the old
+                            #expression indexed row 2 of a one-row data frame, which yields NA, and subset() then
+                            #discards every row on an NA condition, leaving a zero-row matstats that blows up a
+                            #few lines later on matstats$Method[1]. Now that minl2fc defaults to 1 rather than
+                            #NULL this branch is reachable on an ordinary call, so it has to be right.
+                            if (nrow(matstats) > 0){
+                                relaxrow <- max(1, min(nrow(matstats), 40))
+                                relaxed <- matstats[order(matstats$absl2fc, decreasing = TRUE), ][relaxrow, ]$absl2fc
+                                if (length(relaxed) == 1 && !is.na(relaxed) && is.finite(relaxed)){
+                                    presetlist$minl2fc <- relaxed
+                                    flog.info(paste("Resetting minimum l2fc to", round(presetlist$minl2fc, 2)))
+                                } else {
+                                    presetlist$minl2fc <- 0
+                                    flog.warn("Could not establish a relaxed minimum l2fc from the surviving features, so no minimum is being applied for this heatmap.")
+                                }
+                            } else {
+                                presetlist$minl2fc <- 0
+                            }
                         }
-                        minl2fcmsg <- paste("log2foldchange >", round(presetlist$minl2fc, 2))
-                        matstats <- subset(matstats, absl2fc > presetlist$minl2fc)
+                        minl2fcmsg <- paste("log2foldchange >=", round(presetlist$minl2fc, 2))
+                        matstats <- subset(matstats, absl2fc >= presetlist$minl2fc)
                     } else {
                         minl2fcmsg <- "log2foldchange > 0"
                     }
 
                     if (all(c((!(is.null(presetlist$maxl2fc))), ("l2fc" %in% colnames(matstats)), (hmtype != "PA")))) {
                         #Check if there is enough leftover after filter.
-                        if (length(which(matstats$absl2fc < presetlist$maxl2fc)) < 2){
-                            flog.info(paste("There are fewer than 2 features which have < ", presetlist$maxl2fc, "l2fc."))
-                            #Redefine max l2fc to whatever is the lowest available keeping between 2 and 40 features to plot.
-                            presetlist$maxl2fc <- matstats[order(matstats$absl2fc, decreasing = FALSE),][min(max(length(matstats$absl2fc), 2), 40), ]$absl2fc
-                            flog.info(paste("Resetting maximum l2fc to", round(presetlist$maxl2fc, 2)))
+                        if (length(which(matstats$absl2fc <= presetlist$maxl2fc)) < 2){
+                            flog.info(paste("There are fewer than 2 features which have <= ", presetlist$maxl2fc, "l2fc."))
+                            #Redefine max l2fc to whatever is the highest available keeping up to 40 features to plot.
+                            if (nrow(matstats) > 0){
+                                relaxrow <- max(1, min(nrow(matstats), 40))
+                                relaxed <- matstats[order(matstats$absl2fc, decreasing = FALSE), ][relaxrow, ]$absl2fc
+                                if (length(relaxed) == 1 && !is.na(relaxed) && is.finite(relaxed)){
+                                    presetlist$maxl2fc <- relaxed
+                                    flog.info(paste("Resetting maximum l2fc to", round(presetlist$maxl2fc, 2)))
+                                } else {
+                                    presetlist$maxl2fc <- Inf
+                                    flog.warn("Could not establish a relaxed maximum l2fc from the surviving features, so no maximum is being applied for this heatmap.")
+                                }
+                            } else {
+                                presetlist$maxl2fc <- Inf
+                            }
                         }
-                        maxl2fcmsg <- paste("log2foldchange <", round(presetlist$maxl2fc, 2))
-                        matstats <- subset(matstats, absl2fc < presetlist$maxl2fc)
+                        maxl2fcmsg <- paste("log2foldchange <=", round(presetlist$maxl2fc, 2))
+                        matstats <- subset(matstats, absl2fc <= presetlist$maxl2fc)
                     } else {
                         maxl2fcmsg <- "log2foldchange > Inf"
                     }

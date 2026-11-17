@@ -24,9 +24,9 @@ plot_volcano(
   discard_SDoverMean_below = NULL,
   pval_threshold = 0.05,
   adj_pval_for_threshold = FALSE,
-  l2fc_threshold = NULL,
+  l2fc_threshold = 1,
   corr_method = "spearman",
-  corr_threshold = NULL,
+  corr_threshold = 0.4,
   label_features = TRUE,
   label_pval_threshold = NULL,
   label_l2fc_threshold = NULL,
@@ -42,10 +42,11 @@ plot_volcano(
   cdict = NULL,
   up_colour = NULL,
   down_colour = NULL,
-  nonsignificant_colour = "grey75",
+  nonsignificant_colour = "grey70",
   show_threshold_lines = TRUE,
   cap_l2fc_at = NULL,
   cap_neglog10p_at = NULL,
+  rescale_axis_quantiles = c(0, 0.99),
   fun_for_l2fc = "geom_mean",
   assay_for_matrix = "BaseCounts",
   normalization = "relabund",
@@ -93,7 +94,7 @@ plot_volcano(
 
 \item{invertbinaryorder}{Requires a logical value. If set to TRUE, the sign of the log2 fold change is inverted, which mirrors the volcano left-to-right and swaps which class counts as "up". Default is FALSE. Has no meaning in correlation mode, where the sign of the coefficient is a property of the data, and is reported as ignored there.}
 
-\item{applyfilters}{Optional string specifying filtration setting "combos", used as a shorthand for setting featcutoff and GenomeCompletenessCutoff. Permissible values are "light", "moderate" or "stringent". Default is "light". Note an important difference from plot_relabund_heatmap: the minl2fc implied by a preset is **not** used to discard features here, because removing features by effect size would gut the very shape a volcano exists to show. It is instead used as the *default* value of l2fc_threshold, i.e. as the vertical significance cut-off. Set l2fc_threshold explicitly to override.}
+\item{applyfilters}{Optional string specifying filtration setting "combos", used as a shorthand for setting featcutoff and GenomeCompletenessCutoff. Permissible values are "light", "moderate" or "stringent". Default is "light". A filtration preset decides which features are real enough to be tested, and nothing else. It does not set, and has never any business setting, the effect-size cut-offs: l2fc_threshold and corr_threshold are independent arguments with their own defaults. Note also that, unlike plot_relabund_heatmap, this function never discards a feature for having too small an effect size, because doing so would gut the very shape a volcano exists to show.}
 
 \item{featcutoff}{Requires a numeric vector of length 2 for filtering out features by relative abundance: minimum PPM, and the percentage of samples which must reach it. Default is NULL, which defers to applyfilters. As in plot_relabund_heatmap, when subsetby is used the cut-off is applied within the whole object to define a common feature universe across subsets.}
 
@@ -107,11 +108,11 @@ plot_volcano(
 
 \item{adj_pval_for_threshold}{Requires TRUE, FALSE or the string "auto". Governs **both** which p-value is plotted on the Y axis and which one pval_threshold is applied to, so that the dashed line on the figure always means what it says. When "auto", the proportion of features still below 0.05 after FDR adjustment is compared with the proportion below 0.05 before adjustment, and the adjusted p-value is used if that ratio exceeds 0.2 (the same rule plot_relabund_heatmap uses). Default is FALSE, i.e. plot and threshold the raw p-value. Whichever is chosen, the count of features passing the *other* one is still reported in the subtitle.}
 
-\item{l2fc_threshold}{Numeric value, used in binary mode only, setting the minimum absolute log2 fold change for a feature to be considered significant, i.e. the position of the two vertical dashed lines. When NULL (the default), it is taken from the minl2fc implied by applyfilters (1 for "light" and "moderate", 2 for taxonomic / 2.5 for functional objects under "stringent"), falling back to 1 when no preset applies. If a call written for plot_relabund_heatmap passes minl2fc instead, that value is picked up and used here, with a warning. Set to 0 to colour on the p-value alone, except that features whose effect size is exactly zero always stay grey.}
+\item{l2fc_threshold}{Numeric value, used in binary mode only, setting the minimum absolute log2 fold change for a feature to be considered significant, i.e. the position of the two vertical dashed lines. Default is 1, meaning a two-fold difference, and it is independent of applyfilters. Features below it are never discarded, only drawn in grey. If a call written for plot_relabund_heatmap passes minl2fc instead, that value is picked up and used here, with a warning. Set to 0, or to NULL, to colour on the p-value alone, except that features whose effect size is exactly zero always stay grey.}
 
 \item{corr_method}{String naming the correlation test used when compareby is continuous. Permissible values are "spearman" (the default) and "pearson". Spearman is the sensible default for abundance data: it is rank based, as the Mann-Whitney-Wilcoxon test used in binary mode is, and it does not assume normality of zero-inflated relative abundances. It is also what plot_correlation_heatmap defaults to. Ignored when compareby is categorical, or when dichotomize_continuous_compareby_threshold has turned a continuous variable into High/Low groups.}
 
-\item{corr_threshold}{Numeric value between 0 and 1, used in correlation mode only, setting the minimum absolute correlation coefficient for a feature to be considered significant, i.e. the position of the two vertical dashed lines. When NULL (the default), it is taken from the minabscorrcoeff implied by applyfilters (0.4 for "light", 0.6 for "moderate", 0.8 for "stringent"), falling back to 0.4 when no preset applies. If a call written for another JAMS function passes minabscorrcoeff instead, that value is picked up and used here, with a warning. As with l2fc_threshold, features below it are never discarded, only drawn in grey.}
+\item{corr_threshold}{Numeric value between 0 and 1, used in correlation mode only, setting the minimum absolute correlation coefficient for a feature to be considered significant, i.e. the position of the two vertical dashed lines. Default is 0.4, and it is independent of applyfilters. If a call written for another JAMS function passes minabscorrcoeff instead, that value is picked up and used here, with a warning. As with l2fc_threshold, features below it are never discarded, only drawn in grey; set it to 0 or NULL to colour on the p-value alone.}
 
 \item{label_features}{Requires a logical value. If TRUE (the default), feature names are drawn next to the dots which pass the labelling thresholds, using ggrepel so that labels do not overlap each other or the points.}
 
@@ -143,13 +144,15 @@ plot_volcano(
 
 \item{down_colour}{Optional colour for the features on the negative side of the X axis. Overrides use_class_colours for that side only. Default is NULL.}
 
-\item{nonsignificant_colour}{Colour for features which do not pass both thresholds. Default is "grey75".}
+\item{nonsignificant_colour}{Colour for features which do not pass both thresholds. Default is "grey70", which stays distinguishable from the panel grid lines once point_alpha has been applied.}
 
 \item{show_threshold_lines}{Requires a logical value. If TRUE (the default), dashed guide lines are drawn at the p-value and effect-size thresholds, together with a faint solid line at zero effect size.}
 
-\item{cap_l2fc_at}{Numeric value at which to clamp the X axis. Infinite log2 fold changes (which arise when a feature is wholly absent from one group and fun_for_l2fc is not "geom_mean") are drawn at the cap as triangles rather than being dropped. When NULL (the default), the cap is the largest finite value present widened by 5 percent, and it is never allowed to fall inside the threshold lines. Ignored in correlation mode, where the X axis is fixed to the full [-1, 1] range of the coefficient so that every correlation volcano is directly comparable with every other.}
+\item{cap_l2fc_at}{Numeric value at which to clamp the X axis. Features beyond the cap, including those with an infinite log2 fold change (which arise when a feature is wholly absent from one group and fun_for_l2fc is not "geom_mean"), are drawn at the cap as triangles rather than being dropped. When NULL (the default), the cap is chosen from rescale_axis_quantiles, and it is never allowed to fall inside the threshold lines. Ignored in correlation mode, where the X axis is fixed to the full [-1, 1] range of the coefficient so that every correlation volcano is directly comparable with every other.}
 
-\item{cap_neglog10p_at}{Numeric value at which to clamp the Y axis, used in the same way for p-values that underflow to zero. When NULL (the default), the cap is the largest finite value present widened by 5 percent, and it is never allowed to fall below the horizontal threshold line.}
+\item{cap_neglog10p_at}{Numeric value at which to clamp the Y axis, used in the same way for very small p-values and for any that underflow to zero. When NULL (the default), the cap is the largest finite value present widened by 5 percent, since on this axis the extreme features are the result rather than an artefact, and it is never allowed to fall below the horizontal threshold line. Set it by hand if one enormously significant feature is flattening all the others.}
+
+\item{rescale_axis_quantiles}{A number between 0 and 1 giving the quantile from which the X axis limit is taken when cap_l2fc_at is left NULL. The two-element form plot_relabund_features uses, such as c(0, 0.99), is accepted for consistency, but only the larger element is read, since a volcano is symmetric about zero. It applies to the X axis only: on the Y axis the extreme values are the result itself, so the limit there remains the largest finite value present. Default is c(0, 0.99). This exists because setting the limits from the single most extreme feature, which is what a naive volcano does, is actively misleading on JAMS data: a ratio of geometric means of PPM + 1 gives an absolute log2 fold change of 15 to 20 for any taxon abundant in one group and absent in the other, while the bulk of a Species-level universe sits between -2 and +2. One such taxon is then enough to compress every other point, and both dashed threshold lines, into a few millimetres either side of zero, so that the plot appears to contain nothing but its handful of significant features. Features beyond the resulting limits are drawn as triangles on the edge and counted in the subtitle, so nothing is hidden. Set to NULL to span the full range of the data instead.}
 
 \item{fun_for_l2fc}{String specifying the function used to aggregate samples within each group when computing the log2 fold change. Permissible entries are "sum", "mean", "median" or "geom_mean". Default is "geom_mean", for which the geometric mean within each group is exp(mean(log(x + 1))) and which therefore never produces an infinite fold change. Ignored when normalization = "clr", where the effect size is the difference between the arithmetic group means of the centred log-ratio (see normalization), and ignored in correlation mode, which has no groups to aggregate.}
 
@@ -221,8 +224,10 @@ interactive call which refuses will open a device and draw a text page; set
 report_failures_on_device = FALSE if you would rather it only logged.
 
 The one deliberate departure from plot_relabund_heatmap is that nothing is ever discarded
-by effect size. A minl2fc arriving from applyfilters, or passed explicitly, becomes the
-position of the vertical significance lines rather than a filter, because removing
+by effect size. l2fc_threshold (binary mode) and corr_threshold (correlation mode) set the
+position of the vertical significance lines rather than acting as filters, because removing
 features by fold change would destroy the very shape a volcano exists to show, and would
-silently change the multiple-testing denominator along with it.
+silently change the multiple-testing denominator along with it. A minl2fc or minabscorrcoeff
+passed by a call written for another JAMS function is picked up as the corresponding
+threshold, with a warning, so such a call can be redirected here unedited.
 }
