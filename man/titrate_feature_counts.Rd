@@ -2,7 +2,7 @@
 % Please edit documentation in R/titrate_feature_counts.R
 \name{titrate_feature_counts}
 \alias{titrate_feature_counts}
-\title{titrate_feature_counts(ExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, PPM_thresholds = NULL, completeness_thresholds = NULL, n_ppm = 10, n_comp = 10, prevalence_pct = 5, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, verbose = TRUE)}
+\title{titrate_feature_counts(ExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, PPM_thresholds = NULL, completeness_thresholds = NULL, n_ppm = 30, n_comp = 30, max_PPM_threshold = 10000, prevalence_pct = NULL, prevalence_min_samples = 2, depth_quantile_probs = 0.1, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, plot_on_the_fly = FALSE, verbose = TRUE)}
 \usage{
 titrate_feature_counts(
   ExpObj = NULL,
@@ -11,10 +11,12 @@ titrate_feature_counts(
   samplesToKeep = NULL,
   PPM_thresholds = NULL,
   completeness_thresholds = NULL,
-  n_ppm = 10,
-  n_comp = 10,
-  prevalence_pct = 5,
-  prevalence_min_samples = NULL,
+  n_ppm = 30,
+  n_comp = 30,
+  max_PPM_threshold = 10000,
+  prevalence_pct = NULL,
+  prevalence_min_samples = 2,
+  depth_quantile_probs = 0.1,
   PPM_normalize_to_bases_sequenced = FALSE,
   ignoreunclassified = TRUE,
   class_to_ignore = "N_A",
@@ -43,7 +45,16 @@ starts at 0 and follows a roughly log spacing (0, then quantile-like steps up to
 so the informative low-PPM region is well sampled. Default 10.}
 
 \item{n_comp}{Number of completeness thresholds to auto-generate when completeness_thresholds is
-NULL. Evenly spaced from 0. Default 10.}
+NULL. Evenly spaced from 0. Default 10. Where the assay exceeds 100% - which it legitimately
+does, since both make_SummarizedExperiments and agglomerate_features sum it - roughly half
+as many further rungs are appended between 100 and the observed maximum, so that a universe
+whose features mostly sit above 100 still has something to titrate against.}
+
+\item{max_PPM_threshold}{Ceiling on the auto-built PPM ladder, in PPM. Default 10000, i.e. 1%
+relative abundance. Beyond that an abundance floor selects the dominant members of a
+community rather than removing noise, which is a biological choice the user should make
+explicitly via featcutoff or PPM_thresholds. Only applies to the auto-built ladder; an
+explicit PPM_thresholds vector is used as given. Set to Inf for the old uncapped behaviour.}
 
 \item{prevalence_pct}{Fixed prevalence (the "in at least X percent of samples" companion applied
 to BOTH the PPM and completeness rules). Held constant across the grid. Default 5. Set the
@@ -55,6 +66,10 @@ exists because "5% of samples" means very different things at n=10 vs n=300; a c
 the more honest criterion, and setting it to 1 recovers the "present in at least one sample"
 behaviour (useful for detecting a single-sample bug while still censoring empty/low-quality
 bins via the completeness axis, e.g. completeness >= 20 in >= 1 sample).}
+
+\item{depth_quantile_probs}{Quantile of per-sample retained depth reported as pct_depth_lowq,
+alongside the median and the outright minimum. Default 0.1. The minimum is hostage to a
+single blank or failed library; this says whether the depth loss is one sample or many.}
 
 \item{PPM_normalize_to_bases_sequenced}{Passed to filter_experiment for PPM computation.}
 
@@ -90,5 +105,6 @@ samples with the WORST-hit sample (min) alongside, and a divergence panel shows 
 feature% directly, so a threshold that looks aggressive by count but cheap by depth is visible.
 
 Returned plots: feature_count, decline_rate, depth_retained, count_vs_depth_divergence. The
-returned grid data frame carries n_features, pct_retained, pct_depth_median, pct_depth_min.
+returned grid data frame carries n_features, pct_retained, pct_depth_median, pct_depth_lowq
+and pct_depth_min.
 }

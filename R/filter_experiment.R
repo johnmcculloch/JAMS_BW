@@ -88,8 +88,13 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
         return(proportionPassing)
     }
 
-    #Declare filtering presets
-    presetlist <- declare_filtering_presets(analysis = metadata(SEobj)$analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
+    #Declare filtering presets. SEobj is passed rather than just its analysis name so that
+    #applyfilters = "auto" can be resolved here too, from thresholds stamped on the object or
+    #fitted to it. In practice the plotting functions resolve "auto" themselves, once, and hand
+    #this function concrete numbers with applyfilters left NULL; both routes work and neither
+    #resolves twice. verbose follows give_info so that the dozens of internal calls made per
+    #figure do not each narrate themselves.
+    presetlist <- declare_filtering_presets(SEobj = SEobj, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, verbose = give_info)
 
     #Flush out empty Samples
     if (flush_out_empty_samples){
@@ -104,8 +109,16 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
     countmat_raw <- as.matrix(assays(SEobj)$BaseCounts)
     countmat_raw <- countmat_raw[!is.na(row.names(countmat_raw)),]
 
-    #Obtain a relabund matrix if relabund in normalization, or featcutoff is not equal to c(0,0)
-    if (any(c(("relabund" %in% normalization), (all(presetlist$featcutoff != c(0,0))), !is.null(discard_SDoverMean_below)))){
+    #Obtain a relabund matrix if relabund in normalization, or featcutoff is not equal to c(0,0).
+    #The test must be the exact complement of the one that USES the matrix below. It used to be
+    #all(featcutoff != c(0,0)) here and !all(featcutoff == c(0,0)) there, which are not
+    #complements: a featcutoff of c(0, 5) or c(500, 0) fails the first and passes the second, so
+    #the filtering block dereferenced a PPMmatrix that was never built ("object 'PPMmatrix' not
+    #found") unless normalization happened to include "relabund". Harmless while the only
+    #cutoffs in circulation were the hard-coded presets, all of which have two non-zero
+    #components; reachable as soon as fit_filtering_thresholds started emitting fitted cells,
+    #which can legitimately sit at zero PPM with a non-zero completeness floor.
+    if (any(c(("relabund" %in% normalization), (!all(presetlist$featcutoff == c(0,0))), !is.null(discard_SDoverMean_below)))){
         #transform into PPM
         getPPM <- function(countmat_raw = NULL, Sample = NULL){
             PPMs <- round(((countmat_raw[ , Sample] / totbases["NumBases", Sample]) * 1000000), 0)
@@ -155,12 +168,23 @@ filter_experiment <- function(SEobj = NULL, samplesToKeep = NULL, featuresToKeep
             sampcutoffpct <- (1 / ncol(PPMmatrix)) * 100
         }
 
-        featuresToKeep2 <- rownames(countmat_raw)[which((sapply(1:nrow(countmat_raw), function(x) { prop_above_threshold(nummatix = PPMmatrix, feat = x, numthreshold = thresholdPPM) })) > (sampcutoffpct / 100))]
+        #The prevalence comparison is >=, NOT >. Three reasons, all of which were wrong before
+        #JAMS 2.3.3. (1) prop_above_threshold itself counts samples at >= numthreshold, so a strict
+        #prevalence test made the two halves of the same rule disagree. (2) The sampcutoffpct == 0
+        #branch directly above converts the rule to "at least one sample" by setting the percentage
+        #to exactly (1 / ncol) * 100 - under a strict >, a feature passing in exactly one sample
+        #scored exactly that percentage and was therefore DISCARDED, i.e. the branch did the
+        #opposite of what its own warning promises. (3) titrate_feature_counts and
+        #fit_filtering_thresholds count survivors with >= on both axes, so under a strict > the
+        #fitter would promise a surviving-feature count that this function then fails to deliver,
+        #which makes the whole fitted-threshold story unauditable. The GenomeCompleteness block
+        #below has always used >=; this now matches it.
+        featuresToKeep2 <- rownames(countmat_raw)[which((sapply(1:nrow(countmat_raw), function(x) { prop_above_threshold(nummatix = PPMmatrix, feat = x, numthreshold = thresholdPPM) })) >= (sampcutoffpct / 100))]
 
         SEobj <- SEobj[featuresToKeep2, ]
         countmat_raw <- countmat_raw[featuresToKeep2, ]
 
-        cutoffmsg <- paste("Feature must be >", thresholdPPM, "PPM in at least", sampcutoffpct, "% of samples", sep = " ")
+        cutoffmsg <- paste("Feature must be >=", thresholdPPM, "PPM in at least", sampcutoffpct, "% of samples", sep = " ")
         if (give_info){
             flog.info(cutoffmsg)
         }

@@ -1,9 +1,9 @@
-#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = 0.4, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, normalization = "relabund", showGram = FALSE, showPhylum = FALSE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE)
+#' plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = 0.4, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, normalization = "relabund", showGram = FALSE, showPhylum = FALSE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE)
 #'
 #' Plots correlation heatmaps annotated by the metadata or a correlelogram of features
 #' @export
 
-plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = 0.4, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, normalization = "relabund", showGram = FALSE, showPhylum = FALSE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE) {
+plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = 0.4, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, normalization = "relabund", showGram = FALSE, showPhylum = FALSE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE) {
 
     #Account for JAMS2 spaces
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
@@ -39,7 +39,14 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
         showPhylum <- FALSE
     }
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
+    #Naming features explicitly stands the filtration preset down, exactly as
+    #plot_relabund_heatmap and plot_volcano do: the user has already said which features they
+    #want. Load-bearing since JAMS 2.3.4, when applyfilters began defaulting to "light".
+    if (!is.null(featuresToKeep)){
+        applyfilters <- NULL
+    }
+
+    presetlist <- declare_filtering_presets(SEobj = obj, glomby = glomby, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced)
 
     #Multi-tiered subsetting, harmonized with plot_relabund_heatmap / plot_Ordination.
     if (!(is.null(subsetby))){
@@ -283,7 +290,7 @@ plot_correlation_heatmap <- function(ExpObj = NULL, glomby = NULL, stattype = "s
                 #Build plot title
                 normspacemsg <- switch(normalization, "clr" = "CLR-transformed counts", "relabund" = "Relative abundance (PPM)", normalization)
                 stattit <- paste0("Correlation measure = ", stattype, " | ", normspacemsg)
-                plotit <- paste(maintit, stattit, presetlist$filtermsg, ntopvarmsg, minabscorrcoeffmsg, sep = "\n")
+                plotit <- paste(c(maintit, stattit, presetlist$filtermsg, ntopvarmsg, minabscorrcoeffmsg), collapse = "\n")
 
                 svec[[s]] <- matstats
                 stattitle <- paste(analysisname, stattype, subsetname, sep = "_")

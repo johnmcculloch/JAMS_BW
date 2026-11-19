@@ -20,7 +20,7 @@ compare_within_subsets(
   ordination_args = list(),
   heatmap_args = list(),
   alpha_args = list(),
-  applyfilters = NULL,
+  applyfilters = "light",
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
   PPM_normalize_to_bases_sequenced = TRUE,
@@ -39,7 +39,7 @@ compare_within_subsets(
 
 \item{samplesToKeep}{Optional vector of sample names to retain BEFORE any global filtration or subsetting. Use this to drop samples you know you do not want in the comparison at all (e.g. outliers). If NULL (default), all samples are kept. Applied first, ahead of everything else.}
 
-\item{featuresToKeep}{Optional vector of feature names to retain BEFORE any global filtration or subsetting. Use this to restrict to (or drop) features you care about up front (e.g. remove noise, or focus on a shortlist). If NULL (default), all features are considered. Applied first, ahead of the global filtration that derives global_FTK. For taxonomic objects that will be agglomerated via glomby, these must be names in the ORIGINAL (pre-glom) namespace, since culling happens before agglomeration; see ExpObjVetting.}
+\item{featuresToKeep}{Optional vector of feature names to retain BEFORE any global filtration or subsetting. Use this to restrict to (or drop) features you care about up front (e.g. remove noise, or focus on a shortlist). If NULL (default), all features are considered. Applied ahead of the global filtration that derives global_FTK. For taxonomic objects that will be agglomerated via glomby, these must be names in the POST-agglomeration namespace (family names when glomby = "Family"), because ExpObjVetting agglomerates before it culls features; a pre-glom name list will be rejected outright. See ExpObjVetting.}
 
 \item{glomby}{String; taxonomic level to agglomerate to (taxonomic spaces only). Default NULL.}
 
@@ -51,9 +51,9 @@ compare_within_subsets(
 
 \item{split_heatmap_columns_by_compareby}{Logical; if set to TRUE, heatmap columns will be split into the same samples split by compareby}
 
-\item{ordination_args, heatmap_args, alpha_args}{Named lists of extra arguments passed to plot_Ordination, plot_relabund_heatmap and plot_alpha_diversity respectively, overriding the comparator's shared defaults for that function only.}
+\item{ordination_args, heatmap_args, alpha_args}{Named lists of extra arguments passed to plot_Ordination, plot_relabund_heatmap and plot_alpha_diversity respectively, overriding the comparator's shared defaults for that function only. Every element must be named. Overriding featuresToKeep or the filtration arguments here defeats the fixed-feature-set guarantee described above, so do it only deliberately.}
 
-\item{applyfilters, featcutoff, GenomeCompletenessCutoff, PPM_normalize_to_bases_sequenced, cdict, class_to_ignore}{Shared arguments. The filtration arguments (applyfilters, featcutoff, GenomeCompletenessCutoff) are used ONCE here to derive global_FTK and are NOT forwarded to the plotting functions (which receive non-filtering values instead). PPM_normalize_to_bases_sequenced, cdict and class_to_ignore are forwarded to all three functions unless overridden per-function via the *_args lists.}
+\item{applyfilters, featcutoff, GenomeCompletenessCutoff, PPM_normalize_to_bases_sequenced, cdict, class_to_ignore}{Shared arguments. The filtration arguments (applyfilters, featcutoff, GenomeCompletenessCutoff) are used ONCE here to derive global_FTK and are NOT forwarded to the plotting functions (which receive non-filtering values instead); the threshold that was applied is printed on each subset's banner page, since the per-panel subtitles correctly report that the panels themselves did not filter. applyfilters defaults to "light", matching every plotting function, and like them it is now a tier FITTED to this object rather than a fixed constant - see declare_filtering_presets. Note that PPM_normalize_to_bases_sequenced defaults to TRUE here but FALSE in the plotting functions; for taxonomic objects the two PPM denominators are identical, so this only matters functionally. PPM_normalize_to_bases_sequenced, cdict and class_to_ignore are forwarded to all three functions unless overridden per-function via the *_args lists.}
 
 \item{addtit}{Optional string with a free-text message to add to the title of EVERY output (ordination, heatmap and alpha-diversity) across all subsets. This is intended for context that the comparator itself cannot infer, most commonly when you have subset the data OUTSIDE of compare_within_subsets (e.g. by passing a curated vector to samplesToKeep), so you can annotate the plots with something like "Only looking at samples within the Responder group". When subsetting IS also performed by this function (via subsetby), your message is PREPENDED to the automatic per-subset label, so each panel shows your text on one line followed by "SUBSET: <subset name>" on the next; both pieces of context are therefore preserved. When there is no subsetting, only your message is shown. Internally this is merged into the per-subset title and handed to each plotting function's own addtit argument. If NULL (the default), only the automatic "SUBSET: <subset name>" label (when applicable) is used. Default NULL.}
 
@@ -91,8 +91,9 @@ GenomeCompletenessCutoff = c(0,0)). Every panel in every subset therefore consid
 the same features, and comparisons across subsets are honest.
 
 The global feature set is computed on an object that has ALREADY been vetted in the same
-order the plotting functions use (ExpObjVetting applies samplesToKeep/featuresToKeep, then
-only_allow_CSBs, then glomby). This matters because CSB restriction must precede
-agglomeration and agglomeration rewrites feature names: computing global_FTK in the final
-(post-CSB, post-glom) namespace guarantees the names match what each plotting function sees.
+order the plotting functions use, which is only_allow_CSBs -> glomby -> samplesToKeep ->
+featuresToKeep -> class_to_ignore (see ExpObjVetting; earlier versions of this comment had
+that order backwards). This matters because CSB restriction must precede agglomeration and
+agglomeration rewrites feature names: computing global_FTK in the final (post-CSB, post-glom)
+namespace guarantees the names match what each plotting function sees.
 }

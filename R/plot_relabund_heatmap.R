@@ -151,7 +151,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         applyfilters <- NULL
     }
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
+    presetlist <- declare_filtering_presets(SEobj = obj, glomby = glomby, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced)
 
     #Effect-size thresholds are deliberately NOT part of the filtration presets: applyfilters
     #decides which features are real, minl2fc and maxl2fc decide which of the real ones are
@@ -176,8 +176,13 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
     } else {
         hmtypemsg <- "Relative Abundance Heatmap"
 
-        #Obtain "global" list of features if applyfilters is not null, or any of the filtering arguments is not c(0,0) as to maintain same features within subsets, if any.
-        if (any(c(all(presetlist$featcutoff != c(0,0)), all(presetlist$GenomeCompletenessCutoff != c(0,0)), !is.null(applyfilters)))){
+        #Obtain a "global" list of features if any filtration was actually requested, so that the
+        #same features are used within every subset.
+        #The test is "not all zero", NOT "all non-zero". `all(x != c(0,0))` is TRUE for a NULL
+        #cutoff (all(logical(0)) is TRUE) and FALSE for a real request like c(0, 15), i.e. it was
+        #wrong in both directions; in particular it meant the featuresToKeep stand-down above did
+        #not actually skip this filter_experiment round-trip.
+        if (any(c((!all(presetlist$featcutoff == c(0,0))), ((!is.null(presetlist$GenomeCompletenessCutoff)) && (!all(presetlist$GenomeCompletenessCutoff == c(0,0)))), !is.null(applyfilters)))){
             currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = NULL, featuresToKeep = NULL, normalization = "relabund", PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, only_allow_CSBs = FALSE, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, discard_SDoverMean_below = discard_SDoverMean_below)
             global_FTK <- rownames(currobj)
         } else {
@@ -1141,7 +1146,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     }
 
                     #Make a genome completeness heatmap if in taxonomic space
-                    if (all(c((secondaryheatmap %in% c("GenomeCompleteness", "PctFromCtgs")), (any(c(("GenomeCompleteness" %in% names(assays(currobj))), ("PctFromCtgs" %in% names(assays(currobj))))))))) {
+                    secondary_heatmap_wanted <- all(c((secondaryheatmap %in% c("GenomeCompleteness", "PctFromCtgs")), (any(c(("GenomeCompleteness" %in% names(assays(currobj))), ("PctFromCtgs" %in% names(assays(currobj))))))))
+                    secondary_ok <- TRUE
+                    if (secondary_heatmap_wanted) {
 
                         if (ncol(mathm) < threshold_for_double_plot){
                             SHM_ha_column <- HeatmapAnnotation(df = hmdf, col = cores, show_annotation_name = FALSE)
@@ -1149,8 +1156,35 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                             SHM_ha_column <- ha_column
                         }
 
-                        RelabundRowOrder <- suppressWarnings(row_order(ht1))
-                        HT1ColumnOrder <- suppressWarnings(column_order(ht1))
+                        #RESOLVING ht1's ROW AND COLUMN ORDER CAN FAIL, AND IT MUST NOT COST THE
+                        #MAIN HEATMAP WHEN IT DOES.
+                        #row_order() and column_order() force ComplexHeatmap to lay ht1 out, and
+                        #they run HERE - before draw(ht1) below - purely so that the companion
+                        #% Genome completeness panel can be given ht1's realized ordering. They
+                        #are therefore reached only when that companion panel is wanted. If the
+                        #layout throws, as it does with "invalid 'yscale' in viewport" on a
+                        #degenerate block, the exception propagates out of plot_relabund_heatmap
+                        #and the caller loses the ENTIRE heatmap for that subset, not merely the
+                        #completeness track. compare_within_subsets then records one warning and
+                        #carries on, so whole panels vanish from a PDF while every status line
+                        #still reads OK. That is how 16 of 48 heatmaps went missing from an MR50
+                        #regression run without anything failing.
+                        #The companion panel is an extra, so a failure to build it degrades to
+                        #"draw the heatmap without it" rather than "draw nothing".
+                        secondary_ok <- TRUE
+                        RelabundRowOrder <- NULL
+                        HT1ColumnOrder <- NULL
+                        ordertry <- try({
+                            RelabundRowOrder <- suppressWarnings(row_order(ht1))
+                            HT1ColumnOrder <- suppressWarnings(column_order(ht1))
+                        }, silent = TRUE)
+                        if (inherits(ordertry, "try-error")){
+                            secondary_ok <- FALSE
+                            flog.warn(paste0("Could not resolve the row and column ordering that the % Genome completeness companion heatmap needs for this block, so that panel is being skipped and the relative abundance heatmap is drawn on its own. The underlying error was: ", trimws(as.character(ordertry)), " This is typically a degenerate block - for instance one where a high GenomeCompletenessCutoff has left every feature with effectively the same completeness. Set show_GenomeCompleteness = FALSE to suppress the companion panel everywhere."))
+                        }
+                    }
+
+                    if (all(c(secondary_heatmap_wanted, secondary_ok))) {
 
                         if (secondaryheatmap == "GenomeCompleteness"){
                             # Capture ht1's actual slice order from its (possibly clustered) column_order list
@@ -1201,7 +1235,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         }
 
                     } else {
-                        #Draw the heatmap
+                        #Either no companion panel was wanted, or it was wanted and could not be
+                        #built. Both end the same way: draw the relative abundance heatmap on its
+                        #own. drawseparateGChm stays FALSE so nothing downstream tries to emit a
+                        #companion page that was never constructed.
                         par(oma = c(10, 7, 3, 10) + 0.1, xpd = TRUE)
                         draw(ht1, heatmap_legend_side = "bottom", annotation_legend_side = "right", padding = unit(c(2, 2, 2, 2), "mm"))
                         drawseparateGChm <- FALSE

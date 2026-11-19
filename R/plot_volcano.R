@@ -683,7 +683,7 @@ plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes
         applyfilters <- NULL
     }
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, is16S = ("asv2lkt" %in% names(metadata(obj))))
+    presetlist <- declare_filtering_presets(SEobj = obj, glomby = glomby, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, is16S = ("asv2lkt" %in% names(metadata(obj))), PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced)
 
     #A volcano must NOT drop features by effect size, or its characteristic shape disappears
     #and the FDR denominator silently changes. l2fc_threshold and corr_threshold therefore only

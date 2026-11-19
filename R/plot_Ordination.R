@@ -96,7 +96,7 @@
 
 #' @export
 
-plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, unhighlighted_transparency_percentage = 95, highlight_subset_in_context = FALSE, featuresToKeep = NULL, only_allow_CSBs = FALSE, ignoreunclassified = TRUE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, asPPM = TRUE, normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, dichotomize_continuous_compareby_threshold = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, min_samples_per_class_for_permanova = 3, include_components_variance_plot = FALSE, class_to_ignore = "N_A", ...){
+plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, samplesToKeep = NULL, samplesToHighlight = NULL, unhighlighted_transparency_percentage = 95, highlight_subset_in_context = FALSE, featuresToKeep = NULL, only_allow_CSBs = FALSE, ignoreunclassified = TRUE, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, asPPM = TRUE, normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, assay_for_matrix = "BaseCounts", algorithm = "tUMAP", PCA_Components = c(1, 2), distmethod = "bray", compareby = NULL, dichotomize_continuous_compareby_threshold = NULL, colourby = NULL, colorby = NULL, shapeby = NULL, use_letters_as_shapes = FALSE, sizeby = NULL, connectby = NULL, connection_orderby = NULL, textby = NULL, ellipseby = NULL, dotsize = 2, log2tran = TRUE, tsne_perplx = NULL, max_neighbors = 15, permanova = TRUE, plotcentroids = FALSE, highlight_centroids = TRUE, show_centroid_distances = FALSE, calculate_centroid_distances_in_all_dimensions = FALSE, addtit = NULL, cdict = NULL, grid = TRUE, forceaspectratio = 1, numthreads = 8, return_coordinates_matrix = FALSE, permanova_permutations = 10000, min_samples_per_class_for_permanova = 3, include_components_variance_plot = FALSE, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
@@ -282,7 +282,14 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
     }
     flog.info(pcatitbase)
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, is16S = ("asv2lkt" %in% names(metadata(obj))))
+    #Naming features explicitly stands the filtration preset down, exactly as
+    #plot_relabund_heatmap and plot_volcano do: the user has already said which features they
+    #want. Load-bearing since JAMS 2.3.4, when applyfilters began defaulting to "light".
+    if (!is.null(featuresToKeep)){
+        applyfilters <- NULL
+    }
+
+    presetlist <- declare_filtering_presets(SEobj = obj, glomby = glomby, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, is16S = ("asv2lkt" %in% names(metadata(obj))), PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced)
 
     if (assay_for_matrix == "GeneCounts"){
         flog.warn("Counts matrix used for heatmap will represent the *number of genes* for each feature, rather than its relative abundance. For using relative abundance (default), set assay_for_matrix = \"BaseCounts\"")
@@ -307,8 +314,14 @@ plot_Ordination <- function(ExpObj = NULL, glomby = NULL, subsetby = NULL, sampl
             global_FTK <- rownames(obj)
         } else {
 
-            #Obtain "global" list of features if applyfilters is not null, or any of the filtering arguments is not c(0,0) as to maintain same features within subsets, if any.
-            if (any(c(all(presetlist$featcutoff != c(0,0)), all(presetlist$GenomeCompletenessCutoff != c(0,0)),
+            #Obtain a "global" list of features if any filtration was actually requested, so that
+            #the same features are used within every subset.
+            #The test is "not all zero", NOT "all non-zero". `all(x != c(0,0))` is TRUE for a
+            #NULL cutoff (all(logical(0)) is TRUE) and FALSE for a real request like c(0, 15),
+            #i.e. it was wrong in both directions; it only looked harmless because the branch it
+            #guards is a no-op when the cutoffs are c(0,0).
+            if (any(c((!all(presetlist$featcutoff == c(0,0))),
+            ((!is.null(presetlist$GenomeCompletenessCutoff)) && (!all(presetlist$GenomeCompletenessCutoff == c(0,0)))),
             !is.null(applyfilters)))){
                 currobj <- filter_experiment(SEobj = obj, featcutoff = presetlist$featcutoff, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, normalization = normalization, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced, GenomeCompletenessCutoff = presetlist$GenomeCompletenessCutoff, discard_SDoverMean_below = discard_SDoverMean_below)
                 global_FTK <- rownames(currobj)

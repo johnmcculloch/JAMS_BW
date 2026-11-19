@@ -367,6 +367,20 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
             metadata(SEobj)$ctable <- ctable
         }
 
+        #Fit and record filtration thresholds for the native rank, so that a plotting function
+        #called on a freshly minted object with applyfilters = "auto" finds them already there
+        #instead of refitting on every call. Only the native rank is stamped here, because
+        #agglomerating to each taxonomic level in turn is the expensive part and the higher ranks
+        #are fitted on demand anyway; run stamp_filtering_thresholds(expvec) to cache those too.
+        #Wrapped in a try because a cohort too small or too shallow to titrate must not cost the
+        #user their SummarizedExperiment object, which is the actual product of this function.
+        stamped_SEobj <- try(stamp_filtering_thresholds(obj = SEobj, ranks = "native", verbose = FALSE), silent = TRUE)
+        if (inherits(stamped_SEobj, "try-error")){
+            flog.warn(paste0("Could not fit filtration thresholds for the ", taxonomic_space, " object, so none were stamped on it. They will be fitted on demand when a plotting function asks for applyfilters = \"auto\". The error was: ", as.character(stamped_SEobj)))
+        } else {
+            SEobj <- stamped_SEobj
+        }
+
         expvec[[e]] <- SEobj
         names(expvec)[e] <- taxonomic_space
         e <- e + 1

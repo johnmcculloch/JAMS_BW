@@ -513,21 +513,50 @@ GenomeCompletenessCutoff = c(30, 10)   # >= 30% complete in >= 10% of samples
 
 This only makes sense for **taxonomic** spaces (it relies on the `GenomeCompleteness` assay). If you pass it to a functional space it is ignored with a warning. It is a powerful denoiser: a taxon detected only as a sliver of a genome in every sample is usually noise.
 
-### `applyfilters` — shorthand presets
+### `applyfilters` — fitted thresholds, and the legacy presets
 
-Instead of setting the two cutoffs by hand you can pass `applyfilters = "light"`, `"moderate"`, or `"stringent"`. Each expands to sensible `featcutoff` and `GenomeCompletenessCutoff` values, and the presets differ between taxonomic and functional objects. For taxonomic objects:
+Rather than setting the two cutoffs by hand, pass `applyfilters`. As of v2.3.4 **every value is fitted to the data in the object you are analysing** — the hard-coded constants are gone — and the four tiers are one ladder, walked a little further each step.
 
-| preset | featcutoff | GenomeCompletenessCutoff |
-|---|---|---|
-| light | c(50, 5) | c(5, 5) |
-| moderate | c(250, 15) | c(10, 5) |
-| stringent | c(2000, 15) | c(30, 10) |
+| value | what it does |
+|---|---|
+| `"denoise"` | The gentlest fitted thresholds: the cell that removes the most noise per unit of real community lost. Gets rid of the thousands of spurious low-abundance LKT fragments and nothing else. `"auto"` is a synonym. |
+| `"light"` | Denoise plus **5 further percentage points of median sequencing depth** spent on a cleaner feature set. At a native taxonomic rank this buys a genome-completeness floor, which denoise alone does not impose. **The default of every plotting function.** |
+| `"moderate"` | As light, but 10 points. |
+| `"stringent"` | As light, but 20 points. |
+| `"presence"` | The denoise tier with prevalence forced to a **single sample**: the feature must clear a fitted abundance (and completeness) floor, but need only do so once. For engraftment work, where a complete genome seen in one subject is the result rather than noise. |
+| `NULL` | No filtration at all. Explicit, supported, and logged — unfiltered metagenomic feature universes are mostly low-abundance noise. |
 
-For functional objects there is no genome completeness, and `featcutoff` is `c(0, 0)` / `c(5, 5)` / `c(50, 15)` respectively.
+**The hard-coded constants are gone.** `"light"`, `"moderate"` and `"stringent"` no longer mean `c(50, 5)`, `c(250, 15)` and `c(2000, 15)`; they are fitted to each object at each rank. To reproduce an older analysis exactly, read the numbers off the subtitle of the old figure and pass `featcutoff` and `GenomeCompletenessCutoff` directly — **an explicit cutoff always wins, whatever `applyfilters` says, including when `applyfilters` is `NULL`.**
 
-Any value you set explicitly **overrides** the preset for that one argument, so you can say `applyfilters = "moderate", GenomeCompletenessCutoff = c(20, 5)` and only that cutoff changes.
+Why a depth budget? Spending 5, 10 or 20 points of the median sample's retained sequencing depth is as arbitrary a number as 250 PPM was, but it is arbitrary in a unit you can reason about, it is measured against your own data, and the fit tells you what it bought. The ladder is walked cumulatively — each tier is constrained by the tier below it — so a stringent plot can never contain a feature a light plot dropped. Tiers will not spend past `min_depth_median` unless you pass `tier_respects_depth_rail = FALSE`.
+
+On the MR50 benchmark at the native rank: denoise keeps 426 of 8625 LKTs at 94.5% median depth; light adds an 11% completeness floor and keeps 214 at 90.1%; moderate 33% and 159 at 85.5%; stringent 56% and 128 at 80.6%. The completeness floor is the part that matters — at denoise a taxon can survive on abundance alone with 2% of a genome behind it, which on a heatmap is a barely-visible green completeness cell that a reader will still take for a detection.
+
+For functional objects there is no genome completeness and **`"auto"`/`"light"` and the rest apply no filtration at all** unless you pass `allow_functional = TRUE`: a rare `ECNumber` or `Product` is frequently a genuinely rare gene rather than an artefact, so an abundance floor is a poor proxy for annotation error.
+
+Any value you set explicitly **overrides** whatever the preset resolved to, for that one argument, so `applyfilters = "light", GenomeCompletenessCutoff = c(20, 5)` fits the PPM floor and pins the completeness floor by hand.
+
+**Naming features stands the preset down.** All seven plotting functions set `applyfilters` to `NULL` when you pass `featuresToKeep` — you asked for those features by name, so a fitted threshold does not get to remove some of them.
 
 > **A preset decides which features are real, and nothing else.** Until v2.3.2 `applyfilters` also set `minl2fc` and `minabscorrcoeff`, so changing "light" to "stringent" quietly moved the statistical goalposts as well as the detection floor. Those two are now ordinary arguments with their own defaults, and a preset never touches them.
+
+#### Caching the fit on the object
+
+Fitted thresholds live at `metadata(SEobj)$taxon_filtration_thresholds`, keyed first by rank and then by tier (`$Genus$moderate`). Objects made by JAMSbeta from v2.3.3 onward carry the native rank already. For **objects built before this version**, stamp them once:
+
+```r
+# All spaces, all ranks present in rowData. Start with the taxonomic workhorse.
+expvec$ConsolidatedGenomeBin <- stamp_filtering_thresholds(expvec$ConsolidatedGenomeBin)
+
+# Or the whole expvec in one go.
+expvec <- stamp_filtering_thresholds(expvec)
+```
+
+You never have to: an unstamped rank is fitted on demand, which costs a fraction of a second and is announced in the log. Stamping buys reproducibility (the thresholds a figure used are recorded on the object that made it) and saves the refit on every call. Note that **merging drops the slot** — thresholds fitted on one cohort say nothing about two — so re-stamp after `merge_JAMS_SEobj`.
+
+Thresholds are **per rank and never inherited**. `agglomerate_features` aggregates by summation, so an LKT-level PPM floor is not conservative at Genus: a genus built from two hundred spurious 3 PPM assignments arrives at 600 PPM and clears a floor of 50 that every one of its constituents failed. Genome completeness is summed too, but there the summation is conservative rather than inflationary (see above), so the completeness axis is fitted at LKT, Species and Genus. Note that completeness can exceed 100% even on a native object — `make_SummarizedExperiments` sums it across the entities consolidated into one `ConsolidatedGenomeBin` row, and `evaluate_LKTs` scores non-prokaryotic contigs by percent of expected genome size — so a value of 100 is not necessarily one complete genome.
+
+Only the five lowest ranks are stamped and filtered (`max_ranks_to_filter = 5`), and terminal levels are never stamped twice: on a `ConsolidatedGenomeBin` object, `glomby = "LKT"` is a no-op in `agglomerate_features`, so `"LKT"` resolves to the native entry rather than a duplicate fit.
 
 ### `minl2fc` / `maxl2fc` — effect-size thresholds
 
@@ -626,6 +655,33 @@ filtration_thresholds <- list(
 
 Remember these cutoffs apply across the **whole** sample set of the object (or within each subset when you subset). Titrate on the data you will actually analyse.
 
+### Letting JAMS make that read for you — `fit_filtering_thresholds`
+
+The paragraph above describes a judgement you make by eye from four panels. `fit_filtering_thresholds` performs exactly that read as an algorithm, which is what `applyfilters = "auto"` calls:
+
+```r
+fit <- fit_filtering_thresholds(SEobj = expvec$ConsolidatedGenomeBin, glomby = "Species")
+print(fit)   # the decision, the justification, and the grid it chose from
+```
+
+It runs the same grid and then, in three steps:
+
+1. **Safety rail.** Keep only cells where survivors still carry at least `min_depth_median` (default **80%**) of the median sample's depth. This excludes catastrophe; it is not what picks the cell. A floor on the **worst** sample (`min_depth_min`) is available but **off by default**, because cohorts contain blanks, controls and failed libraries that hold almost no real community and legitimately lose most of their depth to any threshold at all. Letting them veto is not conservative, it is just broken: with a worst-sample floor of 85% the MR50 benchmark returned "no filtration" for 8625 LKTs from a single mouse room on a single diet, because one sample fell to 74% at the very first non-trivial cell. `min_depth_lowq` is the middle road — a floor on a low quantile of per-sample retention (reported as `pct_depth_lowq`) — so a handful of blanks cannot veto while a cohort-wide massacre still can.
+2. **Selection.** Among those, maximise `divergence` (the fourth panel): depth% minus feature%, i.e. how much noise was axed per unit of real community lost.
+3. **Back-off.** Among cells within `divergence_tolerance` (default 2) points of that maximum, take the **loosest** one. Given ties, prefer the gentler cut.
+
+On MR50 this chooses 63 PPM in ≥5% of samples at the native rank: 426 LKTs out of 8625, holding 94.5% of the median sample's sequencing depth. The answer does not move for any `min_depth_median` between 70 and 90, which is the sign that the rail is a rail and the divergence criterion is doing the work.
+
+**Only the five lowest ranks are filtered.** `max_ranks_to_filter = 5` means LKT (or the native terminal rank), Species, Genus, Family and Order; at Class and above `"auto"` applies nothing and says so. There are only tens of features up there and every one is a real clade, so any threshold prunes clades rather than noise — unrestricted, the fit kept 1 Domain out of 4 on MR50. The **genome completeness axis** is capped tighter still, at the three lowest ranks (`max_ranks_for_completeness = 3`): LKT, Species and Genus. `min_features_to_filter` (default 50) catches the same thing happening at a nominally deep rank in a sparse cohort.
+
+**Why completeness is used above the native rank.** `agglomerate_features` sums the assay, which sounds disqualifying and is not, because summation is monotone: the sum is never below the largest child, so an aggregated cutoff is strictly *more permissive* than the same cutoff applied to the best-recovered child. A species whose CSB was 80% recovered cannot be dropped by a 30% floor at Species. The filter can fail to remove something; it cannot remove something with a real genome behind it. The converse risk — sparse fragments adding up to a figure none of them earns — scales with fan-out, which is why the cap is three ranks. At Species the children are species-coherent by construction, since `contextualize_taxonomy` builds CSBs within a single species-level NCBI taxid, so the pieces being summed are genuinely pieces of one organism. At Genus, summation is what recovers the case JAMS exists to catch: a novel species absent from the Kraken2 database and unbinned by MetaBAT2, whose contigs scatter across several pseudo-species of a real genus and only add up to a recognisable genome once agglomerated. Enabling the axis does not force its use — the fit moves along completeness only when that removes features cheaply in depth.
+
+The unfiltered cell always qualifies, so the fit never fails; if nothing else is admissible it chooses no filtration and warns, pointing you at the depth panel. Every knob above is a formal you can move (`min_depth_min = 85` to reinstate the old worst-sample floor, `divergence_tolerance = 0` for the single best cell, `max_ranks_to_filter = 9` to filter all the way up), and `return_plots = TRUE` gives you the four panels with the chosen cell outlined.
+
+Two deliberate omissions. It **never tunes prevalence** — that is the parameter with the most effect on power and the least visibility, so it stays where you put it — and it **never looks at your group labels**. The latter is what makes it legitimate to fit thresholds on the same data you then test: a filter built only from marginal abundance and depth is independent of the test statistic under the null (the independent-filtering argument of Bourgon, Gentleman & Huber, PNAS 2010). Do not fit inside `compareby` strata.
+
+Use `stamp_filtering_thresholds` to record the fit on the object so every downstream plot reuses it — see [§7](#7-the-shared-filtering-vocabulary-of-jams-functions).
+
 ---
 
 ## 9. Arguments common to all the plotting functions
@@ -674,7 +730,7 @@ ord <- plot_Ordination(
     algorithm = "tUMAP",
     compareby = "Group",
     colourby  = "Group",
-    applyfilters = "light"
+    applyfilters = "auto"
 )
 # plot_Ordination returns a LIST of ggplot objects
 print(ord[[1]])
@@ -704,7 +760,7 @@ STH <- rownames(subset(as.data.frame(colData(expvec$ConsolidatedGenomeBin), opti
                        Region == "North"))
 plot_Ordination(ExpObj = expvec$ConsolidatedGenomeBin, glomby = "Species",
                 samplesToHighlight = STH, shapeby = "Region",
-                permanova = FALSE, applyfilters = "light")
+                permanova = FALSE, applyfilters = "auto")
 ```
 
 - **`highlight_subset_in_context = TRUE`** (used together with `subsetby`) — for each subset class, the **entire cohort** is plotted as a faded backdrop and only that subset's samples are highlighted, while **PERMANOVA and centroids are computed on the highlighted samples only**. This keeps every subset panel in the same shared coordinate space, so panels are directly comparable, and preserves each subset's position relative to the whole. When this mode is on, an explicitly passed `samplesToHighlight` is ignored (with a warning), because the highlight channel is being used by the subset mechanism.
@@ -720,7 +776,7 @@ ord <- plot_Ordination(
     compareby = "IL_6_pg_mL",
     colourby  = "IL_6_pg_mL",
     dichotomize_continuous_compareby_threshold = "median",   # or a number, e.g. 5, or function(x) quantile(x, 0.75)
-    applyfilters = "light"
+    applyfilters = "auto"
 )
 ```
 
@@ -916,7 +972,7 @@ adiv <- plot_alpha_diversity(
     compareby = "Group",
     colourby  = "Group",
     fillby    = "Group",
-    applyfilters = "light"          # NOTE: do not leave this unfiltered — see below
+    applyfilters = "auto"          # NOTE: do not leave this unfiltered — see below
 )
 dev.off()
 ```
@@ -925,7 +981,7 @@ dev.off()
 
 > **Alpha diversity is extremely sensitive to noise.** An unfiltered object contains a long tail of spurious, ultra-low-abundance, sliver-of-a-genome features. Richness measures (Observed, Chao1) count those phantom features and **massively over-inflate diversity**, and even evenness-based measures are distorted. **Always apply a sensible filter** before estimating alpha diversity.
 
-For this reason `plot_alpha_diversity` **defaults `applyfilters` to `"light"`** rather than to no filtering — a deliberate guard rail. Use at least `"light"`, and prefer cutoffs you have justified by titration ([§8](#8-choosing-taxonomic-filters-with-titrate_feature_counts)). Do **not** pass `featcutoff = c(0,0)` / `GenomeCompletenessCutoff = c(0,0)` for a real diversity analysis.
+For this reason `plot_alpha_diversity` **defaults `applyfilters` to `"auto"`** rather than to no filtering — a deliberate guard rail, and since v2.3.3 one whose cutoffs are fitted to your cohort rather than taken from a constant. Do **not** pass `featcutoff = c(0,0)` / `GenomeCompletenessCutoff = c(0,0)`, or `applyfilters = NULL`, for a real diversity analysis.
 
 ### Most-used arguments
 
@@ -1393,8 +1449,23 @@ It refused to plot and said why in a warning. The usual causes are a continuous 
 **PERMANOVA is skipped with a warning.**
 A subset had too few samples in the smallest `compareby` class (default minimum is 3 per class), or only one class survived after `class_to_ignore` removals. The ordination is still plotted; only the p-value is withheld. Increase samples, merge classes, or lower `min_samples_per_class_for_permanova`.
 
+**My heatmap kept a different number of rows after upgrading, and I did not change anything.**
+Several changes can do this. (1) Every plotting function now defaults to `applyfilters = "light"` — fitted to your cohort, and at LKT, Species or Genus carrying a genome-completeness floor. Previously `plot_relabund_heatmap` and `plot_alpha_diversity` used the fixed `c(50, 5)` / `c(5, 5)` constants and four other functions did not filter at all. (2) `"light"`, `"moderate"` and `"stringent"` are no longer those constants; pass `featcutoff` / `GenomeCompletenessCutoff` explicitly to reproduce an old figure. (3) The prevalence test in `filter_experiment` is now `>=` rather than `>`, so features sitting exactly on the percentage boundary are kept. (4) Since v2.3.5 the completeness axis is fitted at Species and Genus too, not only at the native rank, which removes the "ghost" species and genera that cleared the abundance floor on a few percent of a genome.
+
+**My ordination and my alpha diversity disagree about how many features exist.**
+They should not, as of v2.3.4 — all seven plotting entry points and `compare_within_subsets` share the `"light"` default precisely so that they describe the same feature universe. If they still differ, one of them was passed `featuresToKeep` (which stands the preset down), an explicit `featcutoff`, or a different `glomby`.
+
+**The log says "no stamped filtration thresholds … fitted on the fly" on every plot.**
+Working as intended, but you can stop paying for it: `expvec <- stamp_filtering_thresholds(expvec)` records the fit on the objects. Objects built before v2.3.3 never carry the slot, and `merge_JAMS_SEobj` deliberately drops it.
+
+**`"auto"` chose no filtration and warned about it.**
+No grid cell removed features while staying above the depth rail. Look at the `depth_retained` panel (`fit_filtering_thresholds(..., return_plots = TRUE)`): the median number is what the rail tests, and the `low`/`min` numbers beneath it tell you whether the depth loss is cohort-wide or a couple of blanks. If it is blanks, they are already not vetoing anything by default — so a refusal here means the cohort genuinely cannot be thinned, and lowering `min_depth_median` is the lever. If you reinstated `min_depth_min`, that is the first thing to drop.
+
+**Nothing was filtered on my Phylum or Class heatmap.**
+By design. `"auto"` filters only the five lowest ranks (LKT/native, Species, Genus, Family, Order); above that there are too few features for a data-driven threshold to be removing noise rather than clades. Pass `featcutoff` explicitly if you want one anyway, or raise `max_ranks_to_filter`.
+
 **Alpha diversity looks implausibly high / groups all look the same.**
-You almost certainly ran it too loosely. Never use `featcutoff = c(0,0)` for diversity; unfiltered noise inflates richness. Use at least `applyfilters = "light"` or a titration-based cutoff. See [§13](#13-alpha-diversity).
+You almost certainly ran it too loosely. Never use `featcutoff = c(0,0)` or `applyfilters = NULL` for diversity; unfiltered noise inflates richness. Use `applyfilters = "auto"` (the default) or a titration-based cutoff. See [§13](#13-alpha-diversity).
 
 **Colours are inconsistent between plots, or random.**
 The object has no `ctable`, or you passed a `cdict` in some calls but not others. Rebuild a colour dictionary with `make_colour_dictionary()` and attach it to every object's metadata (see [§4](#4-metadata-pheno-ctable-and-replacing-metadata-safely)); once `ctable` is in the object's metadata the plotting functions use it automatically. To keep specific classes fixed across studies, pass a `legacy_ctable`. To keep colours consistent across successive re-runs, note that `make_colour_dictionary()` is deterministic (no random palette) unless you set `shuffle = TRUE`.
@@ -1445,7 +1516,7 @@ Taxon-stratified functional objects hold large sparse matrices. Restrict to the 
 |---|---|
 | `featcutoff = c(PPM, pct)` | keep feature if ≥ PPM in ≥ pct % of samples |
 | `GenomeCompletenessCutoff = c(comp, pct)` | (taxonomic) keep if ≥ comp% complete in ≥ pct % of samples |
-| `applyfilters` | `"light"`/`"moderate"`/`"stringent"` presets; explicit values override |
+| `applyfilters` | `"auto"` (fitted to the object), `"presence"`, or the legacy `"light"`/`"moderate"`/`"stringent"` constants; `NULL` for none; explicit values override |
 | `minl2fc` / `maxl2fc` | min/max absolute log2 fold change |
 | `only_allow_CSBs` | restrict `ConsolidatedGenomeBin` to bin-derived genomes |
 | `PPM_normalize_to_bases_sequenced` | total-bases (TRUE) vs in-analysis (FALSE) denominator |

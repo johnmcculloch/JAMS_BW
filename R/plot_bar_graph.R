@@ -1,9 +1,9 @@
 #' Creates bar graph of relative taxonomic abundance from SummarizedExperiment object.
-#' plot_bar_graph(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, ignoreunclassified = FALSE, class_to_ignore = "N_A", ...) 
+#' plot_bar_graph(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, ignoreunclassified = FALSE, class_to_ignore = "N_A", ...) 
 #'
 #' @export
 
-plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, ignoreunclassified = FALSE, class_to_ignore = "N_A", ...) {
+plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, ignoreunclassified = FALSE, class_to_ignore = "N_A", ...) {
 
 
     valid_vars <- c(groupby, subsetby)[which(!is.na(c(groupby, subsetby)))]
@@ -28,7 +28,14 @@ plot_bar_graph <- function(ExpObj = NULL, glomby = NULL, absolute = FALSE, sampl
         analysisname <- analysis
     }
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
+    #Naming features explicitly stands the filtration preset down, exactly as
+    #plot_relabund_heatmap and plot_volcano do: the user has already said which features they
+    #want. Load-bearing since JAMS 2.3.4, when applyfilters began defaulting to "light".
+    if (!is.null(featuresToKeep)){
+        applyfilters <- NULL
+    }
+
+    presetlist <- declare_filtering_presets(SEobj = obj, glomby = glomby, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced)
 
     if (!(is.null(subsetby))){
         subset_points <- sort(unique(colData(obj)[, which(colnames(colData(obj)) == subsetby)]))

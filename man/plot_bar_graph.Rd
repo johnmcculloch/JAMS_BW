@@ -3,7 +3,7 @@
 \name{plot_bar_graph}
 \alias{plot_bar_graph}
 \title{Creates bar graph of relative taxonomic abundance from SummarizedExperiment object.
-plot_bar_graph(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, ignoreunclassified = FALSE, class_to_ignore = "N_A", ...)}
+plot_bar_graph(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, ignoreunclassified = FALSE, class_to_ignore = "N_A", ...)}
 \usage{
 plot_bar_graph(
   ExpObj = NULL,
@@ -16,7 +16,7 @@ plot_bar_graph(
   label_samples = FALSE,
   colourby = NULL,
   subsetby = NULL,
-  applyfilters = NULL,
+  applyfilters = "light",
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
   PPM_normalize_to_bases_sequenced = FALSE,
@@ -37,5 +37,5 @@ plot_bar_graph(
 }
 \description{
 Creates bar graph of relative taxonomic abundance from SummarizedExperiment object.
-plot_bar_graph(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, ignoreunclassified = FALSE, class_to_ignore = "N_A", ...)
+plot_bar_graph(ExpObj = NULL, glomby = NULL, absolute = FALSE, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, groupby = NULL, label_samples = FALSE, colourby = NULL, subsetby = NULL, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, total_units = 100, threshold = 2, cat_pos = -2, cat_text_size = 3, legend_text_size = 4, border_color = "white", cdict = NULL, feature_cdict = NULL, addtit = NULL, grid = TRUE, ignoreunclassified = FALSE, class_to_ignore = "N_A", ...)
 }

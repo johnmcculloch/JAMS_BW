@@ -15,7 +15,7 @@ plot_Ordination(
   featuresToKeep = NULL,
   only_allow_CSBs = FALSE,
   ignoreunclassified = TRUE,
-  applyfilters = NULL,
+  applyfilters = "light",
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
   discard_SDoverMean_below = NULL,

@@ -2,19 +2,65 @@
 % Please edit documentation in R/declare_filtering_presets.R
 \name{declare_filtering_presets}
 \alias{declare_filtering_presets}
-\title{declare_filtering_presets(analysis = NULL, is16S = FALSE, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, ...)}
+\title{declare_filtering_presets(SEobj = NULL, analysis = NULL, is16S = NULL, glomby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, max_ranks_to_filter = 5, max_ranks_for_completeness = 3, fit_if_missing = TRUE, verbose = TRUE, ...)}
 \usage{
 declare_filtering_presets(
+  SEobj = NULL,
   analysis = NULL,
-  is16S = FALSE,
+  is16S = NULL,
+  glomby = NULL,
   applyfilters = NULL,
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
+  PPM_normalize_to_bases_sequenced = FALSE,
+  max_ranks_to_filter = 5,
+  max_ranks_for_completeness = 3,
+  fit_if_missing = TRUE,
+  verbose = TRUE,
   ...
 )
 }
+\arguments{
+\item{SEobj}{The JAMS2 SummarizedExperiment object being filtered. Required for "auto" and
+"presence"; optional otherwise, in which case analysis and is16S are derived from it.}
+
+\item{analysis}{Legacy alias for naming the analysis space when no SEobj is passed. Ignored
+when SEobj is supplied and carries metadata()$analysis.}
+
+\item{is16S}{Whether this is a 16S object. Derived from SEobj when NULL.}
+
+\item{glomby}{The taxonomic level the caller is about to agglomerate to, if any. Thresholds are
+rank-specific, so this selects which stamped entry is read and what is fitted on the fly.}
+
+\item{applyfilters}{One of the strings above, or NULL.}
+
+\item{featcutoff}{Explicit c(PPM, percent of samples). Overrides the preset.}
+
+\item{GenomeCompletenessCutoff}{Explicit c(percent complete, percent of samples). Overrides.}
+
+\item{PPM_normalize_to_bases_sequenced}{Which PPM denominator this call will filter against.
+Forwarded to the fit, and compared against the denominator a stamped fit used, because a
+PPM cutoff is not transferable between the two.}
+
+\item{max_ranks_to_filter}{How many taxonomic ranks, counting up from the bottom, may be
+filtered at all. Default 5: LKT (or the native terminal rank), Species, Genus, Family,
+Order. At Class and above "auto" resolves to no filtration and logs why.}
+
+\item{max_ranks_for_completeness}{How many ranks, counting up from the bottom, may use the
+genome completeness axis. Default 3: LKT, Species and Genus. See resolve_filtration_rank.}
+
+\item{fit_if_missing}{If TRUE (default), "auto" fits on the fly when the object carries no
+stamped entry for the rank in question. If FALSE, a missing entry means no filtration.}
+
+\item{verbose}{Log the resolution and its justification.}
+
+\item{...}{Passed to fit_filtering_thresholds when a fit happens. Stale effect-size arguments
+are named in a warning rather than silently swallowed.}
+}
 \description{
-Resolves the JAMS filtration presets into the concrete cutoffs used by several functions.
+Resolves the JAMS filtration presets into the concrete cutoffs used by several functions. This
+is the single place in JAMS2 where applyfilters is turned into numbers; everything downstream
+receives the numbers, never the string.
 }
 \details{
 A filtration preset decides one thing only: whether a feature survives into the analysis at
@@ -26,4 +72,38 @@ functions which offer them, each with its own sensible default. Prior to JAMS 2.
 presets did set minl2fc and minabscorrcoeff, which coupled "is this feature real" to "is
 this feature interesting" and made a plain applyfilters string silently change the
 statistical verdict of a plot. That coupling has been removed.
+
+WHAT applyfilters CAN BE, as of JAMS 2.3.4. Every value is now FITTED to the object in hand.
+The hard-coded c(50, 5) / c(250, 15) / c(2000, 15) constants are gone: they were chosen by eye
+years ago on other people's data and referred to nothing about the cohort they were applied
+to, which was the whole complaint. The four tiers are one ladder, walked further each step.
+
+  "denoise"    The gentlest fitted thresholds: the cell that removes the most noise per unit
+               of real community lost. Gets rid of the thousands of spurious low-abundance
+               LKT fragments and nothing else. "auto" is a synonym.
+  "light"      Denoise plus 5 further percentage points of median sequencing depth spent on a
+               cleaner feature set. At a native taxonomic rank this buys a genome-completeness
+               floor, which denoise alone does not impose. THE DEFAULT of every plotting
+               function.
+  "moderate"   As light, but 10 points.
+  "stringent"  As light, but 20 points.
+  "presence"   The denoise tier with the prevalence rule forced to a single sample. The
+               feature must still clear a fitted abundance floor and, for taxa, a completeness
+               floor, but it need only do so once. This is the engraftment case: a complete
+               genome seen in one subject is the finding, and every percentage-based
+               prevalence rule destroys it.
+  NULL         No filtration whatsoever. An explicit, supported choice, warned about once per
+               call because an unfiltered metagenomic feature universe is overwhelmingly
+               low-abundance noise and a reader who is not a bioinformatician will take those
+               rows as findings.
+
+WHY THE TIERS ARE A DEPTH BUDGET. Spending 5, 10 or 20 points of the median sample's retained
+sequencing depth is as arbitrary a choice as 250 PPM was, but it is arbitrary in a unit the
+user can reason about, it is computed against their own data, and the fit says what it bought.
+The tiers are nested, so a stringent plot can never contain a feature a light plot dropped.
+
+PRECEDENCE. An explicitly supplied featcutoff or GenomeCompletenessCutoff always wins,
+whatever applyfilters says and even when applyfilters is NULL. This is how a historical
+analysis is reproduced now that the legacy constants are gone: read the numbers off the
+subtitle of the old figure and pass them directly.
 }

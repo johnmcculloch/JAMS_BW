@@ -30,23 +30,24 @@
 #' the same features, and comparisons across subsets are honest.
 #'
 #' The global feature set is computed on an object that has ALREADY been vetted in the same
-#' order the plotting functions use (ExpObjVetting applies samplesToKeep/featuresToKeep, then
-#' only_allow_CSBs, then glomby). This matters because CSB restriction must precede
-#' agglomeration and agglomeration rewrites feature names: computing global_FTK in the final
-#' (post-CSB, post-glom) namespace guarantees the names match what each plotting function sees.
+#' order the plotting functions use, which is only_allow_CSBs -> glomby -> samplesToKeep ->
+#' featuresToKeep -> class_to_ignore (see ExpObjVetting; earlier versions of this comment had
+#' that order backwards). This matters because CSB restriction must precede agglomeration and
+#' agglomeration rewrites feature names: computing global_FTK in the final (post-CSB, post-glom)
+#' namespace guarantees the names match what each plotting function sees.
 #'
 #' @param ExpObj A single JAMS-style SummarizedExperiment object (i.e. expvec[[analysis]]).
 #' @param compareby String; the metadata variable defining the groups being compared.
 #' @param subsetby String or vector (up to 3) of metadata variables for tiered subsetting. If NULL, a single "no subset" pass is made over all samples.
 #' @param samplesToKeep Optional vector of sample names to retain BEFORE any global filtration or subsetting. Use this to drop samples you know you do not want in the comparison at all (e.g. outliers). If NULL (default), all samples are kept. Applied first, ahead of everything else.
-#' @param featuresToKeep Optional vector of feature names to retain BEFORE any global filtration or subsetting. Use this to restrict to (or drop) features you care about up front (e.g. remove noise, or focus on a shortlist). If NULL (default), all features are considered. Applied first, ahead of the global filtration that derives global_FTK. For taxonomic objects that will be agglomerated via glomby, these must be names in the ORIGINAL (pre-glom) namespace, since culling happens before agglomeration; see ExpObjVetting.
+#' @param featuresToKeep Optional vector of feature names to retain BEFORE any global filtration or subsetting. Use this to restrict to (or drop) features you care about up front (e.g. remove noise, or focus on a shortlist). If NULL (default), all features are considered. Applied ahead of the global filtration that derives global_FTK. For taxonomic objects that will be agglomerated via glomby, these must be names in the POST-agglomeration namespace (family names when glomby = "Family"), because ExpObjVetting agglomerates before it culls features; a pre-glom name list will be rejected outright. See ExpObjVetting.
 #' @param glomby String; taxonomic level to agglomerate to (taxonomic spaces only). Default NULL.
 #' @param only_allow_CSBs Logical; restrict to Consolidated Species Bins (taxonomic ConsolidatedGenomeBin space only). Applied before any agglomeration. Default FALSE.
 #' @param do_ordination,do_heatmap,do_alpha Logical switches to include/exclude each of the three plot types. All default TRUE.
 #' @param ordination_highlight_subset_in_context Logical; if set to TRUE, ordination will be done with all samples within the SummarizedExperiment object, but only the subset will be highlighted. PERMANOVA and centroid calculations will be performed on the highlighted samples ONLY.
-#' @param ordination_args,heatmap_args,alpha_args Named lists of extra arguments passed to plot_Ordination, plot_relabund_heatmap and plot_alpha_diversity respectively, overriding the comparator's shared defaults for that function only.
+#' @param ordination_args,heatmap_args,alpha_args Named lists of extra arguments passed to plot_Ordination, plot_relabund_heatmap and plot_alpha_diversity respectively, overriding the comparator's shared defaults for that function only. Every element must be named. Overriding featuresToKeep or the filtration arguments here defeats the fixed-feature-set guarantee described above, so do it only deliberately.
 #' @param split_heatmap_columns_by_compareby Logical; if set to TRUE, heatmap columns will be split into the same samples split by compareby
-#' @param applyfilters,featcutoff,GenomeCompletenessCutoff,PPM_normalize_to_bases_sequenced,cdict,class_to_ignore Shared arguments. The filtration arguments (applyfilters, featcutoff, GenomeCompletenessCutoff) are used ONCE here to derive global_FTK and are NOT forwarded to the plotting functions (which receive non-filtering values instead). PPM_normalize_to_bases_sequenced, cdict and class_to_ignore are forwarded to all three functions unless overridden per-function via the *_args lists.
+#' @param applyfilters,featcutoff,GenomeCompletenessCutoff,PPM_normalize_to_bases_sequenced,cdict,class_to_ignore Shared arguments. The filtration arguments (applyfilters, featcutoff, GenomeCompletenessCutoff) are used ONCE here to derive global_FTK and are NOT forwarded to the plotting functions (which receive non-filtering values instead); the threshold that was applied is printed on each subset's banner page, since the per-panel subtitles correctly report that the panels themselves did not filter. applyfilters defaults to "light", matching every plotting function, and like them it is now a tier FITTED to this object rather than a fixed constant - see declare_filtering_presets. Note that PPM_normalize_to_bases_sequenced defaults to TRUE here but FALSE in the plotting functions; for taxonomic objects the two PPM denominators are identical, so this only matters functionally. PPM_normalize_to_bases_sequenced, cdict and class_to_ignore are forwarded to all three functions unless overridden per-function via the *_args lists.
 #' @param addtit Optional string with a free-text message to add to the title of EVERY output (ordination, heatmap and alpha-diversity) across all subsets. This is intended for context that the comparator itself cannot infer, most commonly when you have subset the data OUTSIDE of compare_within_subsets (e.g. by passing a curated vector to samplesToKeep), so you can annotate the plots with something like "Only looking at samples within the Responder group". When subsetting IS also performed by this function (via subsetby), your message is PREPENDED to the automatic per-subset label, so each panel shows your text on one line followed by "SUBSET: <subset name>" on the next; both pieces of context are therefore preserved. When there is no subsetting, only your message is shown. Internally this is merged into the per-subset title and handed to each plotting function's own addtit argument. If NULL (the default), only the automatic "SUBSET: <subset name>" label (when applicable) is used. Default NULL.
 #' @param return_stats Logical; if TRUE, invisibly returns a named list collecting the returnstats output of the heatmap and alpha functions per subset. Default TRUE.
 #'
@@ -57,7 +58,7 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
                                    glomby = NULL, only_allow_CSBs = FALSE,
                                    do_ordination = TRUE, ordination_highlight_subset_in_context = FALSE, do_heatmap = TRUE, split_heatmap_columns_by_compareby = TRUE, do_alpha = TRUE,
                                    ordination_args = list(), heatmap_args = list(), alpha_args = list(),
-                                   applyfilters = NULL, featcutoff = NULL,
+                                   applyfilters = "light", featcutoff = NULL,
                                    GenomeCompletenessCutoff = NULL,
                                    PPM_normalize_to_bases_sequenced = TRUE,
                                    cdict = NULL, class_to_ignore = "N_A",
@@ -75,13 +76,18 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
     analysis <- metadata(ExpObj)$analysis
     flog.info(paste("Comparator running on analysis space:", analysis))
 
-    #Warn on likely-misapplied taxonomic-only options
+    #Warn on likely-misapplied taxonomic-only options.
+    #is_taxonomic is resolved once, with the NULL guard: `analysis %in% taxonomic_spaces` is
+    #logical(0) when metadata$analysis is absent, `TRUE && logical(0)` is NA, and `if (NA)` is a
+    #hard error. assert_JAMS2_SEobj only insists on $version, so an object without $analysis
+    #reaches here, and this is the same trap declare_filtering_presets already guards against.
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
-    if (only_allow_CSBs && !(analysis %in% taxonomic_spaces)){
-        flog.warn(paste0("only_allow_CSBs = TRUE was passed, but analysis space \"", analysis, "\" is not taxonomic. The plotting functions will ignore it."))
+    is_taxonomic <- ((!is.null(analysis)) && (length(analysis) == 1) && (analysis %in% taxonomic_spaces))
+    if (only_allow_CSBs && (!is_taxonomic)){
+        flog.warn(paste0("only_allow_CSBs = TRUE was passed, but analysis space \"", paste0(as.character(analysis), collapse = ", "), "\" is not taxonomic. The plotting functions will ignore it."))
     }
-    if (!is.null(glomby) && !(analysis %in% taxonomic_spaces)){
-        flog.warn(paste0("glomby = \"", glomby, "\" was passed, but analysis space \"", analysis, "\" is not taxonomic. Agglomeration may be ignored or error; consider glomby = NULL for functional spaces."))
+    if ((!is.null(glomby)) && (!is_taxonomic)){
+        flog.warn(paste0("glomby = \"", glomby, "\" was passed, but analysis space \"", paste0(as.character(analysis), collapse = ", "), "\" is not taxonomic. Agglomeration may be ignored or error; consider glomby = NULL for functional spaces."))
     }
 
     #############################################################################
@@ -89,9 +95,9 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
     ## These are applied FIRST, before any global filtration or subsetting, so a
     ## user can knowingly drop outlier samples or noise/uninteresting features
     ## before anything else happens. We do this via ExpObjVetting so that the
-    ## ordering invariants (samples/features cull -> CSB restriction -> glom) are
-    ## owned by the same vetting routine the plotting functions use, keeping the
-    ## feature namespace consistent.
+    ## ordering invariants (CSB restriction -> glom -> samples cull -> features
+    ## cull) are owned by the same vetting routine the plotting functions use,
+    ## keeping the feature namespace consistent.
     ##
     ## NOTE on glomby here: we deliberately DO NOT agglomerate at this step. We
     ## only resolve the retained sample set and the global feature set. Each
@@ -140,17 +146,22 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
     ## we are otherwise bypassing by subsetting outside those functions.
     #############################################################################
 
-    #Translate applyfilters/featcutoff/GenomeCompletenessCutoff into a concrete preset once.
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
-
     #Vet a copy in the same order the plotting functions use: user cull -> CSB -> glom.
     #This yields an object whose feature names are in the final namespace.
     vetted_for_FTK <- ExpObjVetting(ExpObj = ExpObj, samplesToKeep = retained_samples, featuresToKeep = featuresToKeep, glomby = glomby, only_allow_CSBs = only_allow_CSBs, variables_to_fix = NULL, class_to_ignore = NULL)
 
+    #Translate applyfilters/featcutoff/GenomeCompletenessCutoff into a concrete preset once.
+    #This now happens AFTER vetting rather than before it, because applyfilters = "auto" fits
+    #thresholds to the object in its final namespace: the right feature universe to titrate is
+    #the post-cull, post-CSB, post-glom one that is about to be filtered, not the raw input.
+    presetlist <- declare_filtering_presets(SEobj = vetted_for_FTK, glomby = glomby, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced)
+
     #Decide whether any filtration is actually requested. If not, the global feature
     #set is simply every feature in the vetted object (still a fixed, shared set).
-    any_filtration <- any(c(all(presetlist$featcutoff != c(0, 0)),
-                            (!is.null(presetlist$GenomeCompletenessCutoff) && all(presetlist$GenomeCompletenessCutoff != c(0, 0))),
+    #Note the "not all zero" phrasing: a featcutoff of c(0, 15) is a real request (keep features
+    #present at all in 15% of samples), and the former `all(x != c(0,0))` read it as no request.
+    any_filtration <- any(c((!all(presetlist$featcutoff == c(0, 0))),
+                            (!is.null(presetlist$GenomeCompletenessCutoff) && (!all(presetlist$GenomeCompletenessCutoff == c(0, 0)))),
                             !is.null(applyfilters)))
 
     if (any_filtration){
@@ -174,15 +185,26 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
     }
     vetted_for_FTK <- NULL
 
+    #One line stating what actually filtered, reused on every subset banner and in the error
+    #below. presetlist$filtermsg is NULL when nothing filtered, which is the honest answer and
+    #is what c() then drops.
+    global_filtration_banner <- if (!is.null(presetlist$filtermsg)) paste0("Global filtration (", (if (!is.null(applyfilters)) paste0("applyfilters = \"", applyfilters, "\"") else "explicit cutoffs"), "): ", gsub("\n", " | ", presetlist$filtermsg)) else NULL
+
     if (length(global_FTK) < 2){
-        stop("Fewer than 2 features survive the global filtration. Relax your filtration parameters (applyfilters/featcutoff/GenomeCompletenessCutoff) or check featuresToKeep.")
+        stop(paste0("Fewer than 2 features survive the global filtration (", paste0(c(global_filtration_banner, "no filtration was applied")[1], collapse = ""), "). Relax your filtration parameters (applyfilters/featcutoff/GenomeCompletenessCutoff) or check featuresToKeep."))
     }
 
     #From here on, the plotting functions must NOT re-filter. They receive the fixed
     #global feature set and non-filtering parameters.
+    #GenomeCompletenessCutoff is pinned to NULL rather than c(0, 0). The two are behaviourally
+    #identical downstream - filter_experiment skips the completeness block for both, since
+    #all(NULL == c(0,0)) is TRUE - but declare_filtering_presets warns "Genome completeness only
+    #makes sense for taxa" for any non-NULL value on a functional object, and that warning would
+    #otherwise fire five or six times per subset, once for every function that forwards the
+    #value onward.
     FIXED_applyfilters <- NULL
     FIXED_featcutoff <- c(0, 0)
-    FIXED_GenomeCompletenessCutoff <- c(0, 0)
+    FIXED_GenomeCompletenessCutoff <- NULL
 
     #############################################################################
     ## STEP 2: Resolve subset iteration order and names, scoped to retained_samples.
@@ -231,10 +253,29 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
 
     #Helper to merge shared defaults with per-function override lists, without
     #letting an override silently duplicate an argument (later wins).
+    #SINGLE bracket on both sides, deliberately. `shared[[nm]] <- overrides[[nm]]` DELETES the
+    #element when the override is NULL rather than setting it to NULL, which used to be
+    #harmless and is not any more: with the plotting defaults now non-NULL, an override of
+    #featuresToKeep = NULL would drop the pin and let every subset build its own feature
+    #universe - the exact failure this function exists to prevent - and an override of
+    #applyfilters = NULL would resurrect the "light" default. Single-bracket assignment keeps
+    #the name with a NULL value, so the pin survives.
     build_args <- function(shared, overrides){
-        for (nm in names(overrides)){
-            shared[[nm]] <- overrides[[nm]]
+        if (length(overrides) < 1){
+            return(shared)
         }
+        nms <- names(overrides)
+        if (is.null(nms) || any(!nzchar(nms))){
+            #Otherwise `shared[""] <- ...` either errors or writes an argument nothing reads,
+            #and it would do so outside the tryCatch that guards the plotting calls.
+            flog.warn("An override list passed to compare_within_subsets (ordination_args, heatmap_args or alpha_args) contains unnamed elements, which cannot be matched to arguments and were ignored. Name every element, e.g. heatmap_args = list(ntop = 50).")
+            overrides <- overrides[nzchar(nms) & (!is.na(nms))]
+            nms <- names(overrides)
+        }
+        for (nm in nms){
+            shared[nm] <- overrides[nm]
+        }
+
         return(shared)
     }
 
@@ -275,11 +316,17 @@ compare_within_subsets <- function(ExpObj = NULL, compareby = NULL, subsetby = N
             plot.new()
             #Include the user's addtit on the banner too, if supplied, so the free-text
             #context is the first thing seen for each subset block in the PDF.
+            #The filtration line matters more than it used to. Every panel below is drawn with
+            #the filters pinned OFF and featuresToKeep = global_FTK, so each plotting function's
+            #own subtitle correctly reports no filtration - which means that with the default
+            #applyfilters = "light" the whole PDF would otherwise state nowhere what threshold
+            #produced its feature set. The banner is the only place that can say it.
             banner_lines <- c(if (!is.null(addtit)) addtit else NULL,
                               paste("SUBSET:", subtit),
                               paste("compareby:", compareby),
                               paste("n samples:", length(STK)),
-                              paste("n features (global, fixed):", length(global_FTK)))
+                              paste("n features (global, fixed):", length(global_FTK)),
+                              global_filtration_banner)
             grid.table(banner_lines,
                        rows = NULL, cols = NULL,
                        theme = ttheme_default(base_size = 14))

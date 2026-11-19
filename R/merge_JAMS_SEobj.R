@@ -164,6 +164,20 @@ merge_JAMS_SEobj <- function(ExpObj1 = NULL, ExpObj2 = NULL){
     #Guarantee the generation stamp survives even if it was somehow absent from the intersection.
     SEobjMD_merged[["version"]] <- metadata(ExpObj1)$version
 
+    #FITTED FILTRATION THRESHOLDS ARE DROPPED, DELIBERATELY. They are fitted to the abundance and
+    #depth distribution of one cohort, and that distribution is exactly what merging changes:
+    #carrying ExpObj1's thresholds onto ExpObj1 + ExpObj2 would silently filter the second cohort
+    #by a rule derived entirely from the first. This is the same hazard as the metadata$version
+    #drop noted above, with the direction reversed - there a slot vanished when it should have
+    #been kept, here a slot must vanish rather than be kept - and in both cases the failure would
+    #be a wrong answer rather than a crash. An absent slot simply means declare_filtering_presets
+    #refits on demand, so the cost of dropping is a fraction of a second and the cost of keeping
+    #is a wrong figure. Re-run stamp_filtering_thresholds on the merged object to restore the cache.
+    if (any(c("taxon_filtration_thresholds" %in% ExpObj1_facts$metadata, "taxon_filtration_thresholds" %in% ExpObj2_facts$metadata))){
+        flog.info("Dropping fitted filtration thresholds (metadata$taxon_filtration_thresholds) from the merged object: they were fitted to the feature and depth distribution of a single cohort and say nothing about the merged one. They will be refitted on demand, or run stamp_filtering_thresholds() on the merged object to cache them again.")
+    }
+    SEobjMD_merged[["taxon_filtration_thresholds"]] <- NULL
+
     #If these are functional SEobjs containing taxonomy stratification data, merge that.
     strat1 <- ("SparseIndex" %in% ExpObj1_facts$assays) && ("allfeaturesbytaxa_matrix" %in% ExpObj1_facts$metadata)
     strat2 <- ("SparseIndex" %in% ExpObj2_facts$assays) && ("allfeaturesbytaxa_matrix" %in% ExpObj2_facts$metadata)

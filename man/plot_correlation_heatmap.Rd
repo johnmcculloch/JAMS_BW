@@ -2,7 +2,7 @@
 % Please edit documentation in R/plot_correlation_heatmap.R
 \name{plot_correlation_heatmap}
 \alias{plot_correlation_heatmap}
-\title{plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = 0.4, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, normalization = "relabund", showGram = FALSE, showPhylum = FALSE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE)}
+\title{plot_correlation_heatmap(ExpObj = NULL, glomby = NULL, stattype = "spearman", subsetby = NULL, maxnumfeatallowed = 10000, minabscorrcoeff = 0.4, ntopvar = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, show_GenomeCompleteness_boxplot = TRUE, PPM_normalize_to_bases_sequenced = FALSE, normalization = "relabund", showGram = FALSE, showPhylum = FALSE, addtit = NULL, cdict = NULL, ignoreunclassified = TRUE, class_to_ignore = "N_A", returnstats = FALSE)}
 \usage{
 plot_correlation_heatmap(
   ExpObj = NULL,
@@ -15,7 +15,7 @@ plot_correlation_heatmap(
   featuresToKeep = NULL,
   only_allow_CSBs = FALSE,
   samplesToKeep = NULL,
-  applyfilters = NULL,
+  applyfilters = "light",
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
   show_GenomeCompleteness_boxplot = TRUE,

@@ -87,5 +87,17 @@ make_SummarizedExperiment_from_tables <- function(pheno = NULL, pheno_fn= NULL, 
     #(every JAMS16 Amplicon object, for one) would be rejected as a deprecated JAMS1 object.
     metadata(SEobj)$version <- paste0("JAMS v", packageVersion("JAMS"))
 
+    #Fit and record filtration thresholds for the native rank, exactly as make_SummarizedExperiments
+    #does, so that an object built from tables is not the one kind of JAMS2 object that refits on
+    #every plotting call. A functional analysisname is a no-op inside the fitter. The try() is
+    #there because the object itself is the product of this function and must survive a cohort
+    #that is too small or too shallow to titrate.
+    stamped_SEobj <- try(stamp_filtering_thresholds(obj = SEobj, ranks = "native", verbose = FALSE), silent = TRUE)
+    if (inherits(stamped_SEobj, "try-error")){
+        flog.warn(paste0("Could not fit filtration thresholds for the ", analysisname, " object, so none were stamped on it. They will be fitted on demand when a plotting function asks for applyfilters = \"auto\". The error was: ", as.character(stamped_SEobj)))
+    } else {
+        SEobj <- stamped_SEobj
+    }
+
     return(SEobj)
 }

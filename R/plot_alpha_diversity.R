@@ -84,7 +84,14 @@ plot_alpha_diversity <- function(ExpObj = NULL, measures = c("Observed", "Chao1"
         }
     }
 
-    presetlist <- declare_filtering_presets(analysis = analysis, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff)
+    #Naming features explicitly stands the filtration preset down, exactly as
+    #plot_relabund_heatmap and plot_volcano do: the user has already said which features they
+    #want. Load-bearing since JAMS 2.3.4, when applyfilters began defaulting to "light".
+    if (!is.null(featuresToKeep)){
+        applyfilters <- NULL
+    }
+
+    presetlist <- declare_filtering_presets(SEobj = obj, glomby = glomby, applyfilters = applyfilters, featcutoff = featcutoff, GenomeCompletenessCutoff = GenomeCompletenessCutoff, PPM_normalize_to_bases_sequenced = PPM_normalize_to_bases_sequenced)
 
     #Use the same tiered subsetting scheme as the other JAMS plotting functions.
     if (!(is.null(subsetby))){
