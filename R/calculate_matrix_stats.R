@@ -57,9 +57,59 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         countmatrix <- convert_matrix_log2(mat = countmatrix, transformation = "from_log2")
     }
 
-    #Protect against rows with empty data
-    #rowsToKeep <- which(rowSums(countmatrix) > 0)
-    #countmatrix <- countmatrix[rowsToKeep, ]
+    #THE MULTIPLE-TESTING DENOMINATOR MUST BE THE NUMBER OF TESTS ACTUALLY PERFORMED.
+    #
+    #Every branch below ends in p.adjust(matstats$pval, method = x, n = ...). The n passed used to
+    #be length(matstats$pval), i.e. one slot for every ROW, including rows whose statistic could
+    #not be computed and came back NA. R's p.adjust excludes NA p-values from the correction but
+    #honours whatever n it is given, so those rows were silently inflating every adjusted p-value.
+    #A row that could not be tested is not a hypothesis, and must not be counted as one.
+    #
+    #THIS IS NOT A SMALL CORRECTION. The commonest untestable row is a feature that is absent from
+    #every sample of the comparison, and such rows are abundant in two ordinary situations which
+    #compound each other. First, an object accumulates features that are zero throughout whenever
+    #samples are dropped from it - ExpObjVetting(samplesToKeep), filter_sample_by_class_to_ignore
+    #and filter_experiment all take a pure column slice and leave behind every feature that
+    #belonged only to the samples that went. A 178-sample multi-cohort human stool object built
+    #this way was 68.8% such rows (32124 of 46691). Second, and independently, the subsetby loops
+    #in plot_relabund_heatmap and plot_volcano, and every panel of compare_within_subsets, pin
+    #featcutoff = c(0, 0) so that the feature set stays comparable across subsets - which means no
+    #filtration removes the rows that are empty within the subset being tested.
+    #
+    #Measured on that object, the factor by which the Benjamini-Hochberg denominator was inflated:
+    #  178 samples -> 3.3x     80 -> 5.1x     40 -> 7.1x     20 -> 10.9x     10 -> 16.2x
+    #Every adjusted p-value in every subset panel was too large by that much, and the smaller the
+    #subset the worse it got, which is the opposite of what anyone would assume.
+    #
+    #THE ROWS THEMSELVES ARE DELIBERATELY NOT DELETED. The old commented-out guard that used to
+    #sit here, #rowsToKeep <- which(rowSums(countmatrix) > 0), was right to be disabled and must
+    #not be reinstated. The matrix handed in is usually PPM (plot_relabund_heatmap:321) and getPPM
+    #rounds to whole PPM, so a real feature carrying thousands of bases but sitting under 0.5 PPM
+    #in every sample is an all-zero PPM row; deleting those would impose a silent half-PPM
+    #abundance floor on every heatmap, volcano and correlation plot in the package. It is also
+    #meaningless on a CLR matrix, where an absent feature is not zero at all and a present one can
+    #sum below zero. And it would delete rows from matstats, which callers index by name:
+    #plot_relabund_features would silently drop explicitly requested features, and plot_volcano's
+    #drop_features_absent_in_all_samples switch would become a no-op in its FALSE direction while
+    #its log still claimed parity with the heatmap. Correcting n fixes the defect and changes
+    #nothing else - every row still comes back, carrying its NA where no test was possible.
+    adjust_pvalues <- function(matstats = NULL){
+        n_tested <- sum(!is.na(matstats$pval))
+        n_untestable <- (nrow(matstats) - n_tested)
+        if (n_untestable > 0){
+            if (n_tested < 1){
+                flog.warn(paste0("calculate_matrix_stats: not one of the ", nrow(matstats), " features yielded a computable p-value. No correction can be made and every adjusted p-value will be NA. This normally means the comparison is degenerate - check for constant or empty features."))
+
+                n_tested <- nrow(matstats)
+            } else {
+                flog.warn(sprintf("calculate_matrix_stats: %d of %d features (%.1f%%) yielded no computable p-value, almost always because they are absent, or constant, across every sample in this comparison. They are reported with NA statistics but are EXCLUDED from the multiple-testing denominator, which is therefore %d and not %d. Counting them would have inflated every adjusted p-value by a factor of %.2f. Rows that are empty throughout accumulate whenever samples are dropped from an object, so they are commonest in subset panels.", n_untestable, nrow(matstats), ((100 * n_untestable) / nrow(matstats)), n_tested, nrow(matstats), (nrow(matstats) / n_tested)))
+            }
+        }
+        adjlist <- lapply(p.adjust.methods, function(x){ p.adjust(matstats$pval, method = x, n = n_tested) })
+        names(adjlist) <- paste("padj", p.adjust.methods, sep = "_")
+
+        return(as.data.frame(adjlist))
+    }
 
     #Calculate matrix stats and get new matrix.
     if (stattype == "variance"){
@@ -143,9 +193,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         matstats$absl2fc <- abs(matstats$l2fc)
 
         #Adjust p-values
-        adjlist <- lapply(p.adjust.methods, function(x){ p.adjust(matstats$pval, method = x, n = length(matstats$pval)) })
-        names(adjlist) <- paste("padj", p.adjust.methods, sep = "_")
-        adjdf <- as.data.frame(adjlist)
+        adjdf <- adjust_pvalues(matstats = matstats)
         matstats <- cbind(matstats, adjdf)
         matstats <- matstats[order(matstats$pval, decreasing = FALSE), ]
         matstats$Method <- rep("MannWhitneyWilcoxon", nrow(matstats))
@@ -177,9 +225,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
 
         rownames(matstats) <- rownames(countmatrix)
         #Adjust p-values
-        adjlist <- lapply(p.adjust.methods, function(x){ p.adjust(matstats$pval, method = x, n = length(matstats$pval)) })
-        names(adjlist) <- paste("padj", p.adjust.methods, sep="_")
-        adjdf <- as.data.frame(adjlist)
+        adjdf <- adjust_pvalues(matstats = matstats)
         matstats <- cbind(matstats, adjdf)
         matstats$Feature <- NULL
         matstats <- matstats[order(matstats$pval, decreasing = FALSE), ]
@@ -221,9 +267,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
         matstats <- as.data.frame(matstats)
 
         #Adjust p-values
-        adjlist <- lapply(p.adjust.methods, function(x){ p.adjust(matstats$pval, method = x, n = length(matstats$pval)) })
-        names(adjlist) <- paste("padj", p.adjust.methods, sep = "_")
-        adjdf <- as.data.frame(adjlist)
+        adjdf <- adjust_pvalues(matstats = matstats)
         matstats <- cbind(matstats, adjdf)
         matstats <- matstats[order(matstats$pval, decreasing = FALSE), ]
         if (invertbinaryorder == TRUE){
@@ -251,9 +295,7 @@ calculate_matrix_stats <- function(countmatrix = NULL, uselog = NULL, statsonlog
             matstats$abscorrel <- abs(matstats$correl)
             rownames(matstats) <- rownames(countmatrix)
             #Adjust p-values
-            adjlist <- lapply(p.adjust.methods, function(x){ p.adjust(matstats$pval, method = x, n = length(matstats$pval)) })
-            names(adjlist) <- paste("padj", p.adjust.methods, sep = "_")
-            adjdf <- as.data.frame(adjlist)
+            adjdf <- adjust_pvalues(matstats = matstats)
             matstats <- cbind(matstats, adjdf)
             matstats <- matstats[order(matstats$pval, decreasing = FALSE), ]
             matstats$Method <- rep(corstat, nrow(matstats))
