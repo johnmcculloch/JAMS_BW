@@ -8,7 +8,8 @@ make_jams_file(
   opt = opt,
   objectstoinclude = c("contigsdata", "featuredata", "abundances",
     "taxonomic_Quality_split_list", opt$blastanalyses, "bam_contig_depths",
-    "TNF_contigs", "readstats", "fastqstats", "projinfo"),
+    "TNF_contigs", "readstats", "fastqstats", "projinfo", "dependency_versions",
+    "methods", "methods_table"),
   outdir = opt$outdir
 )
 }

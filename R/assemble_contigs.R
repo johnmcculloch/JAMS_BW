@@ -207,7 +207,9 @@ assemble_contigs <- function(opt = NULL){
 
     #Launch assembly
     flog.info(paste0("Assembling reads using ", opt$assembler, ". Please be patient..."))
-    flog.info(paste0("Assembler command used: ", paste(assemblercmd, paste0(assemblerargs, collapse = " "))))
+    #Bank the exact command to opt so generate_JAMSalpha_methods() can report the parameters actually used.
+    opt$assembler_command <- paste(assemblercmd, paste0(assemblerargs, collapse = " "))
+    flog.info(paste0("Assembler command used: ", opt$assembler_command))
 
     system2(assemblercmd, args = assemblerargs, stdout = TRUE, stderr = TRUE)
     flog.info(paste("Assembly of reads using", opt$assembler, "complete."))

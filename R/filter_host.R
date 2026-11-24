@@ -88,8 +88,9 @@ filter_host <- function(opt = NULL){
         flog.info("Compressing non-aligned to host species (NAHS) reads")
 
         if (length(nahsreads_uncompressed) == 1){
-            #Reads are single
-            targetfilename <- paste0(opt$prefix, "_NAHS_SE", nahsrdnum, ".fastq.gz")
+            #Reads are single. (n.b. this previously pasted nahsrdnum, which is only defined in the paired
+            #branch below, so single-end runs with a host crashed here with "object 'nahsrdnum' not found".)
+            targetfilename <- paste0(opt$prefix, "_NAHS_SE.fastq.gz")
             commandtorun <- paste("pigz --processes", opt$threads, "-c", nahsreads_uncompressed, ">", targetfilename, collapse = " ")
             system(commandtorun)
             file.remove(nahsreads_uncompressed)

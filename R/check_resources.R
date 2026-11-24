@@ -38,7 +38,8 @@ check_resources <- function(opt = opt, applications_to_check = c("base", "reads"
             "prokka"       = c("--version"),
             "convert2bed"  = c("--version"),
             "bedtools"     = c("--version"),
-            "kraken2"      = c("--version")
+            "kraken2"      = c("--version"),
+            "blastn"       = c("-version")
         )
 
         raw <- character(0)
@@ -117,6 +118,20 @@ check_resources <- function(opt = opt, applications_to_check = c("base", "reads"
         if (system(str_c("which ", cmd), ignore.stdout = TRUE) == 1) { # not found
             flog.info(str_c("You are missing ", dep))
             missingdep <- TRUE
+            version_records[[dep]] <- data.frame(Dependency = dep, Executable = cmd, Found = FALSE, Version = NA_character_, stringsAsFactors = FALSE)
+        } else {
+            depver <- get_dep_version(dep, cmd)
+            flog.info(str_c("Found ", dep, " (", cmd, ") version ", depver))
+            version_records[[dep]] <- data.frame(Dependency = dep, Executable = cmd, Found = TRUE, Version = depver, stringsAsFactors = FALSE)
+        }
+    }
+
+    #Record-only dependencies: versions are logged for the methods narrative, but absence does not abort.
+    #BLAST+ is only exercised when the JAMS database folder holds BLAST databases.
+    record_only_deps <- c(blast = "blastn")
+    for (dep in names(record_only_deps)){
+        cmd <- record_only_deps[[dep]]
+        if (system(str_c("which ", cmd), ignore.stdout = TRUE, ignore.stderr = TRUE) != 0){
             version_records[[dep]] <- data.frame(Dependency = dep, Executable = cmd, Found = FALSE, Version = NA_character_, stringsAsFactors = FALSE)
         } else {
             depver <- get_dep_version(dep, cmd)
