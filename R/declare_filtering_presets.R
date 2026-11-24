@@ -1,4 +1,4 @@
-#' declare_filtering_presets(SEobj = NULL, analysis = NULL, is16S = NULL, glomby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, max_ranks_to_filter = 5, max_ranks_for_completeness = 3, fit_if_missing = TRUE, verbose = TRUE, ...)
+#' declare_filtering_presets(SEobj = NULL, analysis = NULL, is16S = NULL, glomby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = TRUE, max_ranks_to_filter = 5, max_ranks_for_completeness = 3, fit_if_missing = TRUE, verbose = TRUE, ...)
 #'
 #' Resolves the JAMS filtration presets into the concrete cutoffs used by several functions. This
 #' is the single place in JAMS2 where applyfilters is turned into numbers; everything downstream
@@ -73,7 +73,7 @@
 #'   are named in a warning rather than silently swallowed.
 #' @export
 
-declare_filtering_presets <- function(SEobj = NULL, analysis = NULL, is16S = NULL, glomby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, max_ranks_to_filter = 5, max_ranks_for_completeness = 3, fit_if_missing = TRUE, verbose = TRUE, ...){
+declare_filtering_presets <- function(SEobj = NULL, analysis = NULL, is16S = NULL, glomby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = TRUE, max_ranks_to_filter = 5, max_ranks_for_completeness = 3, fit_if_missing = TRUE, verbose = TRUE, ...){
 
     have_SEobj <- (!is.null(SEobj)) && (as.character(class(SEobj)[1]) == "SummarizedExperiment")
 

@@ -122,7 +122,7 @@
 
 #' @param normalization String specifying how BaseCounts should be normalized. Permissible values are "relabund" (Parts Per Million, the default) and "clr" (centred log-ratio; "compositions" is accepted as a synonym). Ignored when assay_for_matrix is "GeneCounts". Note that a ratio between two centred log-ratios is not a fold change, so under "clr" the X axis instead shows the difference between the two group means of the CLR, converted to log2 units, and is labelled as such. The p-values are still Mann-Whitney-Wilcoxon, computed on the CLR values, and will therefore not be identical to those obtained under "relabund".
 
-#' @param PPM_normalize_to_bases_sequenced Requires a logical value. When TRUE, non-taxonomic objects are relative-abundance-normalized against the total sequenced bases rather than against the coding fraction. Default is FALSE.
+#' @param PPM_normalize_to_bases_sequenced Requires a logical value. When TRUE, non-taxonomic objects are relative-abundance-normalized against the total sequenced bases rather than against the coding fraction. Default is TRUE.
 
 #' @param statsonlog Requires a logical value, retained for signature compatibility with plot_relabund_heatmap. Note that the Mann-Whitney-Wilcoxon U-test is rank based, so a monotonic log2 transformation cannot change its p-values. Default is FALSE.
 
@@ -160,7 +160,7 @@
 
 #' @export
 
-plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes_to_compare = NULL, dichotomize_continuous_compareby_threshold = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, highlight_features = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, use_checkM2_style_GenomeCompleteness = TRUE, discard_SDoverMean_below = NULL, pval_threshold = 0.05, adj_pval_for_threshold = FALSE, l2fc_threshold = 1, corr_method = "spearman", corr_threshold = 0.4, label_features = TRUE, label_pval_threshold = NULL, label_l2fc_threshold = NULL, label_corr_threshold = NULL, max_features_to_label = 30, label_fontsize = NULL, label_wrap_width = 24, max_label_nchar = 80, no_underscores = FALSE, point_size = NULL, point_alpha = 0.7, use_class_colours = TRUE, cdict = NULL, up_colour = NULL, down_colour = NULL, nonsignificant_colour = "grey70", show_threshold_lines = TRUE, cap_l2fc_at = NULL, cap_neglog10p_at = NULL, rescale_axis_quantiles = c(0, 0.99), fun_for_l2fc = "geom_mean", assay_for_matrix = "BaseCounts", normalization = "relabund", PPM_normalize_to_bases_sequenced = FALSE, statsonlog = FALSE, ignoreunclassified = TRUE, drop_features_absent_in_all_samples = FALSE, numthreads = 1, min_samples_per_class = 2, min_samples_for_correlation = 5, refuse_if_underpowered = TRUE, min_features_for_volcano = 3, max_pairwise_comparisons = 10, max_total_pages = 200, plot_when_nothing_significant = TRUE, report_failures_on_device = TRUE, addtit = NULL, returnstats = FALSE, class_to_ignore = "N_A", ...){
+plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes_to_compare = NULL, dichotomize_continuous_compareby_threshold = NULL, subsetby = NULL, samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, highlight_features = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, use_checkM2_style_GenomeCompleteness = TRUE, discard_SDoverMean_below = NULL, pval_threshold = 0.05, adj_pval_for_threshold = FALSE, l2fc_threshold = 1, corr_method = "spearman", corr_threshold = 0.4, label_features = TRUE, label_pval_threshold = NULL, label_l2fc_threshold = NULL, label_corr_threshold = NULL, max_features_to_label = 30, label_fontsize = NULL, label_wrap_width = 24, max_label_nchar = 80, no_underscores = FALSE, point_size = NULL, point_alpha = 0.7, use_class_colours = TRUE, cdict = NULL, up_colour = NULL, down_colour = NULL, nonsignificant_colour = "grey70", show_threshold_lines = TRUE, cap_l2fc_at = NULL, cap_neglog10p_at = NULL, rescale_axis_quantiles = c(0, 0.99), fun_for_l2fc = "geom_mean", assay_for_matrix = "BaseCounts", normalization = "relabund", PPM_normalize_to_bases_sequenced = TRUE, statsonlog = FALSE, ignoreunclassified = TRUE, drop_features_absent_in_all_samples = FALSE, numthreads = 1, min_samples_per_class = 2, min_samples_for_correlation = 5, refuse_if_underpowered = TRUE, min_features_for_volcano = 3, max_pairwise_comparisons = 10, max_total_pages = 200, plot_when_nothing_significant = TRUE, report_failures_on_device = TRUE, addtit = NULL, returnstats = FALSE, class_to_ignore = "N_A", ...){
 
     set.seed(2138)
 
@@ -317,10 +317,10 @@ plot_volcano <- function(ExpObj = NULL, glomby = NULL, compareby = NULL, classes
     #Coerce the logical switches. A string such as "yes" would otherwise reach if() and abort,
     #and for report_failures_on_device that would turn a graceful refusal into a hard failure.
     #Arguments which default to TRUE keep that default on unreadable input; the rest default to FALSE.
-    for (lgl_true in c("label_features", "use_class_colours", "show_threshold_lines", "ignoreunclassified", "refuse_if_underpowered", "plot_when_nothing_significant", "report_failures_on_device", "use_checkM2_style_GenomeCompleteness")){
+    for (lgl_true in c("label_features", "use_class_colours", "show_threshold_lines", "ignoreunclassified", "refuse_if_underpowered", "plot_when_nothing_significant", "report_failures_on_device", "use_checkM2_style_GenomeCompleteness", "PPM_normalize_to_bases_sequenced")){
         assign(lgl_true, !isFALSE(suppressWarnings(as.logical(get(lgl_true))[1])))
     }
-    for (lgl_false in c("only_allow_CSBs", "invertbinaryorder", "no_underscores", "PPM_normalize_to_bases_sequenced", "statsonlog", "drop_features_absent_in_all_samples", "returnstats")){
+    for (lgl_false in c("only_allow_CSBs", "invertbinaryorder", "no_underscores", "statsonlog", "drop_features_absent_in_all_samples", "returnstats")){
         assign(lgl_false, isTRUE(suppressWarnings(as.logical(get(lgl_false))[1])))
     }
 

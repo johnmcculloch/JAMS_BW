@@ -2,7 +2,7 @@
 % Please edit documentation in R/titrate_feature_counts.R
 \name{titrate_feature_counts}
 \alias{titrate_feature_counts}
-\title{titrate_feature_counts(ExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, PPM_thresholds = NULL, completeness_thresholds = NULL, n_ppm = 30, n_comp = 30, max_PPM_threshold = 10000, prevalence_pct = NULL, prevalence_min_samples = 2, depth_quantile_probs = 0.1, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, plot_on_the_fly = FALSE, verbose = TRUE)}
+\title{titrate_feature_counts(ExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, PPM_thresholds = NULL, completeness_thresholds = NULL, n_ppm = 30, n_comp = 30, max_PPM_threshold = 10000, prevalence_pct = NULL, prevalence_min_samples = 2, depth_quantile_probs = 0.1, PPM_normalize_to_bases_sequenced = TRUE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, plot_on_the_fly = FALSE, verbose = TRUE)}
 \usage{
 titrate_feature_counts(
   ExpObj = NULL,
@@ -17,7 +17,7 @@ titrate_feature_counts(
   prevalence_pct = NULL,
   prevalence_min_samples = 2,
   depth_quantile_probs = 0.1,
-  PPM_normalize_to_bases_sequenced = FALSE,
+  PPM_normalize_to_bases_sequenced = TRUE,
   ignoreunclassified = TRUE,
   class_to_ignore = "N_A",
   return_plots = TRUE,

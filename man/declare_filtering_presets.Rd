@@ -2,7 +2,7 @@
 % Please edit documentation in R/declare_filtering_presets.R
 \name{declare_filtering_presets}
 \alias{declare_filtering_presets}
-\title{declare_filtering_presets(SEobj = NULL, analysis = NULL, is16S = NULL, glomby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = FALSE, max_ranks_to_filter = 5, max_ranks_for_completeness = 3, fit_if_missing = TRUE, verbose = TRUE, ...)}
+\title{declare_filtering_presets(SEobj = NULL, analysis = NULL, is16S = NULL, glomby = NULL, applyfilters = NULL, featcutoff = NULL, GenomeCompletenessCutoff = NULL, PPM_normalize_to_bases_sequenced = TRUE, max_ranks_to_filter = 5, max_ranks_for_completeness = 3, fit_if_missing = TRUE, verbose = TRUE, ...)}
 \usage{
 declare_filtering_presets(
   SEobj = NULL,
@@ -12,7 +12,7 @@ declare_filtering_presets(
   applyfilters = NULL,
   featcutoff = NULL,
   GenomeCompletenessCutoff = NULL,
-  PPM_normalize_to_bases_sequenced = FALSE,
+  PPM_normalize_to_bases_sequenced = TRUE,
   max_ranks_to_filter = 5,
   max_ranks_for_completeness = 3,
   fit_if_missing = TRUE,

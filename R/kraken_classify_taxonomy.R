@@ -29,6 +29,7 @@ kraken_classify_taxonomy <- function(opt = NULL, fastafile = NULL, confidence = 
                 #Fall back on generic taxonomy table and warn user
                 flog.info("JAMS taxonomy table not found. Falling back on generic JAMS taxtable.")
                 data(JAMStaxtable)
+                JAMStaxtable <- standardize_JAMStaxtable(JAMStaxtable)
             }
         }
     }

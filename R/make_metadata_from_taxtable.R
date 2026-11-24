@@ -30,6 +30,7 @@ make_metadata_from_taxtable <- function(taxlvlinterest = NULL, taxainterest = NU
 
     tt <- get_genomes_NCBI(assembly_upto = assembly_upto, nobs = nobs)
     data(JAMStaxtable)
+    JAMStaxtable <- standardize_JAMStaxtable(JAMStaxtable)
     cinterest <- c("assembly_accession", "species_taxid", "organism_name", "infraspecific_name", "seq_rel_date", "refseq_category", "excluded_from_refseq", "assembly_level", "paired_asm_comp", "relation_to_type_material", "bioproject", "biosample")
     if ((taxlvlinterest %in% colnames(JAMStaxtable)) == FALSE){
         stop("The taxon level of interest could not be found. Try something such as Genus.")

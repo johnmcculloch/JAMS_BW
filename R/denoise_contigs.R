@@ -51,6 +51,7 @@ denoise_contigs <- function(opt = NULL, small_large_length_threshold = 2000) {
 
         #Censor (i.e. default to s__Unclassified) the taxonomies of all unvettable contigs, as they are likely spurious.
         data(JAMStaxtable)
+        JAMStaxtable <- standardize_JAMStaxtable(JAMStaxtable)
         Unvetted_contigs_df[ , colnames(Unvetted_contigs_df)[colnames(Unvetted_contigs_df) %in% colnames(JAMStaxtable)]] <- JAMStaxtable["0", colnames(Unvetted_contigs_df)[colnames(Unvetted_contigs_df) %in% colnames(JAMStaxtable)]]
     }
 

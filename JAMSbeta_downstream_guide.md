@@ -568,8 +568,8 @@ Minimum (and maximum) absolute **log2 fold change** between the two groups of a 
 
 Controls the denominator when converting to PPM.
 
-- `FALSE` (default in most plotting functions): for functional objects, normalise to the bases **in that analysis** (i.e. relative to coding regions annotated in that space).
-- `TRUE`: normalise to the **total** bases sequenced in the sample (including non-coding / unannotated content).
+- `TRUE` (the default in every plotting function, and in `filter_experiment`, since 2026-11-23): normalise to the **total** bases sequenced in the sample (including non-coding / unannotated content).
+- `FALSE`: for functional objects, normalise to the bases **in that analysis** (i.e. relative to coding regions annotated in that space).
 
 For **taxonomic** objects the two are effectively the same, because the taxonomic census already spans the whole sample. For **functional** objects the choice changes interpretation: `TRUE` gives "fraction of the whole metagenome", `FALSE` gives "fraction of the annotated coding space". Pick one and be consistent within a project.
 

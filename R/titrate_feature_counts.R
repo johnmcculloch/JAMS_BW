@@ -1,4 +1,4 @@
-#' titrate_feature_counts(ExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, PPM_thresholds = NULL, completeness_thresholds = NULL, n_ppm = 30, n_comp = 30, max_PPM_threshold = 10000, prevalence_pct = NULL, prevalence_min_samples = 2, depth_quantile_probs = 0.1, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, plot_on_the_fly = FALSE, verbose = TRUE)
+#' titrate_feature_counts(ExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, PPM_thresholds = NULL, completeness_thresholds = NULL, n_ppm = 30, n_comp = 30, max_PPM_threshold = 10000, prevalence_pct = NULL, prevalence_min_samples = 2, depth_quantile_probs = 0.1, PPM_normalize_to_bases_sequenced = TRUE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, plot_on_the_fly = FALSE, verbose = TRUE)
 #'
 #' A FAST, correlation-free companion to titrate_correlation_stability. For a taxonomic
 #' SummarizedExperiment object, it counts how many features survive each combination of a
@@ -64,7 +64,7 @@
 #' @param verbose Emit brief progress via flog.info.
 #' @export
 
-titrate_feature_counts <- function(ExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, PPM_thresholds = NULL, completeness_thresholds = NULL, n_ppm = 30, n_comp = 30, max_PPM_threshold = 10000, prevalence_pct = NULL, prevalence_min_samples = 2, depth_quantile_probs = 0.1, PPM_normalize_to_bases_sequenced = FALSE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, plot_on_the_fly = FALSE, verbose = TRUE){
+titrate_feature_counts <- function(ExpObj = NULL, glomby = NULL, only_allow_CSBs = FALSE, samplesToKeep = NULL, PPM_thresholds = NULL, completeness_thresholds = NULL, n_ppm = 30, n_comp = 30, max_PPM_threshold = 10000, prevalence_pct = NULL, prevalence_min_samples = 2, depth_quantile_probs = 0.1, PPM_normalize_to_bases_sequenced = TRUE, ignoreunclassified = TRUE, class_to_ignore = "N_A", return_plots = TRUE, plot_on_the_fly = FALSE, verbose = TRUE){
 
     require(ggplot2)
 

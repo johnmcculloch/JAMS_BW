@@ -2,7 +2,7 @@
 % Please edit documentation in R/fit_filtering_thresholds.R
 \name{fit_filtering_thresholds}
 \alias{fit_filtering_thresholds}
-\title{fit_filtering_thresholds(SEobj = NULL, glomby = NULL, rankname = NULL, fit_completeness = NULL, tier = "denoise", tier_keep_fraction = c(denoise = 1, light = 0.5, moderate = 0.25, stringent = 0.10), tier_depth_rails = c(denoise = 80, light = 80, moderate = 75, stringent = 65), min_noise_fraction_for_PPM_axis = 0.05, only_allow_CSBs = FALSE, samplesToKeep = NULL, prevalence_pct = NULL, prevalence_min_samples = 2, min_depth_median = 80, min_depth_min = NULL, min_depth_lowq = NULL, depth_quantile_probs = 0.1, divergence_tolerance = 2, max_ranks_to_filter = 5, max_ranks_for_completeness = 3, min_features_to_filter = 50, allow_functional = FALSE, PPM_thresholds = NULL, completeness_thresholds = NULL, n_ppm = 30, n_comp = 30, max_PPM_threshold = 10000, ignoreunclassified = TRUE, PPM_normalize_to_bases_sequenced = FALSE, class_to_ignore = "N_A", precomputed_titration = NULL, return_plots = FALSE, verbose = TRUE)}
+\title{fit_filtering_thresholds(SEobj = NULL, glomby = NULL, rankname = NULL, fit_completeness = NULL, tier = "denoise", tier_keep_fraction = c(denoise = 1, light = 0.5, moderate = 0.25, stringent = 0.10), tier_depth_rails = c(denoise = 80, light = 80, moderate = 75, stringent = 65), min_noise_fraction_for_PPM_axis = 0.05, only_allow_CSBs = FALSE, samplesToKeep = NULL, prevalence_pct = NULL, prevalence_min_samples = 2, min_depth_median = 80, min_depth_min = NULL, min_depth_lowq = NULL, depth_quantile_probs = 0.1, divergence_tolerance = 2, max_ranks_to_filter = 5, max_ranks_for_completeness = 3, min_features_to_filter = 50, allow_functional = FALSE, PPM_thresholds = NULL, completeness_thresholds = NULL, n_ppm = 30, n_comp = 30, max_PPM_threshold = 10000, ignoreunclassified = TRUE, PPM_normalize_to_bases_sequenced = TRUE, class_to_ignore = "N_A", precomputed_titration = NULL, return_plots = FALSE, verbose = TRUE)}
 \usage{
 fit_filtering_thresholds(
   SEobj = NULL,
@@ -32,7 +32,7 @@ fit_filtering_thresholds(
   n_comp = 30,
   max_PPM_threshold = 10000,
   ignoreunclassified = TRUE,
-  PPM_normalize_to_bases_sequenced = FALSE,
+  PPM_normalize_to_bases_sequenced = TRUE,
   class_to_ignore = "N_A",
   precomputed_titration = NULL,
   return_plots = FALSE,

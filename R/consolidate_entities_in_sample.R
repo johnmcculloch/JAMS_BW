@@ -67,6 +67,7 @@ consolidate_entities_in_sample <- function(opt = opt){
                 #Fall back on generic taxonomy table and warn user
                 flog.info("JAMS taxonomy table not found. Falling back on generic JAMS taxtable.")
                 data(JAMStaxtable)
+                JAMStaxtable <- standardize_JAMStaxtable(JAMStaxtable)
             }
         }
     }

@@ -22,6 +22,7 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     }
 
     data(JAMStaxtable)
+    JAMStaxtable <- standardize_JAMStaxtable(JAMStaxtable)
 
     #n.b. There should be no duplicate ConsoildatedGenomeBin WITHIN a sample. It seems a few low level, bad quality ones may be duplicated in some samples. I don't know why, but meanwhile will aggregate these into a single CGB for the time being.
     LKTdosesall$MAG_Accession <- paste(LKTdosesall$Sample, LKTdosesall$ConsolidatedGenomeBin, sep = "§")
@@ -124,6 +125,7 @@ contextualize_taxonomy <- function(LKTdosesall = LKTdosesall, list.data = list.d
     #Calculate Species taxid for taxonomic ranks which are downstream of Species
     if (any(BinsDF$NCBI_taxonomic_rank %in% c("strain", "subspecies"))){
         data(JAMStaxtable)
+        JAMStaxtable <- standardize_JAMStaxtable(JAMStaxtable)
         downstream_taxids <- unique(BinsDF[which(BinsDF$NCBI_taxonomic_rank %in% c("strain", "subspecies")), "Taxid"])
 
         Taxid2WorkingTaxid <- data.frame(Taxid = downstream_taxids, WorkingTaxid = unname(sapply(JAMStaxtable[downstream_taxids, "Species"], function (x) { extract_NCBI_taxid_from_featname(Taxon = x) } )))

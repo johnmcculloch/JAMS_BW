@@ -61,6 +61,7 @@ evaluate_LKTs <- function(opt = opt, contigsdata_name = "contigsdata", output_li
                 #Fall back on generic taxonomy table and warn user
                 flog.info("JAMS taxonomy table not found. Falling back on generic JAMS taxtable.")
                 data(JAMStaxtable)
+                JAMStaxtable <- standardize_JAMStaxtable(JAMStaxtable)
             }
         }
     }

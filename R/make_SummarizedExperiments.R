@@ -288,17 +288,20 @@ make_SummarizedExperiments <- function(pheno = NULL, onlysamples = NULL, onlyana
         tt$Taxid[which(is.na(tt$Taxid))] <- "0"
         #Add Gram information
         data(JAMStaxtable)
+        JAMStaxtable <- standardize_JAMStaxtable(JAMStaxtable)
 
         Taxid2gram <- JAMStaxtable[ , c("Taxid", "Gram")]
         Taxid2gram <- subset(Taxid2gram, Taxid %in% tt$Taxid)
         Taxid2gram <- Taxid2gram[!(duplicated(Taxid2gram$Taxid)), ]
         tt <- left_join(as.data.frame(tt), Taxid2gram, by = "Taxid")
 
-        #Preserve all four canonical Gram categories from JAMStaxtable (positive, negative,
-        #N_A = does not apply, e.g. eukaryotes/viruses; undetermined = unknown). Join misses
-        #(dark matter with no taxid match) are "undetermined", since we genuinely do not know
-        #their Gram status, whereas N_A is a positive assertion that Gram does not apply.
-        canonical_gram <- c("positive", "negative", "N_A", "undetermined")
+        #Preserve all five canonical Gram categories from JAMStaxtable (positive / negative = the
+        #published Gram stain where there is one, otherwise monoderm / outer membrane with LPS
+        #potential; variable = outer membrane without LPS, conflicting stains, or a mixed clade; N_A = does not apply, e.g. eukaryotes, viruses, Archaea, Mollicutes;
+        #undetermined = unknown). See inst/extdata/Gram_curation/README_Gram_curation.md.
+        #Join misses (dark matter with no taxid match) are "undetermined", since we genuinely do
+        #not know their Gram status, whereas N_A is a positive assertion that Gram does not apply.
+        canonical_gram <- c("positive", "negative", "variable", "N_A", "undetermined")
         tt$Gram[which(is.na(tt$Gram))] <- "undetermined"
         tt$Gram[!(tt$Gram %in% canonical_gram)] <- "undetermined"
         tt <- tt[ , c("Gram", taxlvlspresent)]

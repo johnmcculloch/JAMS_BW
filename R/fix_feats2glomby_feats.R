@@ -32,6 +32,8 @@ fix_feats2glomby_feats <- function(feats2glomby_feats = NULL, glomby = NULL){
     #Fix glommed names
     #use JAMStaxtable
     data(JAMStaxtable)
+    JAMStaxtable <- standardize_JAMStaxtable(JAMStaxtable)
+    feats2glomby_feats_to_resolve$Taxid <- as.character(feats2glomby_feats_to_resolve$Taxid)
     feats2glomby_feats_to_resolve <- left_join(feats2glomby_feats_to_resolve, JAMStaxtable[ , c("Taxid", "LKT")], by = "Taxid") 
     #Commit the LKT annotation to Glomby_feats
     feats2glomby_feats_to_resolve$Glomby_feats <- feats2glomby_feats_to_resolve$LKT

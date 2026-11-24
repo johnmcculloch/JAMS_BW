@@ -108,26 +108,56 @@ agglomerate_features <- function(ExpObj = NULL, glomby = NULL){
 
             taxonomic_levels_have <- taxonomic_levels[taxonomic_levels %in% colnames(glom_ftt)]
             taxonomic_levels_to_keep <- taxonomic_levels_have[1:which(taxonomic_levels_have == glomby)]
-            glom_ftt <- glom_ftt[ , taxonomic_levels_to_keep]
+            #drop = FALSE throughout: when glomby = "Gram" only ONE column is kept, and without it R silently
+            #turns the table into a vector, which then fails on the next two-dimensional subset.
+            glom_ftt <- glom_ftt[ , taxonomic_levels_to_keep, drop = FALSE]
+
+            #Gram is a property of each member taxon, not part of the taxonomic path, so it must not
+            #take part in the de-duplication below. When it did, any node whose members disagreed
+            #on Gram (very often "negative" for most and "N_A" for one strain without a JAMStaxtable
+            #entry) looked like two "alternate taxonomic paths", triggering the warning below for no
+            #taxonomic reason, and the node then took the Gram of whichever member happened to come
+            #first in the feature table. Instead, every node gets one consensus Gram: the single
+            #known value if its members agree, "variable" if they include both positive and
+            #negative, otherwise "N_A" if all are N_A, and "undetermined" in any other case.
+            if (("Gram" %in% colnames(glom_ftt)) && (glomby != "Gram")){
+                consensus_gram <- function(g){
+                    g <- as.character(g)
+                    known <- unique(g[g %in% c("positive", "negative")])
+                    if (("variable" %in% g) || (length(known) > 1)){
+                        return("variable")
+                    }
+                    if (length(known) == 1){
+                        return(known)
+                    }
+                    if ((length(g) > 0) && all(g %in% "N_A")){
+                        return("N_A")
+                    }
+                    return("undetermined")
+                }
+                node_names <- as.character(glom_ftt[ , glomby])
+                gram_by_node <- tapply(as.character(glom_ftt$Gram), node_names, consensus_gram)
+                glom_ftt$Gram <- unname(as.character(gram_by_node[node_names]))
+            }
 
             #Again, account for completely dark matter (i.e. LKT__Unclassified) not having a taxonomic path.
             if ("LKT__Unclassified" %in% rownames(glom_ftt)){
                 #Attribute LKT__Unclassified to that glomby
                 glom_ftt[which(rownames(glom_ftt) == "LKT__Unclassified"), taxonomic_levels_to_keep] <- "LKT__Unclassified"
             }
-            glom_ftt <- glom_ftt[ , taxonomic_levels_to_keep]
+            glom_ftt <- glom_ftt[ , taxonomic_levels_to_keep, drop = FALSE]
             #Try de-duplicating the entire taxonomy table data frame. Depending on how the taxonomy was built, there may be more than one alternate taxonomic path leading to a node. All was done to avoid this with JAMSbuildk2db, but you never know.
-            glom_ftt <- glom_ftt[!duplicated(glom_ftt), ]
+            glom_ftt <- glom_ftt[!duplicated(glom_ftt), , drop = FALSE]
             #Check whether featureorder is the same length as glom_ftt rows and if they are 100% contained within
             if ((nrow(glom_ftt) == length(featureorder)) & (all(featureorder %in% glom_ftt[ , glomby]))){
                 rownames(glom_ftt) <- glom_ftt[ , glomby]
-                glom_ftt <- glom_ftt[featureorder, ]
+                glom_ftt <- glom_ftt[featureorder, , drop = FALSE]
             } else {
                 #There may be some alternate taxonomic paths leading to the same terminal (glomby) leaf. de-duplicate the glomby and keep the first in each case.
                 flog.warn(paste("Alternate taxonomic paths leading to the same node at", glomby, "detected. Keeping the first path in each instance."))
-                glom_ftt <- glom_ftt[!duplicated(glom_ftt[ , glomby]), ]
+                glom_ftt <- glom_ftt[!duplicated(glom_ftt[ , glomby]), , drop = FALSE]
                 rownames(glom_ftt) <- glom_ftt[ , glomby]
-                glom_ftt <- glom_ftt[featureorder, ]
+                glom_ftt <- glom_ftt[featureorder, , drop = FALSE]
             }
         }
     } else {

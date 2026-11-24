@@ -1,0 +1,72 @@
+rule_id	tier	match_column	match_value	assigned_Gram	evidence_type	basis	ref_ids	verification	review_flag	notes
+D01	1	Domain	d__2157_Archaea	N_A	definition	No Gram-type (peptidoglycan +/- LPS outer membrane) envelope	R06	definition	no	Decision of J. McCulloch (2026-11-24): Archaea are N_A regardless of reported stain.
+D02	1	Domain	d__2759_Eukaryota	N_A	definition	No bacterial cell envelope	-	definition	no	Fungi, protists, etc.
+D03	1	Domain	d__10239_Viruses	N_A	definition	Not cellular	-	definition	no	
+D04	1	Domain	d__Unclassified	N_A	definition	Root / unclassified, not an organism	-	definition	yes	Taxids 0 and 1 (root, unclassified) and similar; kept N_A as in the previous table. Could be argued undetermined.
+M01	1	Class	c__31969_Mollicutes	N_A	envelope	No outer membrane and no peptidoglycan	R06	direct (abstract)	no	Decision of J. McCulloch: Mollicutes and everything below are N_A.
+M02	1	Phylum	p__544448_Mycoplasmatota	N_A	envelope	Wall-less (no peptidoglycan, no outer membrane): Mollicutes-equivalent taxa placed directly under the phylum in NCBI (e.g. Mycoplasmoidales: Mycoplasmoides, Ureaplasma, Mycoplasmopsis) and the class Candidatus Izimaplasma / Izemoplasmatales (single membrane, no cell wall by cryo-EM; isolate Hujiaoplasma nucleasis wall-less)	R06;R27;R28	direct (abstract/excerpt)	no	Covers the whole phylum.
+T01	3	Species	s__43765_Corynebacterium_amycolatum	positive	envelope	Monoderm; lacks mycolic acids, so no mycomembrane	R23	direct (excerpt)	no	Overrides the Mycobacteriales rule (C24).
+T02	3	Species	s__234828_Corynebacterium_caspium	positive	envelope	Monoderm; lacks mycolic acids	R23	direct (excerpt)	no	
+T03	3	Species	s__227319_Corynebacterium_ciconiae	positive	envelope	Monoderm; lacks mycolic acids	R23	direct (excerpt)	no	
+T04	3	Species	s__161879_Corynebacterium_kroppenstedtii	positive	envelope	Monoderm; lacks mycolic acids	R23	direct (excerpt)	no	
+T05	3	Species	s__1231000_Corynebacterium_lactis	positive	envelope	Monoderm; lacks mycolic acids	R23	direct (excerpt)	no	
+T06	3	Species	s__29321_Corynebacterium_otitidis	positive	envelope	Monoderm; lacks mycolic acids	R23	direct (excerpt)	no	Formerly Turicella otitidis.
+C01	5	Phylum	p__1224_Pseudomonadota	negative	envelope	Diderm with LPS (archetype)	R01;R25	direct (abstract)	no	Exceptions: Anaplasmataceae (C21), Sphingomonas (C22).
+C02	5	Phylum	p__976_Bacteroidota	negative	envelope	Diderm with LPS/LOS	R21;R25	direct (abstract)	no	Bacteroides lipid A is hypo-acylated and weakly TLR4-agonistic, but present.
+C03	5	Phylum	p__29547_Campylobacterota	negative	envelope	Diderm with LPS/LOS	R19	direct (abstract)	no	Formerly Epsilonproteobacteria.
+C04	5	Phylum	p__200940_Thermodesulfobacteriota	negative	envelope	Diderm with LPS	R20	direct (abstract) for Desulfovibrio; lineage for the rest	yes	Contains the former Deltaproteobacteria sulfate reducers (Desulfovibrio, Bilophila). The original Thermodesulfobacteria were not checked individually.
+C05	5	Phylum	p__2818505_Myxococcota	negative	envelope	Diderm with LPS (inferred)	R01	lineage inference (former Deltaproteobacteria, within the Proteobacteria of R01)	yes	No direct citation read.
+C06	5	Phylum	p__3018035_Bdellovibrionota	negative	envelope	Diderm with LPS	R22	direct (abstract)	no	
+C07	5	Phylum	p__32066_Fusobacteriota	negative	envelope	Diderm with LPS	R17;R07	direct (abstract)	no	Atypical diderm by the Hsp60 marker of R07, but LPS present.
+C08	5	Phylum	p__204428_Chlamydiota	negative	envelope	Diderm with (truncated) LPS	R18	direct (abstract)	no	
+C09	5	Phylum	p__74201_Verrucomicrobiota	negative	envelope	Diderm with LOS	R16	direct (abstract)	no	Akkermansia muciniphila.
+C10	5	Phylum	p__203682_Planctomycetota	negative	envelope	Diderm with LPS	R15	direct (excerpt)	no	Gemmata obscuriglobus.
+C11	5	Phylum	p__1117_Cyanobacteriota	negative	envelope	Diderm; LPS with simple lipid A	R13;R14;R04	direct (excerpt)	yes	R04 reports that many Cyanobacteria carry Lpt genes without lpx genes, so LPS may be absent in some lineages.
+C12	5	Phylum	p__57723_Acidobacteriota	negative	envelope	Conventional LPS-diderm phylum	R25;R07	secondary	yes	Confirm against R07.
+C13	5	Phylum	p__200783_Aquificota	negative	envelope	Conventional LPS-diderm phylum	R25;R07	secondary	yes	Confirm against R07.
+C14	5	Phylum	p__1090_Chlorobiota	negative	envelope	Conventional LPS-diderm phylum	R25;R07	secondary	yes	Confirm against R07.
+C15	5	Phylum	p__65842_Fibrobacterota	negative	envelope	Conventional LPS-diderm phylum	R25;R07	secondary	yes	Confirm against R07.
+C17	5	Family	f__170_Leptospiraceae	negative	envelope	Diderm with LPS	R09;R10	direct (excerpt)	no	Spirochaetota as a whole has no phylum rule (members differ, see C19, C20).
+C18	5	Family	f__143786_Brachyspiraceae	negative	envelope	Diderm with LOS	R10	direct (excerpt)	no	
+C19	5	Family	f__1643685_Borreliaceae	variable	envelope	Diderm; outer membrane WITHOUT LPS	R08;R09;R10	direct (excerpt)	no	Decision of J. McCulloch: OM without LPS = variable.
+C20	5	Genus	g__157_Treponema	variable	envelope	Diderm; outer membrane WITHOUT LPS	R09;R10	direct (excerpt)	no	T. pallidum and T. denticola.
+C21	5	Family	f__942_Anaplasmataceae	variable	envelope	Gram-negative-type OM without LPS (no lipid A genes)	R11;R01	direct (abstract)	no	Ehrlichia, Anaplasma, Neorickettsia, Wolbachia.
+C22	5	Genus	g__13687_Sphingomonas	variable	envelope	OM with glycosphingolipids instead of LPS	R12;R01	direct (abstract)	no	Other sphingomonad genera keep the Pseudomonadota rule: R12 does not state that they lack LPS.
+C23	5	Phylum	p__201174_Actinomycetota	positive	envelope	Monoderm	R01;R05	direct (abstract)	no	Exception: Mycobacteriales (C24).
+C24	5	Order	o__85007_Mycobacteriales	variable	envelope	Mycolic-acid outer membrane (mycomembrane), no LPS	R01;R05;R06;R23	direct (abstract/excerpt)	no	Decision of J. McCulloch: OM without LPS = variable. Corynebacterium species without mycolic acids are positive (T01-T06).
+C25	5	Phylum	p__1239_Bacillota	positive	envelope	Monoderm (ancestral OM lost repeatedly)	R02;R03;R04	direct (abstract)	no	Exceptions: Negativicutes, Halanaerobiales, Limnochordia (C26-C28).
+C26	5	Class	c__909932_Negativicutes	negative	envelope+stain	Diderm with LPS; stains Gram-negative	R02;R03;R01;R49	direct (abstract)	no	Veillonella, Selenomonas, Megasphaera, Dialister, Acidaminococcus, etc.
+C27	5	Order	o__53433_Halanaerobiales	negative	envelope+stain	Diderm with LPS; stains Gram-negative	R02;R03;R49	direct (abstract)	no	Placed in class Clostridia by NCBI.
+C28	5	Class	c__1676648_Limnochordia	negative	envelope+stain	Diderm with OM markers including LPS; stains Gram-negative	R03;R49	direct (abstract)	no	
+C29	5	Phylum	p__200795_Chloroflexota	positive	envelope	Typically monoderm	R01;R06;R07	direct (abstract)	no	Stains negative, but has no outer membrane.
+C31	5	Phylum	p__1297_Deinococcota	variable	envelope	Diderm; LPS absent in some members, complete lipid A pathway in others	R04;R06;R07	direct (abstract/excerpt)	no	
+C32	5	Phylum	p__200918_Thermotogota	variable	envelope	Distinct outer envelope (toga); lpx genes absent	R04;R06	direct (excerpt)	no	
+C33	5	Phylum	p__508458_Synergistota	variable	envelope	Diderm; LPS biosynthesis genes not detected	R25;R07	secondary	yes	Human-associated genera: Cloacibacillus, Pyramidobacter, Fretibacterium, Jonquetella.
+C34	5	Phylum	p__68297_Dictyoglomota	undetermined	envelope	Conflicting reports on lipid A genes (present in R13, absent in R04)	R13;R04	direct (excerpt), conflicting	yes	
+C35	5	Genus	g__697025_Hoyosella	positive	envelope	Wall chemotype IV but mycolic acids absent, so no mycomembrane; monoderm	R29;R30	direct (abstract) for the type species; genus includes the former mycolateless Amycolicicoccus (H. subflava)	no	Overrides the Mycobacteriales rule (C24).
+C36	5	Class	c__28221_Deltaproteobacteria	negative	envelope	Diderm with LPS (inferred)	R01	lineage inference (Deltaproteobacteria were part of the Proteobacteria of R01)	yes	Catches 53 taxa that NCBI leaves with phylum Missing (e.g. Bradymonas, Lujinxingia, Microvenator).
+N02	note	Genus	g__1847725_Lawsonella	note	envelope	Lawsonella clevelandensis produces alpha-mycolic acids (wall chemotype IV), so it keeps the Mycobacteriales call (variable).	R31	direct (excerpt)	no	
+S01	3	Species	s__2086583_Pseudoruminococcus_massiliensis	negative	stain	Type strain and a second strain stain Gram-negative. Monoderm Clostridia lineage, but the published description reports a Gram-negative stain; published stain wins (decision of J. McCulloch, 2026-11-24).	R24	direct (abstract/excerpt)	no	No outer membrane or LPS reported; the second strain did not provoke a pro-inflammatory response.
+S02	5	Genus	g__459786_Oscillibacter	negative	stain	Type species O. valericigenes: cells Gram-negative. Monoderm Clostridia lineage, but the published description reports a Gram-negative stain; published stain wins (decision of J. McCulloch, 2026-11-24).	R32	direct (abstract)	no	
+S03	5	Genus	g__1017280_Pseudoflavonifractor	negative	stain	"""Members of this genus stain Gram-negative"" (Bergey's). Monoderm Clostridia lineage, but the published description reports a Gram-negative stain; published stain wins (decision of J. McCulloch, 2026-11-24)."	R33	direct (excerpt)	no	
+S04	5	Genus	g__292632_Subdoligranulum	negative	stain	Type species S. variabile: Gram-negative staining. Monoderm Clostridia lineage, but the published description reports a Gram-negative stain; published stain wins (decision of J. McCulloch, 2026-11-24).	R34	direct (abstract)	no	
+S05	5	Genus	g__204475_Gemmiger	variable	stain	"Type species G. formicilis described as ""gram-negative to gram-variable"". Published stain is variable."	R35	direct (abstract)	no	
+S06	5	Genus	g__1432051_Eisenbergiella	variable	stain	Protologue: Gram-stain-negative but structurally Gram-positive; later clinical isolates Gram-stain-variable (positive or negative).	R36	direct (abstract/excerpt)	no	
+S07	5	Genus	g__1905344_Ruthenibacterium	negative	stain	Type species R. lactatiformans: Gram-stain-negative. Monoderm Clostridia lineage, but the published description reports a Gram-negative stain; published stain wins (decision of J. McCulloch, 2026-11-24).	R37	direct (abstract)	no	
+S08	5	Genus	g__2591381_Dysosmobacter	negative	stain	Type species D. welbionis: Gram-stain-negative. Monoderm Clostridia lineage, but the published description reports a Gram-negative stain; published stain wins (decision of J. McCulloch, 2026-11-24).	R38	direct (abstract)	no	
+S09	5	Genus	g__2892396_Vescimonas	negative	stain	Six strains, including both type strains: Gram-stain-negative. Monoderm Clostridia lineage, but the published description reports a Gram-negative stain; published stain wins (decision of J. McCulloch, 2026-11-24).	R39	direct (abstract)	no	
+S10	5	Genus	g__596767_Hydrogenoanaerobacterium	negative	stain	Type species: Gram-stain-negative throughout exponential growth, although the cell wall is of an atypical Gram-positive type. Monoderm Clostridia lineage, but the published description reports a Gram-negative stain; published stain wins (decision of J. McCulloch, 2026-11-24).	R40	direct (abstract/excerpt)	no	
+S11	5	Genus	g__1918385_Acutalibacter	variable	stain	Published stains conflict: the genus is described as Gram-stain negative (Bergey's), but a 2024 description reports A. muris and two new species as Gram-stain-positive.	R41	direct (excerpt)	no	
+S12	5	Genus	g__1924093_Anaeromassilibacillus	negative	stain	Type species A. senegalensis: Gram-negative. Monoderm Clostridia lineage, but the published description reports a Gram-negative stain; published stain wins (decision of J. McCulloch, 2026-11-24).	R42	direct (abstract)	no	
+S13	5	Genus	g__1392389_Intestinimonas	variable	stain	Protologue calls the organism Gram-positive (wall ultrastructure, spores, vancomycin sensitivity) while reporting that cells stain Gram-negative.	R43	direct (excerpt)	no	
+S14	5	Genus	g__1980693_Negativibacillus	negative	stain	Type species N. massiliensis: Gram-stain negative. Monoderm Clostridia lineage, but the published description reports a Gram-negative stain; published stain wins (decision of J. McCulloch, 2026-11-24).	R44	direct (abstract)	no	
+S15	5	Genus	g__216851_Faecalibacterium	variable	stain	Originally described as Gram-negative (as Fusobacterium prausnitzii, Cato et al. 1974); a Gram-positive-type wall with variable Gram staining is reported in later work; secondary sources describe it either way. Published stains conflict.	R37;R50	secondary + excerpt	yes	High-impact gut taxon: confirm against the 2002 reclassification (Duncan et al., IJSEM 52:2141) and the 2022 species descriptions.
+S16	5	Class	c__292625_Anaerolineae	negative	stain	Class description: non-motile, Gram-negative, multicellular filaments. Monoderm and without LPS; published stain wins.	R45;R46	direct (abstract)	no	
+S17	5	Class	c__475962_Caldilineae	negative	stain	Described with Anaerolineae as Gram-negative filamentous organisms. Monoderm and without LPS; published stain wins.	R45;R46	direct (abstract)	no	
+S18	5	Class	c__32061_Chloroflexia	negative	stain	Gram-negative staining (Chloroflexus, Roseiflexus, Herpetosiphon) despite a monoderm envelope.	R47;R46	secondary	yes	Primary descriptions (e.g. Chloroflexus aurantiacus) not read.
+S19	5	Class	c__388447_Ktedonobacteria	positive	stain	Type species Ktedonobacter racemifer: Gram-positive. Agrees with the monoderm envelope.	R48	direct (abstract)	no	
+S20	5	Phylum	p__3027942_Thermomicrobiota	negative	stain	Thermomicrobium roseum, Sphaerobacter thermophilus and Thermorudis pharmacophila are reported to be Gram-negative, with a layered envelope of atypical composition.	R51	secondary	yes	Replaces the earlier lineage-inference rule (positive).
+E01	5	Genus	g__61434_Dehalococcoides	N_A	envelope	No peptidoglycan and no outer membrane: an S-layer directly over the plasma membrane. No Gram-type cell wall, so N_A as for Mollicutes.	R52	direct (excerpt)	no	
+S21	5	Genus	g__670486_Dehalogenimonas	negative	stain	Type species D. lykanthroporepellens: strains stain Gram-negative.	R53	direct (excerpt)	no	
+S22	5	Class	c__1382928_Ardenticatenia	negative	stain	Type species Ardenticatena maritima: Gram-negative-staining multicellular filaments.	R54	direct (abstract)	no	
+S23	5	Genus	g__2056_Sphaerobacter	variable	stain	Published stains conflict: Sphaerobacter thermophilus is Gram-positive in its original description (Demharter et al. 1989, as cited in R53) but listed as Gram-negative in a secondary summary (R51).	R53;R51	direct (excerpt) + secondary	yes	

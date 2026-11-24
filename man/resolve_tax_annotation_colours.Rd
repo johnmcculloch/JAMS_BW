@@ -2,30 +2,47 @@
 % Please edit documentation in R/useful_functions.R
 \name{resolve_tax_annotation_colours}
 \alias{resolve_tax_annotation_colours}
-\title{resolve_tax_annotation_colours(feature_table = NULL, row_order = NULL, want_phylum = FALSE, want_gram = FALSE)}
+\title{resolve_tax_annotation_colours(feature_table = NULL, row_order = NULL, want_phylum = FALSE, want_gram = FALSE, infer_gram_from_ancestors = FALSE)}
 \usage{
 resolve_tax_annotation_colours(
   feature_table = NULL,
   row_order = NULL,
   want_phylum = FALSE,
-  want_gram = FALSE
+  want_gram = FALSE,
+  infer_gram_from_ancestors = FALSE
 )
 }
 \description{
 Internal helper shared by JAMS heatmap/correlation plotting functions to resolve
 per-feature Phylum and Gram annotation colours consistently. Phylum colours are
-sourced from the package PhyCols dictionary (data(PhyCols)), with collision-aware
-fallback colours assigned to any phylum not in the dictionary. Gram is read directly
-from the feature table as a per-feature property (a phylum may contain both Gram
-positive and Gram negative species), and mapped to a fixed, total colour scheme.
+sourced from the package PhyCols dictionary (data(PhyCols)); any phylum not in the
+dictionary gets a fallback colour chosen from its NAME (not from how many phyla happen to
+be on the page), so that it keeps the same colour on every page and every heatmap. Gram is
+read directly from the feature table as a per-feature property (a phylum may contain both
+Gram positive and Gram negative species), and mapped to a fixed, total colour scheme.
 }
 \details{
+Gram in JAMS comes from a taxid lookup in JAMStaxtable. From the 2026-11-24 curation of that
+table onwards (see inst/extdata/Gram_curation/README_Gram_curation.md), "undetermined" is a
+deliberate, documented call (for example for taxa known only from MAGs), so it is shown as is.
+infer_gram_from_ancestors (default FALSE) is kept only for objects built with an older
+JAMStaxtable, in which many bacterial species carried "N_A" for lack of curation: when TRUE, a
+bacterial or archaeal feature whose Gram is "N_A" or "undetermined" takes the Gram of its
+nearest classified ancestor (Species, then Genus, Family, Order, Class, Phylum), looked up by
+taxid in JAMStaxtable and, failing that, among the other features of the same table. Do not
+use it with objects built on the curated table: it would overwrite deliberate "undetermined"
+and "N_A" (Archaea, Mollicutes) calls. "variable" means an outer membrane without LPS, or a
+node whose members include both Gram positive and Gram negative taxa (agglomerate_features).
+
 Returns a list with: phylum (character vector, ordered to row_order), gram (character
 vector, ordered to row_order), phylum_cols (named colour vector) and gram_cols (named
 colour vector). Either annotation can be requested independently via want_phylum /
 want_gram; unrequested components are returned as NULL. If a requested component cannot
 be resolved (missing column), it degrades gracefully to NULL with a warning rather than
-erroring, so callers can simply skip that annotation.
+erroring, so callers can simply skip that annotation. The vectors returned always have
+exactly length(row_order) elements, in that order: a row absent from the feature table is
+reported in the log and annotated as missing, never silently dropped, since a shorter
+vector would either stop ComplexHeatmap or, worse, shift every annotation below it.
 
 Do not attempt to use this outside of the JAMS plotting functions.
 }

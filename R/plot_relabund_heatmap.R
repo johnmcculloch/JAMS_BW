@@ -4,9 +4,11 @@
 
 #' @param glomby String giving the taxonomic level at which to agglomerate counts. This argument should only be used with taxonomic SummarizedExperiment objects. When NULL (the default), there is no agglomeration
 
-#' @param hmtype Type of heatmap to plot. Options are "exploratory" or "comparative". When "exploratory" is passed, features are ranked by variance across all samples. When "comparative" is passed, the metadata variable name for grouping samples must be passed using the compareby argument (see below).
+#' @param hmtype Type of heatmap to plot. Options are "exploratory", "comparative" or "PA". When "exploratory" is passed, features are ranked by variance across all samples. When "comparative" is passed, the metadata variable name for grouping samples must be passed using the compareby argument (see below). When "PA" is passed, features are compared for presence/absence between the two classes of compareby with Fisher's exact test (see threshPA and hmasPA); this requires setting both hmtype = "PA" and compareby. Passing anything to compareby is taken as a request for a comparison: if hmtype is "exploratory" (the default) and compareby is not NULL, hmtype is set to "comparative", with a note in the log (a warning if hmtype = "exploratory" was passed explicitly). To obtain an exploratory heatmap, therefore, leave compareby = NULL. Default is "exploratory".
 
-#' @param compareby String specifying the metadata variable name for grouping samples when the hmtype argument is set to "comparative". This will calculate p-values for each feature using the Mann-Whitney-Wilcoxon U-test when there are exactly two classes within the variable, and the log2 foldchange between the two groups will be calculated. When there are three or more classes within the variable, the p-value will be calculated using ANOVA. If there is only a single class within the variable, hmtype will default to "exploratory" and features will be ranked by variance across samples.
+#' @param compareby String specifying the metadata variable name for grouping samples. Passing a compareby makes the heatmap comparative, even if hmtype is left at its default of "exploratory" (see hmtype); leave compareby = NULL (the default) for an exploratory heatmap. This will calculate p-values for each feature using the Mann-Whitney-Wilcoxon U-test when there are exactly two classes within the variable, and the log2 foldchange between the two groups will be calculated. When there are three or more classes within the variable, the p-value will be calculated using ANOVA. If there is only a single class within the variable, hmtype will default to "exploratory" and features will be ranked by variance across samples. If the variable holds continuous (numeric) data, see dichotomize_continuous_compareby_threshold.
+
+#' @param dichotomize_continuous_compareby_threshold Controls what happens when compareby holds continuous (numeric) data. A variable is considered continuous when, after discarding class_to_ignore values, all of its values are numbers, it has more than two distinct values, and it is not declared as anything other than "continuous" in the phenolabels of the SummarizedExperiment object. Accepts NULL (the default, which leaves the variable as it is, i.e. exactly the behaviour of earlier versions, in which each feature is tested against the numeric values and the test is reported as ANOVA), FALSE (treat each distinct numeric value as its own category, which is what you want for numerically-coded groups such as timepoints 0/7/14, or 0/1, bearing in mind that such classes are then ordered as text, so 0, 14, 7), a single number (the cut point; a number given as a string, e.g. "30", is also accepted), the name of a function such as "median" or "mean", or a function returning a single number (e.g. function(x) quantile(x, 0.75)). When a cut point is resolved, samples are split into High (greater than or equal to the threshold) and Low (below it) using dichotomize_variable_in_md, exactly as in plot_Ordination and plot_volcano, and the heatmap then compares High against Low (Mann-Whitney-Wilcoxon, with log2 fold changes, or Fisher's test when hmtype = "PA"). The threshold is computed ONCE, across all samples remaining after samplesToKeep and class_to_ignore are applied, and NOT separately within each subset, so that High and Low mean the same thing on every heatmap; it is reported in the title of each heatmap. The dichotomized values are stored in a new variable called <compareby>_dichotomized (within the plot only; the input object is never modified), which is always shown as a column annotation, placed right after the original variable if that is also shown. splitcolsby follows the dichotomized variable if it was the same variable as compareby; ordercolsby and textby keep the original continuous values. High and Low are coloured with the colours for "High" and "Low" in the cdict entry for either <compareby>_dichotomized or the original compareby variable or, failing that, in the colour table of the SummarizedExperiment object (metadata(ExpObj)$ctable), but only if both labels are present there with valid and different colours; otherwise, which is the usual case, since the ctable is built before any dichotomizing, the fixed pair High = red, Low = blue is used. This argument is ignored if compareby is categorical, or NULL.
 
 #' @param wilcox_paired_by String specifying metadata variable name for pairing samples if compareby has exactly two classes. If passed and not NULL, the Mann-Whitney-Wilcoxon U-test will be paired with samples paired by duplicate values in the wilcox_paired_by column. In this case, a test will be made to ascertain whether there are exactly two samples, one in each compareby class, bearing an identical value for wilcox_paired_by. If there is an odd number of samples, or somehow they cannot be unambiguously paired, the Mann-Whitney-Wilcoxon test will be run in the paired=FALSE mode, with a warning message.
 
@@ -74,7 +76,7 @@
 
 #' @param showl2fc Requires a logical value. If set to TRUE, a text label with the log2 fold change between groups of each feature when applicable will be shown on the right of each row of the heatmap. Default is TRUE. See compareby and fun_for_l2fc.
 
-#' @param showGram Requires a logical value. If set to TRUE, if the SummarizedExperiment object is taxonomical (see ExpObj), an annotation with the predicted Gram cell-wall category (positive, negative, or na) of each feature will be plot to the left of each row of the heatmap. Gram status is read on a per-feature basis from the feature table, since a single phylum may contain both Gram-positive and Gram-negative species. Default is FALSE.
+#' @param showGram Requires a logical value. If set to TRUE, if the SummarizedExperiment object is taxonomical (see ExpObj), an annotation with the Gram cell-envelope category of each feature (positive = published Gram-positive stain or monoderm, purple; negative = published Gram-negative stain or outer membrane with LPS, red; variable = outer membrane without LPS, conflicting or Gram-variable stains, or a mixed clade, amber; N_A = not applicable, black; undetermined, grey; see inst/extdata/Gram_curation/README_Gram_curation.md) will be plot to the left of each row of the heatmap. Gram status is read on a per-feature basis from the feature table, since a single phylum may contain both Gram-positive and Gram-negative species. Default is FALSE.
 
 #' @param showPhylum Requires a logical value. If set to TRUE, if the SummarizedExperiment object is taxonomical (see ExpObj), an annotation with the Phylum of each feature will be plot to the left of each row of the heatmap. Phylum colours are drawn from the JAMS PhyCols dictionary for commonly encountered phyla, with distinct fallback colours assigned to any other phyla present. This annotation is only meaningful when the effective taxonomic level being plotted (glomby if set, otherwise the object's analysis level) is at Class or below (down to IS1 or the terminal genome-bin spaces); if showPhylum is set to TRUE at Phylum, Kingdom or Domain level, it is automatically turned off with a warning, since there is no parent Phylum to annotate. Default is FALSE.
 
@@ -86,7 +88,7 @@
 
 #' @param normalization String specifying if the BaseCounts for the assay should be normalized or not. Permissible values are "relabund" and "compositions". When using "relabund", the relative abundance of each feature will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. See also PPM_normalize_to_bases_sequenced for details.  When using "compositions", the counts matrix will be transformed using the clr function of the compositions package. Please install this package independently of JAMS as it is not a JAMS dependency.
 
-#' @param PPM_normalize_to_bases_sequenced Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a **non-taxonomical** SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is FALSE.
+#' @param PPM_normalize_to_bases_sequenced Requires a logical value. Non-filtered JAMS feature counts tables (the BaseCounts assay within SummarizedExperiment objects) always includes unclassified taxonomical features (for taxonomical SummarizedExperiment objects) or unknown/unattributed functional features (for non-taxonomical SummarizedExperiment objects), so the relative abundance for each feature (see normalization) will be calculated in Parts per Million (PPM) by dividing the number of bases covering each feature by the sum of each sample column **previous to any filtration**. Relative abundances are thus representative of the entirety of the genomic content for taxonomical objects, whereas for non-taxonomical objects, strictly speaking, it is the abundance of each feature relative to only the coding regions present in the metagenome, even if these are annotationally unatributed. In other words, intergenic regions are not taken into account. In order to relative-abundance-normalize a **non-taxonomical** SummarizedExperiment object with the total genomic sequencing content, including non-coding regions, set PPM_normalize_to_bases_sequenced = TRUE. Default is TRUE.
 
 #' @param scaled Requires a logical value. If set to TRUE the z-scores for each row (each feature) will be plot on the heatmap rather than their relative abundances.
 
@@ -104,7 +106,7 @@
 
 #' @export
 
-plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "exploratory", samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, subsetby = NULL, compareby = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = TRUE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, row_order = NULL, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = 1, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, showPhylum = FALSE, show_GenomeCompleteness = TRUE, use_checkM2_style_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = FALSE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
+plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "exploratory", samplesToKeep = NULL, featuresToKeep = NULL, only_allow_CSBs = FALSE, subsetby = NULL, compareby = NULL, dichotomize_continuous_compareby_threshold = NULL, wilcox_paired_by = NULL, invertbinaryorder = FALSE, hmasPA = FALSE, threshPA = 0, ntop = NULL, splitcolsby = NULL, cluster_column_slices = TRUE, column_split_group_order = NULL, ordercolsby = NULL, cluster_samples_per_heatmap = TRUE, cluster_features_per_heatmap = TRUE, colcategories = NULL, textby = NULL, label_samples = TRUE, cluster_rows = TRUE, row_order = NULL, max_rows_in_heatmap = 50, applyfilters = "light", featcutoff = NULL, GenomeCompletenessCutoff = NULL, discard_SDoverMean_below = NULL, maxl2fc = NULL, minl2fc = 1, fun_for_l2fc = "geom_mean", adj_pval_for_threshold = FALSE, showonlypbelow = NULL, showpval = TRUE, showroundedpval = TRUE, showl2fc = TRUE, showGram = FALSE, showPhylum = FALSE, show_GenomeCompleteness = TRUE, use_checkM2_style_GenomeCompleteness = TRUE, addtit = NULL, assay_for_matrix = "BaseCounts", normalization = "relabund", asPPM = TRUE, PPM_normalize_to_bases_sequenced = TRUE, scaled = FALSE, cdict = NULL, maxnumheatmaps = NULL, numthreads = 1, statsonlog = FALSE, ignoreunclassified = TRUE, returnstats = FALSE, class_to_ignore = "N_A", no_underscores = FALSE, ...){
 
     #Account for JAMS2 spaces
     taxonomic_spaces <- c("LKT", "Contig_LKT", "ConsolidatedGenomeBin", "MB2bin", "16S")
@@ -114,9 +116,40 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
     secondaryheatmap <- "none"
 
+    #Passing compareby IS asking for a comparison. hmtype = "exploratory" is the default, so
+    #without this, supplying compareby and forgetting to also set hmtype silently produced a
+    #variance-ranked heatmap. An exploratory heatmap is now asked for by leaving compareby NULL.
+    #hmtype = "PA" (Fisher's test) is left alone; it still needs both hmtype and compareby.
+    hmtype_was_explicit <- !missing(hmtype)
+    if (!is.null(compareby) && identical(hmtype, "exploratory")){
+        hmtype <- "comparative"
+        if (hmtype_was_explicit){
+            flog.warn(paste0("hmtype = \"exploratory\" was passed together with compareby = \"", paste0(compareby, collapse = "\", \""), "\". Passing compareby means comparing, so hmtype is being set to \"comparative\". For an exploratory (variance-ranked) heatmap, leave compareby = NULL (the default)."))
+        } else {
+            flog.info(paste0("compareby = \"", paste0(compareby, collapse = "\", \""), "\" was passed, so a comparative heatmap will be drawn (hmtype = \"comparative\"). For an exploratory (variance-ranked) heatmap, leave compareby = NULL (the default)."))
+        }
+    }
+
     #Test for silly stuff
     if ((hmtype %in% c("comparative", "PA")) && (is.null(compareby))){
         stop("If rows are to be selected by highest significant difference between classes in a discrete category, you must determine the category using the argument *compareby*")
+    }
+
+    #Vet the dichotomization argument up front, before any expensive work, exactly as plot_Ordination and plot_volcano do.
+    dichot_spec <- dichotomize_continuous_compareby_threshold
+    treat_compareby_as_is <- isFALSE(dichot_spec)
+    if (treat_compareby_as_is){
+        dichot_spec <- NULL
+    }
+    if (!is.null(dichot_spec)){
+        #A number passed as a string (easy to do, given that all JAMS metadata is character) is a number, not a function name
+        if (is.character(dichot_spec) && (length(dichot_spec) == 1) && !is.na(dichot_spec) && can_be_made_numeric(dichot_spec)){
+            dichot_spec <- as.numeric(dichot_spec)
+        }
+        dichot_spec_ok <- is.function(dichot_spec) || (is.numeric(dichot_spec) && (length(dichot_spec) == 1) && is.finite(dichot_spec)) || (is.character(dichot_spec) && (length(dichot_spec) == 1) && !is.na(dichot_spec))
+        if (!dichot_spec_ok){
+            stop("dichotomize_continuous_compareby_threshold must be NULL, FALSE, a single number, the name of a function such as \"median\", or a function returning a single number.")
+        }
     }
 
     #Fix metadata classes and remove classes to ignore, if present
@@ -134,6 +167,195 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         analysisname <- glomby
     } else {
         analysisname <- analysis
+    }
+
+    ####################################################################
+    #### Continuous compareby: dichotomize into High/Low            ####
+    ####################################################################
+    #Same rules as plot_Ordination and plot_volcano. JAMS metadata is all-character, so
+    #"continuous" is decided by whether the usable values can be read as numbers. This is done
+    #ONCE, on the whole vetted object and BEFORE any filtering or subsetting, so that the
+    #threshold, and therefore the meaning of High and Low, is identical on every heatmap.
+    #Doing it before multiple_subsetting_sample_selector also means that function only ever
+    #sees the categorical High/Low variable. The input object is never modified.
+
+    dichotomized_compareby <- FALSE
+    compareby_as_categories <- FALSE
+    compareby_original <- compareby
+    dichot_labels <- c(High = "High", Low = "Low")
+    #Same fixed pair as plot_Ordination and plot_volcano, used whenever High and Low cannot both be coloured from cdict or the ctable.
+    dichot_fallback_colours <- c(High = "#D7301F", Low = "#2B8CBE")
+    dichot_colname <- NULL
+    dichot_msg <- NULL
+    dichot_cores <- NULL
+
+    if (!is.null(compareby) && (length(compareby) == 1) && (compareby %in% colnames(colData(obj)))){
+        cb_vals <- as.character(colData(obj)[[compareby]])
+        cb_usable <- cb_vals[!is.na(cb_vals) & !(cb_vals %in% class_to_ignore)]
+
+        if (length(cb_usable) < 1){
+            if (!is.null(dichot_spec) || treat_compareby_as_is){
+                flog.warn(paste0("Comparison variable \"", compareby, "\" has no usable values among the samples being plotted (every value is either NA or in class_to_ignore: ", paste0(class_to_ignore, collapse = ", "), "), so dichotomize_continuous_compareby_threshold has nothing to act on and is being ignored."))
+            }
+        } else {
+            cb_is_numeric <- can_be_made_numeric(cb_usable)
+            cb_n_distinct <- if (cb_is_numeric) length(unique(as.numeric(cb_usable))) else length(unique(cb_usable))
+
+            #Respect an explicit declaration in phenolabels, if there is one for this variable
+            cb_declared_type <- NA_character_
+            pl <- metadata(obj)$phenolabels
+            if (!is.null(pl) && all(c("Var_label", "Var_type") %in% colnames(pl)) && (compareby %in% pl$Var_label)){
+                cb_declared_type <- as.character(pl$Var_type[match(compareby, pl$Var_label)])
+            }
+
+            cb_is_continuous <- cb_is_numeric && (cb_n_distinct > 2) && (is.na(cb_declared_type) || (cb_declared_type == "continuous"))
+
+            if (treat_compareby_as_is && cb_is_numeric){
+                #calculate_matrix_stats treats ANY numeric-looking class vector as continuous (this
+                #includes two-valued ones such as 0/1). Honouring FALSE therefore means shielding the
+                #class labels from it, which is done by prefixing them just before the stats call and
+                #stripping the prefix straight after (see compareby_as_categories below).
+                compareby_as_categories <- TRUE
+                flog.info(paste0("Comparison variable \"", compareby, "\" holds numbers, but dichotomize_continuous_compareby_threshold = FALSE, so each of its ", cb_n_distinct, " distinct values will be treated as a separate category (Mann-Whitney-Wilcoxon if there are two, ANOVA if there are more). Bear in mind that such classes are ordered as text, so 0, 14, 7."))
+
+            } else if (cb_is_continuous && is.null(dichot_spec)){
+                #Legacy behaviour, unchanged.
+                if (hmtype %in% c("comparative", "PA")){
+                    flog.info(paste0("Comparison variable \"", compareby, "\" holds continuous data (", cb_n_distinct, " distinct numeric values). It will be used as is, which calculate_matrix_stats does by testing each feature against its numeric values (reported as ANOVA). To compare High against Low groups instead, set dichotomize_continuous_compareby_threshold (a number, \"median\", or any function returning one number); to treat the distinct numeric values as categories, set it to FALSE."))
+                }
+
+            } else if (cb_is_continuous){
+                cb_num <- as.numeric(cb_usable)
+                if (is.numeric(dichot_spec)){
+                    thrinfo <- resolve_dichotomization_threshold(x = cb_num, threshold = dichot_spec)
+                } else {
+                    thrinfo <- resolve_dichotomization_threshold(x = cb_num, threshold = NULL, func_for_threshold = dichot_spec)
+                }
+
+                dichot_vals <- dichotomize_variable_in_md(md = data.frame(cbvar = cb_vals, stringsAsFactors = FALSE), column_to_dichotomize = "cbvar", threshold = thrinfo$threshold, class_to_ignore = class_to_ignore, high_label = dichot_labels[["High"]], low_label = dichot_labels[["Low"]])
+
+                dichot_colname <- paste0(compareby, "_dichotomized")
+                if (dichot_colname %in% colnames(colData(obj))){
+                    flog.warn(paste0("A metadata variable called \"", dichot_colname, "\" already exists. It will be overwritten (within this plot only; your SummarizedExperiment object is not modified) by the dichotomized values of \"", compareby, "\"."))
+                }
+                colData(obj)[[dichot_colname]] <- dichot_vals
+
+                #ExpObjVetting has already removed class_to_ignore samples for compareby, so this is
+                #purely defensive. (A non-NULL compareby now always means hmtype "comparative" or "PA";
+                #the hmtype test and the grey class_to_ignore colour below are kept only as a safety
+                #net for any unexpected hmtype value, in which case such samples stay on the heatmap.)
+                dichot_missing <- which(!(dichot_vals %in% dichot_labels))
+                if ((length(dichot_missing) > 0) && (hmtype %in% c("comparative", "PA"))){
+                    flog.warn(paste0(length(dichot_missing), " sample(s) could not be assigned to High or Low for \"", compareby, "\" and will be omitted."))
+                    obj <- obj[ , -dichot_missing]
+                }
+
+                n_high <- sum(colData(obj)[[dichot_colname]] == dichot_labels[["High"]])
+                n_low <- sum(colData(obj)[[dichot_colname]] == dichot_labels[["Low"]])
+                dichot_msg <- paste0(compareby, " dichotomized at ", thrinfo$description, ": High >= ", thrinfo$formatted_threshold, " (n=", n_high, "); Low < ", thrinfo$formatted_threshold, " (n=", n_low, ")")
+                flog.info(dichot_msg)
+
+                if ((hmtype %in% c("comparative", "PA")) && (min(n_high, n_low) < 2)){
+                    flog.warn(paste0("Dichotomizing \"", compareby, "\" at ", thrinfo$description, " left ", n_high, " sample(s) in High and ", n_low, " in Low. A p-value needs at least 2 in each group, so the heatmap will either be skipped (one group empty) or drawn as exploratory (one group with a single sample), exactly as for any other compareby. Choose a threshold which splits the samples more evenly, or widen samplesToKeep."))
+                }
+
+                #Column splitting is a grouping, so, like colourby in plot_Ordination, it follows the
+                #dichotomized variable if it was the same variable as compareby. ordercolsby and textby
+                #keep the original continuous values, which is what one wants from them.
+                if (identical(splitcolsby, compareby)){
+                    splitcolsby <- dichot_colname
+                    flog.info(paste0("splitcolsby was the same variable as compareby, so the heatmap columns will be split into the High and Low groups of \"", compareby, "\"."))
+                    if (!is.null(column_split_group_order) && !all(as.character(column_split_group_order) %in% dichot_labels)){
+                        flog.warn(paste0("column_split_group_order was given as (", paste0(column_split_group_order, collapse = ", "), "), but the columns are now split by \"", dichot_labels[["High"]], "\" and \"", dichot_labels[["Low"]], "\". Ignoring column_split_group_order."))
+                        column_split_group_order <- NULL
+                    }
+                }
+
+                compareby <- dichot_colname
+                dichotomized_compareby <- TRUE
+
+            } else if (!is.null(dichot_spec)){
+                flog.info(paste0("Comparison variable \"", compareby, "\" is categorical; ignoring dichotomize_continuous_compareby_threshold."))
+            }
+        }
+    } else if (!is.null(dichot_spec) || treat_compareby_as_is){
+        if (is.null(compareby)){
+            flog.info("dichotomize_continuous_compareby_threshold was set, but compareby was not, so it is being ignored.")
+        } else {
+            flog.warn(paste0("dichotomize_continuous_compareby_threshold was set, but compareby (\"", paste0(compareby, collapse = "\", \""), "\") is not a single variable present in the metadata, so it is being ignored."))
+        }
+    }
+
+    #### Colours for High and Low ####
+    #Resolved once, so that every heatmap of the call uses the same pair. Neither the cdict nor
+    #the object's colour table (metadata(ExpObj)$ctable) can be assumed to hold "High" and
+    #"Low": the ctable is built from the metadata as it was when the object was made, before
+    #any dichotomizing. They are therefore used only if BOTH labels resolve to valid, distinct
+    #colours there; otherwise the fixed red/blue pair is used. Nothing here can stop().
+    if (dichotomized_compareby){
+        is_usable_colour <- function(x){
+            if (is.null(x) || (length(x) != 1) || is.na(x) || !nzchar(x)){
+                return(FALSE)
+            }
+            return(tryCatch({ grDevices::col2rgb(x); TRUE }, error = function(e){ FALSE }))
+        }
+        both_dichot_colours <- function(namevec = NULL, colvec = NULL){
+            if (is.null(namevec) || is.null(colvec)){
+                return(NULL)
+            }
+            hits <- match(dichot_labels, as.character(namevec))
+            if (any(is.na(hits))){
+                return(NULL)
+            }
+            cols <- as.character(colvec)[hits]
+            if (!all(vapply(cols, is_usable_colour, logical(1))) || (cols[1] == cols[2])){
+                return(NULL)
+            }
+            return(setNames(cols, dichot_labels))
+        }
+
+        dichot_colour_source <- NULL
+        if (!is.null(cdict)){
+            #Look under the dichotomized variable name first, then under the original variable name
+            for (v in unique(c(dichot_colname, compareby_original))){
+                ct <- tryCatch(as.data.frame(cdict[[v]], stringsAsFactors = FALSE), error = function(e){ NULL })
+                if (is.null(dichot_cores) && !is.null(ct) && !is.null(colnames(ct)) && ("Name" %in% colnames(ct))){
+                    colcol <- intersect(c("Hex", "Colour"), colnames(ct))[1]
+                    if (!is.na(colcol)){
+                        dichot_cores <- both_dichot_colours(namevec = ct[["Name"]], colvec = ct[[colcol]])
+                        if (!is.null(dichot_cores)){
+                            dichot_colour_source <- paste0("the cdict entry for \"", v, "\"")
+                        }
+                    }
+                }
+            }
+        }
+        if (is.null(dichot_cores) && ("ctable" %in% names(metadata(obj)))){
+            ctab <- tryCatch(as.data.frame(metadata(obj)$ctable, stringsAsFactors = FALSE), error = function(e){ NULL })
+            if (!is.null(ctab) && !is.null(colnames(ctab))){
+                colcol <- intersect(c("Hex", "Colour"), colnames(ctab))[1]
+                if (!is.na(colcol)){
+                    #The ctable is rowname-indexed by class name, but do not assume it
+                    namevec <- if ("Name" %in% colnames(ctab)) ctab[["Name"]] else rownames(ctab)
+                    dichot_cores <- both_dichot_colours(namevec = namevec, colvec = ctab[[colcol]])
+                    if (!is.null(dichot_cores)){
+                        dichot_colour_source <- "the colour table of the SummarizedExperiment object (ctable)"
+                    }
+                }
+            }
+        }
+        if (is.null(dichot_cores)){
+            dichot_cores <- dichot_fallback_colours
+            flog.info(paste0("\"", dichot_labels[["High"]], "\" and \"", dichot_labels[["Low"]], "\" do not both have a colour in ", if (!is.null(cdict)) "the cdict or " else "", "the object's colour table (ctable), so the fixed pair High = ", dichot_fallback_colours[["High"]], ", Low = ", dichot_fallback_colours[["Low"]], " will be used for the \"", dichot_colname, "\" annotation."))
+        } else {
+            flog.info(paste0("Colours for \"", dichot_labels[["High"]], "\" and \"", dichot_labels[["Low"]], "\" taken from ", dichot_colour_source, "."))
+        }
+        #Anything else in the column (only possible in exploratory mode, i.e. class_to_ignore samples) is drawn in grey
+        dichot_others <- setdiff(unique(as.character(colData(obj)[[dichot_colname]])), dichot_labels)
+        dichot_others <- dichot_others[!is.na(dichot_others)]
+        if (length(dichot_others) > 0){
+            dichot_cores <- c(dichot_cores, setNames(rep("#BEBEBE", length(dichot_others)), dichot_others))
+        }
     }
 
     #Phylum annotation only makes sense when the effective taxonomic level being plotted
@@ -213,7 +435,9 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         subset_points <- "none"
     }
 
+    colcategories_was_null <- FALSE
     if (is.null(colcategories)){
+        colcategories_was_null <- TRUE
         if (!is.null(cdict)){
             colcategories <- names(cdict)
         } else {
@@ -224,6 +448,20 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
 
     #ensure that what the user is asking for is within the metadata
     colcategories <- colcategories[colcategories %in% colnames(colData(obj))]
+
+    #A dichotomized compareby is what the heatmap is comparing, so its High/Low annotation is
+    #always shown, placed right after the original variable if that is shown too (its gradient
+    #then shows where the threshold fell), otherwise first. A position the user chose explicitly
+    #for <compareby>_dichotomized in colcategories is respected.
+    if (dichotomized_compareby && (colcategories_was_null || !(dichot_colname %in% colcategories))){
+        colcategories <- setdiff(colcategories, dichot_colname)
+        pos_original <- match(compareby_original, colcategories)
+        if (is.na(pos_original)){
+            colcategories <- c(dichot_colname, colcategories)
+        } else {
+            colcategories <- append(colcategories, dichot_colname, after = pos_original)
+        }
+    }
 
     #Initialize Stats Vector list
     svec <- list()
@@ -265,7 +503,7 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
         if (any(c(!is.null(compareby), (hmtype != "exploratory")))) {
             #investigate if there are at least two of each class of things to compare to go ahead
             if (length(unique(curr_pt[ , compareby])) < 2){
-                skip_HM_reason <- paste0("There are fewer than 2 classes within variable ", compareby, ", impossible to obtain a p-value. Try setting hmtype = 'exploratory'.")
+                skip_HM_reason <- paste0("There are fewer than 2 classes within variable ", compareby, ", impossible to obtain a p-value. For an exploratory heatmap of these samples, leave compareby = NULL.")
                 proceed <- FALSE
             }
 
@@ -313,6 +551,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
             }
             if (!is.null(addtit)) {
                 maintit <- paste(addtit, maintit, sep = "\n")
+            }
+            #Report the threshold used in the title, as plot_Ordination does
+            if (!is.null(dichot_msg)){
+                maintit <- paste(maintit, dichot_msg, sep = "\n")
             }
 
             #Get counts matrix
@@ -436,7 +678,18 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                     flog.info(paste("Mann-Whitney-Wilcoxon test between", discretenames[1], "and", discretenames[2], "will be paired by", wilcox_paired_by))
                 }
 
+                #dichotomize_continuous_compareby_threshold = FALSE: stop calculate_matrix_stats from
+                #reading numerically-coded classes as a continuous variable. A constant prefix keeps
+                #the alphabetical order of the classes, so the direction of l2fc is unaffected.
+                if (compareby_as_categories){
+                    classesdf$cl <- paste0("JAMSclass_", as.character(classesdf$cl))
+                }
+
                 matstats <- calculate_matrix_stats(countmatrix = countmat, uselog = FALSE, statsonlog = statsonlog, stattype = stattype, classesdf = classesdf, invertbinaryorder = invertbinaryorder, numthreads = numthreads, threshPA = threshPA, fun_for_l2fc = fun_for_l2fc)
+
+                if (compareby_as_categories && ("Class_where_increased" %in% colnames(matstats))){
+                    matstats$Class_where_increased <- sub("^JAMSclass_", "", matstats$Class_where_increased)
+                }
 
                 ffeatmsg <- paste0("Number of features assessed = ", nrow(matstats))
 
@@ -799,12 +1052,19 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         colnames(hmdf)[g] <- colcategories[g]
 
                         #Test if variable can be coerced to numeric
-                        if (!(can_be_made_numeric(hmdf[ , g], cats_to_ignore = class_to_ignore))){
-                            if (is.null(cdict)){
+                        if (dichotomized_compareby && identical(colcategories[g], dichot_colname)){
+                            #High/Low colours were resolved once, before the subset loop (see above), and never
+                            #depend on "High" and "Low" being in the ctable or the cdict.
+                            cores[[g]] <- dichot_cores[names(dichot_cores) %in% unique(as.character(hmdf[ , g]))]
+                        } else if (!(can_be_made_numeric(hmdf[ , g], cats_to_ignore = class_to_ignore))){
+                            ct <- if (!is.null(cdict)) cdict[[colcategories[g]]] else NULL
+                            if (is.null(ct) || !all(c("Name", "Hex") %in% colnames(ct))){
+                                #No usable cdict entry for this variable (always the case when cdict is NULL;
+                                #previously a variable missing from a non-NULL cdict made subset() stop here).
                                 cores[[g]] <- as.vector(rainbow(length(unique(hmdf[ ,g]))))
                                 names(cores[[g]]) <- sort(unique(hmdf[ ,g]))
                                 #Use colour table if available
-                                if ("ctable" %in% names(metadata(currobj))){
+                                if (("ctable" %in% names(metadata(currobj))) && ("Hex" %in% colnames(metadata(currobj)$ctable))){
                                     colourshave <- names(cores[[g]])[names(cores[[g]]) %in% rownames(metadata(currobj)$ctable)]
                                     cores[[g]][colourshave]<- metadata(currobj)$ctable[colourshave, "Hex"]
                                 }
@@ -1080,6 +1340,10 @@ plot_relabund_heatmap <- function(ExpObj = NULL, glomby = NULL, hmtype = "explor
                         }
                         if (length(ann_cols) > 0){
                             ann_args$col <- ann_cols
+                            #ComplexHeatmap stops ("Amount of legend params is larger than the number of
+                            #simple annotations") if annotation_legend_param names an annotation that is not
+                            #drawn, e.g. Phylum when only showGram = TRUE. Keep only the ones actually present.
+                            ann_args$annotation_legend_param <- tax_legend_param[names(ann_cols)]
                             hatax <- do.call(rowAnnotation, ann_args)
                         }
                     }

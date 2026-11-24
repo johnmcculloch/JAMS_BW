@@ -1794,26 +1794,42 @@ calculate_safe_threads <- function(requested_threads= NULL, totmembytes = NULL, 
 }
 
 
-#' resolve_tax_annotation_colours(feature_table = NULL, row_order = NULL, want_phylum = FALSE, want_gram = FALSE)
+#' resolve_tax_annotation_colours(feature_table = NULL, row_order = NULL, want_phylum = FALSE, want_gram = FALSE, infer_gram_from_ancestors = FALSE)
 #'
 #' Internal helper shared by JAMS heatmap/correlation plotting functions to resolve
 #' per-feature Phylum and Gram annotation colours consistently. Phylum colours are
-#' sourced from the package PhyCols dictionary (data(PhyCols)), with collision-aware
-#' fallback colours assigned to any phylum not in the dictionary. Gram is read directly
-#' from the feature table as a per-feature property (a phylum may contain both Gram
-#' positive and Gram negative species), and mapped to a fixed, total colour scheme.
+#' sourced from the package PhyCols dictionary (data(PhyCols)); any phylum not in the
+#' dictionary gets a fallback colour chosen from its NAME (not from how many phyla happen to
+#' be on the page), so that it keeps the same colour on every page and every heatmap. Gram is
+#' read directly from the feature table as a per-feature property (a phylum may contain both
+#' Gram positive and Gram negative species), and mapped to a fixed, total colour scheme.
+#'
+#' Gram in JAMS comes from a taxid lookup in JAMStaxtable. From the 2026-11-24 curation of that
+#' table onwards (see inst/extdata/Gram_curation/README_Gram_curation.md), "undetermined" is a
+#' deliberate, documented call (for example for taxa known only from MAGs), so it is shown as is.
+#' infer_gram_from_ancestors (default FALSE) is kept only for objects built with an older
+#' JAMStaxtable, in which many bacterial species carried "N_A" for lack of curation: when TRUE, a
+#' bacterial or archaeal feature whose Gram is "N_A" or "undetermined" takes the Gram of its
+#' nearest classified ancestor (Species, then Genus, Family, Order, Class, Phylum), looked up by
+#' taxid in JAMStaxtable and, failing that, among the other features of the same table. Do not
+#' use it with objects built on the curated table: it would overwrite deliberate "undetermined"
+#' and "N_A" (Archaea, Mollicutes) calls. "variable" means an outer membrane without LPS, or a
+#' node whose members include both Gram positive and Gram negative taxa (agglomerate_features).
 #'
 #' Returns a list with: phylum (character vector, ordered to row_order), gram (character
 #' vector, ordered to row_order), phylum_cols (named colour vector) and gram_cols (named
 #' colour vector). Either annotation can be requested independently via want_phylum /
 #' want_gram; unrequested components are returned as NULL. If a requested component cannot
 #' be resolved (missing column), it degrades gracefully to NULL with a warning rather than
-#' erroring, so callers can simply skip that annotation.
+#' erroring, so callers can simply skip that annotation. The vectors returned always have
+#' exactly length(row_order) elements, in that order: a row absent from the feature table is
+#' reported in the log and annotated as missing, never silently dropped, since a shorter
+#' vector would either stop ComplexHeatmap or, worse, shift every annotation below it.
 #'
 #' Do not attempt to use this outside of the JAMS plotting functions.
 #' @export
 
-resolve_tax_annotation_colours <- function(feature_table = NULL, row_order = NULL, want_phylum = FALSE, want_gram = FALSE){
+resolve_tax_annotation_colours <- function(feature_table = NULL, row_order = NULL, want_phylum = FALSE, want_gram = FALSE, infer_gram_from_ancestors = FALSE){
 
     out <- list(phylum = NULL, gram = NULL, phylum_cols = NULL, gram_cols = NULL)
 
@@ -1821,34 +1837,76 @@ resolve_tax_annotation_colours <- function(feature_table = NULL, row_order = NUL
         return(out)
     }
 
-    tt <- as.data.frame(feature_table)
+    #optional = TRUE: never let make.names() touch the column names
+    tt <- as.data.frame(feature_table, optional = TRUE)
 
-    #Order to the matrix rows if supplied; otherwise leave as-is.
+    #Align to the matrix rows if supplied, by name. match() rather than %in% so that the result
+    #has one row per requested feature, in order, whatever the feature table holds.
     if (!is.null(row_order)){
-        row_order <- row_order[row_order %in% rownames(tt)]
-        tt <- tt[row_order, , drop = FALSE]
+        row_order <- as.character(row_order)
+        idx <- match(row_order, rownames(tt))
+        if (any(is.na(idx))){
+            absent <- row_order[is.na(idx)]
+            flog.warn(paste0("resolve_tax_annotation_colours: ", length(absent), " of the ", length(row_order), " feature(s) on this heatmap are not in the feature table (rowData), so their Phylum and Gram will be shown as missing: ", paste0(utils::head(absent, 5), collapse = ", "), if (length(absent) > 5) ", ..." else "", "."))
+        }
+        tt <- tt[idx, , drop = FALSE]
+        rownames(tt) <- make.unique(row_order)
+    }
+
+    #Taxid embedded in a JAMS taxon name, e.g. "g__572511_Blautia", "LKT__s__853_Faecalibacterium_prausnitzii",
+    #"CSB__s__39491_Agathobacter_rectalis_FC2" -> "572511", "853", "39491". NA when there is none.
+    taxid_from_name <- function(x){
+        x <- as.character(x)
+        hit <- grepl("^((LKT|CSB)__)?[a-z0-9]+__[0-9]+_", x, perl = TRUE)
+        tid <- rep(NA_character_, length(x))
+        tid[hit] <- sub("^((LKT|CSB)__)?[a-z0-9]+__([0-9]+)_.*$", "\\3", x[hit], perl = TRUE)
+        tid[tid %in% "0"] <- NA_character_
+        return(tid)
     }
 
     #--- Phylum colours ---
     if (want_phylum){
         if ("Phylum" %in% colnames(tt)){
-            data(PhyCols)
+            PhyCols <- NULL
+            phycol_env <- new.env()
+            tryCatch(utils::data("PhyCols", package = "JAMS", envir = phycol_env), error = function(e){ NULL }, warning = function(w){ NULL })
+            if (exists("PhyCols", envir = phycol_env, inherits = FALSE)){
+                PhyCols <- get("PhyCols", envir = phycol_env)
+            } else {
+                flog.warn("resolve_tax_annotation_colours: the PhyCols colour dictionary could not be loaded; every phylum will get a fallback colour.")
+                PhyCols <- setNames(character(0), character(0))
+            }
+
             phyla_vec <- as.character(tt$Phylum)
-            phyla_vec[is.na(phyla_vec)] <- "p__Missing"
+            phyla_vec[is.na(phyla_vec) | !nzchar(phyla_vec)] <- "p__Missing"
             phyla_present <- unique(phyla_vec)
 
             phycols <- PhyCols[names(PhyCols) %in% phyla_present]
-            missing_phyla <- setdiff(phyla_present, names(phycols))
+            missing_phyla <- sort(setdiff(phyla_present, names(phycols)))
             if (length(missing_phyla) > 0){
-                #Fallback colours that steer clear of the fixed PhyCols hues already in use.
-                used_cols <- toupper(unname(phycols))
-                fallback_pool <- toupper(grDevices::rainbow(length(missing_phyla) + length(used_cols) + 1))
-                fallback_pool <- fallback_pool[!(fallback_pool %in% used_cols)]
-                fallback_cols <- fallback_pool[seq_along(missing_phyla)]
-                if (any(is.na(fallback_cols))){
-                    fallback_cols[is.na(fallback_cols)] <- "#BCC2C2"
+                #Each unlisted phylum's preferred colour is chosen from a fixed pool by a hash of its
+                #name, so it is the same on every page; only a clash within this one heatmap moves it
+                #to the next free colour. The pool steers clear of the fixed PhyCols hues.
+                pool <- unique(toupper(c(grDevices::hcl.colors(24, "Dark 3"), grDevices::hcl.colors(24, "Set 2"), grDevices::hcl.colors(24, "Harmonic"))))
+                pool <- pool[!(pool %in% toupper(unname(PhyCols)))]
+                name_hash <- function(s){
+                    v <- utf8ToInt(s)
+                    return(sum(v * seq_along(v)))
                 }
-                names(fallback_cols) <- missing_phyla
+                fallback_cols <- setNames(rep("#BCC2C2", length(missing_phyla)), missing_phyla)
+                taken <- toupper(unname(phycols))
+                for (mp in missing_phyla){
+                    if (length(pool) < 1){
+                        break
+                    }
+                    start <- (name_hash(mp) %% length(pool)) + 1
+                    cand_order <- c(start:length(pool), seq_len(start - 1))
+                    free <- cand_order[!(pool[cand_order] %in% taken)]
+                    if (length(free) > 0){
+                        fallback_cols[mp] <- pool[free[1]]
+                        taken <- c(taken, pool[free[1]])
+                    }
+                }
                 phycols <- c(phycols, fallback_cols)
             }
             #Conventional fixed colours for the catch-all categories, if present.
@@ -1865,16 +1923,55 @@ resolve_tax_annotation_colours <- function(feature_table = NULL, row_order = NUL
     #--- Gram colours ---
     if (want_gram){
         if ("Gram" %in% colnames(tt)){
-            #Preserve all four canonical Gram categories from JAMStaxtable:
-            #positive, negative, N_A (does not apply, e.g. eukaryotes/viruses) and
-            #undetermined (unknown). Anything unexpected (including NA) folds into
-            #"undetermined", the honest "we don't know" bucket.
-            canonical_gram <- c("positive", "negative", "N_A", "undetermined")
+            #The four canonical Gram categories from JAMStaxtable: positive, negative, N_A (does not
+            #apply, e.g. eukaryotes/viruses) and undetermined (unknown); plus "variable", which
+            #agglomerate_features gives a node whose members are a mixture of positive and negative.
+            #Anything unexpected (including NA) folds into "undetermined", the honest "we don't
+            #know" bucket.
+            canonical_gram <- c("positive", "negative", "variable", "N_A", "undetermined")
             gram_vec <- as.character(tt$Gram)
             gram_vec[is.na(gram_vec)] <- "undetermined"
             gram_vec[!(gram_vec %in% canonical_gram)] <- "undetermined"
 
-            gramcols_all <- c(positive = "#7D00C4", negative = "#FC0345", "N_A" = "#000000", undetermined = "#BCC2C2")
+            if (isTRUE(infer_gram_from_ancestors)){
+                is_prokaryote <- if ("Domain" %in% colnames(tt)) grepl("Bacteria|Archaea", as.character(tt$Domain)) else rep(FALSE, nrow(tt))
+                eligible <- which((gram_vec == "undetermined") | ((gram_vec == "N_A") & is_prokaryote))
+                if (length(eligible) > 0){
+                    #Taxid -> Gram, known values only. JAMStaxtable first (it covers ancestors which
+                    #are not features of this object), then whatever this table itself knows.
+                    taxid2gram <- get_JAMS_taxid2gram()
+                    if ("Gram" %in% colnames(tt)){
+                        own_tid <- taxid_from_name(rownames(tt))
+                        own_ok <- !is.na(own_tid) & (gram_vec %in% c("positive", "negative"))
+                        if (any(own_ok)){
+                            local_map <- tapply(gram_vec[own_ok], own_tid[own_ok], function(g){ ug <- unique(g); if (length(ug) == 1) ug else NA_character_ })
+                            local_map <- local_map[!is.na(local_map)]
+                            local_map <- local_map[!(names(local_map) %in% names(taxid2gram))]
+                            taxid2gram <- c(taxid2gram, setNames(as.character(local_map), names(local_map)))
+                        }
+                    }
+                    if (length(taxid2gram) > 0){
+                        #Nearest first: the feature itself, then its ranks upward. Kingdom and Domain are too coarse to say anything.
+                        rank_cols <- intersect(c("Species", "Genus", "Family", "Order", "Class", "Phylum"), colnames(tt))
+                        inferred <- 0
+                        for (i in eligible){
+                            cands <- c(taxid_from_name(rownames(tt)[i]), taxid_from_name(unlist(lapply(rank_cols, function(rc){ tt[i, rc] }))))
+                            cands <- cands[!is.na(cands)]
+                            hit <- taxid2gram[cands]
+                            hit <- hit[!is.na(hit)]
+                            if (length(hit) > 0){
+                                gram_vec[i] <- unname(hit[1])
+                                inferred <- inferred + 1
+                            }
+                        }
+                        if (inferred > 0){
+                            flog.info(paste0("resolve_tax_annotation_colours: Gram was inferred from the nearest classified ancestor for ", inferred, " of the ", length(gram_vec), " feature(s) shown, which are bacterial or archaeal but have no Gram of their own in JAMStaxtable (\"N_A\" or \"undetermined\"). Set infer_gram_from_ancestors = FALSE in resolve_tax_annotation_colours to see the raw values."))
+                        }
+                    }
+                }
+            }
+
+            gramcols_all <- c(positive = "#7D00C4", negative = "#FC0345", variable = "#E69F00", "N_A" = "#000000", undetermined = "#BCC2C2")
             #Keep only categories actually present, in canonical order.
             gramcols <- gramcols_all[canonical_gram[canonical_gram %in% unique(gram_vec)]]
 
@@ -1889,6 +1986,89 @@ resolve_tax_annotation_colours <- function(feature_table = NULL, row_order = NUL
 }
 
 
+#' standardize_JAMStaxtable(jtt = NULL)
+#'
+#' Internal. Returns the JAMS taxonomy table in the shape the rest of JAMS assumes: a plain
+#' data.frame whose Taxid column is character and whose row names are the Taxids. Code joins
+#' JAMStaxtable to feature tables by Taxid (character there), and indexes it by row name
+#' (JAMStaxtable["0", ], JAMStaxtable[taxids, "Species"]). A copy of the table re-imported from
+#' a text file, for example with read.delim() and no colClasses, comes back with an integer Taxid
+#' and row names 1..n: the first breaks every dplyr join on Taxid with an "incompatible types"
+#' error, and the second makes row-name lookups return the wrong row or NA without any error.
+#' This puts both right, and leaves every other column untouched (apart from turning a factor
+#' Gram back into character).
+#' @keywords internal
+#' @noRd
+
+standardize_JAMStaxtable <- function(jtt = NULL){
+    if (is.null(jtt)){
+        return(jtt)
+    }
+    jtt <- as.data.frame(jtt, stringsAsFactors = FALSE, optional = TRUE)
+    if (!("Taxid" %in% colnames(jtt))){
+        flog.warn("standardize_JAMStaxtable: the JAMS taxonomy table has no Taxid column; returning it unchanged.")
+        return(jtt)
+    }
+    tid <- jtt$Taxid
+    if (is.factor(tid)){
+        tid <- as.character(tid)
+    } else if (is.numeric(tid)){
+        #format() rather than as.character(), which writes a double such as 3000000 as "3e+06"
+        tid <- format(tid, scientific = FALSE, trim = TRUE)
+    } else {
+        tid <- as.character(tid)
+    }
+    jtt$Taxid <- tid
+    if ("Gram" %in% colnames(jtt) && is.factor(jtt$Gram)){
+        jtt$Gram <- as.character(jtt$Gram)
+    }
+    if (!anyDuplicated(tid)){
+        rownames(jtt) <- tid
+    } else {
+        flog.warn("standardize_JAMStaxtable: duplicated Taxids in the JAMS taxonomy table; row names left as they are.")
+    }
+
+    return(jtt)
+}
+
+
+#Session cache for get_JAMS_taxid2gram(). JAMStaxtable is large, and resolve_tax_annotation_colours
+#runs once per heatmap page, so it is read once per R session rather than once per page.
+.JAMS_annotation_cache <- new.env(parent = emptyenv())
+
+#' get_JAMS_taxid2gram()
+#'
+#' Internal. Named character vector, taxid -> "positive" / "negative", built once per session
+#' from JAMStaxtable. Only taxids with exactly one known Gram value are included. Returns an
+#' empty vector, never an error, if JAMStaxtable cannot be loaded.
+#' @keywords internal
+#' @noRd
+
+get_JAMS_taxid2gram <- function(){
+    if (!exists("taxid2gram", envir = .JAMS_annotation_cache, inherits = FALSE)){
+        taxid2gram <- setNames(character(0), character(0))
+        tax_env <- new.env()
+        tryCatch(utils::data("JAMStaxtable", package = "JAMS", envir = tax_env), error = function(e){ NULL }, warning = function(w){ NULL })
+        if (exists("JAMStaxtable", envir = tax_env, inherits = FALSE)){
+            jtt <- get("JAMStaxtable", envir = tax_env)
+            if (all(c("Taxid", "Gram") %in% colnames(jtt))){
+                tid <- as.character(jtt[["Taxid"]])
+                grm <- as.character(jtt[["Gram"]])
+                ok <- !is.na(tid) & (grm %in% c("positive", "negative"))
+                if (any(ok)){
+                    m <- tapply(grm[ok], tid[ok], function(g){ ug <- unique(g); if (length(ug) == 1) ug else NA_character_ })
+                    m <- m[!is.na(m)]
+                    taxid2gram <- setNames(as.character(m), names(m))
+                }
+            }
+        }
+        assign("taxid2gram", taxid2gram, envir = .JAMS_annotation_cache)
+    }
+
+    return(get("taxid2gram", envir = .JAMS_annotation_cache, inherits = FALSE))
+}
+
+
 #' fix_Gram_in_SEobj(SEobj = NULL)
 #' Use this function to safely correct (or add) Gram to the featuretable of a JAMS2 compatible SummarizedExperimetn object based off of what information is available on the JAMStaxtable of the version of JAMS you have loaded (please always used the latest).
 #'
@@ -1900,6 +2080,7 @@ fix_Gram_in_SEobj <- function(SEobj = NULL){
     if (all(c("Domain", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species", "LKT") %in% colnames(tt))){
         flog.info("Fixing Gram column in SEobj rowData")
         data(JAMStaxtable)
+        JAMStaxtable <- standardize_JAMStaxtable(JAMStaxtable)
         tt_cols <- colnames(tt)
         if (!("Gram" %in% tt_cols)){
             flog.warn("A GRAM column was not found on the original featuretable of the SEobj. Adding one now.")

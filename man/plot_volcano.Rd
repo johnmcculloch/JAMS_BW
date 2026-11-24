@@ -50,7 +50,7 @@ plot_volcano(
   fun_for_l2fc = "geom_mean",
   assay_for_matrix = "BaseCounts",
   normalization = "relabund",
-  PPM_normalize_to_bases_sequenced = FALSE,
+  PPM_normalize_to_bases_sequenced = TRUE,
   statsonlog = FALSE,
   ignoreunclassified = TRUE,
   drop_features_absent_in_all_samples = FALSE,
@@ -160,7 +160,7 @@ plot_volcano(
 
 \item{normalization}{String specifying how BaseCounts should be normalized. Permissible values are "relabund" (Parts Per Million, the default) and "clr" (centred log-ratio; "compositions" is accepted as a synonym). Ignored when assay_for_matrix is "GeneCounts". Note that a ratio between two centred log-ratios is not a fold change, so under "clr" the X axis instead shows the difference between the two group means of the CLR, converted to log2 units, and is labelled as such. The p-values are still Mann-Whitney-Wilcoxon, computed on the CLR values, and will therefore not be identical to those obtained under "relabund".}
 
-\item{PPM_normalize_to_bases_sequenced}{Requires a logical value. When TRUE, non-taxonomic objects are relative-abundance-normalized against the total sequenced bases rather than against the coding fraction. Default is FALSE.}
+\item{PPM_normalize_to_bases_sequenced}{Requires a logical value. When TRUE, non-taxonomic objects are relative-abundance-normalized against the total sequenced bases rather than against the coding fraction. Default is TRUE.}
 
 \item{statsonlog}{Requires a logical value, retained for signature compatibility with plot_relabund_heatmap. Note that the Mann-Whitney-Wilcoxon U-test is rank based, so a monotonic log2 transformation cannot change its p-values. Default is FALSE.}
 
